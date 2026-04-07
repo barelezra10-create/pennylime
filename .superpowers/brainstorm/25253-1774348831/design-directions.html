@@ -1,0 +1,112 @@
+<h2>LimeCredit — Design Directions</h2>
+<p class="subtitle">Three approaches blending trust + premium minimalism. Click the one that feels right.</p>
+
+<div class="cards">
+  <!-- Direction A -->
+  <div class="card" data-choice="arctic-lime" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: linear-gradient(135deg, #f0fdf4, #ffffff); padding: 24px; min-height: 320px;">
+      <!-- Mini mockup -->
+      <div style="font-family: system-ui; max-width: 100%;">
+        <!-- Nav -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; margin-bottom: 24px;">
+          <div style="font-weight: 700; font-size: 16px; color: #14532d; letter-spacing: -0.02em;">LimeCredit</div>
+          <div style="background: #16a34a; color: white; padding: 6px 16px; border-radius: 6px; font-size: 11px; font-weight: 600;">Apply Now</div>
+        </div>
+        <!-- Hero -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 28px; font-weight: 800; color: #0a0a0a; letter-spacing: -0.03em; line-height: 1.1;">Funding that<br>moves with you.</div>
+          <div style="font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.5;">Fast loans for gig workers. $100–$10K.<br>Approved in minutes, not days.</div>
+        </div>
+        <!-- Cards -->
+        <div style="display:flex; gap: 8px;">
+          <div style="flex:1; background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;">Approved</div>
+            <div style="font-size: 20px; font-weight: 700; color: #16a34a;">$4,200</div>
+          </div>
+          <div style="flex:1; background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 10px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em;">Rate</div>
+            <div style="font-size: 20px; font-weight: 700; color: #0a0a0a;">12.5%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Arctic Lime</h3>
+      <p><strong>Palette:</strong> Bright green (#16a34a) on clean white. Minimal borders, lots of air.</p>
+      <p><strong>Feel:</strong> Mercury-like. Ultra-clean, generous whitespace, muted grays for secondary content. Green only for CTAs and positive numbers.</p>
+      <p><strong>Typography:</strong> Tight tracking, heavy weight headlines. Light body text.</p>
+    </div>
+  </div>
+
+  <!-- Direction B -->
+  <div class="card" data-choice="deep-forest" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0a0f0a; padding: 24px; min-height: 320px;">
+      <!-- Mini mockup -->
+      <div style="font-family: system-ui; max-width: 100%;">
+        <!-- Nav -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; margin-bottom: 24px;">
+          <div style="font-weight: 700; font-size: 16px; color: #4ade80; letter-spacing: -0.02em;">LimeCredit</div>
+          <div style="background: #22c55e; color: #0a0f0a; padding: 6px 16px; border-radius: 6px; font-size: 11px; font-weight: 700;">Apply Now</div>
+        </div>
+        <!-- Hero -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 28px; font-weight: 800; color: #f0fdf4; letter-spacing: -0.03em; line-height: 1.1;">Funding that<br>moves with you.</div>
+          <div style="font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.5;">Fast loans for gig workers. $100–$10K.<br>Approved in minutes, not days.</div>
+        </div>
+        <!-- Cards -->
+        <div style="display:flex; gap: 8px;">
+          <div style="flex:1; background: #141a14; border: 1px solid #1f2e1f; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Approved</div>
+            <div style="font-size: 20px; font-weight: 700; color: #4ade80;">$4,200</div>
+          </div>
+          <div style="flex:1; background: #141a14; border: 1px solid #1f2e1f; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">Rate</div>
+            <div style="font-size: 20px; font-weight: 700; color: #f0fdf4;">12.5%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Deep Forest</h3>
+      <p><strong>Palette:</strong> Dark mode. Near-black background with vibrant green (#4ade80) accents. Dark green-tinted surfaces.</p>
+      <p><strong>Feel:</strong> Premium fintech. Think Robinhood meets Mercury dark mode. Sophisticated, high-contrast, bold.</p>
+      <p><strong>Typography:</strong> White headlines on dark, green for highlights and data points.</p>
+    </div>
+  </div>
+
+  <!-- Direction C -->
+  <div class="card" data-choice="sage-stone" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #f8faf8; padding: 24px; min-height: 320px;">
+      <!-- Mini mockup -->
+      <div style="font-family: system-ui; max-width: 100%;">
+        <!-- Nav -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; margin-bottom: 24px;">
+          <div style="font-weight: 700; font-size: 16px; color: #1a1a1a; letter-spacing: -0.02em;">Lime<span style="color: #15803d;">Credit</span></div>
+          <div style="background: #1a1a1a; color: white; padding: 6px 16px; border-radius: 6px; font-size: 11px; font-weight: 600;">Apply Now</div>
+        </div>
+        <!-- Hero -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 28px; font-weight: 800; color: #1a1a1a; letter-spacing: -0.03em; line-height: 1.1;">Funding that<br>moves with you.</div>
+          <div style="font-size: 12px; color: #71717a; margin-top: 8px; line-height: 1.5;">Fast loans for gig workers. $100–$10K.<br>Approved in minutes, not days.</div>
+        </div>
+        <!-- Cards -->
+        <div style="display:flex; gap: 8px;">
+          <div style="flex:1; background: #f0f5f0; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Approved</div>
+            <div style="font-size: 20px; font-weight: 700; color: #15803d;">$4,200</div>
+          </div>
+          <div style="flex:1; background: #f0f5f0; border-radius: 8px; padding: 12px;">
+            <div style="font-size: 10px; color: #71717a; text-transform: uppercase; letter-spacing: 0.05em;">Rate</div>
+            <div style="font-size: 20px; font-weight: 700; color: #1a1a1a;">12.5%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Sage & Stone</h3>
+      <p><strong>Palette:</strong> Warm off-white (#f8faf8) with muted sage green (#15803d). Black for primary actions. No borders — tonal surfaces only.</p>
+      <p><strong>Feel:</strong> Apple Card vibes. Muted, sophisticated. Green is restrained — used for money/positive values only. Black CTAs feel premium.</p>
+      <p><strong>Typography:</strong> Near-black headlines, sage green for financial data, warm grays for body.</p>
+    </div>
+  </div>
+</div>

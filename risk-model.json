@@ -1,0 +1,55 @@
+{
+  "id": "98beec36-6b04-4e6c-9cdb-fa936a75a71e",
+  "version": 1,
+  "coefficients": [
+    -1.4010385472278197,
+    0.12124983637213389,
+    0.763096491072213,
+    -0.18925902156932656,
+    -0.14218626484730773,
+    -1.145472511949261,
+    1.1956322921879776
+  ],
+  "intercept": 0.9518612043655521,
+  "features": [
+    {
+      "name": "income_to_loan_ratio",
+      "cap": 5.0,
+      "divisor": 5.0
+    },
+    {
+      "name": "bank_balance_ratio",
+      "cap": 2.0,
+      "divisor": 2.0
+    },
+    {
+      "name": "platform_risk",
+      "cap": 1.0,
+      "divisor": 1.0
+    },
+    {
+      "name": "loan_term",
+      "cap": 18.0,
+      "divisor": 18.0
+    },
+    {
+      "name": "document_score",
+      "cap": 1.0,
+      "divisor": 1.0
+    },
+    {
+      "name": "repayment_history",
+      "cap": 1.0,
+      "divisor": 1.0
+    },
+    {
+      "name": "aggregate_exposure",
+      "cap": 3.0,
+      "divisor": 3.0
+    }
+  ],
+  "trainingSize": 2000,
+  "accuracy": 0.6125,
+  "precision": 0.07975460122699386,
+  "recall": 0.7222222222222222
+}

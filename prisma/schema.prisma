@@ -1,0 +1,531 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Application {
+  id              String    @id @default(uuid())
+  applicationCode String    @unique
+  firstName       String
+  lastName        String
+  email           String
+  phone           String
+  loanAmount      Decimal
+  loanTermMonths  Int       @default(6)
+  platform        String?
+  ssnEncrypted    String?
+  ssnHash         String?
+  plaidAccessToken String?
+  plaidAccountId  String?
+  plaidItemId     String?
+  plaidLinkStale  Boolean   @default(false)
+  monthlyIncome   Decimal?
+  totalIncome     Decimal?
+  riskScore       Decimal?
+  bankBalance     Decimal?
+  riskModelId     String?
+  interestRate    Decimal?
+  approvedBy      String?
+  approvedAt      DateTime?
+  fundedAt        DateTime?
+  fundedAmount    Decimal?
+  rejectionReason String?
+  status          String    @default("PENDING")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  documents       Document[]
+  payments        Payment[]
+  collectionEvents CollectionEvent[]
+  contact         Contact?
+
+  @@index([status])
+  @@index([email])
+  @@index([ssnHash])
+  @@index([plaidItemId])
+}
+
+model Document {
+  id            String   @id @default(uuid())
+  applicationId String
+  fileName      String
+  mimeType      String
+  fileSize      Int
+  storagePath   String
+  documentType  String   @default("PAY_STUB")
+  createdAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+model LoanRule {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String
+  updatedAt   DateTime @updatedAt
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("ADMIN")
+  createdAt    DateTime  @default(now())
+  contacts     Contact[]
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  applicationId   String
+  amount          Decimal
+  principal       Decimal
+  interest        Decimal
+  lateFee         Decimal   @default(0)
+  dueDate         DateTime
+  paidAt          DateTime?
+  status          String    @default("PENDING")
+  paymentNumber   Int
+  achTransferId   String?
+  retryCount      Int       @default(0)
+  lastRetryAt     DateTime?
+  createdAt       DateTime  @default(now())
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  action      String
+  entityType  String
+  entityId    String
+  performedBy String
+  details     String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([performedBy])
+  @@index([createdAt])
+}
+
+model RiskProfile {
+  id               String    @id @default(uuid())
+  applicationId    String
+  ssnHash          String
+  platform         String
+  monthlyIncome    Decimal
+  loanAmount       Decimal
+  loanTermMonths   Int
+  interestRate     Decimal
+  outcome          String
+  totalPaid        Decimal
+  totalOwed        Decimal
+  latePaymentCount Int       @default(0)
+  defaultedAt      DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([platform])
+  @@index([outcome])
+  @@index([ssnHash])
+}
+
+model CollectionEvent {
+  id            String   @id @default(uuid())
+  applicationId String
+  eventType     String
+  performedBy   String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
+
+model RiskModel {
+  id           String   @id @default(uuid())
+  version      Int
+  coefficients String
+  intercept    Float
+  features     String
+  trainingSize Int
+  accuracy     Float
+  precision    Float
+  recall       Float
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+// ─── Content Management ─────────────────────────────────────
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  articles    Article[]
+
+  @@index([slug])
+}
+
+model Tag {
+  id        String       @id @default(uuid())
+  name      String       @unique
+  slug      String       @unique
+  createdAt DateTime     @default(now())
+  articles  ArticleTag[]
+
+  @@index([slug])
+}
+
+model ArticleTag {
+  id        String  @id @default(uuid())
+  articleId String
+  tagId     String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, tagId])
+  @@index([articleId])
+  @@index([tagId])
+}
+
+model Article {
+  id              String       @id @default(uuid())
+  title           String
+  slug            String       @unique
+  body            String
+  excerpt         String?
+  featuredImage   String?
+  categoryId      String?
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  canonicalUrl    String?
+  noIndex         Boolean      @default(false)
+  published       Boolean      @default(false)
+  publishedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  category        Category?    @relation(fields: [categoryId], references: [id])
+  tags            ArticleTag[]
+
+  @@index([slug])
+  @@index([published])
+  @@index([categoryId])
+}
+
+model PlatformPage {
+  id                  String    @id @default(uuid())
+  platformName        String    @unique
+  slug                String    @unique
+  heroHeadline        String
+  heroSubtext         String
+  platformDescription String
+  avgEarnings         String?
+  topEarnerRange      String?
+  loanDetailsHtml     String?
+  faqEntries          String    @default("[]")
+  ctaText             String?
+  ctaSubtext          String?
+  metaTitle           String?
+  metaDescription     String?
+  ogImage             String?
+  canonicalUrl        String?
+  noIndex             Boolean   @default(false)
+  published           Boolean   @default(false)
+  publishedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model StatePage {
+  id                 String    @id @default(uuid())
+  stateName          String    @unique
+  stateCode          String    @unique
+  slug               String    @unique
+  heroHeadline       String
+  heroSubtext        String
+  regulationsSummary String?
+  loanAvailability   String?
+  localStats         String    @default("[]")
+  faqEntries         String    @default("[]")
+  ctaText            String?
+  metaTitle          String?
+  metaDescription    String?
+  ogImage            String?
+  canonicalUrl       String?
+  noIndex            Boolean   @default(false)
+  published          Boolean   @default(false)
+  publishedAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model ToolPage {
+  id                  String    @id @default(uuid())
+  title               String
+  slug                String    @unique
+  description         String
+  toolComponent       String
+  body                String?
+  relatedArticleSlugs String    @default("[]")
+  metaTitle           String?
+  metaDescription     String?
+  ogImage             String?
+  canonicalUrl        String?
+  noIndex             Boolean   @default(false)
+  published           Boolean   @default(false)
+  publishedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model ComparisonPage {
+  id              String    @id @default(uuid())
+  title           String
+  slug            String    @unique
+  entityA         String
+  entityB         String
+  introHtml       String?
+  comparisonGrid  String    @default("[]")
+  verdict         String?
+  faqEntries      String    @default("[]")
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  canonicalUrl    String?
+  noIndex         Boolean   @default(false)
+  published       Boolean   @default(false)
+  publishedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+model ContentImage {
+  id          String   @id @default(uuid())
+  fileName    String
+  mimeType    String
+  fileSize    Int
+  storagePath String
+  altText     String?
+  createdAt   DateTime @default(now())
+}
+
+model LandingPage {
+  id                String    @id @default(uuid())
+  slug              String    @unique
+  // SEO
+  metaTitle         String
+  metaDescription   String
+  // Header
+  phoneNumber       String?
+  // Hero
+  heroBadge         String
+  heroHeadlineLine1 String
+  heroHeadlineLine2 String?
+  heroHeadlineLine3 String?
+  heroSubtext       String
+  heroIllustration  String?
+  // Trust
+  trustItems        String    @default("[]")
+  trustStats        String    @default("[]")
+  // How it works
+  howItWorksTitle   String    @default("Three steps. No paperwork.")
+  howItWorksSubtext String?
+  howItWorksSteps   String    @default("[]")
+  // Testimonials
+  testimonialsTitle String    @default("Drivers we've funded.")
+  testimonials      String    @default("[]")
+  // FAQ
+  faqTitle          String    @default("Common questions.")
+  faqs              String    @default("[]")
+  // Final CTA
+  finalCtaHeadline  String    @default("Ready to get funded?")
+  finalCtaSubtext   String?
+  finalCtaButtonText String   @default("Apply Now")
+  // Form config
+  formTemplateSlug  String?
+  utmSource         String    @default("lp")
+  utmCampaign       String
+  formPlatforms     String    @default("[]")
+  defaultAmount     Int       @default(3000)
+  defaultTermWeeks  Int       @default(4)
+  // Meta
+  published         Boolean   @default(false)
+  publishedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([slug])
+  @@index([published])
+}
+
+// ─── CRM ─────────────────────────────────────────────────────
+
+model Contact {
+  id              String    @id @default(uuid())
+  firstName       String
+  lastName        String?
+  email           String    @unique
+  phone           String?
+  stage           String    @default("LEAD")
+  assignedRepId   String?
+  assignedRep     AdminUser? @relation(fields: [assignedRepId], references: [id])
+  source          String?
+  utmSource       String?
+  utmCampaign     String?
+  utmMedium       String?
+  applicationId   String?   @unique
+  application     Application? @relation(fields: [applicationId], references: [id])
+  lastAppStep     Int?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  tags                ContactTag[]
+  activities          Activity[]
+  emailEvents         EmailEvent[]
+  sequenceEnrollments SequenceEnrollment[]
+
+  @@index([stage])
+  @@index([assignedRepId])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model ContactTag {
+  id        String  @id @default(uuid())
+  contactId String
+  tag       String
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, tag])
+  @@index([contactId])
+  @@index([tag])
+}
+
+model Activity {
+  id          String   @id @default(uuid())
+  contactId   String
+  type        String
+  title       String
+  details     String?
+  performedBy String?
+  contact     Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([contactId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model FormTemplate {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  steps       String   @default("[]")
+  isDefault   Boolean  @default(false)
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+}
+
+// ─── Email Marketing ─────────────────────────────────────────
+
+model EmailTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  subject   String
+  body      String
+  category  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EmailCampaign {
+  id            String    @id @default(uuid())
+  name          String
+  subject       String
+  body          String
+  templateId    String?
+  segmentRules  String    @default("[]")
+  audienceCount Int       @default(0)
+  status        String    @default("DRAFT")
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  totalSent     Int       @default(0)
+  totalOpened   Int       @default(0)
+  totalClicked  Int       @default(0)
+  createdBy     String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model EmailSequence {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  steps        String   @default("[]")
+  triggerType  String
+  triggerValue String?
+  active       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SequenceEnrollment {
+  id          String    @id @default(uuid())
+  contactId   String
+  sequenceId  String
+  currentStep Int       @default(0)
+  status      String    @default("ACTIVE")
+  nextSendAt  DateTime?
+  contact     Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  enrolledAt  DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([contactId, sequenceId])
+  @@index([status])
+  @@index([nextSendAt])
+}
+
+model EmailEvent {
+  id         String   @id @default(uuid())
+  contactId  String
+  campaignId String?
+  sequenceId String?
+  type       String
+  subject    String?
+  messageId  String?
+  contact    Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([contactId])
+  @@index([campaignId])
+  @@index([type])
+}
