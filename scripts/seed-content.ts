@@ -1939,6 +1939,38 @@ const TOOL_PAGES = [
     metaTitle: "Gig Worker Tax Estimator | PennyLime",
     metaDescription: "Estimate your quarterly and annual taxes as a 1099 gig worker. Calculate self-employment tax and plan your payments with PennyLime's tax tool.",
   },
+  {
+    title: "Uber Earnings Calculator",
+    slug: "uber-earnings-calculator",
+    description: "Estimate your Uber earnings by city, hours, and vehicle type. See real take-home pay after expenses.",
+    toolComponent: "uber-earnings-calculator",
+    metaTitle: "Uber Earnings Calculator 2026",
+    metaDescription: "Calculate your Uber driver earnings by city, hours per week, and vehicle type. See gross and net income after gas, insurance, and maintenance.",
+  },
+  {
+    title: "Gig Expense Tracker",
+    slug: "gig-expense-tracker",
+    description: "Track all your gig work expenses and see your true take-home pay after gas, insurance, maintenance, and taxes.",
+    toolComponent: "gig-expense-tracker",
+    metaTitle: "Gig Worker Expense Tracker",
+    metaDescription: "Calculate your real gig worker profit. Track gas, insurance, car payments, maintenance, and taxes to see your true take-home pay.",
+  },
+  {
+    title: "Platform Earnings Comparison",
+    slug: "platform-comparison-calculator",
+    description: "Compare earnings across Uber, Lyft, DoorDash, Instacart, Amazon Flex and more. Find which platform pays the most.",
+    toolComponent: "platform-comparison-calculator",
+    metaTitle: "Compare Gig Platform Earnings",
+    metaDescription: "Side-by-side earnings comparison for Uber, Lyft, DoorDash, Instacart, Amazon Flex. See which gig platform pays the most after expenses.",
+  },
+  {
+    title: "Loan Affordability Calculator",
+    slug: "loan-affordability-calculator",
+    description: "Find out how much you can afford to borrow based on your gig earnings and expenses.",
+    toolComponent: "loan-affordability-calculator",
+    metaTitle: "How Much Can I Borrow?",
+    metaDescription: "Calculate how much you can afford to borrow as a gig worker. Based on your weekly earnings, expenses, and preferred payment amount.",
+  },
 ];
 
 // ─── COMPARISON PAGES ────────────────────────────────────────────

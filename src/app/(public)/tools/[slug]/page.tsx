@@ -24,6 +24,18 @@ const toolComponents: Record<string, React.ComponentType | undefined> = {
   "tax-estimator": dynamicImport(() =>
     import("@/components/tools/tax-estimator").then((m) => m.TaxEstimator)
   ),
+  "uber-earnings-calculator": dynamicImport(() =>
+    import("@/components/tools/uber-earnings-calculator").then((m) => m.UberEarningsCalculator)
+  ),
+  "gig-expense-tracker": dynamicImport(() =>
+    import("@/components/tools/gig-expense-tracker").then((m) => m.GigExpenseTracker)
+  ),
+  "platform-comparison-calculator": dynamicImport(() =>
+    import("@/components/tools/platform-comparison-calculator").then((m) => m.PlatformComparisonCalculator)
+  ),
+  "loan-affordability-calculator": dynamicImport(() =>
+    import("@/components/tools/loan-affordability-calculator").then((m) => m.LoanAffordabilityCalculator)
+  ),
 };
 
 export async function generateStaticParams() {
