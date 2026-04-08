@@ -34,7 +34,7 @@ export function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#e4e4e7]">
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-20">
         <Link href="/" aria-label="PennyLime home" className="inline-flex items-center gap-2">
-          <span ref={logoRef} className="inline-block transition-transform duration-100">
+          <span ref={logoRef} className="inline-flex items-center justify-center" style={{ transformOrigin: "center center" }}>
             <LogoMark size={48} />
           </span>
           <span className="font-extrabold text-[22px] tracking-[-0.03em]">
