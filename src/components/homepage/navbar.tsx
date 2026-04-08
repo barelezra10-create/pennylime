@@ -1,17 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Logo } from "@/components/brand/logo";
+import { useState, useEffect, useRef } from "react";
+import { Logo, LogoMark } from "@/components/brand/logo";
 
 export function Navbar() {
   const [open, setOpen] = useState(false);
+  const logoRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    let ticking = false;
+    function onScroll() {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          if (logoRef.current) {
+            const rotation = window.scrollY * 0.5;
+            logoRef.current.style.transform = `rotate(${rotation}deg)`;
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#e4e4e7]">
       <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-20">
-        <Link href="/" aria-label="PennyLime home">
-          <Logo size={48} textClassName="font-extrabold text-[22px] tracking-[-0.03em]" />
+        <Link href="/" aria-label="PennyLime home" className="inline-flex items-center gap-2">
+          <span ref={logoRef} className="inline-block transition-transform duration-100">
+            <LogoMark size={48} />
+          </span>
+          <span className="font-extrabold text-[22px] tracking-[-0.03em]">
+            Penny<span className="text-[#15803d]">Lime</span>
+          </span>
         </Link>
         <div className="hidden md:flex items-center gap-6">
           <Link href="/blog" className="text-[13px] text-[#71717a] hover:text-[#1a1a1a]">Blog</Link>
