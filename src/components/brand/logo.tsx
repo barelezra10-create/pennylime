@@ -36,8 +36,6 @@ export function LogoMark({ className = "", size = 32 }: { className?: string; si
         </radialGradient>
       </defs>
 
-      {/* Shadow */}
-      <ellipse cx="24" cy="44" rx="15" ry="2" fill="#000" opacity="0.08" />
 
       {/* Outer rind */}
       <circle cx="24" cy="22" r="20" fill="url(#lime-rind)" />
