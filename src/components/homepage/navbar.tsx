@@ -9,21 +9,20 @@ export function Navbar() {
   const logoRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    let ticking = false;
     function onScroll() {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          if (logoRef.current) {
-            const rotation = window.scrollY * 0.5;
-            logoRef.current.style.transform = `rotate(${rotation}deg)`;
-          }
-          ticking = false;
-        });
-        ticking = true;
+      if (logoRef.current) {
+        const rotation = window.scrollY * 2;
+        logoRef.current.style.transform = `rotate(${rotation}deg)`;
       }
     }
+    // Fire on scroll + also on GSAP ScrollTrigger refresh
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    // Also run on interval to catch GSAP-driven scroll
+    const interval = setInterval(onScroll, 50);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearInterval(interval);
+    };
   }, []);
 
   return (
