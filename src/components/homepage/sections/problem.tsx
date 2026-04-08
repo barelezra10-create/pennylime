@@ -18,7 +18,7 @@ const DOOR_FRAMES = [
 export function Problem() {
   const sectionRef = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
-  const headlineRef = useRef<HTMLDivElement>(null);
+  const problemRef = useRef<HTMLDivElement>(null);
   const weDoRef = useRef<HTMLDivElement>(null);
   const frameRefs = [
     useRef<HTMLDivElement>(null),
@@ -31,11 +31,10 @@ export function Problem() {
   useEffect(() => {
     if (!sectionRef.current || !pinRef.current) return;
     const ctx = gsap.context(() => {
-      // Frame 1 visible, rest hidden
       gsap.set(frameRefs[0].current, { opacity: 1 });
       gsap.set([frameRefs[1].current, frameRefs[2].current, frameRefs[3].current, frameRefs[4].current], { opacity: 0 });
+      gsap.set(problemRef.current, { opacity: 1 });
       gsap.set(weDoRef.current, { opacity: 0, y: 30 });
-      gsap.set(headlineRef.current, { opacity: 1 });
 
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -48,23 +47,27 @@ export function Problem() {
         },
       });
 
-      // Frame 1 -> 2 (door cracks open)
-      tl.to(frameRefs[0].current, { opacity: 0, duration: 0.5 }, 0.5)
-        .to(frameRefs[1].current, { opacity: 1, duration: 0.5 }, 0.5);
+      // Fade out "The Problem" text as door starts opening
+      tl.to(problemRef.current, { opacity: 0, y: -20, duration: 0.5 }, 0.3);
 
-      // Frame 2 -> 3 (door half open)
-      tl.to(frameRefs[1].current, { opacity: 0, duration: 0.5 }, 1.5)
-        .to(frameRefs[2].current, { opacity: 1, duration: 0.5 }, 1.5);
+      // Frame 1 -> 2
+      tl.to(frameRefs[0].current, { opacity: 0, duration: 0.3 }, 0.5)
+        .to(frameRefs[1].current, { opacity: 1, duration: 0.3 }, 0.5);
 
-      // Frame 3 -> 4 (door mostly open)
-      tl.to(frameRefs[2].current, { opacity: 0, duration: 0.5 }, 2.5)
-        .to(frameRefs[3].current, { opacity: 1, duration: 0.5 }, 2.5);
+      // Frame 2 -> 3
+      tl.to(frameRefs[1].current, { opacity: 0, duration: 0.3 }, 1.2)
+        .to(frameRefs[2].current, { opacity: 1, duration: 0.3 }, 1.2);
 
-      // Frame 4 -> 5 (door fully open) + text changes to "What We Do"
-      tl.to(frameRefs[3].current, { opacity: 0, duration: 0.5 }, 3.5)
-        .to(frameRefs[4].current, { opacity: 1, duration: 0.5 }, 3.5)
-        .to(headlineRef.current, { opacity: 0, y: -20, duration: 0.4 }, 3.5)
-        .to(weDoRef.current, { opacity: 1, y: 0, duration: 0.6 }, 3.8);
+      // Frame 3 -> 4
+      tl.to(frameRefs[2].current, { opacity: 0, duration: 0.3 }, 1.9)
+        .to(frameRefs[3].current, { opacity: 1, duration: 0.3 }, 1.9);
+
+      // Frame 4 -> 5 (fully open)
+      tl.to(frameRefs[3].current, { opacity: 0, duration: 0.3 }, 2.6)
+        .to(frameRefs[4].current, { opacity: 1, duration: 0.3 }, 2.6);
+
+      // After door is fully open, show "What We Do" text
+      tl.to(weDoRef.current, { opacity: 1, y: 0, duration: 0.6 }, 3.2);
 
     }, sectionRef);
     return () => ctx.revert();
@@ -76,9 +79,9 @@ export function Problem() {
         <div className="max-w-6xl mx-auto w-full px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
 
           {/* Left: Text */}
-          <div className="relative">
-            {/* "Banks don't get gig work" */}
-            <div ref={headlineRef}>
+          <div className="relative min-h-[300px]">
+            {/* "Banks don't get gig work" - visible at start, fades out */}
+            <div ref={problemRef} className="absolute inset-0">
               <div className="inline-flex items-center gap-2 bg-[#fef2f2] text-[#dc2626] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 The Problem
               </div>
@@ -93,7 +96,7 @@ export function Problem() {
               <div className="space-y-4">
                 <p className="text-[#71717a] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
-                  <span><strong className="text-black">73% of gig workers</strong> say traditional loans are completely inaccessible to them.</span>
+                  <span><strong className="text-black">73% of gig workers</strong> say traditional loans are completely inaccessible.</span>
                 </p>
                 <p className="text-[#71717a] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
@@ -102,7 +105,7 @@ export function Problem() {
               </div>
             </div>
 
-            {/* "What We Do" - appears when door is fully open */}
+            {/* "What We Do" - appears only after door is fully open */}
             <div ref={weDoRef} className="absolute inset-0">
               <div className="inline-flex items-center gap-2 bg-[#f0fdf4] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 What We Do
@@ -111,9 +114,7 @@ export function Problem() {
                 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5"
                 style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
               >
-                We open
-                <br />
-                <span className="text-[#15803d]">the door.</span>
+                We Do.
               </h2>
               <div className="space-y-4">
                 <p className="text-[#71717a] text-[16px] flex items-start gap-3">
@@ -132,14 +133,14 @@ export function Problem() {
             </div>
           </div>
 
-          {/* Right: 5 door frames stacked */}
+          {/* Right: 5 door frames */}
           <div className="flex justify-center">
             <div className="relative w-full max-w-[400px] aspect-square">
               {DOOR_FRAMES.map((src, i) => (
                 <div key={i} ref={frameRefs[i]} className="absolute inset-0">
                   <Image
                     src={src}
-                    alt={i === 0 ? "Closed bank door" : i === 4 ? "Open door, opportunity" : "Door opening"}
+                    alt={i === 0 ? "Closed bank door" : i === 4 ? "Open bank door" : "Bank door opening"}
                     fill
                     className="object-contain"
                     sizes="400px"
