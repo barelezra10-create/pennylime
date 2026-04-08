@@ -6,7 +6,7 @@ interface LogoProps {
 }
 
 /**
- * PennyLime brand mark: a fresh lime slice.
+ * PennyLime brand mark: a fresh lime slice, perfectly centered for spinning.
  */
 export function LogoMark({ className = "", size = 32 }: { className?: string; size?: number }) {
   return (
@@ -30,56 +30,29 @@ export function LogoMark({ className = "", size = 32 }: { className?: string; si
           <stop offset="40%" stopColor="#bbf7d0" />
           <stop offset="100%" stopColor="#86efac" />
         </radialGradient>
-        <radialGradient id="lime-gloss" cx="30%" cy="25%" r="35%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-        </radialGradient>
       </defs>
 
-
       {/* Outer rind */}
-      <circle cx="24" cy="22" r="20" fill="url(#lime-rind)" />
+      <circle cx="24" cy="24" r="22" fill="url(#lime-rind)" />
 
       {/* Pith ring */}
-      <circle cx="24" cy="22" r="17" fill="#f0fdf4" />
+      <circle cx="24" cy="24" r="19" fill="#f0fdf4" />
 
       {/* Inner flesh */}
-      <circle cx="24" cy="22" r="15.5" fill="url(#lime-flesh)" />
+      <circle cx="24" cy="24" r="17.5" fill="url(#lime-flesh)" />
 
       {/* Segments - 6 dividers from center */}
       <g stroke="#f0fdf4" strokeWidth="1.8" strokeLinecap="round">
-        <line x1="24" y1="22" x2="24" y2="6.5" />
-        <line x1="24" y1="22" x2="37.3" y2="14.3" />
-        <line x1="24" y1="22" x2="37.3" y2="29.7" />
-        <line x1="24" y1="22" x2="24" y2="37.5" />
-        <line x1="24" y1="22" x2="10.7" y2="29.7" />
-        <line x1="24" y1="22" x2="10.7" y2="14.3" />
-      </g>
-
-      {/* Juice cells - tiny dots in each segment */}
-      <g fill="#dcfce7" opacity="0.8">
-        <circle cx="27" cy="12" r="0.8" />
-        <circle cx="29" cy="14" r="0.6" />
-        <circle cx="33" cy="19" r="0.7" />
-        <circle cx="32" cy="22" r="0.6" />
-        <circle cx="33" cy="27" r="0.8" />
-        <circle cx="30" cy="30" r="0.6" />
-        <circle cx="27" cy="33" r="0.7" />
-        <circle cx="24" cy="32" r="0.6" />
-        <circle cx="20" cy="33" r="0.8" />
-        <circle cx="18" cy="30" r="0.6" />
-        <circle cx="15" cy="27" r="0.7" />
-        <circle cx="15" cy="22" r="0.6" />
-        <circle cx="15" cy="17" r="0.8" />
-        <circle cx="18" cy="14" r="0.6" />
-        <circle cx="21" cy="12" r="0.7" />
+        <line x1="24" y1="24" x2="24" y2="6.5" />
+        <line x1="24" y1="24" x2="39.2" y2="15.2" />
+        <line x1="24" y1="24" x2="39.2" y2="32.8" />
+        <line x1="24" y1="24" x2="24" y2="41.5" />
+        <line x1="24" y1="24" x2="8.8" y2="32.8" />
+        <line x1="24" y1="24" x2="8.8" y2="15.2" />
       </g>
 
       {/* Center pith */}
-      <circle cx="24" cy="22" r="2" fill="#f0fdf4" />
-
-      {/* Glossy highlight */}
-      <ellipse cx="18" cy="14" rx="6" ry="4" fill="url(#lime-gloss)" />
+      <circle cx="24" cy="24" r="2" fill="#f0fdf4" />
     </svg>
   );
 }
