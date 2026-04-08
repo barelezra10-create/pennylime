@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const TERM_WEEKS = [1, 2, 3, 4, 6, 8, 12, 16];
 const MAX_LOAN = 10000;
-const WEEKLY_RATE = 0.02; // 2% weekly interest
+const WEEKLY_RATE = 0.30; // 30% weekly interest
 
 export function LoanAffordabilityCalculator() {
   const [weeklyEarnings, setWeeklyEarnings] = useState(800);

@@ -15,7 +15,7 @@ function calculateWeeklyPayment(principal: number, weeklyRatePercent: number, we
 export function LoanCalculator() {
   const [amount, setAmount] = useState(3000);
   const [weeks, setWeeks] = useState(4);
-  const [weeklyRate, setWeeklyRate] = useState(2); // 2% per week
+  const [weeklyRate, setWeeklyRate] = useState(30); // 30% weekly minimum
 
   const weekly = calculateWeeklyPayment(amount, weeklyRate, weeks);
   const total = weekly * weeks;
@@ -59,8 +59,8 @@ export function LoanCalculator() {
               <label className="text-[14px] font-semibold text-black">Weekly Interest Rate</label>
               <span className="text-[18px] font-extrabold text-[#15803d]">{weeklyRate}%</span>
             </div>
-            <input type="range" min={1} max={5} step={0.25} value={weeklyRate} onChange={(e) => setWeeklyRate(+e.target.value)} className="w-full accent-[#15803d]" />
-            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>1%/wk</span><span>5%/wk</span></div>
+            <input type="range" min={25} max={50} step={1} value={weeklyRate} onChange={(e) => setWeeklyRate(+e.target.value)} className="w-full accent-[#15803d]" />
+            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>25%/wk</span><span>5%/wk</span></div>
           </div>
         </div>
 
