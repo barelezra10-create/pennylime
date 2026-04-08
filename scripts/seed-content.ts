@@ -2123,15 +2123,19 @@ async function main() {
   // 4. Seed articles
   console.log("Seeding articles...");
   const now = new Date();
-  for (const article of ARTICLES) {
+  for (let i = 0; i < ARTICLES.length; i++) {
+    const article = ARTICLES[i];
     const { tagSlugs, categorySlug, ...rest } = article;
+    // Spread articles across the last 90 days, newest first
+    const daysAgo = Math.floor((i / ARTICLES.length) * 90);
+    const publishDate = new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000);
     const created = await prisma.article.create({
       data: {
         ...rest,
         featuredImage: `/blog-images/${rest.slug}.png`,
         categoryId: categoryMap[categorySlug] ?? null,
         published: true,
-        publishedAt: now,
+        publishedAt: publishDate,
       },
     });
     // Create article-tag relationships
