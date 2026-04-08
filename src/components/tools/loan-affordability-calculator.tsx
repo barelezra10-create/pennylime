@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const TERM_WEEKS = [1, 2, 3, 4, 6, 8, 12, 16];
 const MAX_LOAN = 10000;
-const FEE_FACTOR = 1.08;
+const WEEKLY_RATE = 0.02; // 2% weekly interest
 
 export function LoanAffordabilityCalculator() {
   const [weeklyEarnings, setWeeklyEarnings] = useState(800);
@@ -15,10 +15,13 @@ export function LoanAffordabilityCalculator() {
 
   const weeklySpare = Math.max(0, weeklyEarnings - weeklyExpenses);
   const weeklyPayment = (weeklySpare * paymentPct) / 100;
-  const rawMax = (weeklyPayment * termWeeks) / FEE_FACTOR;
+  // Calculate max loan from affordable weekly payment using weekly compound interest
+  const rawMax = WEEKLY_RATE > 0
+    ? (weeklyPayment * (Math.pow(1 + WEEKLY_RATE, termWeeks) - 1)) / (WEEKLY_RATE * Math.pow(1 + WEEKLY_RATE, termWeeks))
+    : weeklyPayment * termWeeks;
   const maxLoan = Math.min(MAX_LOAN, Math.round(rawMax / 50) * 50);
   const totalCost = weeklyPayment * termWeeks;
-  const fee = totalCost - maxLoan;
+  const interest = totalCost - maxLoan;
 
   const spareRatio = weeklySpare > 0 ? paymentPct : 0;
   let affordabilityLevel: "green" | "yellow" | "red";
@@ -146,8 +149,8 @@ export function LoanAffordabilityCalculator() {
                 <p className="text-[18px] font-bold text-black">{fmt(totalCost)}</p>
               </div>
               <div className="bg-white/70 rounded-lg p-3">
-                <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a]">Est. Fees (~8%)</p>
-                <p className="text-[18px] font-bold text-black">{fmt(fee)}</p>
+                <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a]">Weekly Interest</p>
+                <p className="text-[18px] font-bold text-black">{fmt(interest)}</p>
               </div>
             </div>
 

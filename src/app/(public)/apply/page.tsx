@@ -102,7 +102,7 @@ function StepIndicator({ current, stepNames }: { current: number; stepNames: str
 /*  RIGHT SIDEBAR                                                       */
 /* ------------------------------------------------------------------ */
 function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount: number; loanTermMonths: number }) {
-  const weeklyEstimate = ((amount / loanTermMonths) * 1.08).toFixed(0);
+  const weeklyEstimate = ((amount * 0.02 * Math.pow(1.02, loanTermMonths)) / (Math.pow(1.02, loanTermMonths) - 1)).toFixed(0);
 
   const content = [
     // Step 0: Amount
@@ -346,7 +346,7 @@ function StepAmount({
 }) {
   const pct = ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
   // loanTermMonths field now holds WEEKS, compute weekly payment
-  const weeklyEstimate = ((amount / loanTermMonths) * 1.08).toFixed(0);
+  const weeklyEstimate = ((amount * 0.02 * Math.pow(1.02, loanTermMonths)) / (Math.pow(1.02, loanTermMonths) - 1)).toFixed(0);
 
   return (
     <motion.div

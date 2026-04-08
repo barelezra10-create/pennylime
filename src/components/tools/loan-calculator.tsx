@@ -5,19 +5,19 @@ import Link from "next/link";
 
 const TERM_WEEKS = [1, 2, 3, 4, 6, 8, 12, 16];
 
-function calculateWeeklyPayment(principal: number, annualRate: number, weeks: number) {
-  if (annualRate === 0) return principal / weeks;
-  const weeklyRate = annualRate / 52 / 100;
-  const payment = (principal * weeklyRate * Math.pow(1 + weeklyRate, weeks)) / (Math.pow(1 + weeklyRate, weeks) - 1);
+function calculateWeeklyPayment(principal: number, weeklyRatePercent: number, weeks: number) {
+  if (weeklyRatePercent === 0) return principal / weeks;
+  const r = weeklyRatePercent / 100;
+  const payment = (principal * r * Math.pow(1 + r, weeks)) / (Math.pow(1 + r, weeks) - 1);
   return payment;
 }
 
 export function LoanCalculator() {
   const [amount, setAmount] = useState(3000);
   const [weeks, setWeeks] = useState(4);
-  const [apr, setApr] = useState(36);
+  const [weeklyRate, setWeeklyRate] = useState(2); // 2% per week
 
-  const weekly = calculateWeeklyPayment(amount, apr, weeks);
+  const weekly = calculateWeeklyPayment(amount, weeklyRate, weeks);
   const total = weekly * weeks;
   const interest = total - amount;
 
@@ -56,11 +56,11 @@ export function LoanCalculator() {
 
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-[14px] font-semibold text-black">APR</label>
-              <span className="text-[18px] font-extrabold text-[#15803d]">{apr}%</span>
+              <label className="text-[14px] font-semibold text-black">Weekly Interest Rate</label>
+              <span className="text-[18px] font-extrabold text-[#15803d]">{weeklyRate}%</span>
             </div>
-            <input type="range" min={30} max={60} step={1} value={apr} onChange={(e) => setApr(+e.target.value)} className="w-full accent-[#15803d]" />
-            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>30%</span><span>60%</span></div>
+            <input type="range" min={1} max={5} step={0.25} value={weeklyRate} onChange={(e) => setWeeklyRate(+e.target.value)} className="w-full accent-[#15803d]" />
+            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>1%/wk</span><span>5%/wk</span></div>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export function LoanCalculator() {
           </div>
           <div className="mt-4 p-3 bg-white/60 rounded-lg">
             <p className="text-[12px] text-[#71717a]">
-              <span className="font-bold text-black">${amount.toLocaleString()}</span> over <span className="font-bold text-black">{weeks} {weeks === 1 ? "week" : "weeks"}</span> at <span className="font-bold text-black">{apr}% APR</span>
+              <span className="font-bold text-black">${amount.toLocaleString()}</span> over <span className="font-bold text-black">{weeks} {weeks === 1 ? "week" : "weeks"}</span> at <span className="font-bold text-black">{weeklyRate}% weekly</span>
             </p>
           </div>
           <Link

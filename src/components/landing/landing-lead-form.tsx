@@ -34,7 +34,7 @@ export function LandingLeadForm({
   const [submitting, setSubmitting] = useState(false);
 
   const pct = ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
-  const weeklyEstimate = ((amount / termWeeks) * 1.08).toFixed(0);
+  const weeklyEstimate = ((amount * 0.02 * Math.pow(1.02, termWeeks)) / (Math.pow(1.02, termWeeks) - 1)).toFixed(0);
 
   function handleStart(e: React.FormEvent) {
     e.preventDefault();
