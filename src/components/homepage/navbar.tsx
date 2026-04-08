@@ -43,7 +43,7 @@ export function Navbar() {
         </Link>
         <div className="hidden md:flex items-center gap-6">
           <Link href="/blog" className="text-[13px] text-[#71717a] hover:text-[#1a1a1a]">Blog</Link>
-          <Link href="/tools/loan-calculator" className="text-[13px] text-[#71717a] hover:text-[#1a1a1a]">Tools</Link>
+          <Link href="/tools" className="text-[13px] text-[#71717a] hover:text-[#1a1a1a]">Tools</Link>
           <Link href="/apply" className="bg-[#15803d] text-white text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#166534]">Apply Now</Link>
         </div>
         <button onClick={() => setOpen(!open)} className="md:hidden text-[#1a1a1a]">
@@ -53,7 +53,7 @@ export function Navbar() {
       {open && (
         <div className="md:hidden border-t border-[#e4e4e7] px-4 py-3 space-y-2 bg-white">
           <Link href="/blog" className="block text-[13px] text-[#71717a] py-1">Blog</Link>
-          <Link href="/tools/loan-calculator" className="block text-[13px] text-[#71717a] py-1">Tools</Link>
+          <Link href="/tools" className="block text-[13px] text-[#71717a] py-1">Tools</Link>
           <Link href="/apply" className="block bg-[#15803d] text-white text-[13px] font-medium px-4 py-2 rounded-lg text-center mt-2">Apply Now</Link>
         </div>
       )}

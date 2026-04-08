@@ -24,7 +24,7 @@ export function Footer() {
           <div>
             <h4 className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] mb-3">Resources</h4>
             <div className="space-y-2">
-              <Link href="/tools/loan-calculator" className="block text-[13px] text-[#d4d4d8] hover:text-white">Loan Calculator</Link>
+              <Link href="/tools" className="block text-[13px] text-[#d4d4d8] hover:text-white">Loan Calculator</Link>
               <Link href="/blog/category/guides" className="block text-[13px] text-[#d4d4d8] hover:text-white">Guides</Link>
               <Link href="/compare/pennylime-vs-fundo" className="block text-[13px] text-[#d4d4d8] hover:text-white">Comparisons</Link>
             </div>
