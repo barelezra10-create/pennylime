@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && next build",
+    "build": "prisma generate && prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && npx @opennextjs/cloudflare build",
+    "build:next": "prisma generate && prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && next build",
+    "deploy": "wrangler pages deploy .open-next/assets --project-name pennylime",
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint"
@@ -14,7 +16,9 @@
     "@base-ui/react": "^1.2.0",
     "@google/genai": "^1.48.0",
     "@google/generative-ai": "^0.24.1",
+    "@opennextjs/cloudflare": "^1.18.0",
     "@prisma/adapter-better-sqlite3": "^7.4.2",
+    "@prisma/adapter-d1": "^7.7.0",
     "@prisma/client": "^7.4.2",
     "@react-email/components": "^1.0.10",
     "@tiptap/extension-heading": "^3.22.2",

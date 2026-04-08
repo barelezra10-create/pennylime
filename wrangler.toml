@@ -1,0 +1,8 @@
+name = "pennylime"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pennylime-db"
+database_id = "88f8e1f1-5b27-4f90-a541-659e75aea02d"
