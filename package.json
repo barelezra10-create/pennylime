@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && npx @opennextjs/cloudflare build",
-    "build:next": "prisma generate && prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && next build",
+    "build": "prisma generate && prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && next build",
+    "build:cloudflare": "npx @opennextjs/cloudflare build",
     "deploy": "wrangler pages deploy .open-next/assets --project-name pennylime",
     "postinstall": "prisma generate",
     "start": "next start",
