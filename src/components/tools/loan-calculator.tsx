@@ -60,7 +60,7 @@ export function LoanCalculator() {
               <span className="text-[18px] font-extrabold text-[#15803d]">{weeklyRate}%</span>
             </div>
             <input type="range" min={25} max={50} step={1} value={weeklyRate} onChange={(e) => setWeeklyRate(+e.target.value)} className="w-full accent-[#15803d]" />
-            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>25%/wk</span><span>5%/wk</span></div>
+            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>25%/wk</span><span>50%/wk</span></div>
           </div>
         </div>
 
