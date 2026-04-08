@@ -5,6 +5,7 @@ import { Footer } from "./footer";
 import { Hero } from "./sections/hero";
 import { PainPoints } from "./sections/pain-points";
 import { Problem } from "./sections/problem";
+import { WhatWeDo } from "./sections/what-we-do";
 import { HowItWorks } from "./sections/how-it-works";
 import { PlatformShowcase } from "./sections/platform-showcase";
 import { SocialProof } from "./sections/social-proof";
@@ -34,6 +35,7 @@ export function Homepage({ latestArticles, platforms }: HomepageProps) {
         <Hero />
         <PainPoints />
         <Problem />
+        <WhatWeDo />
         <HowItWorks />
         <PlatformShowcase platforms={platforms} />
         <SocialProof />
