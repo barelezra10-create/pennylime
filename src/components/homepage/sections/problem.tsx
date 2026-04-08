@@ -47,7 +47,7 @@ export function Problem() {
         },
       });
 
-      // Fade out "The Problem" text as door starts opening
+      // Text fades out as door starts opening
       tl.to(problemRef.current, { opacity: 0, y: -20, duration: 0.5 }, 0.3);
 
       // Frame 1 -> 2
@@ -62,11 +62,11 @@ export function Problem() {
       tl.to(frameRefs[2].current, { opacity: 0, duration: 0.3 }, 1.9)
         .to(frameRefs[3].current, { opacity: 1, duration: 0.3 }, 1.9);
 
-      // Frame 4 -> 5 (fully open)
+      // Frame 4 -> 5
       tl.to(frameRefs[3].current, { opacity: 0, duration: 0.3 }, 2.6)
         .to(frameRefs[4].current, { opacity: 1, duration: 0.3 }, 2.6);
 
-      // After door is fully open, show "What We Do" text
+      // "What We Do" appears after door fully open
       tl.to(weDoRef.current, { opacity: 1, y: 0, duration: 0.6 }, 3.2);
 
     }, sectionRef);
@@ -78,17 +78,12 @@ export function Problem() {
       <div ref={pinRef} className="h-screen bg-[#faf8f0] flex items-center overflow-hidden">
         <div className="max-w-6xl mx-auto w-full px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
 
-          {/* Left: Text */}
           <div className="relative min-h-[300px]">
-            {/* "Banks don't get gig work" - visible at start, fades out */}
             <div ref={problemRef} className="absolute inset-0">
               <div className="inline-flex items-center gap-2 bg-[#fef2f2] text-[#dc2626] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 The Problem
               </div>
-              <h2
-                className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5"
-                style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
-              >
+              <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(36px, 5vw, 60px)" }}>
                 Banks don&apos;t get
                 <br />
                 gig work.
@@ -105,16 +100,12 @@ export function Problem() {
               </div>
             </div>
 
-            {/* "What We Do" - appears only after door is fully open */}
             <div ref={weDoRef} className="absolute inset-0">
               <div className="inline-flex items-center gap-2 bg-[#f0fdf4] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 What We Do
               </div>
-              <h2
-                className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5"
-                style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
-              >
-                We Do.
+              <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(48px, 6vw, 80px)" }}>
+                We Do
               </h2>
               <div className="space-y-4">
                 <p className="text-[#71717a] text-[16px] flex items-start gap-3">
@@ -133,19 +124,11 @@ export function Problem() {
             </div>
           </div>
 
-          {/* Right: 5 door frames */}
           <div className="flex justify-center">
             <div className="relative w-full max-w-[400px] aspect-square">
               {DOOR_FRAMES.map((src, i) => (
                 <div key={i} ref={frameRefs[i]} className="absolute inset-0">
-                  <Image
-                    src={src}
-                    alt={i === 0 ? "Closed bank door" : i === 4 ? "Open bank door" : "Bank door opening"}
-                    fill
-                    className="object-contain"
-                    sizes="400px"
-                    priority={i === 0}
-                  />
+                  <Image src={src} alt={i === 0 ? "Closed bank door" : i === 4 ? "Open bank door" : "Bank door opening"} fill className="object-contain" sizes="400px" priority={i === 0} />
                 </div>
               ))}
             </div>
