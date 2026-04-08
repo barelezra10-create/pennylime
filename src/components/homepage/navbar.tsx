@@ -9,20 +9,25 @@ export function Navbar() {
   const logoRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    function onScroll() {
+    let angle = 0;
+    let lastScrollY = window.scrollY;
+
+    function onFrame() {
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollY;
+      lastScrollY = currentScrollY;
+
+      // Spin based on scroll speed + always slowly spinning
+      angle += delta * 1.5 + 0.3;
+
       if (logoRef.current) {
-        const rotation = window.scrollY * 2;
-        logoRef.current.style.transform = `rotate(${rotation}deg)`;
+        logoRef.current.style.transform = `rotate(${angle}deg)`;
       }
+      rafId = requestAnimationFrame(onFrame);
     }
-    // Fire on scroll + also on GSAP ScrollTrigger refresh
-    window.addEventListener("scroll", onScroll, { passive: true });
-    // Also run on interval to catch GSAP-driven scroll
-    const interval = setInterval(onScroll, 50);
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      clearInterval(interval);
-    };
+
+    let rafId = requestAnimationFrame(onFrame);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   return (
