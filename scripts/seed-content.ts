@@ -2107,19 +2107,18 @@ async function main() {
   console.log("🌱 Starting content seed...");
 
   // Idempotency: skip if already seeded (avoids wiping user edits on redeploy)
-  // FORCE RE-SEED: v2 - removed all em/en dashes from content
-  const CONTENT_VERSION = "v2-no-dashes";
+  // FORCE RE-SEED: v3 - added 4 new tools + weekly interest
+  const CONTENT_VERSION = "v3-new-tools";
+  const existingTools = await prisma.toolPage.count();
   const existingArticles = await prisma.article.count();
-  if (existingArticles > 0) {
-    // Check if content has been updated to latest version by looking for a marker
-    const sample = await prisma.article.findFirst({ select: { body: true } });
-    const hasDashes = sample?.body?.includes("\u2013") || sample?.body?.includes("\u2014");
-    if (!hasDashes && process.env.SEED_FORCE !== "true") {
-      console.log(`Content already seeded (${existingArticles} articles, ${CONTENT_VERSION}). Skipping.`);
+  if (existingArticles > 0 && existingTools >= 9) {
+    // All content + tools already seeded
+    if (process.env.SEED_FORCE !== "true") {
+      console.log(`Content already seeded (${existingArticles} articles, ${existingTools} tools, ${CONTENT_VERSION}). Skipping.`);
       await prisma.$disconnect();
       return;
     }
-    console.log("Re-seeding: content has outdated dashes or SEED_FORCE=true");
+    console.log(`Re-seeding: need ${CONTENT_VERSION} (have ${existingTools} tools, need 9)`);
   }
 
   // 1. Clear existing content tables in correct order
