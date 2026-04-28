@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomInt, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
 import { sendSms } from "@/lib/sms/twilio";
+import { getTrackingConfig } from "@/lib/tracking/config";
 import { normalizePhone } from "@/lib/tracking/hash";
 
 const CODE_TTL_MIN = 10;
@@ -18,7 +19,7 @@ function constantTimeEq(a: string, b: string): boolean {
 }
 
 export type SendCodeResult =
-  | { ok: true; sentTo: string; expiresInSeconds: number }
+  | { ok: true; sentTo: string; expiresInSeconds: number; testCode?: string }
   | { ok: false; error: string };
 
 export async function sendVerificationCode(opts: {
@@ -52,9 +53,25 @@ export async function sendVerificationCode(opts: {
   });
 
   const body = `PennyLime verification code: ${code}. Expires in ${CODE_TTL_MIN} minutes. Reply STOP to opt out.`;
+
+  // Determine if we should bypass real SMS sending
+  const cfg = await getTrackingConfig();
+  const twilioConfigured = !!(cfg.twilioAccountSid && cfg.twilioAuthToken && (cfg.twilioFromNumber || cfg.twilioMessagingServiceSid));
+
+  if (!twilioConfigured) {
+    // Test mode: return the code so the frontend can show it (no real SMS sent)
+    console.warn(`[phone-verify] Twilio not configured — returning code in response for testing. Phone: ${phone}, code: ${code}`);
+    return { ok: true, sentTo: phone, expiresInSeconds: CODE_TTL_MIN * 60, testCode: code };
+  }
+
   const send = await sendSms({ to: phone, body });
   if (!send.ok) {
     return { ok: false, error: send.error };
+  }
+
+  // Even when Twilio is configured, surface the code if global testMode is on
+  if (cfg.testMode) {
+    return { ok: true, sentTo: phone, expiresInSeconds: CODE_TTL_MIN * 60, testCode: code };
   }
 
   return { ok: true, sentTo: phone, expiresInSeconds: CODE_TTL_MIN * 60 };

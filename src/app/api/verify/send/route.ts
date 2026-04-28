@@ -18,5 +18,10 @@ export async function POST(req: NextRequest) {
   });
 
   if (!result.ok) return Response.json(result, { status: 400 });
-  return Response.json({ ok: true, sentTo: result.sentTo, expiresInSeconds: result.expiresInSeconds });
+  return Response.json({
+    ok: true,
+    sentTo: result.sentTo,
+    expiresInSeconds: result.expiresInSeconds,
+    testCode: result.testCode,
+  });
 }

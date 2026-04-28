@@ -17,6 +17,7 @@ export function PhoneVerification({ phone, contactId, onVerified, onCancel }: Pr
   const [code, setCode] = useState<string[]>(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [resendIn, setResendIn] = useState(0);
+  const [testCode, setTestCode] = useState<string | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
@@ -41,7 +42,12 @@ export function PhoneVerification({ phone, contactId, onVerified, onCancel }: Pr
         setStep("code");
         setResendIn(30);
         setTimeout(() => inputRefs.current[0]?.focus(), 50);
-        toast.success(`Code sent to ${phone}`);
+        if (data.testCode) {
+          setTestCode(data.testCode);
+          toast.success(`Test mode: code is ${data.testCode}`, { duration: 8000 });
+        } else {
+          toast.success(`Code sent to ${phone}`);
+        }
       }
     } finally {
       setSending(false);
@@ -146,6 +152,25 @@ export function PhoneVerification({ phone, contactId, onVerified, onCancel }: Pr
 
       {step === "code" && (
         <div className="space-y-4">
+          {testCode && (
+            <div className="bg-[#fffbeb] border border-[#f59e0b] rounded-xl p-3 text-[12px]">
+              <div className="font-semibold text-[#92400e] mb-1">⚠ Test mode (Twilio not configured)</div>
+              <div className="text-[#78350f]">
+                Use code <code className="bg-white border border-[#fbbf24] rounded px-1.5 py-0.5 font-mono font-bold tracking-widest">{testCode}</code> to verify. In production, this code is texted to the user instead of shown.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const digits = testCode.split("");
+                  setCode(digits);
+                  handleCheck(testCode);
+                }}
+                className="mt-2 text-[11px] underline text-[#92400e] hover:text-[#78350f]"
+              >
+                Auto-fill and verify
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-2">
             {code.map((d, i) => (
               <input
