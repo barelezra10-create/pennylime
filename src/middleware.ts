@@ -1,30 +1,73 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+const PENNYCLICK_COOKIE = "_pl_clickid";
+const PENNYCLICK_TTL_SECONDS = 60 * 60 * 24 * 365; // 1 year
 
-  if (!token) {
-    const loginUrl = new URL("/admin/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", request.url);
-    return NextResponse.redirect(loginUrl);
+const ADMIN_PROTECTED = [
+  "/admin/dashboard",
+  "/admin/applications",
+  "/admin/settings",
+  "/admin/audit",
+  "/admin/payments",
+  "/admin/content",
+  "/admin/pipeline",
+  "/admin/contacts",
+  "/admin/abandoned",
+  "/admin/email",
+  "/admin/team",
+];
+
+function generatePennyClickId(): string {
+  // 16 random bytes -> 22-char base36-ish ID (URL safe, ~96 bits of entropy)
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  let s = "";
+  for (const b of arr) s += b.toString(16).padStart(2, "0");
+  return `pc_${s}`;
+}
+
+function isAdminProtected(pathname: string) {
+  return ADMIN_PROTECTED.some((prefix) => pathname.startsWith(prefix));
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Auth gate for admin pages
+  if (isAdminProtected(pathname)) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      const loginUrl = new URL("/admin/login", request.url);
+      loginUrl.searchParams.set("callbackUrl", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  return NextResponse.next();
+  // First-party click ID for everyone (admin and public)
+  const existing = request.cookies.get(PENNYCLICK_COOKIE)?.value;
+  const response = NextResponse.next();
+
+  if (!existing) {
+    const id = generatePennyClickId();
+    response.cookies.set(PENNYCLICK_COOKIE, id, {
+      httpOnly: false, // client needs to read it
+      sameSite: "lax",
+      maxAge: PENNYCLICK_TTL_SECONDS,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+    });
+    response.headers.set("x-penny-click", id);
+  } else {
+    response.headers.set("x-penny-click", existing);
+  }
+
+  return response;
 }
 
 export const config = {
   matcher: [
-    "/admin/dashboard/:path*",
-    "/admin/applications/:path*",
-    "/admin/settings/:path*",
-    "/admin/audit/:path*",
-    "/admin/payments/:path*",
-    "/admin/content/:path*",
-    "/admin/pipeline/:path*",
-    "/admin/contacts/:path*",
-    "/admin/abandoned/:path*",
-    "/admin/email/:path*",
-    "/admin/team/:path*",
+    // Run on all paths except static assets, _next internals, and the visit endpoint itself
+    "/((?!_next/static|_next/image|favicon|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff2?|css|js|map)$).*)",
   ],
 };

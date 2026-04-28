@@ -1678,6 +1678,12 @@ function attributionFromSearch(searchParams: URLSearchParams) {
   };
 }
 
+function readPennyClickIdFromCookie(): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const m = document.cookie.match(/(?:^| )_pl_clickid=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : undefined;
+}
+
 function ApplyPageInner() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
@@ -1877,6 +1883,7 @@ function ApplyPageInner() {
                                 phone: form.phone,
                                 source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
                                 ...attributionFromSearch(searchParams as unknown as URLSearchParams),
+                                pennyClickId: readPennyClickIdFromCookie(),
                                 lastAppStep: 2,
                               });
                               await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
@@ -1994,6 +2001,7 @@ function ApplyPageInner() {
                           phone: form.phone,
                           source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
                           ...attributionFromSearch(searchParams as unknown as URLSearchParams),
+                          pennyClickId: readPennyClickIdFromCookie(),
                           lastAppStep: 2,
                         });
                         await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });

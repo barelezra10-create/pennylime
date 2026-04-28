@@ -35,6 +35,7 @@ type RecentEvent = {
   id: string;
   eventName: string;
   contactId: string | null;
+  pennyClickId: string | null;
   clickIds: string;
   value: number | null;
   currency: string | null;
@@ -189,7 +190,8 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                       <th className="px-5 py-2">Event</th>
                       <th className="px-5 py-2">Status</th>
                       <th className="px-5 py-2">Value</th>
-                      <th className="px-5 py-2">Click IDs</th>
+                      <th className="px-5 py-2">PennyClick</th>
+                      <th className="px-5 py-2">Other IDs</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -201,7 +203,10 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                           <StatusPill status={e.status} />
                         </td>
                         <td className="px-5 py-3 tabular-nums">{e.value != null ? `${e.currency || "USD"} ${e.value.toFixed(2)}` : "—"}</td>
-                        <td className="px-5 py-3 text-[#71717a] truncate max-w-[260px]">
+                        <td className="px-5 py-3 text-[#71717a] font-mono text-[11px] truncate max-w-[140px]" title={e.pennyClickId || ""}>
+                          {e.pennyClickId ? e.pennyClickId.slice(0, 12) + "…" : "—"}
+                        </td>
+                        <td className="px-5 py-3 text-[#71717a] truncate max-w-[200px]">
                           <code className="text-[11px]">{summarizeClickIds(e.clickIds)}</code>
                         </td>
                       </tr>
@@ -228,7 +233,9 @@ function parseEventMappings(raw: string): Record<string, Record<string, string>>
 function summarizeClickIds(raw: string): string {
   try {
     const parsed = JSON.parse(raw);
-    const keys = Object.keys(parsed).filter((k) => parsed[k] && k !== "capturedAt" && k !== "landingPage" && k !== "referrer");
+    const keys = Object.keys(parsed).filter(
+      (k) => parsed[k] && k !== "capturedAt" && k !== "landingPage" && k !== "referrer" && k !== "pennyClickId"
+    );
     if (keys.length === 0) return "(none)";
     return keys.map((k) => `${k}`).join(", ");
   } catch {

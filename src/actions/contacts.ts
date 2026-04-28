@@ -86,9 +86,10 @@ export async function upsertContact(data: {
   msclkid?: string;
   landingPage?: string;
   referrer?: string;
+  pennyClickId?: string;
   lastAppStep?: number;
 }) {
-  return prisma.contact.upsert({
+  const contact = await prisma.contact.upsert({
     where: { email: data.email },
     update: {
       firstName: data.firstName,
@@ -108,12 +109,23 @@ export async function upsertContact(data: {
       msclkid: data.msclkid || undefined,
       landingPage: data.landingPage || undefined,
       referrer: data.referrer || undefined,
+      pennyClickId: data.pennyClickId || undefined,
     },
     create: {
       ...data,
       stage: "LEAD",
     },
   });
+
+  // Link the PennyClick visit history to this contact
+  if (data.pennyClickId) {
+    await prisma.pennyClick.updateMany({
+      where: { id: data.pennyClickId, contactId: null },
+      data: { contactId: contact.id },
+    });
+  }
+
+  return contact;
 }
 
 export async function updateContactStage(id: string, stage: string) {

@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   const attribution = body.attribution || {};
+  const pennyClickId = req.cookies.get("_pl_clickid")?.value;
 
   let contactId: string | undefined;
   if (body.contactEmail) {
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
     data: {
       eventName: body.event,
       contactId,
-      clickIds: JSON.stringify(attribution),
+      pennyClickId,
+      clickIds: JSON.stringify({ ...attribution, pennyClickId }),
       payload: JSON.stringify({ value: body.value, currency: body.currency, contactEmail: body.contactEmail }),
       value: body.value != null ? body.value : null,
       currency: body.currency || "USD",

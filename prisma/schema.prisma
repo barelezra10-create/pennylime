@@ -394,6 +394,7 @@ model Contact {
   assignedRepId   String?
   assignedRep     AdminUser? @relation(fields: [assignedRepId], references: [id])
   source          String?
+  pennyClickId    String?
   utmSource       String?
   utmCampaign     String?
   utmMedium       String?
@@ -423,6 +424,7 @@ model Contact {
   @@index([assignedRepId])
   @@index([email])
   @@index([createdAt])
+  @@index([pennyClickId])
 }
 
 model ContactTag {
@@ -582,6 +584,7 @@ model TrackingEvent {
   eventName     String
   contactId     String?
   applicationId String?
+  pennyClickId  String?
   clickIds      String   @default("{}")
   payload       String   @default("{}")
   platforms     String   @default("{}")
@@ -593,6 +596,43 @@ model TrackingEvent {
 
   @@index([eventName])
   @@index([contactId])
+  @@index([pennyClickId])
   @@index([status])
   @@index([createdAt])
+}
+
+model PennyClick {
+  id               String   @id
+  contactId        String?
+  visitCount       Int      @default(1)
+  // first-touch attribution
+  firstUtmSource   String?
+  firstUtmMedium   String?
+  firstUtmCampaign String?
+  firstUtmTerm     String?
+  firstUtmContent  String?
+  firstGclid       String?
+  firstGbraid      String?
+  firstWbraid      String?
+  firstFbclid      String?
+  firstTtclid      String?
+  firstMsclkid     String?
+  firstLandingPage String?
+  firstReferrer    String?
+  firstUserAgent   String?
+  firstIpAddress   String?
+  // last-touch attribution
+  lastUtmSource    String?
+  lastUtmMedium    String?
+  lastUtmCampaign  String?
+  lastGclid        String?
+  lastFbclid       String?
+  lastTtclid       String?
+  lastMsclkid      String?
+  lastLandingPage  String?
+  firstSeen        DateTime @default(now())
+  lastSeen         DateTime @default(now())
+
+  @@index([contactId])
+  @@index([firstSeen])
 }

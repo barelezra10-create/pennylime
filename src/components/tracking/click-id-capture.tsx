@@ -3,6 +3,15 @@
 import { useEffect } from "react";
 import { CLICK_ID_PARAMS, UTM_PARAMS, TRACKING_STORAGE_KEY, TRACKING_TTL_DAYS, type AttributionData } from "@/lib/tracking/click-ids";
 
+const PENNYCLICK_COOKIE = "_pl_clickid";
+const VISIT_SENT_KEY = "_pl_visit_sent";
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
 export function ClickIdCapture() {
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -42,36 +51,54 @@ export function ClickIdCapture() {
       }
     }
 
-    const hasAnyCapture = Object.keys(captured).some((k) => k !== "capturedAt");
+    const pennyClickId = readCookie(PENNYCLICK_COOKIE);
+    if (pennyClickId) {
+      (captured as AttributionData & { pennyClickId?: string }).pennyClickId = pennyClickId;
+    }
 
-    if (updated || !captured.landingPage) {
-      captured.landingPage = url.pathname + url.search;
-      captured.referrer = document.referrer || captured.referrer || "";
-      captured.capturedAt = new Date().toISOString();
+    captured.landingPage = url.pathname + url.search;
+    captured.referrer = document.referrer || captured.referrer || "";
+    captured.capturedAt = new Date().toISOString();
+
+    try {
+      window.localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(captured));
+    } catch {
+      // ignore quota errors
+    }
+
+    // Notify server once per page (and immediately on URL changes that brought new attribution)
+    const visitKey = `${VISIT_SENT_KEY}:${url.pathname}${updated ? ":new" : ""}`;
+    let alreadySent = false;
+    try {
+      alreadySent = window.sessionStorage.getItem(visitKey) === "1";
+    } catch {}
+
+    if (!alreadySent && pennyClickId) {
       try {
-        window.localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(captured));
-      } catch {
-        // ignore quota errors
-      }
-    } else if (hasAnyCapture && !captured.capturedAt) {
-      captured.capturedAt = new Date().toISOString();
-      try {
-        window.localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(captured));
-      } catch {
-        // ignore
-      }
+        window.sessionStorage.setItem(visitKey, "1");
+      } catch {}
+      void fetch("/api/tracking/visit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({ attribution: captured }),
+      }).catch(() => {});
     }
   }, []);
 
   return null;
 }
 
-export function readAttributionFromStorage(): AttributionData {
+export function readAttributionFromStorage(): AttributionData & { pennyClickId?: string } {
   if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(TRACKING_STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as AttributionData;
+    const parsed = raw ? (JSON.parse(raw) as AttributionData & { pennyClickId?: string }) : {};
+    if (!parsed.pennyClickId) {
+      const cookieId = readCookie(PENNYCLICK_COOKIE);
+      if (cookieId) parsed.pennyClickId = cookieId;
+    }
+    return parsed;
   } catch {
     return {};
   }

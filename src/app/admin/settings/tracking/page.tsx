@@ -17,6 +17,7 @@ export default async function TrackingSettingsPage() {
         id: e.id,
         eventName: e.eventName,
         contactId: e.contactId,
+        pennyClickId: e.pennyClickId,
         clickIds: e.clickIds,
         value: e.value ? Number(e.value) : null,
         currency: e.currency,
