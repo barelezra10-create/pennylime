@@ -1,21 +1,25 @@
 import { prisma } from "@/lib/db";
+import { getApplications } from "@/actions/applications";
 import { getContactMetrics } from "@/actions/contacts";
 import { getRecentActivities } from "@/actions/activities";
 import { DashboardClient } from "./dashboard-client";
+import type { ApplicationWithDocuments } from "@/types";
 
 const APPLICANT_OR_BEYOND = ["APPLICANT", "APPROVED", "FUNDED", "REPAYING", "PAID_OFF"];
 
 async function getDashboardData() {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
   const [
-    landingPages,
+    applications,
     contactMetrics,
     recentActivities,
+    landingPages,
+    totalLPs,
+    publishedLPs,
     contactsForTracking,
-    pipelineApps,
-    landingPageStats,
   ] = await Promise.all([
+    getApplications() as Promise<ApplicationWithDocuments[]>,
+    getContactMetrics(),
+    getRecentActivities(8),
     prisma.landingPage.findMany({
       orderBy: { updatedAt: "desc" },
       take: 6,
@@ -29,27 +33,12 @@ async function getDashboardData() {
         updatedAt: true,
       },
     }),
-    getContactMetrics(),
-    getRecentActivities(8),
+    prisma.landingPage.count(),
+    prisma.landingPage.count({ where: { published: true } }),
     prisma.contact.findMany({
       select: { utmSource: true, utmCampaign: true, utmMedium: true, stage: true, createdAt: true },
     }),
-    prisma.application.findMany({
-      where: { status: { in: ["APPROVED", "ACTIVE", "LATE", "COLLECTIONS"] } },
-      select: { loanAmount: true, status: true },
-    }),
-    prisma.landingPage.aggregate({
-      _count: { id: true },
-      where: { published: true },
-    }),
   ]);
-
-  const totalLPs = await prisma.landingPage.count();
-  const publishedLPs = landingPageStats._count.id;
-
-  const newLeadsThisWeek = contactsForTracking.filter((c) => c.createdAt >= sevenDaysAgo).length;
-
-  const pipelineValue = pipelineApps.reduce((sum, a) => sum + Number(a.loanAmount), 0);
 
   const trackingBreakdown = (() => {
     const bySource = new Map<string, { total: number; converted: number }>();
@@ -79,8 +68,6 @@ async function getDashboardData() {
     return { sources: toRows(bySource), campaigns: toRows(byCampaign), mediums: toRows(byMedium) };
   })();
 
-  const topSource = trackingBreakdown.sources[0];
-
   const lpLeadCounts = new Map<string, number>();
   for (const c of contactsForTracking) {
     if (c.utmCampaign) {
@@ -89,27 +76,22 @@ async function getDashboardData() {
   }
 
   return {
-    landingPages: landingPages.map((lp) => ({
-      ...lp,
-      publishedAt: lp.publishedAt?.toISOString() || null,
-      updatedAt: lp.updatedAt.toISOString(),
-      leadCount: lpLeadCounts.get(lp.slug) || 0,
-    })),
+    applications,
     contactMetrics,
     recentActivities: recentActivities.map((a) => ({
       ...a,
       createdAt: a.createdAt.toISOString(),
       contact: a.contact,
     })),
+    landingPages: landingPages.map((lp) => ({
+      ...lp,
+      publishedAt: lp.publishedAt?.toISOString() || null,
+      updatedAt: lp.updatedAt.toISOString(),
+      leadCount: lpLeadCounts.get(lp.slug) || 0,
+    })),
+    lpStats: { total: totalLPs, published: publishedLPs },
     trackingBreakdown,
-    summary: {
-      totalLPs,
-      publishedLPs,
-      totalContacts: contactMetrics.total,
-      newLeadsThisWeek,
-      pipelineValue,
-      topSource: topSource ? { name: topSource.key, count: topSource.total } : null,
-    },
+    topSource: trackingBreakdown.sources[0] || null,
   };
 }
 
