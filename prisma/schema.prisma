@@ -397,6 +397,18 @@ model Contact {
   utmSource       String?
   utmCampaign     String?
   utmMedium       String?
+  utmTerm         String?
+  utmContent      String?
+  gclid           String?
+  gbraid          String?
+  wbraid          String?
+  fbclid          String?
+  ttclid          String?
+  msclkid         String?
+  landingPage     String?
+  referrer        String?
+  userAgent       String?
+  ipAddress       String?
   applicationId   String?   @unique
   application     Application? @relation(fields: [applicationId], references: [id])
   lastAppStep     Int?
@@ -528,4 +540,59 @@ model EmailEvent {
   @@index([contactId])
   @@index([campaignId])
   @@index([type])
+}
+
+model TrackingConfig {
+  id                            String   @id @default("singleton")
+  // Google Ads
+  googleAdsConversionId         String?
+  googleAdsDeveloperToken       String?
+  googleAdsCustomerId           String?
+  googleAdsLoginCustomerId      String?
+  googleAdsRefreshToken         String?
+  googleAdsClientId             String?
+  googleAdsClientSecret         String?
+  // GA4
+  ga4MeasurementId              String?
+  ga4ApiSecret                  String?
+  // Meta
+  metaPixelId                   String?
+  metaConversionsApiToken       String?
+  metaTestEventCode             String?
+  // TikTok
+  tiktokPixelId                 String?
+  tiktokAccessToken             String?
+  tiktokTestEventCode           String?
+  // Microsoft Ads (Bing)
+  microsoftUetTagId             String?
+  microsoftConversionsApiToken  String?
+  // Per-event conversion mappings (JSON: { event_name: { google_ads_label, meta_event, tiktok_event, microsoft_goal } })
+  eventMappings                 String   @default("{}")
+  // Raw script injection
+  customHeadHtml                String?
+  customBodyHtml                String?
+  // Toggles
+  enabled                       Boolean  @default(true)
+  testMode                      Boolean  @default(false)
+  updatedAt                     DateTime @updatedAt
+}
+
+model TrackingEvent {
+  id            String   @id @default(uuid())
+  eventName     String
+  contactId     String?
+  applicationId String?
+  clickIds      String   @default("{}")
+  payload       String   @default("{}")
+  platforms     String   @default("{}")
+  value         Decimal?
+  currency      String?  @default("USD")
+  status        String   @default("pending")
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  @@index([eventName])
+  @@index([contactId])
+  @@index([status])
+  @@index([createdAt])
 }

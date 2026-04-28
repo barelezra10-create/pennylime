@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { TrackingScripts } from "@/components/tracking/tracking-scripts";
+import { ClickIdCapture } from "@/components/tracking/click-id-capture";
 import "./globals.css";
 
 const inter = Inter({
@@ -33,17 +35,21 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
+      <head>
+        <TrackingScripts />
+      </head>
       <body
         className={`${inter.variable} ${geistMono.variable} antialiased`}
         style={{ fontFamily: "var(--font-sans), Inter, system-ui, -apple-system, sans-serif" }}
       >
+        <ClickIdCapture />
         {children}
         <Toaster
           toastOptions={{

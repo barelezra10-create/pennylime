@@ -76,6 +76,16 @@ export async function upsertContact(data: {
   utmSource?: string;
   utmCampaign?: string;
   utmMedium?: string;
+  utmTerm?: string;
+  utmContent?: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
+  fbclid?: string;
+  ttclid?: string;
+  msclkid?: string;
+  landingPage?: string;
+  referrer?: string;
   lastAppStep?: number;
 }) {
   return prisma.contact.upsert({
@@ -87,6 +97,17 @@ export async function upsertContact(data: {
       lastAppStep: data.lastAppStep,
       utmSource: data.utmSource || undefined,
       utmCampaign: data.utmCampaign || undefined,
+      utmMedium: data.utmMedium || undefined,
+      utmTerm: data.utmTerm || undefined,
+      utmContent: data.utmContent || undefined,
+      gclid: data.gclid || undefined,
+      gbraid: data.gbraid || undefined,
+      wbraid: data.wbraid || undefined,
+      fbclid: data.fbclid || undefined,
+      ttclid: data.ttclid || undefined,
+      msclkid: data.msclkid || undefined,
+      landingPage: data.landingPage || undefined,
+      referrer: data.referrer || undefined,
     },
     create: {
       ...data,

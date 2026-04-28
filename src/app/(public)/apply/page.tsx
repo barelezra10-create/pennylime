@@ -1659,6 +1659,25 @@ export default function ApplyPage() {
   );
 }
 
+function attributionFromSearch(searchParams: URLSearchParams) {
+  const get = (k: string) => searchParams.get(k) || undefined;
+  return {
+    utmSource: get("utm_source"),
+    utmCampaign: get("utm_campaign"),
+    utmMedium: get("utm_medium"),
+    utmTerm: get("utm_term"),
+    utmContent: get("utm_content"),
+    gclid: get("gclid"),
+    gbraid: get("gbraid"),
+    wbraid: get("wbraid"),
+    fbclid: get("fbclid"),
+    ttclid: get("ttclid"),
+    msclkid: get("msclkid"),
+    landingPage: get("lp_path"),
+    referrer: get("ref"),
+  };
+}
+
 function ApplyPageInner() {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(0);
@@ -1857,8 +1876,7 @@ function ApplyPageInner() {
                                 lastName: form.lastName,
                                 phone: form.phone,
                                 source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
-                                utmSource: searchParams.get("utm_source") || undefined,
-                                utmCampaign: searchParams.get("utm_campaign") || undefined,
+                                ...attributionFromSearch(searchParams as unknown as URLSearchParams),
                                 lastAppStep: 2,
                               });
                               await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
@@ -1975,8 +1993,7 @@ function ApplyPageInner() {
                           lastName: form.lastName,
                           phone: form.phone,
                           source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
-                          utmSource: searchParams.get("utm_source") || undefined,
-                          utmCampaign: searchParams.get("utm_campaign") || undefined,
+                          ...attributionFromSearch(searchParams as unknown as URLSearchParams),
                           lastAppStep: 2,
                         });
                         await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });

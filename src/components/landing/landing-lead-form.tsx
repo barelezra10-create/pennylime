@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { fireClientEvent } from "@/lib/tracking/event-fire-client";
+import { readAttributionFromStorage } from "@/components/tracking/click-id-capture";
 
 const MIN_AMOUNT = 500;
 const MAX_AMOUNT = 10000;
@@ -36,17 +38,36 @@ export function LandingLeadForm({
   const pct = ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
   const weeklyEstimate = ((amount * 0.30 * Math.pow(1.30, termWeeks)) / (Math.pow(1.30, termWeeks) - 1)).toFixed(0);
 
+  useEffect(() => {
+    fireClientEvent({ event: "lead_form_start", value: amount });
+    // Only fire once per mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleStart(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+
+    fireClientEvent({ event: "lead_submit", value: amount });
+
+    const attribution = readAttributionFromStorage();
 
     const params = new URLSearchParams({
       amount: String(amount),
       term: String(termWeeks),
       platform,
-      utm_source: utmSource,
-      utm_campaign: utmCampaign,
+      utm_source: attribution.utm_source || utmSource,
+      utm_campaign: attribution.utm_campaign || utmCampaign,
     });
+    if (attribution.utm_medium) params.set("utm_medium", attribution.utm_medium);
+    if (attribution.utm_term) params.set("utm_term", attribution.utm_term);
+    if (attribution.utm_content) params.set("utm_content", attribution.utm_content);
+    for (const id of ["gclid", "gbraid", "wbraid", "fbclid", "ttclid", "msclkid"] as const) {
+      const v = attribution[id];
+      if (v) params.set(id, v);
+    }
+    if (attribution.landingPage) params.set("lp_path", attribution.landingPage);
+    if (attribution.referrer) params.set("ref", attribution.referrer);
     if (formTemplateSlug) {
       params.set("template", formTemplateSlug);
     }
