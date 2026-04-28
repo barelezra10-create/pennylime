@@ -31,7 +31,28 @@ export async function getContacts(filters?: {
   const [contacts, total] = await Promise.all([
     prisma.contact.findMany({
       where,
-      include: { tags: true, assignedRep: { select: { id: true, name: true } } },
+      include: {
+        tags: true,
+        assignedRep: { select: { id: true, name: true } },
+        application: {
+          include: {
+            payments: {
+              orderBy: { paymentNumber: "asc" },
+              select: {
+                id: true,
+                amount: true,
+                principal: true,
+                interest: true,
+                lateFee: true,
+                dueDate: true,
+                paidAt: true,
+                status: true,
+                paymentNumber: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { updatedAt: "desc" },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -48,7 +69,11 @@ export async function getContact(id: string) {
     include: {
       tags: true,
       assignedRep: { select: { id: true, name: true } },
-      application: true,
+      application: {
+        include: {
+          payments: { orderBy: { paymentNumber: "asc" } },
+        },
+      },
       activities: { orderBy: { createdAt: "desc" }, take: 50 },
     },
   });

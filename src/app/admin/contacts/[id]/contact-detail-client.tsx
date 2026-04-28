@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
+import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -20,12 +21,25 @@ interface Activity {
   createdAt: string;
 }
 
+interface PaymentRow {
+  id: string;
+  paymentNumber: number;
+  amount: number;
+  principal: number;
+  interest: number;
+  lateFee: number;
+  dueDate: string;
+  paidAt: string | null;
+  status: string;
+}
+
 interface Application {
   id: string;
   applicationCode: string;
   status: string;
   loanAmount: number;
   createdAt: string;
+  payments: PaymentRow[];
 }
 
 interface TeamMember {
@@ -55,6 +69,7 @@ interface Contact {
   tags: string[];
   activities: Activity[];
   application: Application | null;
+  loan: LoanSummary;
 }
 
 const TOTAL_APP_STEPS = 7;
@@ -170,6 +185,8 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
         title={fullName}
         description={contact.email}
       />
+
+      {contact.loan.hasLoan && <LoanSummaryCard loan={contact.loan} />}
 
       <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
@@ -421,6 +438,50 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function LoanSummaryCard({ loan }: { loan: LoanSummary }) {
+  const barColor = loan.isComplete ? "bg-[#15803d]" : loan.isLate ? "bg-[#dc2626]" : "bg-[#0ea5e9]";
+  return (
+    <div className="bg-white rounded-xl border border-[#e4e4e7] p-5 mb-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">Loan</h2>
+        {loan.isComplete && <span className="inline-flex text-[10px] font-bold uppercase tracking-[0.04em] bg-[#f0fdf4] text-[#15803d] rounded px-2 py-0.5">Paid off</span>}
+        {loan.isLate && !loan.isComplete && <span className="inline-flex text-[10px] font-bold uppercase tracking-[0.04em] bg-[#fef2f2] text-[#dc2626] rounded px-2 py-0.5">Late</span>}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <Stat label="Loan amount" value={fmtMoney(loan.fundedAmount || loan.loanAmount)} />
+        <Stat label="Per payment" value={`${fmtMoney(loan.perPaymentAmount)}${cadenceLabel(loan.cadence)}`} />
+        <Stat label="Paid" value={`${fmtMoney(loan.paidAmount)}`} sub={`${loan.paidPayments} of ${loan.totalPayments} payments`} />
+        <Stat label="Remaining" value={fmtMoney(loan.remainingAmount)} sub={`${loan.remainingPayments} payments left`} />
+      </div>
+      <div>
+        <div className="flex items-center justify-between text-[11px] mb-1.5">
+          <span className="text-[#71717a]">Repayment progress</span>
+          <span className="text-[#a1a1aa] tabular-nums">{loan.progressPct}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-[#f4f4f5] overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${loan.progressPct}%` }} />
+        </div>
+        {loan.nextDue && !loan.isComplete && (
+          <p className="mt-3 text-[12px] text-[#71717a]">
+            Next payment of <strong className="text-black">{fmtMoney(loan.nextDue.amount)}</strong> due{" "}
+            <strong className="text-black">{new Date(loan.nextDue.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</strong>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-1">{label}</p>
+      <p className="text-[18px] font-extrabold tracking-[-0.02em] text-black tabular-nums leading-none">{value}</p>
+      {sub && <p className="text-[10px] text-[#a1a1aa] mt-1">{sub}</p>}
     </div>
   );
 }
