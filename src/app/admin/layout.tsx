@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import { AdminSidebar } from "@/components/admin/sidebar";
+import { AdminTopNav } from "@/components/admin/top-nav";
 import { CommandPalette } from "@/components/admin/command-palette";
 
 export default async function AdminLayout({
@@ -16,10 +15,10 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f8f8f6]">
-      <AdminSidebar userName={session.user?.name || session.user?.email || "Admin"} />
+    <div className="min-h-screen bg-[#f8f8f6]">
+      <AdminTopNav userName={session.user?.name || session.user?.email || "Admin"} />
       <CommandPalette />
-      <main className="flex-1 p-8 overflow-auto ml-[68px] xl:ml-[260px] transition-all duration-200">{children}</main>
+      <main className="p-6 lg:p-8 max-w-[1400px] mx-auto">{children}</main>
     </div>
   );
 }
