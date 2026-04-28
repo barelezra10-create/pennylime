@@ -80,6 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/settings", label: "Settings", icon: <SettingsIcon /> },
       { href: "/admin/settings/tracking", label: "Tracking & Pixels", icon: <SettingsIcon /> },
+      { href: "/admin/sms/templates", label: "SMS Templates", icon: <SettingsIcon /> },
       { href: "/admin/audit", label: "Audit Log", icon: <AuditIcon /> },
       { href: "/admin/team", label: "Team", icon: <TeamIcon /> },
     ],

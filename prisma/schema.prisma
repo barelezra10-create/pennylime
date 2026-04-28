@@ -395,6 +395,8 @@ model Contact {
   assignedRep     AdminUser? @relation(fields: [assignedRepId], references: [id])
   source          String?
   pennyClickId    String?
+  smsOptIn        Boolean   @default(true)
+  smsOptOutAt     DateTime?
   utmSource       String?
   utmCampaign     String?
   utmMedium       String?
@@ -574,6 +576,11 @@ model TrackingConfig {
   // Raw script injection
   customHeadHtml                String?
   customBodyHtml                String?
+  // Twilio SMS
+  twilioAccountSid              String?
+  twilioAuthToken               String?
+  twilioFromNumber              String?
+  twilioMessagingServiceSid     String?
   // Toggles
   enabled                       Boolean  @default(true)
   testMode                      Boolean  @default(false)
@@ -654,4 +661,59 @@ model AdSpend {
 
   @@index([date])
   @@index([platform])
+}
+
+model SmsTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  body        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SmsMessage {
+  id              String   @id @default(uuid())
+  contactId       String?
+  toNumber        String
+  fromNumber      String
+  body            String
+  templateId      String?
+  campaignId      String?
+  twilioSid       String?  @unique
+  status          String   @default("queued") // queued, sent, delivered, failed, undelivered
+  errorMessage    String?
+  errorCode       String?
+  segments        Int      @default(1)
+  priceUsd        Decimal?
+  sentAt          DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([contactId])
+  @@index([status])
+  @@index([twilioSid])
+  @@index([createdAt])
+}
+
+model SmsCampaign {
+  id              String    @id @default(uuid())
+  name            String
+  body            String
+  templateId      String?
+  segmentRules    String    @default("[]")
+  audienceCount   Int       @default(0)
+  status          String    @default("DRAFT")
+  scheduledAt     DateTime?
+  sentAt          DateTime?
+  totalSent       Int       @default(0)
+  totalDelivered  Int       @default(0)
+  totalFailed     Int       @default(0)
+  totalReplied    Int       @default(0)
+  totalOptOut     Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
 }

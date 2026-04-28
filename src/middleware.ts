@@ -15,6 +15,7 @@ const ADMIN_PROTECTED = [
   "/admin/contacts",
   "/admin/abandoned",
   "/admin/email",
+  "/admin/sms",
   "/admin/team",
 ];
 

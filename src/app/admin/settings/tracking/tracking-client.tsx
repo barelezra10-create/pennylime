@@ -27,6 +27,10 @@ type Config = {
   tiktokTestEventCode: string | null;
   microsoftUetTagId: string | null;
   microsoftConversionsApiToken: string | null;
+  twilioAccountSid: string | null;
+  twilioAuthToken: string | null;
+  twilioFromNumber: string | null;
+  twilioMessagingServiceSid: string | null;
   eventMappings: string;
   customHeadHtml: string | null;
   customBodyHtml: string | null;
@@ -134,6 +138,19 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                 <Field name="microsoftUetTagId" label="UET tag ID" placeholder="12345678" defaultValue={config.microsoftUetTagId} />
                 <Field name="microsoftConversionsApiToken" label="Offline conversions API token" defaultValue={config.microsoftConversionsApiToken} secret />
               </Grid>
+            </Card>
+
+            <Card title="Twilio SMS" subtitle="Outbound SMS via Twilio. STOP/START/HELP keywords are auto-handled by /api/twilio/inbound.">
+              <Grid>
+                <Field name="twilioAccountSid" label="Account SID" placeholder="AC..." defaultValue={config.twilioAccountSid} />
+                <Field name="twilioAuthToken" label="Auth token" defaultValue={config.twilioAuthToken} secret />
+                <Field name="twilioFromNumber" label="From number" placeholder="+15551234567" defaultValue={config.twilioFromNumber} />
+                <Field name="twilioMessagingServiceSid" label="Messaging Service SID (optional)" placeholder="MG..." defaultValue={config.twilioMessagingServiceSid} />
+              </Grid>
+              <p className="text-[11px] text-[#71717a] mt-3">
+                In Twilio console, set Status Callback URL to <code className="bg-[#fafafa] px-1.5 py-0.5 rounded">https://pennylime.com/api/twilio/status</code>{" "}
+                and Inbound Messaging Webhook to <code className="bg-[#fafafa] px-1.5 py-0.5 rounded">https://pennylime.com/api/twilio/inbound</code>.
+              </p>
             </Card>
           </div>
         )}
