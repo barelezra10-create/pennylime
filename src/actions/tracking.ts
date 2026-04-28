@@ -17,6 +17,7 @@ const ALLOWED_FIELDS = [
   "metaPixelId",
   "metaConversionsApiToken",
   "metaTestEventCode",
+  "metaAdAccountId",
   "tiktokPixelId",
   "tiktokAccessToken",
   "tiktokTestEventCode",

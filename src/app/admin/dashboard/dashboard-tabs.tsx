@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
-import { addAdSpend } from "@/actions/ad-spend";
+import { addAdSpend, syncAllAdSpend } from "@/actions/ad-spend";
+import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { fmtMoney } from "@/lib/loan-summary";
 
@@ -305,7 +306,10 @@ function PaidMediaTab({
         <BigCard label="CAC funded" value={fmtMoney(f.cacFunded)} sub={`per funded loan`} accent={f.cacFunded > 0 ? "text-[#0ea5e9]" : ""} />
       </div>
 
-      <Section title="Spend by platform (30d)">
+      <Section
+        title="Spend by platform (30d)"
+        action={<SyncButton />}
+      >
         {f.adSpend.byPlatform.length === 0 ? (
           <Empty>No ad spend logged yet. Add a row below to start tracking.</Empty>
         ) : (
@@ -656,6 +660,35 @@ function TrackingTable({ title, subtitle, rows }: { title: string; subtitle: str
         </ul>
       )}
     </Card>
+  );
+}
+
+function SyncButton() {
+  const [syncing, setSyncing] = useState(false);
+  async function onClick() {
+    setSyncing(true);
+    try {
+      const r = await syncAllAdSpend(30);
+      const lines: string[] = [];
+      if (r.google_ads.ok) lines.push(`Google Ads: ${r.google_ads.rows} rows`);
+      else lines.push(`Google Ads: ${r.google_ads.error}`);
+      if (r.meta.ok) lines.push(`Meta: ${r.meta.rows} rows`);
+      else lines.push(`Meta: ${r.meta.error}`);
+      const ok = r.google_ads.ok || r.meta.ok;
+      (ok ? toast.success : toast.error)(lines.join(" · "), { duration: 6000 });
+    } finally {
+      setSyncing(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={syncing}
+      className="text-[12px] font-semibold text-white bg-[#15803d] hover:bg-[#166534] rounded-lg px-3 py-1.5 disabled:opacity-60"
+    >
+      {syncing ? "Syncing…" : "Sync from Google + Meta"}
+    </button>
   );
 }
 

@@ -21,6 +21,7 @@ type Config = {
   metaPixelId: string | null;
   metaConversionsApiToken: string | null;
   metaTestEventCode: string | null;
+  metaAdAccountId: string | null;
   tiktokPixelId: string | null;
   tiktokAccessToken: string | null;
   tiktokTestEventCode: string | null;
@@ -111,10 +112,11 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
               </Grid>
             </Card>
 
-            <Card title="Meta (Facebook + Instagram)" subtitle="fbclid + Conversions API.">
+            <Card title="Meta (Facebook + Instagram)" subtitle="fbclid + Conversions API + Ad Spend pull.">
               <Grid>
                 <Field name="metaPixelId" label="Pixel ID" placeholder="1234567890123456" defaultValue={config.metaPixelId} />
-                <Field name="metaConversionsApiToken" label="Conversions API access token" defaultValue={config.metaConversionsApiToken} secret />
+                <Field name="metaAdAccountId" label="Ad account ID (for spend sync)" placeholder="act_1234567890" defaultValue={config.metaAdAccountId} />
+                <Field name="metaConversionsApiToken" label="Access token (CAPI + ads_read)" defaultValue={config.metaConversionsApiToken} secret full />
                 <Field name="metaTestEventCode" label="Test event code (optional)" placeholder="TEST12345" defaultValue={config.metaTestEventCode} />
               </Grid>
             </Card>

@@ -561,6 +561,7 @@ model TrackingConfig {
   metaPixelId                   String?
   metaConversionsApiToken       String?
   metaTestEventCode             String?
+  metaAdAccountId               String?
   // TikTok
   tiktokPixelId                 String?
   tiktokAccessToken             String?
