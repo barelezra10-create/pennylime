@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/db";
+import { fireServerEvent } from "@/lib/tracking/server-events";
 
 export async function getContacts(filters?: {
   stage?: string;
@@ -154,7 +155,21 @@ export async function upsertContact(data: {
 }
 
 export async function updateContactStage(id: string, stage: string) {
-  return prisma.contact.update({ where: { id }, data: { stage } });
+  const updated = await prisma.contact.update({ where: { id }, data: { stage } });
+  // Fire server-side conversion when entering high-value stages
+  if (stage === "APPROVED" || stage === "FUNDED" || stage === "REPAYING" || stage === "PAID_OFF") {
+    const eventName =
+      stage === "APPROVED"
+        ? "approved"
+        : stage === "FUNDED" || stage === "REPAYING"
+          ? "funded"
+          : "funded";
+    // Fire-and-forget; tracking failures must not break stage updates
+    fireServerEvent({ eventName, contactId: id }).catch((err) => {
+      console.error("[tracking] fireServerEvent failed:", err);
+    });
+  }
+  return updated;
 }
 
 export async function updateContactLastStep(email: string, step: number) {

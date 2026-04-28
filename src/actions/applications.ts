@@ -213,6 +213,18 @@ export async function approveApplication(
     },
   });
 
+  // Server-side conversion fire (Google Ads OCI / Meta CAPI / TikTok / Microsoft)
+  const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
+  if (linkedContact) {
+    const { fireServerEvent } = await import("@/lib/tracking/server-events");
+    fireServerEvent({
+      eventName: "approved",
+      contactId: linkedContact.id,
+      applicationId,
+      value: Number(application.loanAmount),
+    }).catch((err) => console.error("[tracking] approved event failed:", err));
+  }
+
   return { success: true, application: updatedApp };
 }
 
@@ -322,6 +334,18 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     performedBy: session.user.email,
     details: { fundedAmount, paymentsCreated: schedule.length },
   });
+
+  // Server-side conversion fire for funded loan
+  const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
+  if (linkedContact) {
+    const { fireServerEvent } = await import("@/lib/tracking/server-events");
+    fireServerEvent({
+      eventName: "funded",
+      contactId: linkedContact.id,
+      applicationId,
+      value: fundedAmount,
+    }).catch((err) => console.error("[tracking] funded event failed:", err));
+  }
 
   // Send funded email with schedule
   await sendEmail({
