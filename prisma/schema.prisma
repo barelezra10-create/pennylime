@@ -397,6 +397,7 @@ model Contact {
   pennyClickId    String?
   smsOptIn        Boolean   @default(true)
   smsOptOutAt     DateTime?
+  phoneVerifiedAt DateTime?
   utmSource       String?
   utmCampaign     String?
   utmMedium       String?
@@ -716,4 +717,19 @@ model SmsCampaign {
   updatedAt       DateTime  @updatedAt
 
   @@index([status])
+}
+
+model PhoneVerification {
+  id          String    @id @default(uuid())
+  phone       String
+  codeHash    String
+  attempts    Int       @default(0)
+  verifiedAt  DateTime?
+  expiresAt   DateTime
+  ipAddress   String?
+  contactId   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
 }

@@ -15,6 +15,7 @@ import { upsertContact, updateContactLastStep, linkContactApplication } from "@/
 import { logActivity } from "@/actions/activities";
 import type { FormStep } from "@/types/form-template";
 import { DynamicStep } from "@/components/apply/dynamic-step";
+import { PhoneVerification } from "@/components/apply/phone-verification";
 
 /* ------------------------------------------------------------------ */
 /*  CONSTANTS                                                           */
@@ -1717,6 +1718,7 @@ function ApplyPageInner() {
   const [applicationCode, setApplicationCode] = useState<string | null>(null);
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
+  const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
 
   const addFiles = useCallback((newFiles: FileList | File[]) => {
     const valid: File[] = [];
@@ -1829,9 +1831,25 @@ function ApplyPageInner() {
               <StepIndicator current={step} stepNames={activeStepNames} />
             )}
 
+            {pendingPhoneVerification && (
+              <div className="mb-6">
+                <PhoneVerification
+                  phone={form.phone}
+                  contactId={pendingPhoneVerification.contactId}
+                  onVerified={() => {
+                    const next = pendingPhoneVerification.nextStep;
+                    setPendingPhoneVerification(null);
+                    setStep(next);
+                  }}
+                />
+              </div>
+            )}
+
             <AnimatePresence mode="wait">
               {applicationCode ? (
                 <SuccessScreen key="success" code={applicationCode} />
+              ) : pendingPhoneVerification ? (
+                <div key="verify-placeholder" />
               ) : templateSteps ? (
                 (() => {
                   const currentTemplateStep = templateSteps[step];
@@ -1888,6 +1906,8 @@ function ApplyPageInner() {
                               });
                               await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                               try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
+                              setPendingPhoneVerification({ contactId: contact.id, nextStep: step + 1 });
+                              return;
                             } catch {}
                             setStep(step + 1);
                           }
@@ -2006,6 +2026,8 @@ function ApplyPageInner() {
                         });
                         await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                         try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
+                        setPendingPhoneVerification({ contactId: contact.id, nextStep: 2 });
+                        return;
                       } catch {}
                       setStep(2);
                     }
