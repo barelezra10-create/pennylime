@@ -11,6 +11,10 @@ export default function TermsPage() {
       <div className="space-y-6">
         <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: March 2026</p>
 
+        <p className="text-[15px] text-[#71717a] leading-relaxed">
+          PennyLime is owned and operated by 770 Technology Way LLC, a Florida limited liability company.
+        </p>
+
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
           1. Acceptance of Terms
         </h2>
