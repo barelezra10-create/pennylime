@@ -15,8 +15,21 @@ export async function TrackingScripts() {
   const showGtag = gtagIds.length > 0;
   const primaryGtagId = gtagIds[0];
 
+  const mappingsBootstrap = `window.__plMappings = ${cfg.eventMappings || "{}"}; window.__plPlatformIds = ${JSON.stringify(
+    {
+      googleAdsConversionId: cfg.googleAdsConversionId,
+      ga4MeasurementId: cfg.ga4MeasurementId,
+      metaPixelId: cfg.metaPixelId,
+      tiktokPixelId: cfg.tiktokPixelId,
+      microsoftUetTagId: cfg.microsoftUetTagId,
+    }
+  )};`;
+
   return (
     <>
+      <Script id="pl-mappings" strategy="beforeInteractive">
+        {mappingsBootstrap}
+      </Script>
       {showGtag && primaryGtagId && (
         <>
           <Script

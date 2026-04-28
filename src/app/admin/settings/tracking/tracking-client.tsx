@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { saveTrackingConfig } from "@/actions/tracking";
-import { TRACKING_EVENTS, EVENT_DESCRIPTIONS, PLATFORM_LABELS, type TrackingEventName } from "@/lib/tracking/click-ids";
+import { EventMappingsEditor } from "@/components/tracking/event-mappings-editor";
 
 type Config = {
   id: string;
@@ -50,8 +50,6 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
   const [tab, setTab] = useState<Tab>("platforms");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-
-  const eventMappings = parseEventMappings(config.eventMappings);
 
   async function onSubmit(formData: FormData) {
     setSaving(true);
@@ -139,20 +137,15 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
         )}
 
         {tab === "events" && (
-          <Card
-            title="Event mapping"
-            subtitle="Each event fires automatically to whichever platforms are configured. Add a per-platform conversion label/action where required."
-          >
-            <div className="space-y-5">
-              {TRACKING_EVENTS.map((evt) => (
-                <EventRow key={evt} event={evt} mapping={eventMappings[evt] || {}} />
-              ))}
+          <div className="space-y-5">
+            <div className="bg-white border border-[#e4e4e7] rounded-xl p-5">
+              <h3 className="text-[14px] font-bold text-black">Events</h3>
+              <p className="text-[12px] text-[#71717a] mt-0.5">
+                Configure how each event maps to each platform. Send a test fire to confirm pixels are loading. Save changes uses the global save button at top.
+              </p>
             </div>
-            <input type="hidden" name="eventMappings" value={config.eventMappings} />
-            <p className="mt-4 text-[12px] text-[#a1a1aa]">
-              Per-event mapping editor coming in next iteration. For now, set Google Ads conversion labels server-side via env (CONVERSION_LABEL_LEAD_SUBMIT etc).
-            </p>
-          </Card>
+            <EventMappingsEditor initialMappings={config.eventMappings} />
+          </div>
         )}
 
         {tab === "scripts" && (
@@ -220,14 +213,6 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
       </form>
     </div>
   );
-}
-
-function parseEventMappings(raw: string): Record<string, Record<string, string>> {
-  try {
-    return JSON.parse(raw) as Record<string, Record<string, string>>;
-  } catch {
-    return {};
-  }
 }
 
 function summarizeClickIds(raw: string): string {
@@ -307,30 +292,6 @@ function Toggle({ name, label, defaultChecked }: { name: string; label: string; 
       <input type="checkbox" name={name} defaultChecked={defaultChecked} className="w-4 h-4 accent-[#15803d]" />
       {label}
     </label>
-  );
-}
-
-function EventRow({ event, mapping }: { event: TrackingEventName; mapping: Record<string, string> }) {
-  return (
-    <div className="border border-[#e4e4e7] rounded-lg p-3.5">
-      <div className="flex items-center justify-between mb-1.5">
-        <code className="text-[12px] font-mono font-bold text-black">{event}</code>
-        <span className="text-[11px] text-[#71717a]">{EVENT_DESCRIPTIONS[event]}</span>
-      </div>
-      <div className="flex flex-wrap gap-1.5 text-[10px]">
-        {(Object.keys(PLATFORM_LABELS) as Array<keyof typeof PLATFORM_LABELS>).map((platform) => (
-          <span
-            key={platform}
-            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 ${
-              mapping[platform] ? "bg-[#f0fdf4] text-[#15803d]" : "bg-[#fafafa] text-[#a1a1aa]"
-            }`}
-          >
-            {PLATFORM_LABELS[platform]}
-            {mapping[platform] && <span className="font-mono">({mapping[platform]})</span>}
-          </span>
-        ))}
-      </div>
-    </div>
   );
 }
 
