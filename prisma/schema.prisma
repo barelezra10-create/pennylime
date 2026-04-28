@@ -636,3 +636,21 @@ model PennyClick {
   @@index([contactId])
   @@index([firstSeen])
 }
+
+model AdSpend {
+  id          String   @id @default(uuid())
+  date        DateTime
+  platform    String
+  campaign    String?
+  spend       Decimal
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  currency    String   @default("USD")
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([platform])
+}
