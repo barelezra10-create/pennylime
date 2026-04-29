@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Access Controls Policy – PennyLime</title>
+<style>
+  @page { size: Letter; margin: 0.7in; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  .header { border-bottom: 2px solid #15803d; padding-bottom: 12px; margin-bottom: 16px; }
+  .brand { font-size: 20pt; font-weight: 800; letter-spacing: -0.02em; }
+  .brand span { color: #15803d; }
+  .meta { font-size: 9pt; color: #71717a; margin-top: 4px; }
+  h1 { font-size: 16pt; font-weight: 800; margin: 14px 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 11pt; font-weight: 700; margin: 14px 0 4px; color: #15803d; }
+  p { margin: 4px 0 8px; }
+  ul { margin: 4px 0 8px; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .info-row { font-size: 9.5pt; color: #52525b; margin: 2px 0; }
+  .info-label { color: #71717a; display: inline-block; min-width: 110px; }
+  .lead { margin: 12px 0 14px; }
+  .footer { margin-top: 18px; padding-top: 10px; border-top: 1px solid #e4e4e7; font-size: 8.5pt; color: #71717a; }
+  strong { color: #1a1a1a; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.5pt; }
+  th, td { border: 1px solid #e4e4e7; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f8f8f6; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">Penny<span>Lime</span></div>
+  <div class="meta">Operated by 770 Technology Way LLC, a Florida limited liability company · https://pennylime.com</div>
+</div>
+
+<h1>Access Controls Policy</h1>
+<div class="info-row"><span class="info-label">Owner:</span>Bar Elezra, Head of Information Security</div>
+<div class="info-row"><span class="info-label">Contact:</span>security@pennylime.com</div>
+<div class="info-row"><span class="info-label">Effective date:</span>April 1, 2026</div>
+<div class="info-row"><span class="info-label">Last reviewed:</span>April 29, 2026</div>
+<div class="info-row"><span class="info-label">Review cadence:</span>Annual, or upon material change.</div>
+<div class="info-row"><span class="info-label">Public copy:</span>https://pennylime.com/security/access-controls</div>
+<div class="info-row"><span class="info-label">Parent policy:</span>Information Security Policy (https://pennylime.com/security)</div>
+
+<p class="lead">This Access Controls Policy establishes the requirements for granting, managing, reviewing, and revoking access to PennyLime information systems, customer data, source code, infrastructure, and physical work environments. It is binding on all personnel, contractors, and service providers, and supplements the parent Information Security Policy.</p>
+
+<h2>1. Purpose and Scope</h2>
+<p>This policy applies to every system, application, and dataset that processes, stores, or transmits PennyLime information assets, including production application infrastructure (Railway, Cloudflare), source-code repositories (GitHub), administrative consoles, third-party vendor portals (Plaid, Twilio, Google Workspace), and any physical or remote work environments used by personnel.</p>
+
+<h2>2. Guiding Principles</h2>
+<ul>
+  <li><strong>Least privilege.</strong> Personnel receive the minimum access required to perform their role.</li>
+  <li><strong>Need to know.</strong> Access to Restricted or Confidential data is granted only when a documented business purpose exists.</li>
+  <li><strong>Separation of duties.</strong> Sensitive operations (e.g., production deployments, customer data exports, financial disbursements) require two-person review where feasible.</li>
+  <li><strong>Defense in depth.</strong> Authentication, authorization, network controls, and audit logging operate independently as layered controls.</li>
+</ul>
+
+<h2>3. Roles and Responsibilities</h2>
+<table>
+  <tr><th>Role</th><th>Responsibility</th></tr>
+  <tr><td>Head of Information Security</td><td>Owns this policy. Approves provisioning of privileged access. Conducts quarterly access reviews. Final authority on exceptions.</td></tr>
+  <tr><td>Founder / Executive Sponsor</td><td>Backup approver. Receives quarterly access-review summaries.</td></tr>
+  <tr><td>System Owners</td><td>Maintain user lists for systems they own. Notify the Head of InfoSec of role changes within one business day.</td></tr>
+  <tr><td>All Personnel</td><td>Comply with this policy. Report suspected unauthorized access to security@pennylime.com immediately.</td></tr>
+</table>
+
+<h2>4. Account Provisioning</h2>
+<p>Access is provisioned only after: (a) the user has acknowledged the Information Security Policy in writing; (b) a documented business need is approved by the Head of Information Security; and (c) the user has completed required onboarding security training. Access requests are recorded with date, requester, approver, scope of access, and business justification.</p>
+
+<h2>5. Authentication</h2>
+<ul>
+  <li><strong>Multi-factor authentication (MFA)</strong> is required for all administrative and production-data accounts, including Railway, Cloudflare, GitHub, Google Workspace, Plaid, Twilio, and the PennyLime admin console.</li>
+  <li><strong>Passwords</strong> meet a minimum of 14 characters with complexity, are unique per system, and are stored only in an approved password manager. Reuse of passwords across systems is prohibited.</li>
+  <li><strong>Session timeouts</strong> are enforced at 12 hours of inactivity for administrative consoles and 30 minutes for sensitive customer-data views.</li>
+  <li><strong>Shared accounts and shared credentials are prohibited.</strong> Service accounts, where unavoidable, are individually owned, documented, and rotated quarterly.</li>
+</ul>
+
+<h2>6. Authorization and Role-Based Access Control (RBAC)</h2>
+<p>Application-level access is governed by named roles enforced in code. Current production roles include:</p>
+<table>
+  <tr><th>Role</th><th>Scope</th></tr>
+  <tr><td>SUPER_ADMIN</td><td>Full administrative access including user management, settings, and Restricted data fields.</td></tr>
+  <tr><td>ADMIN</td><td>Operational access (applications, payments, contacts) excluding system configuration.</td></tr>
+  <tr><td>UNDERWRITER</td><td>Read access to applications and supporting documents; write access to underwriting decisions.</td></tr>
+  <tr><td>SUPPORT</td><td>Read access to assigned contacts; ability to record notes and outreach activities.</td></tr>
+  <tr><td>READ_ONLY / AUDITOR</td><td>Read-only access for compliance review.</td></tr>
+</table>
+<p>Role assignments are documented and reviewed quarterly. Role changes follow the same approval workflow as provisioning.</p>
+
+<h2>7. Privileged Access Management</h2>
+<p>Privileged access (production database, infrastructure root, payments processor) is restricted to named individuals listed in the Privileged Access Roster. Privileged actions are logged with actor, timestamp, action, and target. Privileged access is reviewed by the Head of InfoSec monthly.</p>
+
+<h2>8. Access Reviews</h2>
+<p>The Head of Information Security performs an access review at least <strong>quarterly</strong>. Each review confirms that every active account is still required, has the correct role, and has MFA enabled. Privileged access is reviewed monthly. Findings are tracked to remediation; out-of-policy access is removed within five business days.</p>
+
+<h2>9. Termination and De-provisioning</h2>
+<p>Access is revoked within <strong>one business day</strong> of separation, role change, contractor end-of-engagement, or any incident requiring immediate revocation. The de-provisioning checklist covers application accounts, source-code access, vendor portals, secrets-store credentials, single-sign-on entitlements, and physical or remote-work resources. Revocation is verified and documented.</p>
+
+<h2>10. Remote Access</h2>
+<p>Personnel access production systems exclusively over HTTPS / TLS 1.2+ with MFA. Access from public or untrusted networks requires a hardened personal device with full-disk encryption and current operating-system updates. VPN is used where additional network segregation is required.</p>
+
+<h2>11. Third-Party Access</h2>
+<p>Third-party access (vendors, contractors, auditors) is granted only with a written agreement that includes confidentiality, security, and breach-notification obligations. Access is time-limited to the engagement and reviewed at least quarterly. Vendors handling Restricted or Confidential data are listed in the Vendor Risk Register maintained by the Head of InfoSec.</p>
+
+<h2>12. Audit Logging and Monitoring</h2>
+<p>Authentication events, administrative actions, role changes, privileged actions, and access to Restricted or Confidential customer data are logged with a tamper-resistant audit trail retained for at least 12 months. Logs are reviewed periodically and on trigger events. Anomalous patterns (failed logins, after-hours access, bulk data export) trigger investigation.</p>
+
+<h2>13. Physical Access</h2>
+<p>PennyLime is a remote-first organization. Production infrastructure is hosted in third-party data centers operated by Railway and Cloudflare; their physical security controls are reviewed annually as part of vendor risk management. Personnel work from secured personal environments using encrypted, password-protected devices.</p>
+
+<h2>14. Exceptions</h2>
+<p>Exceptions to this policy are granted only by the Head of Information Security with documented business justification, compensating controls, and an expiration date. Active exceptions are reviewed at each access review.</p>
+
+<h2>15. Policy Review and Acknowledgment</h2>
+<p>This policy is reviewed at least annually, or upon material change to the business, technology stack, or regulatory environment. Personnel acknowledge this policy at hire and at each annual review.</p>
+
+<div class="footer">
+  Questions and access requests: security@pennylime.com. Confidential. © 770 Technology Way LLC. Document version 1.0 · Supplements the PennyLime Information Security Policy.
+</div>
+
+</body>
+</html>
