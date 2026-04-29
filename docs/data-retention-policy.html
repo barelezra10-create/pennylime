@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Data Retention and Disposal Policy – PennyLime</title>
+<style>
+  @page { size: Letter; margin: 0.7in; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  .header { border-bottom: 2px solid #15803d; padding-bottom: 12px; margin-bottom: 16px; }
+  .brand { font-size: 20pt; font-weight: 800; letter-spacing: -0.02em; }
+  .brand span { color: #15803d; }
+  .meta { font-size: 9pt; color: #71717a; margin-top: 4px; }
+  h1 { font-size: 16pt; font-weight: 800; margin: 14px 0 6px; letter-spacing: -0.01em; }
+  h2 { font-size: 11pt; font-weight: 700; margin: 14px 0 4px; color: #15803d; }
+  p { margin: 4px 0 8px; }
+  ul { margin: 4px 0 8px; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .info-row { font-size: 9.5pt; color: #52525b; margin: 2px 0; }
+  .info-label { color: #71717a; display: inline-block; min-width: 110px; }
+  .lead { margin: 12px 0 14px; }
+  .footer { margin-top: 18px; padding-top: 10px; border-top: 1px solid #e4e4e7; font-size: 8.5pt; color: #71717a; }
+  strong { color: #1a1a1a; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.5pt; }
+  th, td { border: 1px solid #e4e4e7; padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { background: #f8f8f6; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">Penny<span>Lime</span></div>
+  <div class="meta">Operated by 770 Technology Way LLC, a Florida limited liability company · https://pennylime.com</div>
+</div>
+
+<h1>Data Retention and Disposal Policy</h1>
+<div class="info-row"><span class="info-label">Owner:</span>Bar Elezra, Head of Information Security</div>
+<div class="info-row"><span class="info-label">Contact:</span>security@pennylime.com</div>
+<div class="info-row"><span class="info-label">Effective date:</span>April 1, 2026</div>
+<div class="info-row"><span class="info-label">Last reviewed:</span>April 29, 2026</div>
+<div class="info-row"><span class="info-label">Review cadence:</span>Annual, or upon material change to applicable laws.</div>
+<div class="info-row"><span class="info-label">Public copy:</span>https://pennylime.com/security/data-retention</div>
+<div class="info-row"><span class="info-label">Parent policy:</span>Information Security Policy (https://pennylime.com/security)</div>
+
+<p class="lead">This Data Retention and Disposal Policy defines how long PennyLime retains different categories of information, the legal and regulatory bases for those retention periods, the methods by which data is securely disposed of when retention windows end, and the rights consumers have to request access, correction, or deletion. It supplements the parent Information Security Policy and is binding on all personnel and service providers.</p>
+
+<h2>1. Purpose and Scope</h2>
+<p>This policy applies to all PennyLime information assets including merchant applicant data, customer financial data, identity documents, Plaid-derived bank data, payment records, audit logs, marketing communications, and business records. It governs primary production storage, backups, archives, and copies held by service providers.</p>
+
+<h2>2. Guiding Principles</h2>
+<ul>
+  <li><strong>Purpose limitation.</strong> Data is retained only as long as a legitimate operational, legal, regulatory, or contractual purpose exists.</li>
+  <li><strong>Minimum necessary.</strong> Where multiple retention windows could apply, the shortest window that satisfies all obligations is used.</li>
+  <li><strong>Secure disposal.</strong> When a retention window ends, data is securely destroyed using methods appropriate to the storage medium and the data classification.</li>
+  <li><strong>Documented exceptions.</strong> Legal holds, active investigations, and audit-driven extensions are documented and tracked to release.</li>
+</ul>
+
+<h2>3. Roles and Responsibilities</h2>
+<p>The Head of Information Security owns this policy, the retention schedule, and the disposal procedures. Personnel are responsible for following the schedule for data they create or access. Service providers handling customer data are bound by written agreements requiring equivalent retention and disposal practices.</p>
+
+<h2>4. Retention Schedule</h2>
+<table>
+  <tr>
+    <th>Data Category</th>
+    <th>Retention Period</th>
+    <th>Basis</th>
+  </tr>
+  <tr>
+    <td>Merchant application records (approved or declined): legal name, EIN, contact, application data</td>
+    <td>7 years from final decision or close of advance</td>
+    <td>BSA recordkeeping; state lending and licensing record requirements</td>
+  </tr>
+  <tr>
+    <td>Identity and KYC documentation: government ID, beneficial-owner records, OFAC screening results</td>
+    <td>5 years from termination of customer relationship</td>
+    <td>BSA / 31 CFR 1010.430</td>
+  </tr>
+  <tr>
+    <td>Funded advance and loan records: contracts, receipts, payment schedules, remittance history, payoff records</td>
+    <td>7 years from final payment or charge-off</td>
+    <td>State lending laws; tax / accounting requirements</td>
+  </tr>
+  <tr>
+    <td>Plaid access tokens (encrypted)</td>
+    <td>Active for the life of the account connection; revoked and removed within 30 days of customer relationship end or upon explicit revocation</td>
+    <td>GLBA Safeguards Rule; minimum-necessary principle</td>
+  </tr>
+  <tr>
+    <td>Plaid-derived transaction and balance data used in underwriting</td>
+    <td>7 years from final decision or close of advance, retained as part of the application file</td>
+    <td>Audit trail for underwriting decisions; ECOA Reg B (12 CFR 1002.12)</td>
+  </tr>
+  <tr>
+    <td>Adverse action notices and supporting consumer-report data</td>
+    <td>25 months from notice date</td>
+    <td>ECOA / Regulation B 12 CFR 1002.12(b)</td>
+  </tr>
+  <tr>
+    <td>Marketing leads (no application started)</td>
+    <td>24 months from last interaction, then deleted; sooner upon opt-out request</td>
+    <td>CCPA/CPRA; CAN-SPAM</td>
+  </tr>
+  <tr>
+    <td>Email and SMS communications log</td>
+    <td>18 months</td>
+    <td>Operational support; CAN-SPAM / TCPA documentation</td>
+  </tr>
+  <tr>
+    <td>SMS opt-in / opt-out records</td>
+    <td>5 years from last consent or revocation event</td>
+    <td>TCPA defense; Reg F</td>
+  </tr>
+  <tr>
+    <td>Audit logs (authentication, admin actions, sensitive data access)</td>
+    <td>12 months minimum; 7 years for events involving Restricted data or security incidents</td>
+    <td>Internal audit; incident-investigation needs</td>
+  </tr>
+  <tr>
+    <td>Tax, accounting, and corporate records</td>
+    <td>7 years</td>
+    <td>IRS recordkeeping</td>
+  </tr>
+  <tr>
+    <td>Vendor contracts and security reviews</td>
+    <td>Term of contract plus 7 years</td>
+    <td>Contract enforcement; vendor risk audit trail</td>
+  </tr>
+  <tr>
+    <td>Backups</td>
+    <td>Rolling 30 days unless covered by a longer retention requirement above</td>
+    <td>Disaster-recovery SLA; minimization</td>
+  </tr>
+</table>
+
+<h2>5. Disposal Methods</h2>
+<ul>
+  <li><strong>Database records.</strong> Hard delete (DELETE statement) followed by verification. Where soft delete is used during a transition window, records are purged on a scheduled basis no later than 30 days after the soft delete.</li>
+  <li><strong>Encrypted fields with separate keys.</strong> Cryptographic erasure (key destruction) is used where the field-level encryption key is held independently of the underlying storage.</li>
+  <li><strong>Files and documents.</strong> Overwritten and deleted from object storage; equivalent secure-delete operations performed on any local working copies.</li>
+  <li><strong>Backups.</strong> Backups containing data subject to a deletion request expire on the rolling 30-day window; backup-restoration procedures include re-application of any pending deletions.</li>
+  <li><strong>Physical media (laptops, drives at decommission).</strong> Full-disk encryption keys are destroyed and the device is securely wiped using a manufacturer-approved erase before reuse, transfer, or disposal.</li>
+</ul>
+
+<h2>6. Customer Rights</h2>
+<p>Consumers may request access to, correction of, or deletion of their personal information by contacting privacy@pennylime.com. Requests are verified and answered within 45 days, extendable to 90 days where reasonably necessary, in accordance with the CCPA/CPRA and other applicable state privacy laws. Where a deletion request conflicts with a regulatory retention obligation (e.g., BSA, Reg B records), the regulated data is retained for the required period and the consumer is informed; non-regulated personal information is deleted.</p>
+
+<h2>7. Legal Holds</h2>
+<p>Upon notice of pending or anticipated litigation, regulatory inquiry, or government investigation, applicable data is placed under legal hold and excluded from routine disposal until the hold is released by the Head of Information Security or designated counsel. Legal holds are documented with scope, custodians, and release date.</p>
+
+<h2>8. Service Provider Data</h2>
+<p>Service providers handling customer data are contractually required to maintain retention and disposal practices substantively equivalent to this policy and to certify destruction or return of customer data upon contract termination. The Vendor Risk Register (maintained by the Head of InfoSec) tracks each provider's deletion commitment.</p>
+
+<h2>9. Audit and Verification</h2>
+<p>The Head of Information Security verifies adherence to this policy at least annually. Verification includes sampling of expired records to confirm deletion, review of the disposal log, and confirmation of vendor-side destruction certifications. Findings are tracked to remediation.</p>
+
+<h2>10. Policy Review and Acknowledgment</h2>
+<p>This policy is reviewed at least annually, or sooner upon material change to applicable laws or business operations. Personnel acknowledge this policy at hire and at each annual review.</p>
+
+<div class="footer">
+  Privacy and deletion requests: privacy@pennylime.com · Security inquiries: security@pennylime.com · Confidential. © 770 Technology Way LLC. Document version 1.0 · Supplements the PennyLime Information Security Policy.
+</div>
+
+</body>
+</html>
