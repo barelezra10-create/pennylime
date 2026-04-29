@@ -89,6 +89,7 @@ export async function GET() {
       `- [Privacy policy](${BASE}/privacy)`,
       `- [Terms of service](${BASE}/terms)`,
       `- [Disclosures](${BASE}/disclosures)`,
+      `- [Information security policy](${BASE}/security)`,
     ].join("\n")
   );
 

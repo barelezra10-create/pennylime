@@ -18,6 +18,7 @@ export async function GET() {
     { url: "/privacy", priority: "0.3" },
     { url: "/terms", priority: "0.3" },
     { url: "/disclosures", priority: "0.3" },
+    { url: "/security", priority: "0.3" },
   ];
 
   const urls = [
