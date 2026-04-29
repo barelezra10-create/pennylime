@@ -8,6 +8,9 @@ export type AuditAction =
   | "VIEW_SSN"
   | "CHANGE_SETTING"
   | "LOGIN"
+  | "LOGIN_SUCCESS"
+  | "LOGIN_FAILED"
+  | "LOGIN_LOCKED_OUT"
   | "WAIVE_FEE"
   | "RETRY_PAYMENT"
   | "ADD_LATE_FEE"
@@ -18,7 +21,8 @@ export type AuditAction =
 export type AuditEntityType =
   | "APPLICATION"
   | "PAYMENT"
-  | "LOAN_RULE";
+  | "LOAN_RULE"
+  | "ADMIN_USER";
 
 export async function logAudit(params: {
   action: AuditAction;

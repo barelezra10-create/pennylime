@@ -1,7 +1,24 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 import bcrypt from "bcryptjs";
+
+const ADMIN_SESSION_HOURS = 12;
+const FAILED_LOGIN_WINDOW_MIN = 15;
+const MAX_FAILED_LOGINS = 5;
+
+async function isLockedOut(email: string): Promise<boolean> {
+  const since = new Date(Date.now() - FAILED_LOGIN_WINDOW_MIN * 60 * 1000);
+  const recentFailures = await prisma.auditLog.count({
+    where: {
+      action: "LOGIN_FAILED",
+      performedBy: email.toLowerCase(),
+      createdAt: { gte: since },
+    },
+  });
+  return recentFailures >= MAX_FAILED_LOGINS;
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -12,24 +29,59 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const email = credentials?.email?.trim().toLowerCase();
+        if (!email || !credentials?.password) return null;
 
-        const user = await prisma.adminUser.findUnique({
-          where: { email: credentials.email },
-        });
+        if (await isLockedOut(email)) {
+          await logAudit({
+            action: "LOGIN_LOCKED_OUT",
+            entityType: "ADMIN_USER",
+            entityId: email,
+            performedBy: email,
+            details: { reason: `${MAX_FAILED_LOGINS}+ failed logins in ${FAILED_LOGIN_WINDOW_MIN}min` },
+          }).catch(() => {});
+          return null;
+        }
 
-        if (!user) return null;
+        const user = await prisma.adminUser.findUnique({ where: { email } });
+        if (!user) {
+          await logAudit({
+            action: "LOGIN_FAILED",
+            entityType: "ADMIN_USER",
+            entityId: email,
+            performedBy: email,
+            details: { reason: "no such user" },
+          }).catch(() => {});
+          return null;
+        }
 
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
-        if (!isValid) return null;
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!isValid) {
+          await logAudit({
+            action: "LOGIN_FAILED",
+            entityType: "ADMIN_USER",
+            entityId: user.id,
+            performedBy: email,
+            details: { reason: "wrong password" },
+          }).catch(() => {});
+          return null;
+        }
+
+        await logAudit({
+          action: "LOGIN_SUCCESS",
+          entityType: "ADMIN_USER",
+          entityId: user.id,
+          performedBy: email,
+        }).catch(() => {});
 
         return { id: user.id, email: user.email, name: user.name };
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: ADMIN_SESSION_HOURS * 60 * 60,
+    updateAge: 60 * 60,
+  },
   pages: { signIn: "/admin/login" },
 };
