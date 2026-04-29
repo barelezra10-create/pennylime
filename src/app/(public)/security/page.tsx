@@ -13,7 +13,17 @@ export default function SecurityPage() {
         Owner: Head of Information Security · Bar Elezra · security@pennylime.com
       </p>
       <p className="text-[13px] text-[#71717a] mb-1">Effective date: April 1, 2026 · Last reviewed: April 29, 2026</p>
-      <p className="text-[13px] text-[#71717a] mb-10">Review cadence: Annual, or upon material change to the business or technology stack.</p>
+      <p className="text-[13px] text-[#71717a] mb-4">Review cadence: Annual, or upon material change to the business or technology stack.</p>
+      <a
+        href="/information-security-policy.pdf"
+        download
+        className="inline-flex items-center gap-2 bg-[#15803d] hover:bg-[#166534] text-white text-[13px] font-semibold rounded-lg px-4 py-2 mb-10 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+        </svg>
+        Download PDF (signed)
+      </a>
 
       <p className="text-[15px] text-[#52525b] leading-relaxed mb-10">
         PennyLime, operated by 770 Technology Way LLC, a Florida limited liability company, maintains this Information Security Policy to govern the confidentiality, integrity, and availability of information assets entrusted to us by merchant applicants, customers, employees, partners, and regulators. This policy is binding on all personnel, contractors, and service providers acting on behalf of PennyLime.
