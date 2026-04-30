@@ -109,7 +109,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
     // Step 0: Amount
     <div key="s0" className="flex flex-col gap-8">
       <div>
-        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Your Loan Preview</p>
+        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Your Advance Preview</p>
         <motion.div
           key={amount}
           initial={{ scale: 1.05, opacity: 0.7 }}
@@ -289,7 +289,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
     // Step 6: Review
     <div key="s6" className="flex flex-col gap-6">
       <div>
-        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Loan Summary</p>
+        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Advance Summary</p>
         <div className="text-[48px] font-extrabold tracking-[-0.04em] text-white leading-none">
           ${amount.toLocaleString()}
         </div>
@@ -361,7 +361,7 @@ function StepAmount({
         How much do you need?
       </h2>
       <p className="mt-2 text-[15px] text-[#71717a]">
-        Choose your loan amount. Up to $10,000 for 1099 workers.
+        Choose your advance amount. Up to $10,000 for 1099 workers and small businesses.
       </p>
 
       {/* Big amount display */}
@@ -1461,7 +1461,7 @@ function StepReview({
         <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d]">Loan Amount</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d]">Advance Amount</p>
               <p className="mt-1 text-[32px] font-extrabold tracking-[-0.03em] text-[#15803d]">
                 ${amount.toLocaleString()}
               </p>

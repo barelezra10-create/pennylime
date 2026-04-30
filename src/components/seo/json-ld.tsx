@@ -52,12 +52,12 @@ export function faqSchema(entries: { question: string; answer: string }[]) {
 export function loanProductSchema() {
   return {
     "@context": "https://schema.org",
-    "@type": "LoanOrCredit",
-    name: "PennyLime Gig Worker Loan",
+    "@type": "FinancialProduct",
+    name: "PennyLime Merchant Cash Advance",
+    description:
+      "Merchant cash advance for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of future earnings. Not a loan.",
     amount: { "@type": "MonetaryAmount", currency: "USD", minValue: 100, maxValue: 10000 },
-    annualPercentageRate: { "@type": "QuantitativeValue", minValue: 30, maxValue: 60 },
-    loanTerm: { "@type": "QuantitativeValue", minValue: 3, maxValue: 18, unitCode: "MON" },
-    provider: { "@type": "Organization", name: "PennyLime" },
+    provider: { "@type": "Organization", name: "PennyLime", url: "https://pennylime.com" },
   };
 }
 

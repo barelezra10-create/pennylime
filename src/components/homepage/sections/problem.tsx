@@ -76,7 +76,7 @@ export function Problem() {
               <div className="space-y-4">
                 <p className="text-[#71717a] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
-                  <span><strong className="text-black">73% of gig workers</strong> say traditional loans are completely inaccessible.</span>
+                  <span><strong className="text-black">73% of gig workers</strong> say traditional financing is completely inaccessible.</span>
                 </p>
                 <p className="text-[#71717a] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
@@ -168,7 +168,7 @@ function ScreenForm() {
       </h3>
       <div className="space-y-3">
         <div className="border border-[#e4e4e7] rounded-xl p-3">
-          <p className="text-[10px] text-[#a1a1aa] mb-1">Loan amount</p>
+          <p className="text-[10px] text-[#a1a1aa] mb-1">Advance amount</p>
           <p className="text-[16px] font-bold text-black">$5,000</p>
         </div>
         <div className="border border-[#e4e4e7] rounded-xl p-3">

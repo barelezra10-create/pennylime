@@ -51,7 +51,7 @@ const PAIN_POINTS = [
   },
   {
     title: "Slow season cash flow",
-    desc: "January slump, bad weather week, platform algorithm change. Revenue dips but business costs stay fixed. A short-term loan keeps your operation running smooth.",
+    desc: "January slump, bad weather week, platform algorithm change. Revenue dips but business costs stay fixed. A short-term cash advance keeps your operation running smooth.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
         <path d="M4 20 L10 14 L14 18 L24 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />

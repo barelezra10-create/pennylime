@@ -80,8 +80,8 @@ const FEATURES = [
         <path d="M12 34 L7 29 L12 24" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
-    title: "Repeat borrowing",
-    desc: "Paid off your first loan? Reapply instantly with better terms. We reward reliability.",
+    title: "Repeat funding",
+    desc: "Completed your first advance? Reapply instantly with better terms. We reward reliability.",
   },
 ];
 

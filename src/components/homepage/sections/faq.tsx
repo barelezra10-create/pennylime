@@ -18,7 +18,7 @@ const FAQ_ENTRIES = [
   },
   {
     question: "What are the fees?",
-    answer: "PennyLime charges a simple origination fee, no prepayment penalties, no hidden fees. Your total cost is shown clearly before you accept any loan. APR ranges from 30-60% depending on your loan amount, term, and earnings history.",
+    answer: "PennyLime charges a simple factor rate plus a one-time origination fee, no prepayment penalties, no hidden fees. Your total cost is shown clearly before you accept any advance. Factor rates typically range from 1.20 to 1.49 depending on advance amount, term, and earnings history. We are a merchant cash advance product, not a loan, so there is no APR.",
   },
   {
     question: "How do I apply?",

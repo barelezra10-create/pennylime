@@ -17,10 +17,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PennyLime, Fast Loans for Gig Workers",
+    default: "PennyLime, Fast Cash Advances for Gig Workers",
     template: "%s | PennyLime",
   },
-  description: "Fast loans for gig workers. $100 to $10,000. Apply in 5 minutes, get funded in hours. No credit checks.",
+  description: "Merchant cash advances for gig workers and 1099 contractors. $100 to $10,000. Apply in 5 minutes, funding in as fast as 48 hours. No credit checks.",
   metadataBase: new URL("https://pennylime.com"),
   openGraph: {
     siteName: "PennyLime",
