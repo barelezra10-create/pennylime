@@ -335,6 +335,44 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     details: { fundedAmount, paymentsCreated: schedule.length },
   });
 
+  // Disburse via Increase ACH (push to merchant's verified bank account)
+  if (process.env.INCREASE_API_KEY) {
+    try {
+      const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
+      const { createAchCredit } = await import("@/lib/increase");
+      const ext = await ensureIncreaseExternalAccount(applicationId);
+      if (!ext.ok) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: { increaseDisburseError: ext.error },
+        });
+      } else {
+        const transfer = await createAchCredit({
+          externalAccountId: ext.externalAccountId,
+          amountCents: Math.round(fundedAmount * 100),
+          statementDescriptor: "PENNYLIME ADV",
+          individualName: `${application.firstName} ${application.lastName}`.slice(0, 22),
+        });
+        if (transfer.ok) {
+          await prisma.application.update({
+            where: { id: applicationId },
+            data: { increaseTransferId: transfer.data.id, increaseTransferStatus: transfer.data.status },
+          });
+        } else {
+          await prisma.application.update({
+            where: { id: applicationId },
+            data: { increaseDisburseError: transfer.error },
+          });
+        }
+      }
+    } catch (err) {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { increaseDisburseError: err instanceof Error ? err.message : "increase error" },
+      }).catch(() => {});
+    }
+  }
+
   // Server-side conversion fire for funded loan
   const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
   if (linkedContact) {

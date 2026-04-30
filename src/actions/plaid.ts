@@ -75,3 +75,49 @@ export async function getPlaidIncomeData(applicationId: string) {
     hasPlaidConnection: !!application?.plaidAccessToken,
   };
 }
+
+/**
+ * Fetch the merchant's account & routing numbers from Plaid Auth and create
+ * an Increase ExternalAccount we can later use to push/pull ACH.
+ * Returns the Increase external_account_id (cached on the Application).
+ */
+export async function ensureIncreaseExternalAccount(applicationId: string) {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { contact: true },
+  });
+  if (!application?.plaidAccessToken) return { ok: false, error: "no plaid connection" } as const;
+
+  const { createExternalAccount } = await import("@/lib/increase");
+
+  let accessToken: string;
+  try {
+    accessToken = decrypt(application.plaidAccessToken);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "decrypt failed" } as const;
+  }
+
+  let authResp;
+  try {
+    authResp = await plaidClient.authGet({ access_token: accessToken });
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "plaid auth failed" } as const;
+  }
+
+  const targetAccount = application.plaidAccountId
+    ? authResp.data.numbers.ach.find((n) => n.account_id === application.plaidAccountId)
+    : authResp.data.numbers.ach[0];
+
+  if (!targetAccount) return { ok: false, error: "no ACH account on Plaid item" } as const;
+
+  const create = await createExternalAccount({
+    routingNumber: targetAccount.routing,
+    accountNumber: targetAccount.account,
+    description: `${application.firstName} ${application.lastName} (${application.applicationCode})`,
+    accountHolder: "individual",
+    funding: "checking",
+  });
+
+  if (!create.ok) return { ok: false, error: create.error } as const;
+  return { ok: true, externalAccountId: create.data.id } as const;
+}

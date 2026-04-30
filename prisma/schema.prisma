@@ -35,6 +35,9 @@ model Application {
   fundedAmount    Decimal?
   rejectionReason String?
   status          String    @default("PENDING")
+  increaseTransferId       String?
+  increaseTransferStatus   String?
+  increaseDisburseError    String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   documents       Document[]
@@ -92,6 +95,9 @@ model Payment {
   status          String    @default("PENDING")
   paymentNumber   Int
   achTransferId   String?
+  increaseTransferId     String?
+  increaseTransferStatus String?
+  increaseLastError      String?
   retryCount      Int       @default(0)
   lastRetryAt     DateTime?
   createdAt       DateTime  @default(now())
