@@ -10,7 +10,7 @@ const FORCE = process.env.SEED_FORCE === "true";
 async function main() {
   const existing = await prisma.landingPage.findUnique({ where: { slug: SLUG } });
   // Re-seed if content has dashes (v2 cleanup)
-  const needsUpdate = existing?.heroSubtext?.includes("\u2013") || existing?.heroSubtext?.includes("\u2014");
+  const needsUpdate = existing?.heroSubtext?.includes("–") || existing?.heroSubtext?.includes("—");
   if (existing && !FORCE && !needsUpdate) {
     console.log(`Landing page "${SLUG}" already exists (v2). Skipping.`);
     return;
@@ -24,9 +24,9 @@ async function main() {
   await prisma.landingPage.create({
     data: {
       slug: SLUG,
-      metaTitle: "Loans for Uber & Lyft Drivers | $100 - $10,000 | PennyLime",
+      metaTitle: "Cash Advances for Uber & Lyft Drivers | $100 - $10,000 | PennyLime",
       metaDescription:
-        "Fast loans for rideshare drivers. $100 to $10,000. No credit check. Same-day decisions. Built for Uber and Lyft drivers. Apply in 5 minutes.",
+        "Fast cash advances for rideshare drivers. $100 to $10,000. No credit check. Same-day decisions. Built for Uber and Lyft drivers. Apply in 5 minutes.",
       phoneNumber: "1-800-555-1234",
       heroBadge: "Hey Uber & Lyft driver",
       heroHeadlineLine1: "Uber driver?",
@@ -54,7 +54,7 @@ async function main() {
         {
           num: "01",
           title: "Apply in 5 minutes",
-          desc: "Tell us your loan amount and basic info. No lengthy forms, no document uploads required upfront.",
+          desc: "Tell us your advance amount and basic info. No lengthy forms, no document uploads required upfront.",
           img: "/illustrations/step-1-apply.png",
         },
         {
@@ -66,7 +66,7 @@ async function main() {
         {
           num: "03",
           title: "Cash in your account",
-          desc: "Approved loans fund in as little as 24-48 hours. Back on the road, no interruptions.",
+          desc: "Approved advances fund in as little as 24-48 hours. Back on the road, no interruptions.",
           img: "/illustrations/step-3-funded.png",
         },
       ]),
@@ -81,7 +81,7 @@ async function main() {
         },
         {
           quote:
-            "Every other lender wanted W-2s I don't have. PennyLime just looked at my Lyft earnings. Applied Monday, funded Wednesday. Simple.",
+            "Every other funder wanted W-2s I don't have. PennyLime just looked at my Lyft earnings. Applied Monday, funded Wednesday. Simple.",
           name: "Sofia R.",
           role: "Lyft Driver · Phoenix, AZ",
           amount: "$3,500",
@@ -112,20 +112,20 @@ async function main() {
             "Most rideshare drivers get a decision within hours. Once approved, funds hit your bank account in as little as 24-48 hours.",
         },
         {
-          question: "How much can I borrow as a rideshare driver?",
+          question: "How much can I get as a rideshare driver?",
           answer:
-            "Loan amounts range from $100 to $10,000. The exact amount depends on your weekly earnings, trip consistency, and how long you've been driving.",
+            "Advance amounts range from $100 to $10,000. The exact amount depends on your weekly earnings, trip consistency, and how long you've been driving.",
         },
         {
           question: "Can I qualify if I drive for both Uber and Lyft?",
           answer:
-            "Yes. We actually prefer multi-platform drivers because it shows consistent earnings. Connect both accounts when you apply for the highest loan amount.",
+            "Yes. We actually prefer multi-platform drivers because it shows consistent earnings. Connect both accounts when you apply for the highest advance amount.",
         },
       ]),
       finalCtaHeadline: "Ready to hit the road\nfully funded?",
       finalCtaSubtext:
         "Join 1,200+ Uber and Lyft drivers who got the cash they needed. No credit check. Decisions in hours.",
-      finalCtaButtonText: "Apply for Your Loan",
+      finalCtaButtonText: "Apply for Funding",
       utmSource: "lp",
       utmCampaign: "uber-lyft",
       formPlatforms: JSON.stringify(["Uber", "Lyft", "Both"]),
