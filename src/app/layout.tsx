@@ -30,8 +30,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
   },
   icons: {
-    icon: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/lime-mark-256.png", sizes: "256x256", type: "image/png" },
+    ],
+    apple: "/lime-mark-512.png",
   },
 };
 
