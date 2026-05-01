@@ -8,27 +8,27 @@ if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
 
 const STATS = [
   { value: 2000000, prefix: "$", suffix: "M+", display: "$2M+", label: "Total Funded" },
-  { value: 1200, prefix: "", suffix: "+", display: "1,200+", label: "Workers Funded" },
-  { value: 4.8, prefix: "", suffix: "★", display: "4.8★", label: "Average Rating" },
+  { value: 1200, prefix: "", suffix: "+", display: "1,200+", label: "Drivers, Sellers, Operators" },
+  { value: 4.8, prefix: "", suffix: "★", display: "4.8★", label: "Customer Rating" },
 ];
 
 const TESTIMONIALS = [
   {
-    quote: "I got denied at three banks because I drive for Uber. PennyLime approved me in 2 hours. Literally saved my car payment.",
+    quote: "Three banks said no because I drive for Uber. PennyLime read my deposits and funded me in two hours. Saved the week.",
     name: "Marcus T.",
-    role: "Uber & DoorDash Driver",
+    role: "Uber and DoorDash driver",
     location: "Atlanta, GA",
   },
   {
-    quote: "As a freelancer, income verification is always a headache. PennyLime just connected to my Upwork earnings and that was it.",
+    quote: "As a freelancer, income verification is always a fight. PennyLime pulled my Upwork deposits, sized the advance, done.",
     name: "Priya S.",
-    role: "Upwork Freelancer",
+    role: "Upwork operator",
     location: "Austin, TX",
   },
   {
-    quote: "Applied Sunday night, had the money Monday. The rate was fair and the process was actually simple.",
+    quote: "Applied Sunday night, funded Monday. Factor rate and total cost were on one screen. Repayment moves with my deposits.",
     name: "Jordan K.",
-    role: "Amazon Flex Driver",
+    role: "Amazon Flex driver",
     location: "Chicago, IL",
   },
 ];
@@ -131,7 +131,7 @@ export function SocialProof() {
           {TESTIMONIALS.map((t, i) => (
             <div
               key={i}
-              className="testimonial-card bg-[#faf8f0] rounded-2xl p-6 border border-[#e4e4e7]"
+              className="testimonial-card bg-[#fafaf7] rounded-2xl p-6 border border-[#e4e4e7]"
             >
               {/* Stars */}
               <div className="flex gap-0.5 mb-4">

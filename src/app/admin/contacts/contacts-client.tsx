@@ -126,7 +126,7 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
             placeholder="Search by name, email, phone…"
-            className="w-full pl-9 pr-4 py-2 text-[13px] border border-[#e4e4e7] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#3052FF]/30 focus:border-[#3052FF] placeholder:text-[#a1a1aa]"
+            className="w-full pl-9 pr-4 py-2 text-[13px] border border-[#e4e4e7] rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-[#15803d]/30 focus:border-[#15803d] placeholder:text-[#a1a1aa]"
           />
         </div>
 
@@ -134,7 +134,7 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
           <button
             onClick={() => handleStageFilter("ALL")}
             className={`px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors ${
-              stageFilter === "ALL" ? "bg-[#3052FF] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
+              stageFilter === "ALL" ? "bg-[#15803d] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
             }`}
           >
             All ({total})
@@ -146,7 +146,7 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
                 key={stage}
                 onClick={() => handleStageFilter(stage)}
                 className={`px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors ${
-                  stageFilter === stage ? "bg-[#3052FF] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
+                  stageFilter === stage ? "bg-[#15803d] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
                 }`}
               >
                 {stage.replace("_", " ")} ({count})

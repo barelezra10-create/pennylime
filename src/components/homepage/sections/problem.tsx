@@ -60,7 +60,7 @@ export function Problem() {
 
   return (
     <section ref={sectionRef} className="relative" style={{ height: "400vh" }}>
-      <div ref={pinRef} className="h-screen bg-[#faf8f0] flex items-center overflow-hidden">
+      <div ref={pinRef} className="h-screen bg-[#fafaf7] flex items-center overflow-hidden">
         <div className="max-w-6xl mx-auto w-full px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
 
           <div className="relative min-h-[300px]">
@@ -71,37 +71,37 @@ export function Problem() {
               <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(36px, 5vw, 60px)" }}>
                 Banks don&apos;t get
                 <br />
-                gig work.
+                platform work.
               </h2>
               <div className="space-y-4">
-                <p className="text-[#71717a] text-[16px] flex items-start gap-3">
+                <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
-                  <span><strong className="text-black">73% of gig workers</strong> say traditional financing is completely inaccessible.</span>
+                  <span><strong className="text-black">Underwriting wants a W-2.</strong> Drivers, sellers, and operators don&apos;t have one.</span>
                 </p>
-                <p className="text-[#71717a] text-[16px] flex items-start gap-3">
+                <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
-                  <span><strong className="text-black">44% of SMBs</strong> don&apos;t even apply because they assume denial.</span>
+                  <span><strong className="text-black">44% of small operators</strong> never apply because they assume the answer is no.</span>
                 </p>
               </div>
             </div>
 
             <div ref={weDoRef} className="absolute inset-0">
-              <div className="inline-flex items-center gap-2 bg-[#f0fdf4] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
+              <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 What We Do
               </div>
               <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(48px, 6vw, 80px)" }}>
                 We Do
               </h2>
               <div className="space-y-4">
-                <p className="text-[#71717a] text-[16px] flex items-start gap-3">
+                <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#15803d] text-[18px] mt-0.5">&#10003;</span>
-                  <span><strong className="text-black">We verify your gig earnings</strong>, not your credit score.</span>
+                  <span><strong className="text-black">We read 90 days of verified deposits</strong>, not your credit score.</span>
                 </p>
-                <p className="text-[#71717a] text-[16px] flex items-start gap-3">
+                <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#15803d] text-[18px] mt-0.5">&#10003;</span>
-                  <span><strong className="text-black">$100 to $10,000</strong> for vehicle repairs, equipment, and operating costs.</span>
+                  <span><strong className="text-black">$500 to $10,000</strong> for vehicle repairs, FBA inventory, gear, and gap weeks.</span>
                 </p>
-                <p className="text-[#71717a] text-[16px] flex items-start gap-3">
+                <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#15803d] text-[18px] mt-0.5">&#10003;</span>
                   <span><strong className="text-black">Funded in 48 hours.</strong> Apply in 5 minutes, decision same day.</span>
                 </p>
@@ -176,8 +176,8 @@ function ScreenForm() {
           <p className="text-[14px] text-black">Vehicle repair</p>
         </div>
         <div className="border border-[#e4e4e7] rounded-xl p-3">
-          <p className="text-[10px] text-[#a1a1aa] mb-1">Term</p>
-          <p className="text-[14px] text-black">12 months</p>
+          <p className="text-[10px] text-[#a1a1aa] mb-1">Remit from</p>
+          <p className="text-[14px] text-black">Daily deposits</p>
         </div>
       </div>
       <div className="mt-auto mb-6">
@@ -207,14 +207,14 @@ function ScreenVerifying() {
     <div className="h-full flex flex-col">
       <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#a1a1aa] mb-1">Step 2 of 3</p>
       <h3 className="text-[18px] font-extrabold tracking-[-0.02em] text-black leading-tight mb-4">
-        Verifying gig earnings
+        Verifying deposits
       </h3>
       <div className="space-y-2.5">
         {[
           { name: "Uber", amount: "$2,840", status: true },
           { name: "DoorDash", amount: "$1,920", status: true },
           { name: "Instacart", amount: "$1,150", status: true },
-          { name: "Lyft", amount: "—", status: false },
+          { name: "Lyft", amount: "...", status: false },
         ].map((row) => (
           <div key={row.name} className="flex items-center justify-between border border-[#e4e4e7] rounded-xl px-3 py-2.5">
             <div className="flex items-center gap-2">
@@ -227,8 +227,8 @@ function ScreenVerifying() {
           </div>
         ))}
       </div>
-      <div className="mt-4 bg-[#f0fdf4] rounded-xl p-3">
-        <p className="text-[10px] text-[#15803d] font-bold mb-0.5">Verified income (30d)</p>
+      <div className="mt-4 bg-[#dcfce7] rounded-xl p-3">
+        <p className="text-[10px] text-[#15803d] font-bold mb-0.5">Verified deposits (30d)</p>
         <p className="text-[18px] font-extrabold text-black tabular-nums">$5,910</p>
       </div>
     </div>
@@ -239,7 +239,7 @@ function ScreenReviewing() {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center px-2">
       <div className="relative w-20 h-20 mb-5">
-        <div className="absolute inset-0 rounded-full bg-[#fef9c3]" />
+        <div className="absolute inset-0 rounded-full bg-[#fefce8]" />
         <div className="absolute inset-0 flex items-center justify-center text-[28px]">⚡</div>
       </div>
       <p className="text-[15px] font-bold text-black mb-1">Reviewing your application</p>
@@ -249,7 +249,7 @@ function ScreenReviewing() {
           <span className="text-[#15803d]">✓</span> Identity verified
         </div>
         <div className="flex items-center gap-2 text-[12px] text-black">
-          <span className="text-[#15803d]">✓</span> Income confirmed
+          <span className="text-[#15803d]">✓</span> Deposits confirmed
         </div>
         <div className="flex items-center gap-2 text-[12px] text-[#71717a]">
           <span className="text-[#a1a1aa]">○</span> Final review in progress
@@ -263,20 +263,20 @@ function ScreenApproved() {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center">
       <div className="relative w-20 h-20 mb-4">
-        <div className="absolute inset-0 rounded-full bg-[#f0fdf4]" />
+        <div className="absolute inset-0 rounded-full bg-[#dcfce7]" />
         <div className="absolute inset-0 flex items-center justify-center text-[#15803d] text-[36px] font-bold">✓</div>
       </div>
       <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#15803d] mb-1">Approved</p>
       <p className="text-[28px] font-extrabold tracking-[-0.02em] text-black tabular-nums mb-1">$5,000</p>
-      <p className="text-[12px] text-[#71717a] mb-5">Funds in your account in 48 hours</p>
+      <p className="text-[12px] text-[#71717a] mb-5">Funded to your bank in 48 hours</p>
       <div className="w-full space-y-2.5">
         <div className="flex items-center justify-between border border-[#e4e4e7] rounded-xl px-3 py-2.5">
-          <span className="text-[12px] text-[#71717a]">Monthly payment</span>
-          <span className="text-[13px] font-bold text-black tabular-nums">$462</span>
+          <span className="text-[12px] text-[#71717a]">Factor rate</span>
+          <span className="text-[13px] font-bold text-black tabular-nums">1.30</span>
         </div>
         <div className="flex items-center justify-between border border-[#e4e4e7] rounded-xl px-3 py-2.5">
-          <span className="text-[12px] text-[#71717a]">APR</span>
-          <span className="text-[13px] font-bold text-black tabular-nums">18.9%</span>
+          <span className="text-[12px] text-[#71717a]">Daily remittance</span>
+          <span className="text-[13px] font-bold text-black tabular-nums">7%</span>
         </div>
       </div>
     </div>

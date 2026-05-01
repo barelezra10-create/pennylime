@@ -73,10 +73,10 @@ export function ContentCta({ text, subtext, variant = "default" }: { text?: stri
 
   // default, end-of-article CTA
   return (
-    <section className="mt-14 bg-gradient-to-br from-[#15803d] to-[#14532d] rounded-2xl p-8 md:p-12 text-center text-white relative overflow-hidden">
+    <section className="mt-14 bg-gradient-to-br from-[#15803d] to-[#166534] rounded-2xl p-8 md:p-12 text-center text-white relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-[-20%] right-[-10%] w-[300px] h-[300px] rounded-full bg-white/5 blur-3xl" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[200px] h-[200px] rounded-full bg-[#4ade80]/10 blur-3xl" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[200px] h-[200px] rounded-full bg-[#a3e635]/10 blur-3xl" />
       </div>
       <div className="relative z-10">
         <LogoMark size={36} className="mx-auto mb-4" />

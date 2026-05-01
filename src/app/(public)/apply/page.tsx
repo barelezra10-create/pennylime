@@ -20,7 +20,7 @@ import { PhoneVerification } from "@/components/apply/phone-verification";
 /* ------------------------------------------------------------------ */
 /*  CONSTANTS                                                           */
 /* ------------------------------------------------------------------ */
-const STEPS = ["Amount", "Your Info", "Platforms", "Identity", "Bank Link", "Documents", "Review"];
+const STEPS = ["Amount", "Your info", "Platforms", "Identity", "Bank link", "Documents", "Review"];
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
 
@@ -60,16 +60,16 @@ const formSchema = z.object({
 /* ------------------------------------------------------------------ */
 function Navbar() {
   return (
-    <nav className="fixed top-0 z-50 w-full bg-[#f8faf8]/90 backdrop-blur-xl border-b border-[#e5e7eb]">
+    <nav className="fixed top-0 z-50 w-full bg-[#fafaf7]/90 backdrop-blur-xl border-b border-[#e4e4e7]">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-10">
         <Link href="/">
-          <span className="font-extrabold text-lg tracking-[-0.03em]">Penny<span className="text-[#15803d]">Lime</span></span>
+          <span className="font-extrabold text-lg tracking-[-0.03em]">Penny<span className="text-[#15803d]">Lime<span className="text-[#15803d]">.</span></span></span>
         </Link>
         <Link
           href="/status"
-          className="text-[13px] text-[#71717a] transition-colors hover:text-[#1a1a1a]"
+          className="text-[13px] text-[#71717a] transition-colors hover:text-[#0a0a0a]"
         >
-          Check Status
+          Check status
         </Link>
       </div>
     </nav>
@@ -109,7 +109,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
     // Step 0: Amount
     <div key="s0" className="flex flex-col gap-8">
       <div>
-        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Your Advance Preview</p>
+        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Your advance preview</p>
         <motion.div
           key={amount}
           initial={{ scale: 1.05, opacity: 0.7 }}
@@ -125,10 +125,10 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
       </div>
       <div className="flex flex-col gap-3">
         {[
-          { icon: "✓", label: "No credit check required" },
-          { icon: "⚡", label: "Funded in as little as 48 hours" },
-          { icon: "📋", label: "1099 workers qualify" },
-          { icon: "🔒", label: "256-bit encrypted application" },
+          { icon: "✓", label: "No credit pull, ever" },
+          { icon: "⚡", label: "Funded in 48 hours" },
+          { icon: "📋", label: "Drivers, sellers, and operators welcome" },
+          { icon: "🔒", label: "Bank-grade encryption end to end" },
         ].map((b) => (
           <div key={b.label} className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-[14px] flex-shrink-0">
@@ -172,7 +172,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
       </div>
       <div className="bg-white/10 rounded-xl px-4 py-3">
         <p className="text-[12px] text-white/60 mb-1">Progress</p>
-        <p className="text-[16px] font-bold text-white">Step 2 of 7 — You&apos;re doing great!</p>
+        <p className="text-[16px] font-bold text-white">Step 2 of 7. You&apos;re doing great.</p>
       </div>
     </div>,
 
@@ -182,19 +182,19 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 mb-4">
           <span className="text-2xl">🚀</span>
         </div>
-        <h3 className="text-[22px] font-extrabold text-white tracking-tight">We verify earnings, not credit</h3>
+        <h3 className="text-[22px] font-extrabold text-white tracking-tight">Verified deposits, not credit</h3>
         <p className="mt-2 text-white/70 text-[14px] leading-relaxed">
-          Your gig income is the key. We look at your earnings history, not your credit score.
+          Your platform deposits are the proof. We size your advance to 90 days of real earnings, not a FICO score.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {["Uber", "Lyft", "DoorDash", "Instacart", "Amazon Flex", "Fiverr", "Upwork", "Shipt"].map((p) => (
+        {["Uber", "Lyft", "DoorDash", "Instacart", "Amazon Flex", "Amazon FBA", "Shopify", "Fiverr"].map((p) => (
           <div key={p} className="bg-white/10 rounded-lg px-3 py-2 text-[13px] text-white/80 font-medium">
             {p}
           </div>
         ))}
       </div>
-      <p className="text-white/50 text-[12px]">+ 6 more platforms supported</p>
+      <p className="text-white/50 text-[12px]">+ Etsy, Upwork, TaskRabbit, Rover, and more</p>
     </div>,
 
     // Step 3: Identity
@@ -262,9 +262,9 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 mb-4">
           <span className="text-2xl">🎉</span>
         </div>
-        <h3 className="text-[22px] font-extrabold text-white tracking-tight">Almost there!</h3>
+        <h3 className="text-[22px] font-extrabold text-white tracking-tight">Almost there.</h3>
         <p className="mt-2 text-white/70 text-[14px] leading-relaxed">
-          Just your pay stubs left. After this we&apos;ll review your application and get back to you fast.
+          Last step is your earnings statements. Then we underwrite from your verified deposits and get back to you fast.
         </p>
       </div>
       <div className="bg-white/10 rounded-xl p-4">
@@ -273,7 +273,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
           {[
             { step: "1", label: "Review (1-2 hrs)" },
             { step: "2", label: "Approval decision" },
-            { step: "3", label: "Funds in 48 hrs" },
+            { step: "3", label: "Funded in 48 hrs" },
           ].map((s) => (
             <div key={s.step} className="flex items-center gap-3">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/30 text-[12px] font-bold text-white flex-shrink-0">
@@ -289,7 +289,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
     // Step 6: Review
     <div key="s6" className="flex flex-col gap-6">
       <div>
-        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Advance Summary</p>
+        <p className="text-white/60 text-[11px] font-semibold uppercase tracking-[0.1em] mb-2">Advance summary</p>
         <div className="text-[48px] font-extrabold tracking-[-0.04em] text-white leading-none">
           ${amount.toLocaleString()}
         </div>
@@ -300,16 +300,16 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
           <span className="text-[14px] font-bold text-white">{loanTermMonths} {loanTermMonths === 1 ? "week" : "weeks"}</span>
         </div>
         <div className="bg-white/10 rounded-xl px-4 py-3 flex justify-between items-center">
-          <span className="text-[13px] text-white/70">Weekly payment</span>
+          <span className="text-[13px] text-white/70">Weekly remittance</span>
           <span className="text-[14px] font-bold text-white">${weeklyEstimate}/wk</span>
         </div>
         <div className="bg-white/10 rounded-xl px-4 py-3 flex justify-between items-center">
-          <span className="text-[13px] text-white/70">Total repayment</span>
+          <span className="text-[13px] text-white/70">Total to repay</span>
           <span className="text-[14px] font-bold text-white">${(Number(weeklyEstimate) * loanTermMonths).toLocaleString()}</span>
         </div>
       </div>
       <p className="text-white/50 text-[12px] leading-relaxed">
-        Estimated rates. Final terms sent upon approval. No prepayment penalty.
+        Estimated terms. Final factor rate and total cost shown above the fold of your offer. No prepayment penalty.
       </p>
     </div>,
   ];
@@ -357,11 +357,11 @@ function StepAmount({
       transition={{ duration: 0.4 }}
       className="flex flex-col w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
         How much do you need?
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
-        Choose your advance amount. Up to $10,000 for 1099 workers and small businesses.
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Pick your advance amount. $500 to $10,000 for drivers, sellers, and operators.
       </p>
 
       {/* Big amount display */}
@@ -412,7 +412,7 @@ function StepAmount({
       {/* Loan term selector */}
       <div className="mt-8 w-full">
         <p className="mb-3 text-[14px] font-semibold text-black">
-          Repayment Term
+          Repayment term
         </p>
         <div className="grid grid-cols-4 gap-2">
           {LOAN_TERMS.map((term) => (
@@ -423,31 +423,31 @@ function StepAmount({
               className={`rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-200 ${
                 loanTermMonths === term
                   ? "bg-[#15803d] text-white"
-                  : "bg-[#f0f5f0] text-[#52525b] hover:bg-[#dcfce7]"
+                  : "bg-[#f0fdf4] text-[#52525b] hover:bg-[#dcfce7]"
               }`}
             >
               {term} {term === 1 ? "wk" : "wks"}
             </button>
           ))}
         </div>
-        <p className="mt-2 text-[11px] text-[#a1a1aa]">Maximum term: 16 weeks (≈4 months)</p>
+        <p className="mt-2 text-[11px] text-[#71717a]">Maximum term: 16 weeks (about 4 months)</p>
       </div>
 
       {/* Weekly estimate */}
-      <div className="mt-6 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
+      <div className="mt-6 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl p-4">
         <div className="flex items-center justify-between">
-          <span className="text-[13px] text-[#15803d] font-medium">Estimated weekly payment</span>
+          <span className="text-[13px] text-[#15803d] font-medium">Estimated weekly remittance</span>
           <span className="text-[18px] font-extrabold text-[#15803d]">${weeklyEstimate}/wk</span>
         </div>
-        <p className="mt-1 text-[11px] text-[#16a34a]/70">
-          No credit check required. Approval based on gig earnings.
+        <p className="mt-1 text-[11px] text-[#15803d]/70">
+          No credit pull. Sized to verified deposits.
         </p>
       </div>
 
       <motion.button
         type="button"
         onClick={onNext}
-        className="mt-8 w-full rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+        className="mt-8 w-full rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
         whileTap={{ scale: 0.97 }}
       >
         Continue &rarr;
@@ -482,7 +482,7 @@ function StepInfo({
   };
 
   const inputClass = (field: string) =>
-    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#1a1a1a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
       errors[field]
         ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
         : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
@@ -496,17 +496,17 @@ function StepInfo({
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
-        Tell us about yourself
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        A little about you
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
-        Basic info so we can process your application.
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Basic info so we can run identity and disburse funds.
       </p>
 
       <div className="mt-8 flex flex-col gap-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1.5 block text-[14px] font-semibold text-black">First Name</label>
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">First name</label>
             <input
               value={form.firstName}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
@@ -516,7 +516,7 @@ function StepInfo({
             {errors.firstName && <p className="mt-1 text-[12px] text-red-500">{errors.firstName}</p>}
           </div>
           <div>
-            <label className="mb-1.5 block text-[14px] font-semibold text-black">Last Name</label>
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">Last name</label>
             <input
               value={form.lastName}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
@@ -553,7 +553,7 @@ function StepInfo({
 
         <div>
           <label className="mb-1.5 block text-[14px] font-semibold text-black">
-            Social Security Number
+            Social Security number
           </label>
           <div className="relative">
             <input
@@ -582,12 +582,12 @@ function StepInfo({
             </button>
           </div>
           {errors.ssn && <p className="mt-1 text-[12px] text-red-500">{errors.ssn}</p>}
-          <div className="mt-2 flex items-start gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-3 py-2">
+          <div className="mt-2 flex items-start gap-2 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-3 py-2">
             <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
             <p className="text-[11px] leading-relaxed text-[#15803d]">
-              Your SSN is encrypted and only used for identity verification. We never share it.
+              Your SSN is encrypted end to end and only used for identity verification. We never sell it or share it.
             </p>
           </div>
         </div>
@@ -597,14 +597,14 @@ function StepInfo({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0f5f0] py-4 text-[15px] font-bold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
         <motion.button
           type="button"
           onClick={onNext}
-          className="rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -652,11 +652,11 @@ function StepPlatforms({
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
         Where do you earn?
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
-        Select the platforms you work on. Pick all that apply.
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Pick every platform that pays you. We size the advance to all of them combined.
       </p>
 
       {/* Platform grid */}
@@ -671,7 +671,7 @@ function StepPlatforms({
               className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 ${
                 selected
                   ? "bg-[#15803d] text-white"
-                  : "bg-[#f0f5f0] text-[#52525b] hover:bg-[#dcfce7]"
+                  : "bg-[#f0fdf4] text-[#52525b] hover:bg-[#dcfce7]"
               }`}
               whileTap={{ scale: 0.97 }}
             >
@@ -702,7 +702,7 @@ function StepPlatforms({
           className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-left text-sm transition-all duration-200 ${
             hasOther
               ? "bg-[#15803d] text-white"
-              : "bg-[#f0f5f0] text-[#52525b] hover:bg-[#dcfce7]"
+              : "bg-[#f0fdf4] text-[#52525b] hover:bg-[#dcfce7]"
           }`}
           whileTap={{ scale: 0.97 }}
         >
@@ -737,7 +737,7 @@ function StepPlatforms({
             value={otherPlatform}
             onChange={(e) => setOtherPlatform(e.target.value)}
             placeholder="Enter platform name..."
-            className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#1a1a1a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+            className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
           />
         </motion.div>
       )}
@@ -769,7 +769,7 @@ function StepPlatforms({
             value={weeklyEarnings}
             onChange={(e) => setWeeklyEarnings(e.target.value)}
             placeholder="800"
-            className="w-full rounded-xl border border-[#e4e4e7] bg-white pl-8 pr-24 py-3.5 text-[15px] text-[#1a1a1a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+            className="w-full rounded-xl border border-[#e4e4e7] bg-white pl-8 pr-24 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
           />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-[#a1a1aa]">/ week</span>
         </div>
@@ -788,7 +788,7 @@ function StepPlatforms({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0f5f0] py-4 text-[15px] font-bold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -809,7 +809,7 @@ function StepPlatforms({
             }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -876,10 +876,10 @@ function StepIdentity({
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
         Verify your identity
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
+      <p className="mt-2 text-[15px] text-[#52525b]">
         Upload a government-issued photo ID and a recent bank statement.
       </p>
 
@@ -969,7 +969,7 @@ function StepIdentity({
 
           {bankStatement ? (
             <motion.div
-              className="flex items-center gap-3 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3"
+              className="flex items-center gap-3 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] px-4 py-3"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
             >
@@ -1030,7 +1030,7 @@ function StepIdentity({
       </div>
 
       {/* Security note */}
-      <div className="mt-6 flex items-start gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 py-3">
+      <div className="mt-6 flex items-start gap-2 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-4 py-3">
         <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
         </svg>
@@ -1043,7 +1043,7 @@ function StepIdentity({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0f5f0] py-4 text-[15px] font-bold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -1054,7 +1054,7 @@ function StepIdentity({
             if (!bankStatement) { toast.error("Please upload your bank statement"); return; }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1147,17 +1147,17 @@ function StepPlaidLink({
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
-        Link your bank account
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Link your bank
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
-        Securely connect your bank account so we can verify your income and set up disbursement.
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Plaid securely connects your bank so we can read 90 days of platform deposits and set up disbursement.
       </p>
 
       <div className="mt-8">
         {linked ? (
           <motion.div
-            className="flex flex-col items-center gap-4 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-8"
+            className="flex flex-col items-center gap-4 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-8"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
@@ -1166,9 +1166,9 @@ function StepPlaidLink({
               <CheckCircle className="h-8 w-8 text-white" />
             </div>
             <div className="text-center">
-              <p className="text-[16px] font-bold text-[#1a1a1a]">Bank Account Linked</p>
-              <p className="mt-1 text-[13px] text-[#71717a]">
-                Your bank account has been securely connected.
+              <p className="text-[16px] font-bold text-[#0a0a0a]">Bank linked</p>
+              <p className="mt-1 text-[13px] text-[#52525b]">
+                Your bank is securely connected. We can read deposits, never move money.
               </p>
             </div>
           </motion.div>
@@ -1178,18 +1178,18 @@ function StepPlaidLink({
               <Building2 className="h-8 w-8 text-[#15803d]" />
             </div>
             <div className="text-center">
-              <p className="text-[15px] font-semibold text-[#1a1a1a]">
+              <p className="text-[15px] font-semibold text-[#0a0a0a]">
                 Connect with Plaid
               </p>
-              <p className="mt-2 text-[13px] leading-relaxed text-[#71717a]">
-                We use Plaid to securely connect to your bank. Your credentials are never shared with us directly.
+              <p className="mt-2 text-[13px] leading-relaxed text-[#52525b]">
+                Plaid handles the connection. Your bank credentials are never seen or stored by PennyLime.
               </p>
             </div>
             <motion.button
               type="button"
               onClick={() => open()}
               disabled={!ready || loading}
-              className="w-full rounded-xl bg-[#15803d] text-white py-4 text-[15px] font-bold transition-all hover:bg-[#166534] disabled:opacity-50"
+              className="w-full rounded-xl bg-[#15803d] text-white py-3 text-[15px] font-semibold transition-all hover:bg-[#166534] disabled:opacity-50 shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
               whileTap={!ready || loading ? {} : { scale: 0.97 }}
             >
               {loading ? (
@@ -1203,7 +1203,7 @@ function StepPlaidLink({
               ) : (
                 <>
                   <Building2 className="mr-2 inline h-4 w-4" />
-                  Link Bank Account
+                  Link bank
                 </>
               )}
             </motion.button>
@@ -1212,12 +1212,12 @@ function StepPlaidLink({
       </div>
 
       {/* Security note */}
-      <div className="mt-6 flex items-start gap-2 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl px-4 py-3">
+      <div className="mt-6 flex items-start gap-2 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-4 py-3">
         <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
         </svg>
         <p className="text-[11px] leading-relaxed text-[#15803d]">
-          Plaid uses bank-level encryption. We never see your bank login credentials and cannot make transactions on your behalf.
+          Plaid uses bank-grade encryption. PennyLime never sees your login credentials and cannot move money on your behalf.
         </p>
       </div>
 
@@ -1225,7 +1225,7 @@ function StepPlaidLink({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0f5f0] py-4 text-[15px] font-bold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -1238,7 +1238,7 @@ function StepPlaidLink({
             }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1284,11 +1284,11 @@ function StepUpload({
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
-        Upload your pay stubs
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Upload your earnings statements
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
-        We need at least 3 recent pay stubs from your gig platforms.
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        At least 3 recent earnings statements from your platforms (Uber, DoorDash, Amazon, Shopify, etc.).
       </p>
 
       {/* Drop zone */}
@@ -1309,11 +1309,11 @@ function StepUpload({
           </svg>
         </div>
         <div className="text-center">
-          <p className="text-[14px] font-medium text-[#1a1a1a]">
+          <p className="text-[14px] font-medium text-[#0a0a0a]">
             Drop files here or <span className="text-[#15803d]">browse</span>
           </p>
-          <p className="mt-1 text-[12px] text-[#a1a1aa]">
-            PDF, PNG, or JPEG - screenshots of your Uber, DoorDash, Lyft earnings
+          <p className="mt-1 text-[12px] text-[#71717a]">
+            PDF, PNG, or JPEG. Screenshots from Uber, DoorDash, Amazon Seller, Shopify, etc.
           </p>
         </div>
         <input
@@ -1331,7 +1331,7 @@ function StepUpload({
 
       {/* File count badge */}
       <div className="mt-4 flex items-center gap-2">
-        <div className={`h-2 w-2 rounded-full ${files.length >= 3 ? "bg-[#15803d]" : "bg-amber-400"}`} />
+        <div className={`h-2 w-2 rounded-full ${files.length >= 3 ? "bg-[#15803d]" : "bg-[#f59e0b]"}`} />
         <span className={`text-[13px] font-medium ${files.length >= 3 ? "text-[#15803d]" : "text-[#71717a]"}`}>
           {files.length} of 3 minimum uploaded
         </span>
@@ -1343,7 +1343,7 @@ function StepUpload({
           {files.map((file, i) => (
             <motion.li
               key={`${file.name}-${i}`}
-              className="flex items-center gap-3 rounded-xl bg-[#f0fdf4] border border-[#bbf7d0] px-4 py-3"
+              className="flex items-center gap-3 rounded-xl bg-[#f0fdf4] border border-[#dcfce7] px-4 py-3"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.2 }}
@@ -1375,7 +1375,7 @@ function StepUpload({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0f5f0] py-4 text-[15px] font-bold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -1388,7 +1388,7 @@ function StepUpload({
             }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1449,26 +1449,26 @@ function StepReview({
       transition={{ duration: 0.4 }}
       className="w-full"
     >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
-        Review & submit
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Review and submit
       </h2>
-      <p className="mt-2 text-[15px] text-[#71717a]">
-        Double check everything looks right before submitting.
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Final check. Your factor rate and total cost are disclosed in plain English on the next screen, before you commit.
       </p>
 
       <div className="mt-8 flex flex-col gap-4">
         {/* Amount card */}
-        <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
+        <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-xl p-4">
           <div className="flex items-end justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d]">Advance Amount</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d]">Advance amount</p>
               <p className="mt-1 text-[32px] font-extrabold tracking-[-0.03em] text-[#15803d]">
                 ${amount.toLocaleString()}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Repayment Term</p>
-              <p className="mt-1 text-[18px] font-bold text-[#1a1a1a]">{loanTermMonths} {loanTermMonths === 1 ? "week" : "weeks"}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Repayment term</p>
+              <p className="mt-1 text-[18px] font-bold text-[#0a0a0a]">{loanTermMonths} {loanTermMonths === 1 ? "week" : "weeks"}</p>
             </div>
           </div>
         </div>
@@ -1476,7 +1476,7 @@ function StepReview({
         {/* Info card */}
         <div className="bg-[#f4f4f5] rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Your Information</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Your information</p>
             <button type="button" className="text-[#15803d] text-sm hover:text-[#166534] transition-colors font-medium">Edit</button>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1497,18 +1497,18 @@ function StepReview({
         {/* Platforms & Earnings card */}
         <div className="bg-[#f4f4f5] rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Gig Platforms & Earnings</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Platforms and deposits</p>
             <button type="button" className="text-[#15803d] text-sm hover:text-[#166534] transition-colors font-medium">Edit</button>
           </div>
           <div className="flex flex-col gap-3">
             <div>
-              <p className="text-[11px] text-[#a1a1aa]">Platforms</p>
-              <p className="mt-0.5 text-[13px] font-medium text-[#1a1a1a]">{platformLabels}</p>
+              <p className="text-[11px] text-[#71717a]">Platforms</p>
+              <p className="mt-0.5 text-[13px] font-medium text-[#0a0a0a]">{platformLabels}</p>
             </div>
             <div>
-              <p className="text-[11px] text-[#a1a1aa]">Avg. Weekly Earnings</p>
+              <p className="text-[11px] text-[#71717a]">Avg. weekly deposits</p>
               <p className="mt-0.5 text-[13px] font-medium text-[#15803d]">
-                ${Number(weeklyEarnings).toLocaleString()}/week (~${(Number(weeklyEarnings) * 52).toLocaleString()}/year)
+                ${Number(weeklyEarnings).toLocaleString()}/week (about ${(Number(weeklyEarnings) * 52).toLocaleString()}/year)
               </p>
             </div>
           </div>
@@ -1522,31 +1522,31 @@ function StepReview({
               <div className="flex items-center gap-2 text-[13px]">
                 <div className="h-1.5 w-1.5 rounded-full bg-[#15803d]" />
                 <span className="text-[#71717a]">Photo ID:</span>
-                <span className="font-medium text-[#1a1a1a] truncate">{photoId.name}</span>
+                <span className="font-medium text-[#0a0a0a] truncate">{photoId.name}</span>
               </div>
             )}
             {bankStatement && (
               <div className="flex items-center gap-2 text-[13px]">
                 <div className="h-1.5 w-1.5 rounded-full bg-[#15803d]" />
-                <span className="text-[#71717a]">Bank Statement:</span>
-                <span className="font-medium text-[#1a1a1a] truncate">{bankStatement.name}</span>
+                <span className="text-[#71717a]">Bank statement:</span>
+                <span className="font-medium text-[#0a0a0a] truncate">{bankStatement.name}</span>
               </div>
             )}
             <div className="flex items-center gap-2 text-[13px]">
               <div className="h-1.5 w-1.5 rounded-full bg-[#15803d]" />
-              <span className="text-[#71717a]">Pay Stubs:</span>
-              <span className="font-medium text-[#1a1a1a]">{files.length} file{files.length !== 1 ? "s" : ""}</span>
+              <span className="text-[#71717a]">Earnings statements:</span>
+              <span className="font-medium text-[#0a0a0a]">{files.length} file{files.length !== 1 ? "s" : ""}</span>
             </div>
           </div>
         </div>
 
         {/* Bank link card */}
         <div className="bg-[#f4f4f5] rounded-xl p-4">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Bank Account</p>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Bank account</p>
           <div className="flex items-center gap-2 text-[13px]">
-            <div className={`h-1.5 w-1.5 rounded-full ${bankLinked ? "bg-[#15803d]" : "bg-amber-400"}`} />
-            <span className="font-medium text-[#1a1a1a]">
-              {bankLinked ? "Bank account linked via Plaid" : "Not linked"}
+            <div className={`h-1.5 w-1.5 rounded-full ${bankLinked ? "bg-[#15803d]" : "bg-[#f59e0b]"}`} />
+            <span className="font-medium text-[#0a0a0a]">
+              {bankLinked ? "Bank linked via Plaid" : "Not linked"}
             </span>
           </div>
         </div>
@@ -1557,7 +1557,7 @@ function StepReview({
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="rounded-xl bg-[#f0f5f0] py-4 text-[15px] font-bold text-[#15803d] transition-all hover:bg-[#dcfce7] disabled:opacity-50"
+          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7] disabled:opacity-50"
         >
           &larr; Back
         </button>
@@ -1565,7 +1565,7 @@ function StepReview({
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="rounded-xl bg-[#15803d] py-4 text-[15px] font-bold text-white transition-all hover:bg-[#166534] disabled:opacity-70"
+          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] disabled:opacity-70"
           whileTap={submitting ? {} : { scale: 0.97 }}
         >
           {submitting ? (
@@ -1578,7 +1578,7 @@ function StepReview({
             </span>
           ) : (
             <>
-              Submit Application &rarr;
+              Submit application &rarr;
             </>
           )}
         </motion.button>
@@ -1609,21 +1609,21 @@ function SuccessScreen({ code }: { code: string }) {
         </svg>
       </motion.div>
 
-      <h2 className="mt-6 text-[30px] font-extrabold tracking-[-0.03em] text-[#1a1a1a]">
-        You&apos;re all set!
+      <h2 className="mt-6 text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        You&apos;re submitted.
       </h2>
-      <p className="mt-3 max-w-sm text-[15px] text-[#71717a]">
-        Your application has been submitted. Save this code to check your status.
+      <p className="mt-3 max-w-sm text-[15px] text-[#52525b]">
+        We&apos;re underwriting now. Save this code to check status anytime. Most decisions land in 1 to 3 hours.
       </p>
 
       <motion.div
-        className="mt-8 w-full bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-6"
+        className="mt-8 w-full bg-[#f0fdf4] border border-[#dcfce7] rounded-xl p-6"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d] mb-2">Application Code</p>
-        <p className="text-4xl font-mono font-bold tracking-[0.15em] text-[#1a1a1a]">{code}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d] mb-2">Application code</p>
+        <p className="text-4xl font-mono font-bold tracking-[0.15em] text-[#0a0a0a]">{code}</p>
       </motion.div>
 
       <motion.div
@@ -1634,15 +1634,15 @@ function SuccessScreen({ code }: { code: string }) {
       >
         <Link
           href={`/status/${code}`}
-          className="w-full rounded-xl bg-[#15803d] px-8 py-4 text-center text-[15px] font-bold text-white transition-all hover:bg-[#166534]"
+          className="w-full rounded-xl bg-[#15803d] px-5 py-3 text-center text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
         >
-          Check Status &rarr;
+          Check status &rarr;
         </Link>
         <Link
           href="/"
-          className="w-full rounded-xl border border-[#e4e4e7] bg-white px-8 py-4 text-center text-[14px] font-medium text-[#71717a] transition-all hover:text-[#1a1a1a]"
+          className="w-full rounded-xl border-2 border-[#0a0a0a] bg-white px-5 py-3 text-center text-[14px] font-semibold text-[#0a0a0a] transition-all hover:bg-[#fafaf7]"
         >
-          Back to Home
+          Back to home
         </Link>
       </motion.div>
     </motion.div>
@@ -1654,7 +1654,7 @@ function SuccessScreen({ code }: { code: string }) {
 /* ------------------------------------------------------------------ */
 export default function ApplyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#f8faf8]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#fafaf7]" />}>
       <ApplyPageInner />
     </Suspense>
   );
@@ -1820,7 +1820,7 @@ function ApplyPageInner() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8faf8]">
+    <div className="min-h-screen bg-[#fafaf7]">
       <Navbar />
 
       <div className="flex min-h-[calc(100vh-80px)] pt-[80px]">
@@ -2104,7 +2104,7 @@ function ApplyPageInner() {
 
         {/* Right: Branded sidebar */}
         {!applicationCode && (
-          <div className="hidden lg:flex w-[420px] flex-shrink-0 bg-gradient-to-br from-[#15803d] to-[#14532d] flex-col justify-center px-10 py-12 text-white relative overflow-hidden">
+          <div className="hidden lg:flex w-[420px] flex-shrink-0 bg-gradient-to-br from-[#15803d] to-[#166534] flex-col justify-center px-10 py-12 text-white relative overflow-hidden">
             {/* Decorative circles */}
             <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/5" />
             <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
@@ -2113,7 +2113,7 @@ function ApplyPageInner() {
             {/* Logo mark */}
             <div className="mb-10">
               <span className="font-extrabold text-[18px] tracking-[-0.03em] text-white">
-                Penny<span className="text-white/60">Lime</span>
+                Penny<span className="text-[#a3e635]">Lime<span className="text-[#a3e635]">.</span></span>
               </span>
             </div>
 
@@ -2122,7 +2122,7 @@ function ApplyPageInner() {
             {/* Bottom trust line */}
             <div className="mt-10 pt-6 border-t border-white/20">
               <p className="text-[12px] text-white/50">
-                Trusted by 1,200+ gig workers. Average funding time: 31 hours.
+                Trusted by 1,200+ drivers, sellers, and operators. Average time to funded: 31 hours.
               </p>
             </div>
           </div>

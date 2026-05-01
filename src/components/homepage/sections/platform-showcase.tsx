@@ -8,15 +8,16 @@ if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
 
 const FALLBACK_PLATFORMS = [
   "Uber", "Lyft", "DoorDash", "Instacart", "Amazon Flex",
-  "Grubhub", "Fiverr", "Upwork", "TaskRabbit", "Shipt",
-  "Postmates", "Caviar",
+  "Grubhub", "Amazon FBA", "Shopify", "Etsy",
+  "Fiverr", "Upwork", "TaskRabbit", "Thumbtack", "Rover",
 ];
 
-const ROTATIONS = [-3, 2, -1.5, 3, -2, 1, -3.5, 2.5, -1, 3, -2, 1.5];
+const ROTATIONS = [-3, 2, -1.5, 3, -2, 1, -3.5, 2.5, -1, 3, -2, 1.5, -2.5, 1.8];
 const BG_COLORS = [
-  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fef9c3]",
-  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fef9c3]",
-  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fef9c3]",
+  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fefce8]",
+  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fefce8]",
+  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fefce8]",
+  "bg-white", "bg-[#dcfce7]",
 ];
 
 interface PlatformShowcaseProps {
@@ -72,12 +73,12 @@ export function PlatformShowcase({ platforms }: PlatformShowcaseProps) {
     <section ref={sectionRef} className="relative" style={{ height: "140vh" }}>
       <div
         ref={pinRef}
-        className="h-screen bg-[#f0f5f0] flex items-center overflow-hidden"
+        className="h-screen bg-[#f0fdf4] flex items-center overflow-hidden"
       >
         <div className="max-w-5xl mx-auto w-full px-6">
           <div className="mb-12 text-center">
             <div className="inline-flex items-center gap-2 bg-white text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase shadow-sm">
-              Platform support
+              Platform coverage
             </div>
             <h2
               className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#1a1a1a]"
@@ -85,9 +86,8 @@ export function PlatformShowcase({ platforms }: PlatformShowcaseProps) {
             >
               Built for your platform.
             </h2>
-            <p className="text-[#71717a] text-[16px] mt-4 max-w-lg mx-auto">
-              We accept income verification from all major gig platforms. If you
-              drive, deliver, or freelance, we&apos;ve got you.
+            <p className="text-[#52525b] text-[16px] mt-4 max-w-lg mx-auto">
+              We read deposits from every major platform. If you drive, deliver, sell, or ship, your earnings count.
             </p>
           </div>
 
@@ -110,12 +110,12 @@ export function PlatformShowcase({ platforms }: PlatformShowcaseProps) {
           </div>
 
           {/* Bottom note */}
-          <p className="text-center text-[#71717a] text-[13px] mt-10">
+          <p className="text-center text-[#52525b] text-[13px] mt-10">
             Don&apos;t see your platform?{" "}
-            <a href="/apply" className="text-[#15803d] underline font-medium">
+            <a href="/apply" className="text-[#15803d] underline underline-offset-4 font-medium">
               Apply anyway
-            </a>{" "}
-           , we review all gig income sources.
+            </a>
+            . We review every deposit source.
           </p>
         </div>
       </div>

@@ -11,21 +11,21 @@ const STEPS = [
   {
     num: "01",
     headline: "Apply in 5 minutes",
-    desc: "Fill out our short form, no lengthy paperwork, no W-2 required. Just your platform earnings and basic info.",
+    desc: "Short form. No W-2, no tax returns. Just the platforms you earn on and basic info. We never pull your credit.",
     img: "/illustrations/step-1-apply.png",
     imgAlt: "Person applying on smartphone illustration",
   },
   {
     num: "02",
-    headline: "We check earnings, not credit",
-    desc: "We connect to your platform account to verify real income. Your credit score won't be pulled. We care about cash flow.",
+    headline: "We read 90 days of deposits",
+    desc: "Connect your bank securely through Plaid. We size the advance to your verified Uber, DoorDash, Amazon, or Shopify deposits, not a FICO score.",
     img: "/illustrations/step-2-approved.png",
     imgAlt: "Documents with green checkmark approval illustration",
   },
   {
     num: "03",
-    headline: "Cash to your account",
-    desc: "Approved? Funds hit your bank in as little as 24-48 hours. Back to earning, no interruptions.",
+    headline: "Funded in 48 hours",
+    desc: "Approved offer with the factor rate and total cost on one screen. Funds in your bank within 48 hours. Repaid as a small percentage of future deposits.",
     img: "/illustrations/step-3-funded.png",
     imgAlt: "Money flowing into smartphone illustration",
   },
@@ -49,7 +49,7 @@ export function HowItWorks() {
     const ctx = gsap.context(() => {
       gsap.set(step0Ref.current, { opacity: 1, y: 0 });
       gsap.set([step1Ref.current, step2Ref.current], { opacity: 0, y: 40 });
-      gsap.set([dot0Ref.current], { backgroundColor: "#4ade80", scale: 1.2 });
+      gsap.set([dot0Ref.current], { backgroundColor: "#a3e635", scale: 1.2 });
       gsap.set([dot1Ref.current, dot2Ref.current], { backgroundColor: "#333", scale: 1 });
 
       const tl = gsap.timeline({
@@ -67,12 +67,12 @@ export function HowItWorks() {
       tl.to(step0Ref.current, { opacity: 0, y: -40, duration: 1 }, 1)
         .to(dot0Ref.current, { backgroundColor: "#333", scale: 1, duration: 1 }, 1)
         .to(step1Ref.current, { opacity: 1, y: 0, duration: 1 }, 1.1)
-        .to(dot1Ref.current, { backgroundColor: "#4ade80", scale: 1.2, duration: 1 }, 1.1);
+        .to(dot1Ref.current, { backgroundColor: "#a3e635", scale: 1.2, duration: 1 }, 1.1);
 
       tl.to(step1Ref.current, { opacity: 0, y: -40, duration: 1 }, 3)
         .to(dot1Ref.current, { backgroundColor: "#333", scale: 1, duration: 1 }, 3)
         .to(step2Ref.current, { opacity: 1, y: 0, duration: 1 }, 3.1)
-        .to(dot2Ref.current, { backgroundColor: "#4ade80", scale: 1.2, duration: 1 }, 3.1);
+        .to(dot2Ref.current, { backgroundColor: "#a3e635", scale: 1.2, duration: 1 }, 3.1);
     }, sectionRef);
     return () => ctx.revert();
   }, []);
@@ -82,7 +82,7 @@ export function HowItWorks() {
       <div ref={pinWrapRef} className="h-screen bg-[#1a1a1a] flex items-center overflow-hidden">
         <div className="max-w-5xl mx-auto w-full px-6">
           <div className="mb-16">
-            <div className="inline-flex items-center gap-2 bg-[#15803d]/30 text-[#4ade80] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase">
+            <div className="inline-flex items-center gap-2 bg-[#15803d]/30 text-[#a3e635] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase">
               How it works
             </div>
             <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-white" style={{ fontSize: "clamp(36px, 4.5vw, 56px)" }}>

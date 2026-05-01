@@ -62,9 +62,9 @@ export function WhatWeDo() {
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-6"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
           >
-            We open
+            Built for the way
             <br />
-            <span className="text-[#15803d]">the door.</span>
+            <span className="text-[#15803d]">platforms pay.</span>
           </h2>
 
           <div className="space-y-5">
@@ -73,8 +73,8 @@ export function WhatWeDo() {
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8.5L6.5 11L12 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
               <div>
-                <p className="text-[16px] font-bold text-black">We verify your gig earnings, not your credit</p>
-                <p className="text-[14px] text-[#52525b] mt-1">Connect your Uber, Lyft, DoorDash, or any platform account. We look at what you actually earn.</p>
+                <p className="text-[16px] font-bold text-black">Verified deposits, not your credit</p>
+                <p className="text-[14px] text-[#52525b] mt-1">We read 90 days of bank deposits from Uber, Lyft, DoorDash, Amazon, Shopify, Fiverr, or wherever you earn.</p>
               </div>
             </div>
 
@@ -83,8 +83,8 @@ export function WhatWeDo() {
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8.5L6.5 11L12 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
               <div>
-                <p className="text-[16px] font-bold text-black">$100 to $10,000 for business expenses</p>
-                <p className="text-[14px] text-[#52525b] mt-1">Vehicle repairs, equipment, gas, insurance, inventory. Whatever keeps your gig business running.</p>
+                <p className="text-[16px] font-bold text-black">$500 to $10,000 advances</p>
+                <p className="text-[14px] text-[#52525b] mt-1">Vehicle repair, FBA inventory, gear, insurance, slow-week bridge. A plain factor rate, total cost shown before you accept.</p>
               </div>
             </div>
 
@@ -94,16 +94,16 @@ export function WhatWeDo() {
               </div>
               <div>
                 <p className="text-[16px] font-bold text-black">Funded in 48 hours</p>
-                <p className="text-[14px] text-[#52525b] mt-1">Apply in 5 minutes, get a decision same day, cash in your account within 48 hours.</p>
+                <p className="text-[14px] text-[#52525b] mt-1">Apply in 5 minutes, get a decision the same day, cash in your bank within 48 hours. Repaid as a percentage of your future deposits.</p>
               </div>
             </div>
           </div>
 
           <Link
             href="/apply"
-            className="inline-flex items-center gap-2 bg-[#15803d] text-white font-bold text-[15px] px-8 py-4 rounded-xl hover:bg-[#166534] transition-colors shadow-lg shadow-green-900/20 mt-8"
+            className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-5 py-3 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] mt-8"
           >
-            Apply now
+            Get funded
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </Link>
         </div>

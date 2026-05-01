@@ -27,7 +27,7 @@ export function loanFundedEmail(params: {
     subject: "Your Loan Has Been Funded, Payment Schedule Inside",
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #16a34a;">Your Loan Has Been Funded!</h2>
+        <h2 style="color: #15803d;">Your Loan Has Been Funded!</h2>
         <p>Hi ${params.firstName},</p>
         <p>Your loan of <strong>$${params.fundedAmount.toLocaleString()}</strong> has been funded. Below are your loan details and payment schedule.</p>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
@@ -49,7 +49,7 @@ export function loanFundedEmail(params: {
           <tbody>${scheduleRows}</tbody>
         </table>
         <p>Payments will be automatically debited from your linked bank account on each due date.</p>
-        <p>Track your loan: <a href="${statusUrl}" style="color: #16a34a;">${statusUrl}</a></p>
+        <p>Track your loan: <a href="${statusUrl}" style="color: #15803d;">${statusUrl}</a></p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="color: #6b7280; font-size: 12px;">PennyLime</p>
       </div>

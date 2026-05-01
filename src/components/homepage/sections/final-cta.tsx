@@ -107,7 +107,7 @@ export function FinalCta() {
         {/* Background texture blobs */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] rounded-full bg-[#4ade80]/10 blur-3xl" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] rounded-full bg-[#a3e635]/10 blur-3xl" />
         </div>
 
         <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
@@ -126,7 +126,7 @@ export function FinalCta() {
             className="text-[#bbf7d0] text-[18px] leading-relaxed max-w-xl mx-auto mb-10"
             style={{ opacity: 0 }}
           >
-            Join 1,200+ gig workers who funded their business expenses. Apply in 5 minutes.
+            Join 1,200+ drivers, sellers, and operators funded by PennyLime. Apply in 5 minutes.
           </p>
 
           {/* CTA + hand-drawn arrow */}
@@ -163,7 +163,7 @@ export function FinalCta() {
               className="inline-flex items-center gap-3 bg-white text-[#15803d] font-extrabold text-[18px] px-10 py-5 rounded-2xl hover:bg-[#f0fdf4] transition-colors shadow-2xl"
               style={{ opacity: 0 }}
             >
-              Apply Now
+              Get funded
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -176,13 +176,13 @@ export function FinalCta() {
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M2 7l3 3 7-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              No credit check
+              No credit pull
             </span>
             <span className="flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
                 <path d="M2 7l3 3 7-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              5 minute application
+              5-minute application
             </span>
             <span className="flex items-center gap-1.5">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">

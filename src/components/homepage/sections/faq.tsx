@@ -6,27 +6,31 @@ import { JsonLd, faqSchema } from "@/components/seo/json-ld";
 const FAQ_ENTRIES = [
   {
     question: "What credit score do I need?",
-    answer: "We don't check your credit score at all. We look at your platform earnings, how much you make, how consistently, and how long you've been active on your platform. A low or non-existent credit score won't hold you back.",
+    answer: "None. We don't pull your credit. We read 90 days of bank deposits to size the advance: how much you earn, how consistently, and from which platforms. A thin or rough credit file won't hold you back.",
   },
   {
     question: "How fast can I get funded?",
-    answer: "Most applicants get a decision within 1-3 hours. Once approved, funds typically land in your bank account within 24-48 hours. In some cases, same-day funding is available for standard bank accounts.",
+    answer: "Most applicants get a decision within 1 to 3 hours. Once approved, funds typically land in your bank within 24 to 48 hours. Same-day funding is available for standard bank accounts in many cases.",
   },
   {
     question: "What platforms do you support?",
-    answer: "We support all major gig platforms including Uber, Lyft, DoorDash, Instacart, Amazon Flex, Grubhub, Fiverr, Upwork, TaskRabbit, Shipt, and more. If you earn income through a platform we haven't listed, apply anyway, we review all gig income sources.",
+    answer: "Drivers (Uber, Lyft, DoorDash, Instacart, Amazon Flex, Grubhub, Shipt). Sellers (Amazon FBA, Shopify, Etsy). Operators (Fiverr, Upwork, TaskRabbit, Thumbtack, Rover). If you earn through any platform we haven't listed, apply anyway. We review every deposit source.",
   },
   {
-    question: "What are the fees?",
-    answer: "PennyLime charges a simple factor rate plus a one-time origination fee, no prepayment penalties, no hidden fees. Your total cost is shown clearly before you accept any advance. Factor rates typically range from 1.20 to 1.49 depending on advance amount, term, and earnings history. We are a merchant cash advance product, not a loan, so there is no APR.",
+    question: "What does it cost?",
+    answer: "PennyLime advances are priced as a plain factor rate plus a one-time origination fee. No prepayment penalties, no hidden fees. Your total dollar cost is shown above the fold before you accept. Factor rates typically range from 1.20 to 1.49 depending on advance amount, term, and verified deposit history. This is a merchant cash advance, not a loan, so there is no APR or interest rate.",
   },
   {
     question: "How do I apply?",
-    answer: "Click 'Apply Now' from any page. The application takes about 5 minutes. You'll need to verify your platform account (we use a secure read-only connection), provide your bank account details, and confirm your identity. That's it.",
+    answer: "Click 'Get funded' from any page. The application takes about 5 minutes. You'll connect your bank securely through Plaid (read-only), upload a photo ID, and confirm a few details. That's it.",
   },
   {
-    question: "Is it safe to connect my platform account?",
-    answer: "Yes. We use bank-grade encryption and read-only access, we can only view your earnings data, never make changes to your account or initiate payments on your behalf. Your credentials are never stored on our servers.",
+    question: "Is it safe to link my bank?",
+    answer: "Yes. Plaid uses bank-grade encryption and read-only access. We can only view deposits, never move money or initiate transactions on your behalf. Your bank credentials are never seen or stored by PennyLime.",
+  },
+  {
+    question: "How does repayment work?",
+    answer: "Repayment is a small fixed percentage of your future deposits, debited daily or weekly via ACH. Slow week, smaller remittance. Strong week, faster payoff. The percentage and total cost are disclosed in plain English before you accept.",
   },
 ];
 
@@ -36,7 +40,7 @@ export function HomeFaq() {
   return (
     <>
       <JsonLd data={faqSchema(FAQ_ENTRIES)} />
-      <section className="bg-[#faf8f0] py-24 px-6">
+      <section className="bg-[#fafaf7] py-24 px-6">
         <div className="max-w-3xl mx-auto">
           <div className="mb-12 text-center">
             <div className="inline-flex items-center gap-2 bg-white text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase shadow-sm">
@@ -65,7 +69,7 @@ export function HomeFaq() {
                     {entry.question}
                   </span>
                   <span
-                    className="shrink-0 w-8 h-8 rounded-full bg-[#f0f5f0] flex items-center justify-center transition-transform duration-200"
+                    className="shrink-0 w-8 h-8 rounded-full bg-[#dcfce7] flex items-center justify-center transition-transform duration-200"
                     style={{ transform: open === i ? "rotate(45deg)" : "rotate(0deg)" }}
                   >
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -75,7 +79,7 @@ export function HomeFaq() {
                 </button>
                 {open === i && (
                   <div className="px-6 pb-6">
-                    <p className="text-[#71717a] text-[14px] leading-relaxed">
+                    <p className="text-[#52525b] text-[14px] leading-relaxed">
                       {entry.answer}
                     </p>
                   </div>
@@ -84,11 +88,11 @@ export function HomeFaq() {
             ))}
           </div>
 
-          <p className="text-center text-[#71717a] text-[14px] mt-10">
+          <p className="text-center text-[#52525b] text-[14px] mt-10">
             Still have questions?{" "}
             <a
               href="mailto:support@pennylime.com"
-              className="text-[#15803d] font-semibold hover:underline"
+              className="text-[#15803d] font-semibold hover:underline underline-offset-4"
             >
               Email our team
             </a>

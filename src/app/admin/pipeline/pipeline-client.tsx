@@ -86,7 +86,7 @@ export function PipelineClient({
               {/* Cards drop zone */}
               <div
                 className={`space-y-2 min-h-[200px] rounded-xl p-2 transition-colors ${
-                  isOver ? "bg-[#e4e4e7]/60 ring-2 ring-[#3052FF]/30" : "bg-[#f4f4f5]/50"
+                  isOver ? "bg-[#e4e4e7]/60 ring-2 ring-[#15803d]/30" : "bg-[#f4f4f5]/50"
                 }`}
               >
                 {contacts.map((contact) => (

@@ -61,8 +61,8 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
       <div className="max-w-5xl mx-auto">
         <div className="flex items-end justify-between mb-12">
           <div>
-            <div className="inline-flex items-center gap-2 bg-[#f0f5f0] text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase">
-              Resources
+            <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase">
+              Field notes
             </div>
             <h2
               className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#1a1a1a]"
@@ -73,7 +73,7 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
           </div>
           <Link
             href="/blog"
-            className="hidden md:flex items-center gap-2 text-[#15803d] font-semibold text-[14px] hover:underline"
+            className="hidden md:flex items-center gap-2 text-[#15803d] font-semibold text-[14px] hover:underline underline-offset-4"
           >
             All articles
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -83,7 +83,7 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
         </div>
 
         {articles.length === 0 ? (
-          <div className="text-center py-20 bg-[#faf8f0] rounded-2xl border border-dashed border-[#d4d4d8]">
+          <div className="text-center py-20 bg-[#fafaf7] rounded-2xl border border-dashed border-[#d4d4d8]">
             {/* Hand-drawn open book SVG */}
             <svg className="mx-auto mb-6" width="80" height="60" viewBox="0 0 80 60" fill="none" aria-hidden="true">
               <path d="M40 10 L40 52" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" />
@@ -93,12 +93,12 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
               <path d="M46 22 L66 22M50 28 L66 28M54 34 L66 34" stroke="#71717a" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
             <h3 className="font-bold text-[#1a1a1a] text-[18px] mb-2">Coming soon</h3>
-            <p className="text-[#71717a] text-[15px] max-w-sm mx-auto mb-6">
-              Guides, tips, and resources for gig workers are on their way.
+            <p className="text-[#52525b] text-[15px] max-w-sm mx-auto mb-6">
+              Funding playbooks for drivers, sellers, and operators are on the way.
             </p>
             <Link
               href="/blog"
-              className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[14px] px-6 py-3 rounded-xl hover:bg-[#166534] transition-colors"
+              className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[14px] px-5 py-3 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
             >
               Visit the blog
             </Link>
@@ -109,7 +109,7 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
               <Link
                 key={i}
                 href={`/blog/${article.slug}`}
-                className="blog-card group block bg-[#faf8f0] rounded-2xl border border-[#e4e4e7] overflow-hidden hover:border-[#15803d]/30 hover:shadow-lg transition-all duration-200"
+                className="blog-card group block bg-[#fafaf7] rounded-2xl border border-[#e4e4e7] overflow-hidden hover:border-[#15803d]/30 hover:shadow-lg transition-all duration-200"
               >
                 {/* Image or placeholder */}
                 {article.featuredImage ? (
@@ -118,7 +118,7 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
                     style={{ backgroundImage: `url(${article.featuredImage})` }}
                   />
                 ) : (
-                  <div className="w-full h-44 bg-[#f0f5f0] flex items-center justify-center">
+                  <div className="w-full h-44 bg-[#f0fdf4] flex items-center justify-center">
                     <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true">
                       <rect x="6" y="8" width="36" height="32" rx="4" stroke="#15803d" strokeWidth="2" />
                       <path d="M14 20h20M14 26h14M14 32h8" stroke="#15803d" strokeWidth="1.5" strokeLinecap="round" />
@@ -135,7 +135,7 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
                     {article.title}
                   </h3>
                   {article.excerpt && (
-                    <p className="text-[#71717a] text-[13px] leading-relaxed line-clamp-2 mb-3">
+                    <p className="text-[#52525b] text-[13px] leading-relaxed line-clamp-2 mb-3">
                       {article.excerpt}
                     </p>
                   )}
@@ -153,7 +153,7 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
         <div className="mt-8 text-center md:hidden">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-2 text-[#15803d] font-semibold text-[14px] hover:underline"
+            className="inline-flex items-center gap-2 text-[#15803d] font-semibold text-[14px] hover:underline underline-offset-4"
           >
             See all articles →
           </Link>
