@@ -9,9 +9,9 @@ export function Footer() {
           <div>
             <span className="inline-flex items-center gap-2 font-extrabold text-[20px] tracking-[-0.03em]">
               <LogoMark size={40} />
-              Penny<span className="text-[#4ade80]">Lime</span>
+              Penny<span className="text-[#4ade80]">Lime<span className="text-[#4ade80]">.</span></span>
             </span>
-            <p className="text-[13px] text-[#a1a1aa] mt-2">Fast loans for gig workers. $100 to $10,000.</p>
+            <p className="text-[13px] text-[#a1a1aa] mt-3 max-w-[260px]">Funding for drivers, sellers, and operators. Built for the way platforms pay.</p>
           </div>
           <div>
             <h4 className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] mb-3">Company</h4>

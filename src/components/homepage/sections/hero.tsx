@@ -1,20 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
-
-const HERO_ILLUSTRATIONS = [
-  { src: "/illustrations/hero-gig-worker.png", alt: "Delivery rider on a bicycle" },
-  { src: "/illustrations/platform-rideshare.png", alt: "Rideshare driver" },
-  { src: "/illustrations/platform-delivery.png", alt: "Food delivery courier" },
-  { src: "/illustrations/platform-shopping.png", alt: "Personal shopper" },
-  { src: "/illustrations/platform-freelance.png", alt: "Freelance creative at laptop" },
-];
 
 export function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -23,15 +14,6 @@ export function Hero() {
   const ctasRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const pathRef = useRef<SVGPathElement>(null);
-  const [heroIndex, setHeroIndex] = useState(0);
-
-  // Cycle through illustrations every 3.5s
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHeroIndex((i) => (i + 1) % HERO_ILLUSTRATIONS.length);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     if (!sectionRef.current) return;
@@ -104,18 +86,18 @@ export function Hero() {
         {/* Label */}
         <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[12px] font-semibold px-3 py-1.5 rounded-full mb-8 tracking-[0.03em]">
           <span className="w-1.5 h-1.5 bg-[#15803d] rounded-full inline-block" />
-          Fast funding for gig workers
+          Funding for the on-demand economy
         </div>
 
         {/* Headline */}
         <div ref={headlineRef} className="relative">
           <h1
             className="font-extrabold tracking-[-0.04em] leading-[0.92] text-[#1a1a1a] mb-0"
-            style={{ fontSize: "clamp(60px, 10vw, 120px)" }}
+            style={{ fontSize: "clamp(48px, 8vw, 100px)" }}
           >
-            Get funded.
+            Funding for drivers,
             <br />
-            Keep moving.
+            sellers, and <span className="text-[#15803d]">operators.</span>
           </h1>
           {/* Hand-drawn squiggle underline */}
           <svg
@@ -141,11 +123,11 @@ export function Hero() {
         {/* Subtitle */}
         <p
           ref={subtitleRef}
-          className="text-[#71717a] text-[18px] leading-relaxed max-w-xl mb-10"
+          className="text-[#52525b] text-[18px] leading-relaxed max-w-xl mb-10"
         >
-          Business cash advances for gig workers and 1099 contractors. $100 -
-          $10,000 for vehicle repairs, equipment, inventory, and operating
-          costs. Verified by your earnings, not your credit score.
+          If you drive for Uber, deliver for DoorDash, sell on Amazon, or run a
+          shop on Shopify, your bank deposits are your credit. We read 90 days
+          of verified earnings and fund you in 48 hours. <strong className="text-[#0a0a0a]">$100 to $10,000.</strong>
         </p>
 
         {/* CTAs */}
@@ -154,7 +136,7 @@ export function Hero() {
             href="/apply"
             className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-8 py-4 rounded-xl hover:bg-[#166534] transition-colors shadow-lg shadow-green-900/20"
           >
-            Get Funded Now
+            See what you qualify for
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -190,22 +172,15 @@ export function Hero() {
         </div>
         </div>{/* end left column */}
 
-        {/* Right column: cycling illustrations */}
+        {/* Right column: the lime mark */}
         <div className="hidden md:flex items-center justify-center">
-          <div className="relative w-full max-w-[480px] aspect-square">
-            {HERO_ILLUSTRATIONS.map((ill, i) => (
-              <Image
-                key={ill.src}
-                src={ill.src}
-                alt={ill.alt}
-                fill
-                sizes="(min-width: 768px) 480px, 0px"
-                className={`object-contain drop-shadow-xl transition-opacity duration-700 ease-in-out ${
-                  i === heroIndex ? "opacity-100" : "opacity-0"
-                }`}
-                priority={i === 0}
-              />
-            ))}
+          <div className="relative w-full max-w-[520px] aspect-[4/3]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/lime-mark.svg"
+              alt="PennyLime"
+              className="w-full h-full object-contain drop-shadow-2xl"
+            />
           </div>
         </div>
       </div>

@@ -38,7 +38,7 @@ export function Navbar() {
             <LogoMark size={48} />
           </span>
           <span className="font-extrabold text-[22px] tracking-[-0.03em]">
-            Penny<span className="text-[#15803d]">Lime</span>
+            Penny<span className="text-[#15803d]">Lime<span className="text-[#15803d]">.</span></span>
           </span>
         </Link>
         <div className="hidden md:flex items-center gap-6">
