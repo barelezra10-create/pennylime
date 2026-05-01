@@ -7,8 +7,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = generateMeta({
-  title: "Free Gig Worker Tools",
-  description: "Free calculators and tools for Uber, Lyft, DoorDash drivers and gig workers. Loan calculator, earnings estimator, expense tracker, and more.",
+  title: "Free Tools for Drivers, Sellers & Operators",
+  description: "Free calculators built for Uber, Lyft, DoorDash drivers, Amazon sellers, and freelancers. Advance calculator, earnings estimator, expense tracker, and more.",
 }) as Metadata;
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
@@ -32,11 +32,11 @@ export default async function ToolsPage() {
 
       <div className="mb-10">
         <h1 className="text-[36px] font-extrabold tracking-[-0.03em] text-black mb-3">
-          Free Tools for Gig Workers
+          Free Tools for Drivers, Sellers &amp; Operators
         </h1>
-        <p className="text-[16px] text-[#71717a] max-w-2xl">
-          Calculators and tools built for Uber, Lyft, DoorDash drivers and independent contractors.
-          Know your earnings, expenses, and loan options before you apply.
+        <p className="text-[16px] text-[#52525b] max-w-2xl">
+          Calculators built for Uber, Lyft, DoorDash drivers, Amazon sellers, Shopify shops, and freelancers.
+          Know your earnings, expenses, and funding options before you apply.
         </p>
       </div>
 

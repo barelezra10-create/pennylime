@@ -1,52 +1,68 @@
 export const metadata = {
-  title: "Lending Disclosures | PennyLime",
+  title: "Disclosures | PennyLime",
 };
 
 export default function DisclosuresPage() {
   return (
     <div className="max-w-[680px] mx-auto py-16 px-6">
       <h1 className="text-[28px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mb-8">
-        Lending Disclosures
+        Disclosures
       </h1>
       <div className="space-y-6">
-        <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: March 2026</p>
+        <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: May 2026</p>
+
+        <p className="text-[15px] text-[#71717a] leading-relaxed">
+          PennyLime is owned and operated by 770 Technology Way LLC, a Florida limited liability company.
+          PennyLime offers <strong className="text-[#1a1a1a]">merchant cash advances</strong> to qualifying drivers, sellers, and operators.
+          A merchant cash advance is the purchase of a portion of your future receivables at a discount,
+          in exchange for a lump sum today. <strong className="text-[#1a1a1a]">A merchant cash advance is not a loan.</strong>
+          There is no Annual Percentage Rate (APR) or interest rate.
+        </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
-          Loan Terms
+          Advance Terms
         </h2>
         <ul className="text-[15px] text-[#71717a] leading-relaxed space-y-2 list-disc pl-5">
-          <li><strong className="text-[#1a1a1a]">Loan amounts:</strong> $100 - $10,000</li>
-          <li><strong className="text-[#1a1a1a]">Loan terms:</strong> 3 - 18 months</li>
-          <li><strong className="text-[#1a1a1a]">APR range:</strong> 30% - 60% (varies by risk profile)</li>
-          <li><strong className="text-[#1a1a1a]">Late fee:</strong> $25 per missed payment (after 3-day grace period)</li>
+          <li><strong className="text-[#1a1a1a]">Advance amount:</strong> $100 to $10,000</li>
+          <li><strong className="text-[#1a1a1a]">Factor rate:</strong> typically 1.20 to 1.49 (varies by risk profile)</li>
+          <li><strong className="text-[#1a1a1a]">Origination fee:</strong> a one-time fee disclosed in your written agreement before you accept</li>
+          <li><strong className="text-[#1a1a1a]">Repayment:</strong> a fixed percentage of your future bank deposits, debited daily or weekly via ACH</li>
+          <li><strong className="text-[#1a1a1a]">Failed-debit fee:</strong> as permitted by your state and disclosed in the advance agreement</li>
         </ul>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
-          Example Loan
+          Example Advance
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          A $5,000 loan at 36% APR over 12 months would have approximate monthly payments of $504.03 and total repayment of $6,048.36.
+          A $5,000 advance at a 1.30 factor rate would deliver $5,000 to your bank account in exchange for the right to collect $6,500 in purchased receivables. At an example 7% remittance of daily deposits and average daily deposits of $200, repayment would complete in approximately 24 business days. Total cost of capital: $1,500.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
-          How Interest is Calculated
+          How Cost is Calculated
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          Interest is calculated using standard amortization. Each monthly payment consists of principal and interest. Early payments are interest-heavy, while later payments pay down more principal.
+          PennyLime advances are not loans, so there is no interest rate or APR. Cost is expressed as a factor rate plus a one-time origination fee. The factor rate multiplies the advance amount to produce the total purchased receivables amount. Total cost is fully disclosed in dollar terms before you accept the advance.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
-          Late Payments
+          Failed Remittances
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          If a scheduled payment fails, we will retry daily. A $25 late fee is applied after a 3-day grace period. Accounts 30+ days overdue may be sent to collections.
+          If a scheduled ACH remittance fails, we will retry within NACHA limits and reach out to update your payment information. Hardship accommodations are available before delinquency, including modified remittance percentages or short pause periods. Accounts that remain delinquent may be referred to a third-party collections partner that operates in compliance with the FDCPA, the CFPB&apos;s Regulation F, and applicable state laws.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
-          Prepayment
+          Early Payoff
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          You may pay off your loan early at any time without prepayment penalties.
+          You may pay off the remaining purchased receivables amount in full at any time without penalty.
+        </p>
+
+        <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
+          State Disclosures
+        </h2>
+        <p className="text-[15px] text-[#71717a] leading-relaxed">
+          California, New York, Virginia, Georgia, and Utah residents receive additional written disclosures required by state commercial financing disclosure laws. These disclosures are presented before acceptance of any advance and are also available on request from <a href="mailto:legal@pennylime.com" className="text-[#15803d] hover:underline">legal@pennylime.com</a>.
         </p>
       </div>
     </div>

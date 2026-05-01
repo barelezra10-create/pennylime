@@ -7,7 +7,7 @@ import { generateMeta } from "@/lib/seo";
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = generateMeta({ title: "Blog", description: "Guides, tips, and resources for gig workers and 1099 contractors seeking loans." }) as Metadata;
+export const metadata: Metadata = generateMeta({ title: "Blog", description: "Guides, tips, and resources for drivers, sellers, and operators seeking funding." }) as Metadata;
 
 export default async function BlogPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { page } = await searchParams;
@@ -21,7 +21,7 @@ export default async function BlogPage({ searchParams }: { searchParams: Promise
     <div className="max-w-6xl mx-auto px-4 py-12">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Blog", href: "/blog" }]} />
       <h1 className="text-[28px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mb-2">Blog</h1>
-      <p className="text-[14px] text-[#71717a] mb-6">Guides, tips, and resources for gig workers.</p>
+      <p className="text-[14px] text-[#71717a] mb-6">Guides, tips, and resources for drivers, sellers, and operators.</p>
 
       <div className="flex gap-3 mb-8">
         <Link href="/blog" className="text-[13px] font-medium px-3 py-1.5 rounded-full bg-[#15803d] text-white">All</Link>
