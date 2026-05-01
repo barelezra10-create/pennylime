@@ -6,60 +6,72 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
 
-const FALLBACK_PLATFORMS = [
-  "Uber", "Lyft", "DoorDash", "Instacart", "Amazon Flex",
-  "Grubhub", "Amazon FBA", "Shopify", "Etsy",
-  "Fiverr", "Upwork", "TaskRabbit", "Thumbtack", "Rover",
-];
+/**
+ * Each platform: brand color + stylized wordmark approximation.
+ * Generic styling, not trademark reproduction.
+ */
+type Platform = {
+  name: string;
+  display: string;
+  color: string;
+  bg?: string;
+  weight?: number;
+  letterSpacing?: string;
+  italic?: boolean;
+  font?: string;
+};
 
-const ROTATIONS = [-3, 2, -1.5, 3, -2, 1, -3.5, 2.5, -1, 3, -2, 1.5, -2.5, 1.8];
-const BG_COLORS = [
-  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fefce8]",
-  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fefce8]",
-  "bg-white", "bg-[#dcfce7]", "bg-white", "bg-[#fefce8]",
-  "bg-white", "bg-[#dcfce7]",
+const PLATFORMS: Platform[] = [
+  // Drivers
+  { name: "Uber", display: "Uber", color: "#000000", weight: 800, letterSpacing: "-0.04em" },
+  { name: "Lyft", display: "lyft", color: "#FF00BF", weight: 800, letterSpacing: "-0.04em" },
+  { name: "DoorDash", display: "DoorDash", color: "#EB1700", weight: 800, letterSpacing: "-0.025em" },
+  { name: "Instacart", display: "Instacart", color: "#43B02A", weight: 700, letterSpacing: "-0.015em" },
+  { name: "Amazon Flex", display: "amazon flex", color: "#FF9900", weight: 600, letterSpacing: "-0.01em" },
+  { name: "Grubhub", display: "Grubhub", color: "#F63440", weight: 800, letterSpacing: "-0.025em" },
+  { name: "Shipt", display: "shipt", color: "#1A8757", weight: 800, letterSpacing: "-0.015em" },
+  { name: "Postmates", display: "Postmates", color: "#000000", weight: 800, letterSpacing: "-0.025em" },
+
+  // Sellers
+  { name: "Amazon FBA", display: "amazon", color: "#FF9900", weight: 700, letterSpacing: "-0.015em" },
+  { name: "Shopify", display: "shopify", color: "#5E8E3E", weight: 700, letterSpacing: "-0.015em" },
+  { name: "Etsy", display: "Etsy", color: "#F1641E", weight: 800, italic: true, letterSpacing: "-0.025em" },
+
+  // Operators
+  { name: "Fiverr", display: "fiverr.", color: "#1DBF73", weight: 800, letterSpacing: "-0.04em" },
+  { name: "Upwork", display: "Upwork", color: "#14A800", weight: 700, letterSpacing: "-0.015em" },
+  { name: "TaskRabbit", display: "TaskRabbit", color: "#2C8C26", weight: 700, letterSpacing: "-0.02em" },
+  { name: "Thumbtack", display: "thumbtack", color: "#009FD9", weight: 700, letterSpacing: "-0.015em" },
+  { name: "Rover", display: "rover", color: "#0F8E61", weight: 800, letterSpacing: "-0.025em" },
+  { name: "Turo", display: "Turo", color: "#593CFB", weight: 800, letterSpacing: "-0.04em" },
 ];
 
 interface PlatformShowcaseProps {
   platforms: { name: string; slug: string }[];
 }
 
-export function PlatformShowcase({ platforms }: PlatformShowcaseProps) {
+export function PlatformShowcase({ platforms: _platforms }: PlatformShowcaseProps) {
+  void _platforms;
   const sectionRef = useRef<HTMLElement>(null);
-  const pinRef = useRef<HTMLDivElement>(null);
-  const pillsRef = useRef<HTMLDivElement>(null);
-
-  const displayPlatforms =
-    platforms.length > 0 ? platforms.map((p) => p.name) : FALLBACK_PLATFORMS;
+  const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!sectionRef.current || !pinRef.current) return;
+    if (!sectionRef.current || !gridRef.current) return;
     const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: "top top",
-        end: "+=40%",
-        pin: pinRef.current,
-        pinSpacing: true,
-        anticipatePin: 1,
-      });
-
-      // Pills pop in one by one
-      const pills = pillsRef.current?.querySelectorAll(".platform-pill");
-      if (pills) {
+      const tiles = gridRef.current?.querySelectorAll(".logo-tile");
+      if (tiles) {
         gsap.fromTo(
-          pills,
-          { opacity: 0, scale: 0.6, rotation: 0 },
+          tiles,
+          { opacity: 0, y: 16 },
           {
             opacity: 1,
-            scale: 1,
-            rotation: (i) => ROTATIONS[i % ROTATIONS.length],
+            y: 0,
             duration: 0.5,
-            stagger: 0.06,
-            ease: "back.out(1.8)",
+            stagger: 0.04,
+            ease: "power2.out",
             scrollTrigger: {
               trigger: sectionRef.current,
-              start: "top 80%",
+              start: "top 75%",
               toggleActions: "play none none reverse",
             },
           }
@@ -67,56 +79,94 @@ export function PlatformShowcase({ platforms }: PlatformShowcaseProps) {
       }
     }, sectionRef);
     return () => ctx.revert();
-  }, [displayPlatforms]);
+  }, []);
 
   return (
-    <section ref={sectionRef} className="relative" style={{ height: "140vh" }}>
-      <div
-        ref={pinRef}
-        className="h-screen bg-[#f0fdf4] flex items-center overflow-hidden"
-      >
-        <div className="max-w-5xl mx-auto w-full px-6">
-          <div className="mb-12 text-center">
-            <div className="inline-flex items-center gap-2 bg-white text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase shadow-sm">
-              Platform coverage
-            </div>
-            <h2
-              className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#1a1a1a]"
-              style={{ fontSize: "clamp(36px, 5vw, 64px)" }}
-            >
-              Built for your platform.
-            </h2>
-            <p className="text-[#52525b] text-[16px] mt-4 max-w-lg mx-auto">
-              We read deposits from every major platform. If you drive, deliver, sell, or ship, your earnings count.
-            </p>
+    <section ref={sectionRef} className="bg-white py-24 md:py-28 px-6 border-y border-[#e4e4e7]">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.06em] uppercase">
+            We fund earners on
           </div>
-
-          {/* Platform pills */}
-          <div
-            ref={pillsRef}
-            className="flex flex-wrap gap-3 justify-center"
+          <h2
+            className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#0a0a0a] mb-4"
+            style={{ fontSize: "clamp(32px, 4.5vw, 52px)" }}
           >
-            {displayPlatforms.map((name, i) => (
-              <div
-                key={i}
-                className={`platform-pill ${BG_COLORS[i % BG_COLORS.length]} border border-[#e4e4e7] rounded-full px-5 py-2.5 shadow-sm opacity-0`}
-                style={{ transform: `rotate(${ROTATIONS[i % ROTATIONS.length]}deg)` }}
-              >
-                <span className="font-extrabold text-[14px] text-[#1a1a1a] tracking-[-0.02em]">
-                  {name}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Bottom note */}
-          <p className="text-center text-[#52525b] text-[13px] mt-10">
-            Don&apos;t see your platform?{" "}
-            <a href="/apply" className="text-[#15803d] underline underline-offset-4 font-medium">
-              Apply anyway
-            </a>
-            . We review every deposit source.
+            Every major platform.
+          </h2>
+          <p className="text-[#52525b] text-[16px] max-w-xl mx-auto">
+            If your deposits come from any of these, your earnings qualify. No W-2 required.
           </p>
+        </div>
+
+        {/* Logo wall — uniform tile grid */}
+        <div
+          ref={gridRef}
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"
+        >
+          {PLATFORMS.map((p) => (
+            <div
+              key={p.name}
+              className="logo-tile group bg-white border border-[#e4e4e7] rounded-2xl h-24 md:h-28 flex items-center justify-center px-4 hover:border-[#15803d]/40 hover:shadow-[0_10px_24px_-12px_rgba(21,128,61,0.18)] transition-all duration-200 grayscale-[0.15] hover:grayscale-0"
+              style={{ background: p.bg || "#ffffff" }}
+              aria-label={p.name}
+            >
+              <span
+                className="select-none"
+                style={{
+                  color: p.color,
+                  fontWeight: p.weight ?? 700,
+                  letterSpacing: p.letterSpacing ?? "-0.02em",
+                  fontStyle: p.italic ? "italic" : undefined,
+                  fontSize: "clamp(15px, 1.5vw, 20px)",
+                  fontFamily: p.font || "-apple-system, 'Helvetica Neue', Inter, sans-serif",
+                }}
+              >
+                {p.display}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom CTA */}
+        <p className="text-center text-[#52525b] text-[14px] mt-12">
+          Don&apos;t see your platform?{" "}
+          <a
+            href="/apply"
+            className="text-[#15803d] font-semibold hover:underline underline-offset-4"
+          >
+            Apply anyway
+          </a>
+          . We review every deposit source.
+        </p>
+
+        {/* Trust line */}
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-[12px] text-[#71717a] font-semibold uppercase tracking-[0.08em]">
+          <span className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 7l3 3 7-7" />
+            </svg>
+            Bank-level encryption
+          </span>
+          <span className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 7l3 3 7-7" />
+            </svg>
+            Plaid-secured connection
+          </span>
+          <span className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 7l3 3 7-7" />
+            </svg>
+            Read-only access
+          </span>
+          <span className="flex items-center gap-2">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 7l3 3 7-7" />
+            </svg>
+            No credit pull
+          </span>
         </div>
       </div>
     </section>
