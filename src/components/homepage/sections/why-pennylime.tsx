@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -10,78 +9,63 @@ if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
 const FEATURES = [
   {
     icon: (
-      <Image
-        src="/illustrations/why-no-credit-check.png"
-        alt="No credit check illustration"
-        width={56}
-        height={56}
-        className="w-14 h-14 object-contain"
-      />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="14" cy="14" r="11" />
+        <path d="M5.5 5.5l17 17" />
+      </svg>
     ),
     title: "No credit checks",
-    desc: "We never pull your credit score. We evaluate income and cash flow from your platform earnings instead.",
+    desc: "We never pull your credit. We size advances from 90 days of verified bank deposits across the platforms you actually earn on.",
   },
   {
     icon: (
-      <Image
-        src="/illustrations/why-fast-funding.png"
-        alt="Fast funding illustration"
-        width={56}
-        height={56}
-        className="w-14 h-14 object-contain"
-      />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="14" cy="14" r="11" />
+        <path d="M14 7v7l5 3" />
+      </svg>
     ),
     title: "Same-day decisions",
-    desc: "Most applications get a decision within hours. No waiting days for a bank to call you back.",
+    desc: "Most applicants get a decision within 1 to 3 hours. Funds in your bank within 48 hours after acceptance.",
   },
   {
     icon: (
-      <Image
-        src="/illustrations/why-built-for-1099.png"
-        alt="Built for 1099 workers illustration"
-        width={56}
-        height={56}
-        className="w-14 h-14 object-contain"
-      />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="6" width="20" height="16" rx="2" />
+        <path d="M4 11h20M9 16h4" />
+      </svg>
     ),
     title: "Built for 1099",
-    desc: "Designed from day one for independent contractors. Your gig income is our specialty, not an afterthought.",
+    desc: "Designed from day one for drivers, sellers, and operators. Platform earnings are our specialty, not an afterthought.",
   },
   {
     icon: (
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-        {/* Dollar in circle */}
-        <circle cx="20" cy="20" r="14" stroke="#15803d" strokeWidth="2.5" />
-        <path d="M20 10 L20 30M15 14 C15 14 16 12 20 12 C24 12 25 15 25 16 C25 20 15 19 15 24 C15 28 17 28 20 28 C23 28 25 26 25 26" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="14" cy="14" r="10" />
+        <path d="M14 8v12M11 11h4.5a2 2 0 010 4h-3a2 2 0 000 4H17" />
       </svg>
     ),
     title: "Transparent pricing",
-    desc: "Clear rates, no hidden fees. You know exactly what you&apos;ll pay before you accept. No surprises.",
+    desc: "Plain factor rate. Total dollar cost shown above the fold before you accept. No hidden fees, no asterisks.",
   },
   {
     icon: (
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-        {/* Phone */}
-        <rect x="12" y="4" width="16" height="32" rx="4" stroke="#15803d" strokeWidth="2.5" />
-        <path d="M18 32 L22 32" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M16 10 L24 10" stroke="#15803d" strokeWidth="2" strokeLinecap="round" />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="9" y="3" width="10" height="22" rx="2" />
+        <path d="M12 6h4M14 22h.01" />
       </svg>
     ),
     title: "Mobile-first apply",
-    desc: "Apply from your phone between rides or deliveries. Our form takes 5 minutes and works on any device.",
+    desc: "Apply from your phone between rides, deliveries, or orders. The form takes 5 minutes and works on any device.",
   },
   {
     icon: (
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-        {/* Repeat/refresh */}
-        <path d="M8 20 C8 12.3 14.3 6 22 6 C26.4 6 30.3 8 32.8 11.2" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-        <path d="M28 6 L33 11 L28 16" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M32 20 C32 27.7 25.7 34 18 34 C13.6 34 9.7 32 7.2 28.8" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-        <path d="M12 34 L7 29 L12 24" stroke="#15803d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3.5 14a10.5 10.5 0 0118-7.4M24.5 14a10.5 10.5 0 01-18 7.4" />
+        <path d="M21 3v5h-5M7 25v-5h5" />
       </svg>
     ),
     title: "Repeat funding",
-    desc: "Completed your first advance? Reapply instantly with better terms. We reward reliability.",
+    desc: "Completed your first advance? Reapply instantly with better terms. We reward consistent performers.",
   },
 ];
 
@@ -99,11 +83,11 @@ export function WhyLimecredit() {
           opacity: 1,
           y: 0,
           duration: 0.7,
-          stagger: 0.1,
+          stagger: 0.08,
           ease: "power3.out",
           scrollTrigger: {
             trigger: sectionRef.current,
-            start: "top 60%",
+            start: "top 70%",
             toggleActions: "play none none reverse",
           },
         }
@@ -114,34 +98,36 @@ export function WhyLimecredit() {
 
   return (
     <section ref={sectionRef} className="bg-[#fafaf7] py-24 px-6">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-14">
-          <div className="inline-flex items-center gap-2 bg-white text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase shadow-sm">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-14 max-w-2xl">
+          <div className="inline-flex items-center gap-2 bg-white border border-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.06em] uppercase shadow-sm">
             Why us
           </div>
           <h2
-            className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#1a1a1a]"
+            className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#0a0a0a]"
             style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
           >
-            Why PennyLime.
+            Why <span className="text-[#15803d]">PennyLime<span>.</span></span>
           </h2>
-          <p className="text-[#71717a] text-[16px] mt-4 max-w-xl">
-            We built the product we wish existed when we drove gig for the first
-            time. Everything here is intentional.
+          <p className="text-[#52525b] text-[17px] mt-5 leading-relaxed">
+            We built the product we wished existed when we drove gig for the first time.
+            Six things that are intentional, not accidental.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {FEATURES.map((f, i) => (
             <div
               key={i}
-              className="feature-card bg-white rounded-2xl p-6 border border-[#e4e4e7] hover:border-[#15803d]/30 hover:shadow-lg transition-all duration-200"
+              className="feature-card group bg-white rounded-2xl p-6 border border-[#e4e4e7] hover:border-[#15803d]/40 hover:shadow-[0_12px_30px_-12px_rgba(21,128,61,0.18)] transition-all duration-200"
             >
-              <div className="mb-4">{f.icon}</div>
-              <h3 className="font-bold text-[#1a1a1a] text-[16px] mb-2 tracking-[-0.02em]">
+              <div className="w-12 h-12 rounded-xl bg-[#dcfce7] text-[#15803d] flex items-center justify-center mb-5 group-hover:scale-105 transition-transform">
+                {f.icon}
+              </div>
+              <h3 className="font-extrabold text-[#0a0a0a] text-[17px] mb-2 tracking-[-0.02em]">
                 {f.title}
               </h3>
-              <p className="text-[#71717a] text-[14px] leading-relaxed">{f.desc}</p>
+              <p className="text-[#52525b] text-[14px] leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>
