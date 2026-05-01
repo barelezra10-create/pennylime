@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -12,106 +12,151 @@ const STEPS = [
     num: "01",
     headline: "Apply in 5 minutes",
     desc: "Short form. No W-2, no tax returns. Just the platforms you earn on and basic info. We never pull your credit.",
-    img: "/illustrations/step-1-apply.png",
-    imgAlt: "Person applying on smartphone illustration",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="6" y="3" width="20" height="26" rx="3" />
+        <path d="M11 9h10M11 15h10M11 21h6" />
+      </svg>
+    ),
   },
   {
     num: "02",
     headline: "We read 90 days of deposits",
     desc: "Connect your bank securely through Plaid. We size the advance to your verified Uber, DoorDash, Amazon, or Shopify deposits, not a FICO score.",
-    img: "/illustrations/step-2-approved.png",
-    imgAlt: "Documents with green checkmark approval illustration",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="7" width="26" height="18" rx="3" />
+        <path d="M3 13h26M9 19h4M16 19h4" />
+      </svg>
+    ),
   },
   {
     num: "03",
     headline: "Funded in 48 hours",
     desc: "Approved offer with the factor rate and total cost on one screen. Funds in your bank within 48 hours. Repaid as a small percentage of future deposits.",
-    img: "/illustrations/step-3-funded.png",
-    imgAlt: "Money flowing into smartphone illustration",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 4v20M9 17l7 7 7-7" />
+        <path d="M5 28h22" />
+      </svg>
+    ),
   },
 ];
 
 export function HowItWorks() {
   const sectionRef = useRef<HTMLElement>(null);
-  const pinWrapRef = useRef<HTMLDivElement>(null);
-  const step0Ref = useRef<HTMLDivElement>(null);
-  const step1Ref = useRef<HTMLDivElement>(null);
-  const step2Ref = useRef<HTMLDivElement>(null);
-  const dot0Ref = useRef<HTMLDivElement>(null);
-  const dot1Ref = useRef<HTMLDivElement>(null);
-  const dot2Ref = useRef<HTMLDivElement>(null);
-
-  const stepRefs = [step0Ref, step1Ref, step2Ref];
-  const dotRefs = [dot0Ref, dot1Ref, dot2Ref];
+  const cardsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!sectionRef.current || !pinWrapRef.current) return;
+    if (!sectionRef.current || !cardsRef.current) return;
     const ctx = gsap.context(() => {
-      gsap.set(step0Ref.current, { opacity: 1, y: 0 });
-      gsap.set([step1Ref.current, step2Ref.current], { opacity: 0, y: 40 });
-      gsap.set([dot0Ref.current], { backgroundColor: "#a3e635", scale: 1.2 });
-      gsap.set([dot1Ref.current, dot2Ref.current], { backgroundColor: "#333", scale: 1 });
-
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top top",
-          end: "+=150%",
-          pin: pinWrapRef.current,
-          pinSpacing: true,
-          anticipatePin: 1,
-          scrub: 1,
-        },
-      });
-
-      tl.to(step0Ref.current, { opacity: 0, y: -40, duration: 1 }, 1)
-        .to(dot0Ref.current, { backgroundColor: "#333", scale: 1, duration: 1 }, 1)
-        .to(step1Ref.current, { opacity: 1, y: 0, duration: 1 }, 1.1)
-        .to(dot1Ref.current, { backgroundColor: "#a3e635", scale: 1.2, duration: 1 }, 1.1);
-
-      tl.to(step1Ref.current, { opacity: 0, y: -40, duration: 1 }, 3)
-        .to(dot1Ref.current, { backgroundColor: "#333", scale: 1, duration: 1 }, 3)
-        .to(step2Ref.current, { opacity: 1, y: 0, duration: 1 }, 3.1)
-        .to(dot2Ref.current, { backgroundColor: "#a3e635", scale: 1.2, duration: 1 }, 3.1);
+      const cards = cardsRef.current?.querySelectorAll(".step-card");
+      if (cards) {
+        gsap.fromTo(
+          cards,
+          { opacity: 0, y: 50 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.8,
+            stagger: 0.15,
+            ease: "power3.out",
+            scrollTrigger: {
+              trigger: sectionRef.current,
+              start: "top 70%",
+              toggleActions: "play none none reverse",
+            },
+          }
+        );
+      }
     }, sectionRef);
     return () => ctx.revert();
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative" style={{ height: "250vh" }}>
-      <div ref={pinWrapRef} className="h-screen bg-[#1a1a1a] flex items-center overflow-hidden">
-        <div className="max-w-5xl mx-auto w-full px-6">
-          <div className="mb-16">
-            <div className="inline-flex items-center gap-2 bg-[#15803d]/30 text-[#a3e635] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase">
-              How it works
-            </div>
-            <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-white" style={{ fontSize: "clamp(36px, 4.5vw, 56px)" }}>
-              Three steps to funded.
-            </h2>
-          </div>
+    <section
+      ref={sectionRef}
+      className="relative bg-[#0a0a0a] py-28 md:py-36 px-6 overflow-hidden"
+    >
+      {/* Background dot grid + soft lime glow */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, #a3e635 1px, transparent 0)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-[#15803d] opacity-[0.08] blur-3xl" />
+      </div>
 
-          <div className="relative h-64">
-            {STEPS.map((step, i) => (
-              <div key={i} ref={stepRefs[i]} className="absolute inset-0 flex items-start gap-8" style={{ opacity: i === 0 ? 1 : 0 }}>
-                <div className="shrink-0">
-                  <span className="font-extrabold tracking-[-0.06em] text-[#333] leading-none select-none" style={{ fontSize: "clamp(80px, 10vw, 120px)" }}>{step.num}</span>
+      <div className="max-w-6xl mx-auto relative z-10">
+        {/* Header */}
+        <div className="max-w-2xl mb-16 md:mb-20">
+          <div className="inline-flex items-center gap-2 bg-[#15803d]/15 text-[#a3e635] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.06em] uppercase border border-[#15803d]/30">
+            How it works
+          </div>
+          <h2
+            className="font-extrabold tracking-[-0.04em] leading-[0.95] text-white"
+            style={{ fontSize: "clamp(40px, 5.5vw, 68px)" }}
+          >
+            Three steps
+            <br />
+            to <span className="text-[#a3e635]">funded.</span>
+          </h2>
+        </div>
+
+        {/* Steps grid: vertical stack on mobile, horizontal on md+ */}
+        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 relative">
+          {/* Connecting line between cards on desktop */}
+          <div className="hidden md:block absolute top-[88px] left-[16%] right-[16%] h-px bg-gradient-to-r from-[#15803d]/0 via-[#15803d]/40 to-[#15803d]/0 z-0" />
+
+          {STEPS.map((step) => (
+            <div
+              key={step.num}
+              className="step-card relative bg-[#141414] border border-white/10 rounded-3xl p-7 md:p-8 hover:border-[#15803d]/40 hover:bg-[#171717] transition-colors"
+            >
+              {/* Icon + step number row */}
+              <div className="flex items-start justify-between mb-7">
+                <div className="w-14 h-14 rounded-2xl bg-[#15803d]/15 border border-[#15803d]/30 flex items-center justify-center text-[#a3e635]">
+                  {step.icon}
                 </div>
-                <div className="pt-4">
-                  <div className="mb-4">
-                    <Image src={step.img} alt={step.imgAlt} width={72} height={72} className="w-16 h-16 object-contain" />
-                  </div>
-                  <h3 className="font-extrabold tracking-[-0.03em] text-white leading-tight mb-3" style={{ fontSize: "clamp(28px, 3.5vw, 44px)" }}>{step.headline}</h3>
-                  <p className="text-[#a1a1aa] text-[16px] leading-relaxed max-w-lg">{step.desc}</p>
-                </div>
+                <span className="font-extrabold tracking-[-0.06em] text-[#a3e635]/30 leading-none select-none text-[64px]">
+                  {step.num}
+                </span>
               </div>
-            ))}
-          </div>
 
-          <div className="flex gap-2 mt-12">
-            {STEPS.map((_, i) => (
-              <div key={i} ref={dotRefs[i]} className="w-2 h-2 rounded-full" />
-            ))}
-          </div>
+              <h3 className="font-extrabold tracking-[-0.025em] text-white leading-tight mb-3 text-[22px] md:text-[24px]">
+                {step.headline}
+              </h3>
+              <p className="text-[#a1a1aa] text-[14.5px] leading-relaxed">
+                {step.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA + supporting line */}
+        <div className="mt-16 md:mt-20 flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
+          <p className="text-[#a1a1aa] text-[15px] leading-relaxed max-w-md">
+            Apply with the platforms you already drive, deliver, or sell on. We do the rest.
+          </p>
+          <Link
+            href="/apply"
+            className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-7 py-3.5 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_8px_20px_-8px_rgba(21,128,61,0.6)]"
+          >
+            Start your application
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M3 8h10M9 4l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
         </div>
       </div>
     </section>
