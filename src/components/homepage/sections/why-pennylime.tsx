@@ -113,7 +113,7 @@ export function WhyLimecredit() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-[#faf8f0] py-24 px-6">
+    <section ref={sectionRef} className="bg-[#fafaf7] py-24 px-6">
       <div className="max-w-5xl mx-auto">
         <div className="mb-14">
           <div className="inline-flex items-center gap-2 bg-white text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase shadow-sm">

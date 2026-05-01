@@ -300,10 +300,10 @@ export default async function LandingPageRoute({ params }: Props) {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="inline-flex items-center gap-2 text-white text-[13px] font-extrabold">
             <LogoMark size={22} />
-            Penny<span className="text-[#4ade80]">Lime</span>
+            Penny<span className="text-[#4ade80]">Lime<span className="text-[#4ade80]">.</span></span>
           </div>
           <p className="text-[11px] text-[#71717a] text-center md:text-right max-w-xl">
-            APR range 30-60%. Loan amounts $100-$10,000. Terms 3-18 months. Loan approval subject to eligibility.{" "}
+            Merchant cash advances $100-$10,000. Factor rates typically 1.20-1.49. Repayment as a fixed percentage of future receivables. Not a loan. Approval subject to eligibility.{" "}
             <Link href="/disclosures" className="underline hover:text-white">See full disclosures</Link>
             {" · "}
             <Link href="/privacy" className="underline hover:text-white">Privacy</Link>

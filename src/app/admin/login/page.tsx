@@ -39,14 +39,16 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="bg-[#f8faf8] min-h-screen flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl p-8 w-full max-w-sm">
+    <div className="bg-[#fafaf7] min-h-screen flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl border border-[#e4e4e7] p-8 w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/lime-mark.svg" alt="" aria-hidden="true" width={56} height={56} className="mx-auto mb-3" />
           <span className="font-extrabold text-xl tracking-[-0.03em]">
-            Penny<span className="text-[#15803d]">Lime</span>
+            Penny<span className="text-[#15803d]">Lime<span className="text-[#15803d]">.</span></span>
           </span>
-          <p className="mt-1 text-sm text-gray-400">Admin Portal</p>
+          <p className="mt-1 text-[12px] text-[#71717a] uppercase tracking-[0.06em] font-semibold">Admin Portal</p>
         </div>
 
         {/* Form */}
