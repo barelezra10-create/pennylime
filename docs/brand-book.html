@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>PennyLime — Brand Book</title>
+<title>PennyLime — Brand Book v2</title>
 <style>
   @page { size: Letter; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -10,8 +10,12 @@
     --green: #15803d;
     --green-deep: #166534;
     --green-bright: #22c55e;
+    --green-vivid: #84cc16;
     --green-pale: #f0fdf4;
     --green-mist: #dcfce7;
+    --lime-bright: #a3e635;
+    --lime-flesh: #bef264;
+    --pith: #fefce8;
     --ink: #0a0a0a;
     --paper: #fafaf7;
     --paper-warm: #f5f1e8;
@@ -22,7 +26,6 @@
     --gray-100: #f4f4f5;
     --amber: #f59e0b;
     --coral: #f97316;
-    --indigo: #4f46e5;
   }
   html, body { margin: 0; padding: 0; }
   body {
@@ -40,24 +43,13 @@
     background: white;
   }
   .page:last-child { page-break-after: auto; }
+  .pn { position: absolute; bottom: 0.4in; right: 0.7in; font-size: 8pt; color: var(--gray-500); letter-spacing: 0.1em; text-transform: uppercase; }
 
-  /* page numbering */
-  .pn {
-    position: absolute; bottom: 0.4in; right: 0.7in;
-    font-size: 8pt; color: var(--gray-500); letter-spacing: 0.1em; text-transform: uppercase;
-  }
-  .pn-l { right: auto; left: 0.7in; }
-
-  /* utility */
   .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
   .small { font-size: 9pt; color: var(--gray-500); }
   .label { font-size: 8.5pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--green); }
-  .label-ink { color: var(--ink); }
   .label-pale { color: var(--gray-500); }
-  .display {
-    font-family: -apple-system, "Helvetica Neue", Inter, sans-serif;
-    font-weight: 800; letter-spacing: -0.035em; line-height: 0.95;
-  }
+  .display { font-family: -apple-system, "Helvetica Neue", Inter, sans-serif; font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; }
   hr { border: none; border-top: 1px solid var(--gray-300); margin: 18px 0; }
 
   /* ─── COVER ─── */
@@ -67,30 +59,18 @@
     padding: 1in;
   }
   .cover-top { display: flex; justify-content: space-between; align-items: start; }
-  .cover-mark { width: 56px; height: 56px; }
+  .cover-mark { width: 80px; height: 80px; object-fit: contain; }
   .cover-meta { font-size: 9pt; color: rgba(255,255,255,0.55); letter-spacing: 0.12em; text-transform: uppercase; text-align: right; line-height: 1.7; }
-  .cover-title {
-    font-size: 110pt; font-weight: 800; letter-spacing: -0.05em; line-height: 0.85;
-    margin: 0;
-  }
-  .cover-title em {
-    font-style: normal; color: var(--green-bright);
-  }
-  .cover-sub {
-    font-size: 16pt; color: rgba(255,255,255,0.7); margin-top: 28px; max-width: 540px; line-height: 1.4; font-weight: 500;
-  }
-  .cover-bottom {
-    display: flex; justify-content: space-between; align-items: end;
-    font-size: 8.5pt; color: rgba(255,255,255,0.5); letter-spacing: 0.12em; text-transform: uppercase;
-  }
+  .cover-title { font-size: 110pt; font-weight: 800; letter-spacing: -0.05em; line-height: 0.85; margin: 0; }
+  .cover-title em { font-style: normal; color: var(--lime-bright); }
+  .cover-sub { font-size: 16pt; color: rgba(255,255,255,0.7); margin-top: 28px; max-width: 560px; line-height: 1.4; font-weight: 500; }
+  .cover-bottom { display: flex; justify-content: space-between; align-items: end; font-size: 8.5pt; color: rgba(255,255,255,0.5); letter-spacing: 0.12em; text-transform: uppercase; }
 
-  /* ─── SECTION HEAD ─── */
   .section-head { margin-bottom: 28px; padding-bottom: 14px; border-bottom: 1.5px solid var(--ink); }
   .section-num { font-size: 9pt; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--green); margin-bottom: 8px; }
   .section-title { font-size: 36pt; font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; margin: 0; }
   .section-lead { font-size: 13pt; color: var(--gray-700); margin-top: 14px; max-width: 5.5in; line-height: 1.45; font-weight: 400; }
 
-  /* ─── BLOCKS ─── */
   h2, h3 { margin: 0 0 10px; }
   h3 { font-size: 14pt; font-weight: 700; letter-spacing: -0.02em; }
   h4 { font-size: 11pt; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 6px; }
@@ -100,101 +80,52 @@
   .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
   .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; }
 
-  .stat {
-    border-left: 3px solid var(--green); padding: 4px 14px; margin: 18px 0;
-  }
+  .stat { border-left: 3px solid var(--green); padding: 4px 14px; margin: 18px 0; }
   .stat-num { font-size: 32pt; font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
   .stat-label { font-size: 9pt; color: var(--gray-500); margin-top: 4px; letter-spacing: 0.06em; text-transform: uppercase; }
 
   ul, ol { margin: 0 0 12px; padding-left: 18px; }
   li { margin: 4px 0; }
 
-  /* ─── COLOR SYSTEM ─── */
-  .swatch {
-    border-radius: 8px; padding: 14px 16px; min-height: 130px;
-    display: flex; flex-direction: column; justify-content: space-between;
-    color: white; position: relative; overflow: hidden;
-  }
+  .swatch { border-radius: 8px; padding: 14px 16px; min-height: 130px; display: flex; flex-direction: column; justify-content: space-between; color: white; position: relative; overflow: hidden; }
   .swatch.lt { color: var(--ink); border: 1px solid var(--gray-300); }
   .swatch-name { font-size: 11pt; font-weight: 700; letter-spacing: -0.01em; }
   .swatch-vals { font-family: ui-monospace, monospace; font-size: 8.5pt; opacity: 0.85; line-height: 1.4; }
   .swatch-tag { position: absolute; top: 12px; right: 14px; font-size: 7.5pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.6; }
 
-  /* type specimen */
   .specimen { border-top: 1px solid var(--gray-300); padding-top: 16px; }
   .specimen-row { display: flex; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
   .specimen-meta { width: 120px; font-size: 8.5pt; color: var(--gray-500); flex-shrink: 0; line-height: 1.3; }
 
-  /* logo plate */
-  .plate {
-    background: white; border: 1px solid var(--gray-300); border-radius: 12px;
-    padding: 36px; display: flex; align-items: center; justify-content: center; min-height: 180px;
-  }
+  .plate { background: white; border: 1px solid var(--gray-300); border-radius: 12px; padding: 36px; display: flex; align-items: center; justify-content: center; min-height: 180px; }
   .plate-dark { background: var(--ink); border-color: var(--ink); }
   .plate-paper { background: var(--paper-warm); border-color: var(--paper-warm); }
-  .plate-green { background: var(--green); border-color: var(--green); }
 
-  /* card / module */
   .card { background: white; border: 1px solid var(--gray-300); border-radius: 12px; padding: 18px; }
   .card-paper { background: var(--paper-warm); border: none; }
   .card-ink { background: var(--ink); color: white; border: none; }
 
-  /* tag */
-  .tag {
-    display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.08em;
-    text-transform: uppercase; padding: 4px 10px; border-radius: 99px;
-    background: var(--green-pale); color: var(--green);
-  }
+  .tag { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 10px; border-radius: 99px; background: var(--green-pale); color: var(--green); }
   .tag-ink { background: var(--gray-100); color: var(--gray-700); }
   .tag-amber { background: #fef3c7; color: #92400e; }
 
-  /* table-ish */
   .row { display: flex; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); align-items: baseline; }
   .row:last-child { border-bottom: 0; }
   .row .k { font-size: 9.5pt; color: var(--gray-500); width: 110px; flex-shrink: 0; letter-spacing: 0.04em; text-transform: uppercase; }
   .row .v { flex: 1; font-size: 11pt; }
 
-  /* voice example block */
-  .voice {
-    border: 1px solid var(--gray-300); border-radius: 12px; padding: 16px 18px;
-  }
+  .voice { border: 1px solid var(--gray-300); border-radius: 12px; padding: 16px 18px; }
   .voice-good { border-color: var(--green); background: var(--green-pale); }
   .voice-bad { border-color: #fca5a5; background: #fef2f2; }
-  .voice-tag {
-    display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; margin-bottom: 8px;
-  }
+  .voice-tag { display: inline-block; font-size: 8.5pt; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
   .voice-good .voice-tag { color: var(--green); }
   .voice-bad .voice-tag { color: #b91c1c; }
   .voice-text { font-size: 11pt; line-height: 1.5; }
 
-  /* mock device */
-  .device {
-    background: var(--ink); border-radius: 28px; padding: 8px;
-    width: 240px; height: 460px;
-    box-shadow: 0 30px 60px -20px rgba(0,0,0,0.25);
-  }
-  .device-screen {
-    background: white; border-radius: 22px; height: 100%;
-    overflow: hidden; position: relative; padding: 28px 18px;
-  }
+  .device { background: var(--ink); border-radius: 28px; padding: 8px; width: 240px; height: 460px; box-shadow: 0 30px 60px -20px rgba(0,0,0,0.25); }
+  .device-screen { background: white; border-radius: 22px; height: 100%; overflow: hidden; position: relative; padding: 28px 18px; }
 
-  /* mark */
-  .mark-circle {
-    width: 48px; height: 48px; border-radius: 999px;
-    background: radial-gradient(circle at 38% 32%, var(--green-bright), var(--green) 70%, var(--green-deep));
-    position: relative;
-    box-shadow: 0 8px 18px -8px rgba(21,128,61,0.5);
-  }
-  .mark-circle::after {
-    content: ''; position: absolute; inset: 6px; border-radius: 999px;
-    background: radial-gradient(circle at 38% 32%, var(--green-pale), var(--green-mist));
-  }
-  .mark-circle::before {
-    content: ''; position: absolute; inset: 8px; border-radius: 999px;
-    background: radial-gradient(circle at 38% 32%, var(--green-pale), #bbf7d0);
-    z-index: 1;
-  }
+  .lime-img { object-fit: contain; }
 </style>
 </head>
 <body>
@@ -202,43 +133,13 @@
 <!-- ═══════════════ COVER ═══════════════ -->
 <section class="page cover">
   <div class="cover-top">
-    <svg class="cover-mark" viewBox="0 0 48 48" fill="none">
-      <defs>
-        <radialGradient id="r" cx="45%" cy="40%" r="55%">
-          <stop offset="0%" stop-color="#22c55e"/>
-          <stop offset="70%" stop-color="#15803d"/>
-          <stop offset="100%" stop-color="#166534"/>
-        </radialGradient>
-        <radialGradient id="f" cx="45%" cy="40%" r="60%">
-          <stop offset="0%" stop-color="#dcfce7"/>
-          <stop offset="40%" stop-color="#bbf7d0"/>
-          <stop offset="100%" stop-color="#86efac"/>
-        </radialGradient>
-      </defs>
-      <circle cx="24" cy="24" r="22" fill="url(#r)"/>
-      <circle cx="24" cy="24" r="19" fill="#f0fdf4"/>
-      <circle cx="24" cy="24" r="17.5" fill="url(#f)"/>
-      <g stroke="#f0fdf4" stroke-width="2" stroke-linecap="round">
-        <line x1="24" y1="24" x2="24" y2="6.5"/>
-        <line x1="24" y1="24" x2="39.2" y2="15.2"/>
-        <line x1="24" y1="24" x2="39.2" y2="32.8"/>
-        <line x1="24" y1="24" x2="24" y2="41.5"/>
-        <line x1="24" y1="24" x2="8.8" y2="32.8"/>
-        <line x1="24" y1="24" x2="8.8" y2="15.2"/>
-      </g>
-      <circle cx="24" cy="24" r="2" fill="#f0fdf4"/>
-    </svg>
-    <div class="cover-meta">
-      Brand Book v1.0<br>
-      Spring 2026
-    </div>
+    <img class="cover-mark" src="lime-mark.png" alt="PennyLime"/>
+    <div class="cover-meta">Brand Book v2.0<br>Spring 2026</div>
   </div>
 
   <div>
-    <div class="cover-title">
-      Penny<em>Lime.</em>
-    </div>
-    <p class="cover-sub">A funding system built for the people who built the gig economy. Same job. New rules.</p>
+    <div class="cover-title">Penny<em>Lime.</em></div>
+    <p class="cover-sub">Funding for drivers, sellers, and operators. Built for the way platforms pay. Funded by your earnings, not your credit score.</p>
   </div>
 
   <div class="cover-bottom">
@@ -261,7 +162,7 @@
       <li style="counter-increment: toc;"><span style="display: inline-block; width: 28px; color: var(--green); font-weight: 700;">03</span> Positioning</li>
       <li style="counter-increment: toc;"><span style="display: inline-block; width: 28px; color: var(--green); font-weight: 700;">04</span> The Customer</li>
       <li style="counter-increment: toc;"><span style="display: inline-block; width: 28px; color: var(--green); font-weight: 700;">05</span> Voice &amp; Tone</li>
-      <li style="counter-increment: toc;"><span style="display: inline-block; width: 28px; color: var(--green); font-weight: 700;">06</span> The Logo System</li>
+      <li style="counter-increment: toc;"><span style="display: inline-block; width: 28px; color: var(--green); font-weight: 700;">06</span> The Lime &amp; The Wordmark</li>
       <li style="counter-increment: toc;"><span style="display: inline-block; width: 28px; color: var(--green); font-weight: 700;">07</span> Color</li>
     </ol>
     <ol style="font-size: 12.5pt; line-height: 2; padding-left: 0; list-style: none; counter-reset: toc 7;">
@@ -276,7 +177,7 @@
   </div>
 
   <div style="position: absolute; bottom: 0.7in; left: 0.7in; right: 0.7in; padding-top: 18px; border-top: 1px solid var(--gray-300); display: flex; justify-content: space-between; font-size: 8.5pt; color: var(--gray-500); letter-spacing: 0.1em; text-transform: uppercase;">
-    <span>PennyLime · Brand Book v1.0</span>
+    <span>PennyLime · Brand Book v2.0</span>
     <span>Contents · 002</span>
   </div>
 </section>
@@ -285,18 +186,20 @@
 <section class="page">
   <div class="section-head">
     <div class="section-num">01 · The Story</div>
-    <h1 class="section-title">Same job.<br>New rules.</h1>
+    <h1 class="section-title">Built for the way<br>platforms pay.</h1>
   </div>
 
-  <p class="lead">The bank was built for a world where you got paid every other Friday by the same employer for thirty years. That world is gone. Sixty million Americans now earn their living one ride, one delivery, one project at a time. But the financial system still asks for the W-2 it knows will never come.</p>
+  <p class="lead">Sixty million Americans now run small businesses inside platforms. They drive for Uber and Lyft. They deliver for DoorDash, Instacart, and Amazon Flex. They sell on Amazon, Shopify, and Etsy. They take gigs on Fiverr, Upwork, TaskRabbit, and Rover. The platform is the storefront, the app is the back office, and the bank deposit is the receipt.</p>
 
-  <p>PennyLime exists because someone had to design funding for the way work actually happens. Not "alternative" lending. Not a workaround. A funding system that reads bank deposits the same way an old loan officer read a pay stub, except faster, fairer, and on a phone.</p>
+  <p>The financial system never adapted. Banks still ask for a W-2. Underwriting models still optimize for predictable salary income. Repayment terms still assume you get paid every other Friday by the same employer for thirty years.</p>
 
-  <p>We're not a bank. We're not a payday lender. We're not a generic merchant-cash-advance company chasing brick-and-mortar restaurants. We are a tech company building the receivables-purchase product the gig economy needed ten years ago.</p>
+  <p>So we built PennyLime. We read 90 days of bank deposits the way the old system used to read a pay stub. We size funding based on what you actually earn. We collect repayment as a percentage of your future earnings, not a fixed monthly bill, because the work itself isn't fixed.</p>
 
-  <div class="grid-3" style="margin-top: 36px;">
-    <div class="stat"><div class="stat-num">73%</div><div class="stat-label">of gig workers say traditional lending is inaccessible</div></div>
+  <p style="font-size: 14pt; font-weight: 600; color: var(--green); margin-top: 18px;">If you drive, deliver, sell, or ship, we fund you. In 48 hours.</p>
+
+  <div class="grid-3" style="margin-top: 28px;">
     <div class="stat"><div class="stat-num">60M</div><div class="stat-label">Americans earning gig or 1099 income</div></div>
+    <div class="stat"><div class="stat-num">90d</div><div class="stat-label">of verified deposits we underwrite on</div></div>
     <div class="stat"><div class="stat-num">48h</div><div class="stat-label">from application to funded</div></div>
   </div>
 
@@ -312,17 +215,17 @@
 
   <div style="border-left: 4px solid var(--green); padding: 4px 24px; margin: 0 0 36px;">
     <div class="label">Mission</div>
-    <p style="font-size: 22pt; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin: 8px 0 0;">Fund the people who fund the on-demand economy, on terms that respect what they actually earn.</p>
+    <p style="font-size: 22pt; font-weight: 700; letter-spacing: -0.025em; line-height: 1.15; margin: 8px 0 0;">Fund the people who make the on-demand economy run, on terms that respect what they actually earn.</p>
   </div>
 
   <div class="grid-2" style="gap: 32px;">
     <div>
       <div class="label">Vision</div>
-      <p style="font-size: 12.5pt; line-height: 1.5; margin-top: 8px;">A world where a Tuesday-night Uber driver can get capital to fix their car as fast as a Fortune 500 can issue a corporate bond, and at a fair price.</p>
+      <p style="font-size: 12.5pt; line-height: 1.5; margin-top: 8px;">A world where a Tuesday-night Uber driver, an Amazon FBA seller, and a Fiverr designer can all access capital as easily and fairly as a Fortune 500 company.</p>
     </div>
     <div>
       <div class="label">Promise</div>
-      <p style="font-size: 12.5pt; line-height: 1.5; margin-top: 8px;">Your earnings are your credit. We never ask for a W-2. We disclose every cost in plain English before you accept. We say no when no is the right answer.</p>
+      <p style="font-size: 12.5pt; line-height: 1.5; margin-top: 8px;">Your platform earnings are your credit. We disclose every cost in plain English before you accept. We say no when no is the right answer.</p>
     </div>
   </div>
 
@@ -332,11 +235,11 @@
   <div class="grid-3" style="margin-top: 14px;">
     <div class="card card-paper">
       <h4 style="color: var(--green);">Plain English</h4>
-      <p class="small" style="color: var(--gray-700); font-size: 10pt;">Factor rate. Daily remittance. Total cost. Spelled out before you tap accept. No fine print, no last-minute surprise fees.</p>
+      <p class="small" style="color: var(--gray-700); font-size: 10pt;">Factor rate. Daily remittance. Total cost. Spelled out before you tap accept. No fine print, no asterisks, no surprise fees.</p>
     </div>
     <div class="card card-paper">
       <h4 style="color: var(--green);">Earnings &gt; Credit</h4>
-      <p class="small" style="color: var(--gray-700); font-size: 10pt;">A 92-day deposit history is a better predictor than a FICO score for a 1099 worker. We underwrite reality, not paperwork.</p>
+      <p class="small" style="color: var(--gray-700); font-size: 10pt;">90 days of bank deposits is a better predictor than a FICO score for a 1099 worker or platform seller. We underwrite reality, not paperwork.</p>
     </div>
     <div class="card card-paper">
       <h4 style="color: var(--green);">Fast or it doesn't count</h4>
@@ -352,7 +255,7 @@
     </div>
     <div class="card card-paper">
       <h4 style="color: var(--green);">Repayment is a relationship</h4>
-      <p class="small" style="color: var(--gray-700); font-size: 10pt;">We model hardship into the product. Slow week? Your remittance is a percentage, not a fixed bill. Reward repeat customers.</p>
+      <p class="small" style="color: var(--gray-700); font-size: 10pt;">Slow week? Your remittance is a percentage of receivables, not a fixed bill. The product moves with you. Reward repeat customers.</p>
     </div>
   </div>
 
@@ -366,12 +269,12 @@
     <h1 class="section-title">Where we sit.</h1>
   </div>
 
-  <p class="lead">PennyLime is a tech-first funding platform for the on-demand workforce. Our product is a merchant cash advance, but our positioning is a software company. We earn customer trust the way Stripe earned developer trust, with developer-grade transparency, predictable APIs, and a brand that signals competence.</p>
+  <p class="lead">PennyLime is a tech-driven funding platform for the on-demand workforce. Our product is a merchant cash advance, but our positioning is a software company. We earn customer trust the way Stripe earned developer trust: with transparency, predictable APIs, and a brand that signals competence and warmth at the same time.</p>
 
   <div class="card card-ink" style="margin-top: 28px; padding: 32px;">
     <div class="label" style="color: rgba(255,255,255,0.55); margin-bottom: 14px;">Positioning Statement</div>
-    <p style="font-size: 18pt; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; margin: 0; color: white;">
-      For self-employed gig workers and 1099 earners who can't get a fair shake from traditional lenders, PennyLime is the tech-driven funding partner that buys a piece of your future earnings at a transparent rate, deposits cash within 48 hours, and adapts when your week does. Unlike payday lenders, generic MCAs, or banks, we underwrite from real-time bank data and price for the actual risk of the income, not the absence of a W-2.
+    <p style="font-size: 17pt; font-weight: 600; letter-spacing: -0.02em; line-height: 1.35; margin: 0; color: white;">
+      For drivers, sellers, and operators who earn through platforms and can't get a fair shake from traditional lenders, PennyLime is the tech-driven funding partner that buys a piece of your future earnings at a transparent rate, deposits cash within 48 hours, and adapts when your week does. Unlike payday lenders, generic MCAs, or banks, we underwrite from real-time bank data and price for the actual risk of the income, not the absence of a W-2.
     </p>
   </div>
 
@@ -385,7 +288,7 @@
         <li>A receivables-purchase product (MCA)</li>
         <li>API-driven and audit-ready</li>
         <li>Fair, fast, transparent</li>
-        <li>Built specifically for 1099 income</li>
+        <li>Built specifically for platform earnings</li>
       </ul>
     </div>
     <div>
@@ -407,36 +310,35 @@
 <section class="page">
   <div class="section-head">
     <div class="section-num">04 · The Customer</div>
-    <h1 class="section-title">Who we build for.</h1>
+    <h1 class="section-title">Drivers. Sellers. Operators.</h1>
   </div>
 
-  <p class="lead">Our customer is not a type of person. It's a type of work. The Uber driver in Tampa, the freelance designer in Brooklyn, the rover sitter in Phoenix, the Amazon Flex driver in Sacramento — they share an income pattern, not a demographic.</p>
+  <p class="lead">Our customer is not a type of person. It's a type of work. Three audiences, one truth: a platform pays them, deposits prove the income, banks don't get it.</p>
 
-  <div class="grid-2" style="gap: 28px;">
+  <div class="grid-3" style="gap: 14px;">
     <div class="card">
-      <div class="tag">Primary</div>
-      <h3 style="margin-top: 12px;">The Working Operator</h3>
-      <p class="small" style="font-size: 10.5pt; color: var(--gray-700); margin-top: 8px;">25-55 years old. Drives 30-60 hours a week across 1-3 platforms. Income $2K-$8K monthly. Owns a phone, a vehicle, sometimes a small fleet. Treats their gig as a serious business; tracks miles in an app, files a Schedule C. Needs $500-$5,000 advances for vehicle repair, equipment, or to bridge a slow week.</p>
-      <div class="row" style="margin-top: 12px;"><span class="k">Channel</span><span class="v small">Reddit communities, platform driver forums, TikTok</span></div>
-      <div class="row"><span class="k">Pain</span><span class="v small">Gets declined by banks; suspicious of payday lenders</span></div>
-      <div class="row"><span class="k">Trigger</span><span class="v small">Truck breaks down, slow holiday week, child medical bill</span></div>
+      <div class="tag">Drivers</div>
+      <h3 style="margin-top: 12px;">The Wheel-Bound</h3>
+      <p class="small" style="font-size: 10pt; color: var(--gray-700); margin-top: 8px;">Uber, Lyft, DoorDash, Instacart, Amazon Flex, Grubhub. Vehicle-dependent. Repair urgency. Multi-platform. $500-$5K for brakes, transmission, a new tablet, gas during a slow week.</p>
     </div>
     <div class="card">
-      <div class="tag">Secondary</div>
-      <h3 style="margin-top: 12px;">The Sole Proprietor</h3>
-      <p class="small" style="font-size: 10.5pt; color: var(--gray-700); margin-top: 8px;">28-50. Freelance creative, consultant, or platform service provider (Fiverr, Upwork, TaskRabbit, Thumbtack). Variable monthly income, often LLC-organized. Wants $2K-$10K to bridge AR gaps, buy equipment, or fund a marketing push.</p>
-      <div class="row" style="margin-top: 12px;"><span class="k">Channel</span><span class="v small">Twitter, LinkedIn, freelancer Discords</span></div>
-      <div class="row"><span class="k">Pain</span><span class="v small">Income is "lumpy"; banks want 2 years of tax returns</span></div>
-      <div class="row"><span class="k">Trigger</span><span class="v small">Big invoice 60 days out, software/tool needed today</span></div>
+      <div class="tag">Sellers</div>
+      <h3 style="margin-top: 12px;">The Inventory Operators</h3>
+      <p class="small" style="font-size: 10pt; color: var(--gray-700); margin-top: 8px;">Amazon FBA, Shopify, Etsy. Inventory cash-flow crunch. Need $2K-$10K for the next FBA order, the holiday inventory cycle, the marketing push before Q4.</p>
+    </div>
+    <div class="card">
+      <div class="tag">Operators</div>
+      <h3 style="margin-top: 12px;">The Project-Paid</h3>
+      <p class="small" style="font-size: 10pt; color: var(--gray-700); margin-top: 8px;">Fiverr, Upwork, TaskRabbit, Thumbtack, Rover. AR-gap problems. Need $1K-$5K to bridge the slow month, fund a tool upgrade, cover a marketing test.</p>
     </div>
   </div>
 
   <hr>
 
-  <div class="label">What they want from us</div>
+  <div class="label">What they share</div>
   <div class="grid-4" style="margin-top: 12px;">
-    <div class="card card-paper" style="text-align: center;"><div class="display" style="font-size: 28pt; color: var(--green);">1.</div><p class="small" style="font-size: 10pt;">A real number, fast. Don't waste their time.</p></div>
-    <div class="card card-paper" style="text-align: center;"><div class="display" style="font-size: 28pt; color: var(--green);">2.</div><p class="small" style="font-size: 10pt;">Respect for their work. Stop asking for a W-2.</p></div>
+    <div class="card card-paper" style="text-align: center;"><div class="display" style="font-size: 28pt; color: var(--green);">1.</div><p class="small" style="font-size: 10pt;">Their bank deposits ARE their proof of income.</p></div>
+    <div class="card card-paper" style="text-align: center;"><div class="display" style="font-size: 28pt; color: var(--green);">2.</div><p class="small" style="font-size: 10pt;">A real number, fast. Don't waste their time.</p></div>
     <div class="card card-paper" style="text-align: center;"><div class="display" style="font-size: 28pt; color: var(--green);">3.</div><p class="small" style="font-size: 10pt;">Fair pricing in plain English. Show the total cost.</p></div>
     <div class="card card-paper" style="text-align: center;"><div class="display" style="font-size: 28pt; color: var(--green);">4.</div><p class="small" style="font-size: 10pt;">Flexibility when life happens. Variable remittance is the gift.</p></div>
   </div>
@@ -448,10 +350,10 @@
 <section class="page">
   <div class="section-head">
     <div class="section-num">05 · Voice &amp; Tone</div>
-    <h1 class="section-title">Confident.<br>Clear. Kind.</h1>
+    <h1 class="section-title">Confident.<br>Clear. Helpful.</h1>
   </div>
 
-  <p class="lead">PennyLime sounds like a smart friend who happens to run a fintech. We tell the truth fast, in short sentences. We don't shout. We don't flatter. We don't hide behind disclaimers.</p>
+  <p class="lead">PennyLime sounds like a smart friend who happens to run a fintech. We tell the truth fast, in short sentences. We don't shout. We don't flatter. We don't hide behind disclaimers. We name the platforms our customers actually use.</p>
 
   <div class="grid-3" style="gap: 14px;">
     <div class="card">
@@ -468,10 +370,10 @@
       <div class="label">We say</div>
       <ul style="font-size: 10.5pt; margin-top: 10px;">
         <li>Fund / Funded / Funding</li>
-        <li>Advance / Cash advance</li>
-        <li>Verified earnings</li>
+        <li>Cash advance / Advance</li>
+        <li>Verified earnings / Verified deposits</li>
         <li>Plain factor rate</li>
-        <li>Daily / weekly remittance</li>
+        <li>Drivers, sellers, operators</li>
       </ul>
     </div>
     <div class="card">
@@ -492,7 +394,7 @@
   <div class="grid-2" style="gap: 14px; margin-top: 12px;">
     <div class="voice voice-good">
       <div class="voice-tag">Yes</div>
-      <div class="voice-text">"You're approved for $3,000. Repaid as 7% of your daily Uber deposits, ~24 days at your average earnings. Total cost $390. Tap accept to move."</div>
+      <div class="voice-text">"You're approved for $3,000. Repaid as 7% of your daily Uber and DoorDash deposits, ~24 days at your average earnings. Total cost $390. Tap accept to move."</div>
     </div>
     <div class="voice voice-bad">
       <div class="voice-tag">No</div>
@@ -511,71 +413,47 @@
   <div class="pn">PennyLime · Brand Book · 007</div>
 </section>
 
-<!-- ═══════════════ 06 — THE LOGO SYSTEM ═══════════════ -->
+<!-- ═══════════════ 06 — THE LIME & THE WORDMARK ═══════════════ -->
 <section class="page">
   <div class="section-head">
-    <div class="section-num">06 · The Logo System</div>
-    <h1 class="section-title">A lime, sliced.</h1>
+    <div class="section-num">06 · The Lime &amp; The Wordmark</div>
+    <h1 class="section-title">A lime. A name.<br>A period.</h1>
   </div>
 
-  <p class="lead">The PennyLime mark is a stylized cross-section of a lime: a green hemisphere divided by six radial spokes, with a center dot. It reads as a fruit, a coin, a compass, and a sun. Read whichever feels right — they all map to "energy, freshness, direction."</p>
+  <p class="lead">Two pieces. The lime mark for compact contexts (favicon, app icon, social avatar, swag). The wordmark for everywhere there's room. They never appear together as a forced lockup, because each does the job alone.</p>
 
-  <div class="grid-3" style="gap: 14px; margin-top: 24px;">
-    <div class="plate">
-      <svg width="120" height="120" viewBox="0 0 48 48" fill="none">
-        <defs>
-          <radialGradient id="r2" cx="45%" cy="40%" r="55%"><stop offset="0%" stop-color="#22c55e"/><stop offset="70%" stop-color="#15803d"/><stop offset="100%" stop-color="#166534"/></radialGradient>
-          <radialGradient id="f2" cx="45%" cy="40%" r="60%"><stop offset="0%" stop-color="#dcfce7"/><stop offset="40%" stop-color="#bbf7d0"/><stop offset="100%" stop-color="#86efac"/></radialGradient>
-        </defs>
-        <circle cx="24" cy="24" r="22" fill="url(#r2)"/><circle cx="24" cy="24" r="19" fill="#f0fdf4"/><circle cx="24" cy="24" r="17.5" fill="url(#f2)"/>
-        <g stroke="#f0fdf4" stroke-width="2" stroke-linecap="round"><line x1="24" y1="24" x2="24" y2="6.5"/><line x1="24" y1="24" x2="39.2" y2="15.2"/><line x1="24" y1="24" x2="39.2" y2="32.8"/><line x1="24" y1="24" x2="24" y2="41.5"/><line x1="24" y1="24" x2="8.8" y2="32.8"/><line x1="24" y1="24" x2="8.8" y2="15.2"/></g>
-        <circle cx="24" cy="24" r="2" fill="#f0fdf4"/>
-      </svg>
+  <div class="grid-2" style="gap: 22px; margin-top: 22px;">
+    <div>
+      <div class="plate" style="min-height: 220px;">
+        <img class="lime-img" src="lime-mark.png" alt="PennyLime mark" style="width: 200px; height: 200px;"/>
+      </div>
+      <p class="small" style="margin-top: 10px;"><strong>The lime mark.</strong> A half-slice cross-section of a lime, illustrated with warmth: bumpy rind, eight visible segments, juicy translucent flesh, white pith. Sits at a slight tilt with a soft ground shadow. Friendly, edible, unmistakable.</p>
     </div>
-    <div class="plate plate-paper">
-      <svg width="120" height="120" viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="24" r="22" fill="#15803d"/><circle cx="24" cy="24" r="19" fill="#fafaf7"/><circle cx="24" cy="24" r="17.5" fill="#dcfce7"/>
-        <g stroke="#fafaf7" stroke-width="2" stroke-linecap="round"><line x1="24" y1="24" x2="24" y2="6.5"/><line x1="24" y1="24" x2="39.2" y2="15.2"/><line x1="24" y1="24" x2="39.2" y2="32.8"/><line x1="24" y1="24" x2="24" y2="41.5"/><line x1="24" y1="24" x2="8.8" y2="32.8"/><line x1="24" y1="24" x2="8.8" y2="15.2"/></g>
-        <circle cx="24" cy="24" r="2" fill="#fafaf7"/>
-      </svg>
+    <div>
+      <div class="plate" style="min-height: 220px;">
+        <span style="font-size: 56pt; font-weight: 800; letter-spacing: -0.05em;">Penny<span style="color: var(--green);">Lime<span>.</span></span></span>
+      </div>
+      <p class="small" style="margin-top: 10px;"><strong>The wordmark.</strong> "Penny" in ink, "Lime" plus the trailing period in brand green. Inter 800, letter-spacing -5%. The period turns the wordmark into a sentence: declarative, finished, confident. Never set in all caps.</p>
     </div>
-    <div class="plate plate-dark">
-      <svg width="120" height="120" viewBox="0 0 48 48" fill="none">
-        <circle cx="24" cy="24" r="22" fill="#22c55e"/><circle cx="24" cy="24" r="19" fill="#0a0a0a"/><circle cx="24" cy="24" r="17.5" fill="#15803d"/>
-        <g stroke="#dcfce7" stroke-width="2" stroke-linecap="round"><line x1="24" y1="24" x2="24" y2="6.5"/><line x1="24" y1="24" x2="39.2" y2="15.2"/><line x1="24" y1="24" x2="39.2" y2="32.8"/><line x1="24" y1="24" x2="24" y2="41.5"/><line x1="24" y1="24" x2="8.8" y2="32.8"/><line x1="24" y1="24" x2="8.8" y2="15.2"/></g>
-        <circle cx="24" cy="24" r="2" fill="#dcfce7"/>
-      </svg>
-    </div>
-  </div>
-
-  <div class="grid-3" style="gap: 14px; font-size: 9pt; color: var(--gray-500); text-align: center; margin-top: 8px;">
-    <div>Primary · Full color on white</div>
-    <div>Knockout · Single color on paper</div>
-    <div>Inverse · Bright green on ink</div>
   </div>
 
   <hr>
 
-  <div class="grid-2" style="gap: 24px;">
-    <div>
-      <h4>Wordmark</h4>
-      <div class="plate" style="min-height: 90px; padding: 22px;">
-        <span style="font-size: 32pt; font-weight: 800; letter-spacing: -0.04em;">Penny<span style="color: var(--green);">Lime</span></span>
-      </div>
-      <p class="small" style="margin-top: 10px;">Type set in display sans, weight 800. The "Lime" in green; the "Penny" in ink. No space between the two halves. Never set in all-caps.</p>
+  <div class="grid-3" style="gap: 14px;">
+    <div class="plate plate-paper" style="min-height: 130px;">
+      <img class="lime-img" src="lime-mark.png" style="width: 96px; height: 96px;"/>
     </div>
-    <div>
-      <h4>Lockup</h4>
-      <div class="plate" style="min-height: 90px; padding: 18px; gap: 14px;">
-        <svg width="42" height="42" viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="22" fill="#15803d"/><circle cx="24" cy="24" r="19" fill="#fff"/><circle cx="24" cy="24" r="17.5" fill="#dcfce7"/>
-          <g stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="24" y1="24" x2="24" y2="6.5"/><line x1="24" y1="24" x2="39.2" y2="15.2"/><line x1="24" y1="24" x2="39.2" y2="32.8"/><line x1="24" y1="24" x2="24" y2="41.5"/><line x1="24" y1="24" x2="8.8" y2="32.8"/><line x1="24" y1="24" x2="8.8" y2="15.2"/></g>
-          <circle cx="24" cy="24" r="2" fill="#fff"/>
-        </svg>
-        <span style="font-size: 28pt; font-weight: 800; letter-spacing: -0.04em;">Penny<span style="color: var(--green);">Lime</span></span>
-      </div>
-      <p class="small" style="margin-top: 10px;">Mark and wordmark together. Mark height equals 1.2× cap height. Spacing between mark and wordmark equals half the cap height (the "x").</p>
+    <div class="plate plate-dark" style="min-height: 130px;">
+      <img class="lime-img" src="lime-mark.png" style="width: 96px; height: 96px;"/>
     </div>
+    <div class="plate" style="background: var(--green); border-color: var(--green); min-height: 130px;">
+      <img class="lime-img" src="lime-mark.png" style="width: 96px; height: 96px;"/>
+    </div>
+  </div>
+  <div class="grid-3" style="gap: 14px; font-size: 9pt; color: var(--gray-500); text-align: center; margin-top: 8px;">
+    <div>On warm paper</div>
+    <div>On ink (knockout)</div>
+    <div>On brand green (full color)</div>
   </div>
 
   <div class="pn">PennyLime · Brand Book · 008</div>
@@ -584,36 +462,36 @@
 <!-- ═══════════════ 06b — LOGO RULES ═══════════════ -->
 <section class="page">
   <div class="section-head">
-    <div class="section-num">06 · The Logo System</div>
-    <h1 class="section-title">Clear space &amp; sizing.</h1>
+    <div class="section-num">06 · The Lime &amp; The Wordmark</div>
+    <h1 class="section-title">Clear space &amp; rules.</h1>
   </div>
 
   <div class="grid-2" style="gap: 28px;">
     <div>
       <h4>Clear space</h4>
-      <p class="small" style="color: var(--gray-700);">Always reserve a margin equal to the height of the inner circle (the "x") on all sides of the mark. Nothing — type, image, edge — encroaches.</p>
-      <div class="plate" style="margin-top: 14px; min-height: 200px; padding: 50px;">
-        <div style="position: relative;">
-          <div style="position: absolute; inset: -50px; border: 1px dashed var(--gray-300); border-radius: 12px;"></div>
-          <svg width="100" height="100" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#15803d"/><circle cx="24" cy="24" r="19" fill="#fff"/><circle cx="24" cy="24" r="17.5" fill="#dcfce7"/><g stroke="#fff" stroke-width="2" stroke-linecap="round"><line x1="24" y1="24" x2="24" y2="6.5"/><line x1="24" y1="24" x2="39.2" y2="15.2"/><line x1="24" y1="24" x2="39.2" y2="32.8"/><line x1="24" y1="24" x2="24" y2="41.5"/><line x1="24" y1="24" x2="8.8" y2="32.8"/><line x1="24" y1="24" x2="8.8" y2="15.2"/></g><circle cx="24" cy="24" r="2" fill="#fff"/></svg>
+      <p class="small" style="color: var(--gray-700);">Always reserve a margin equal to one-third of the mark's height on all sides. Nothing — type, image, edge — encroaches.</p>
+      <div class="plate" style="margin-top: 14px; min-height: 230px;">
+        <div style="position: relative; padding: 60px;">
+          <div style="position: absolute; inset: 0; border: 1px dashed var(--gray-300); border-radius: 12px;"></div>
+          <img class="lime-img" src="lime-mark.png" style="width: 110px; height: 110px;"/>
         </div>
       </div>
     </div>
     <div>
       <h4>Minimum sizes</h4>
-      <p class="small" style="color: var(--gray-700);">Mark must remain legible. Below these thresholds, use the simplified single-color version.</p>
+      <p class="small" style="color: var(--gray-700);">Mark must remain legible. Below these thresholds, fall back to a simplified single-color version (coming in v2.1).</p>
       <div class="card" style="margin-top: 14px;">
         <div class="row"><span class="k">Print</span><span class="v">14pt / 5mm height min</span></div>
-        <div class="row"><span class="k">Digital</span><span class="v">24px height min</span></div>
-        <div class="row"><span class="k">Favicon</span><span class="v">Single-color version only</span></div>
-        <div class="row"><span class="k">Embroidery</span><span class="v">Single-color, simplified spokes</span></div>
+        <div class="row"><span class="k">Digital</span><span class="v">32px height min</span></div>
+        <div class="row"><span class="k">Favicon</span><span class="v">Use simplified mono variant</span></div>
+        <div class="row"><span class="k">Embroidery</span><span class="v">Single-color, simplified outline</span></div>
       </div>
       <h4 style="margin-top: 20px;">Don't</h4>
       <ul style="font-size: 10.5pt; color: var(--gray-700);">
         <li>Stretch, skew, rotate, or recolor</li>
-        <li>Add drop shadows or outlines</li>
+        <li>Add drop shadows beyond the built-in one</li>
         <li>Place on busy photographs without an underlay</li>
-        <li>Change the spoke count or center dot</li>
+        <li>Crop the lime tighter than its natural canvas</li>
         <li>Substitute the wordmark font</li>
       </ul>
     </div>
@@ -659,6 +537,14 @@
   </div>
 
   <div class="grid-3" style="gap: 12px; margin-top: 12px;">
+    <div class="swatch lt" style="background: var(--lime-bright); color: var(--ink);">
+      <span class="swatch-tag" style="color: var(--ink); opacity: 0.45;">Lime</span>
+      <div></div>
+      <div>
+        <div class="swatch-name">Vivid Lime</div>
+        <div class="swatch-vals">HEX #A3E635<br>RGB 163, 230, 53<br>The color of the<br>lime mark interior</div>
+      </div>
+    </div>
     <div class="swatch lt" style="background: var(--green-mist);">
       <span class="swatch-tag">Tint</span>
       <div></div>
@@ -667,31 +553,23 @@
         <div class="swatch-vals">HEX #DCFCE7<br>RGB 220, 252, 231<br>Card backgrounds,<br>"approved" status pills</div>
       </div>
     </div>
-    <div class="swatch lt" style="background: var(--green-pale); border: 1px solid var(--gray-300);">
-      <span class="swatch-tag">Tint</span>
+    <div class="swatch lt" style="background: var(--pith); border: 1px solid var(--gray-300); color: var(--ink);">
+      <span class="swatch-tag" style="color: var(--ink); opacity: 0.4;">Pith</span>
       <div></div>
       <div>
-        <div class="swatch-name">Pale</div>
-        <div class="swatch-vals">HEX #F0FDF4<br>RGB 240, 253, 244<br>Soft surfaces, success<br>backgrounds</div>
+        <div class="swatch-name">Pith</div>
+        <div class="swatch-vals">HEX #FEFCE8<br>RGB 254, 252, 232<br>Soft surfaces, the<br>cream layer of the lime</div>
       </div>
     </div>
+  </div>
+
+  <div class="grid-3" style="gap: 12px; margin-top: 12px;">
     <div class="swatch" style="background: var(--ink);">
       <span class="swatch-tag">Ink</span>
       <div></div>
       <div>
         <div class="swatch-name">Ink</div>
         <div class="swatch-vals">HEX #0A0A0A<br>For body type and<br>primary surfaces</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid-3" style="gap: 12px; margin-top: 12px;">
-    <div class="swatch lt" style="background: var(--paper-warm); border: 1px solid var(--gray-300);">
-      <span class="swatch-tag">Paper</span>
-      <div></div>
-      <div>
-        <div class="swatch-name">Warm Paper</div>
-        <div class="swatch-vals">HEX #F5F1E8<br>Editorial backgrounds,<br>print collateral</div>
       </div>
     </div>
     <div class="swatch" style="background: var(--amber);">
@@ -713,56 +591,6 @@
   </div>
 
   <div class="pn">PennyLime · Brand Book · 010</div>
-</section>
-
-<!-- ═══════════════ 07b — COLOR IN USE ═══════════════ -->
-<section class="page">
-  <div class="section-head">
-    <div class="section-num">07 · Color</div>
-    <h1 class="section-title">Ratios &amp; rules.</h1>
-  </div>
-
-  <div class="grid-2" style="gap: 28px;">
-    <div>
-      <h4>Default ratio</h4>
-      <p class="small" style="color: var(--gray-700);">In any composition, aim for roughly 70% neutral (paper or ink), 25% green family, and 5% accent or semantic color. Green is a finishing move, not the whole canvas.</p>
-      <div style="margin-top: 14px; display: flex; height: 60px; border-radius: 8px; overflow: hidden;">
-        <div style="flex: 7; background: var(--paper-warm); display: flex; align-items: center; justify-content: center; color: var(--gray-500); font-size: 9pt; letter-spacing: 0.06em; text-transform: uppercase;">Neutral · 70%</div>
-        <div style="flex: 2.5; background: var(--green); display: flex; align-items: center; justify-content: center; color: white; font-size: 9pt; letter-spacing: 0.06em; text-transform: uppercase;">Green · 25%</div>
-        <div style="flex: 0.5; background: var(--amber);"></div>
-      </div>
-    </div>
-    <div>
-      <h4>Accessibility</h4>
-      <p class="small" style="color: var(--gray-700);">All primary combinations meet or exceed WCAG AA. The brand never relies on color alone for status — pair with iconography or text.</p>
-      <div class="card" style="margin-top: 14px;">
-        <div class="row"><span class="k">Green / White</span><span class="v small">5.1:1 · AA · use for buttons</span></div>
-        <div class="row"><span class="k">Green / Mist</span><span class="v small">4.6:1 · AA · use for badges</span></div>
-        <div class="row"><span class="k">Ink / Paper</span><span class="v small">17.4:1 · AAA · default body</span></div>
-        <div class="row"><span class="k">Bright / Ink</span><span class="v small">8.5:1 · AAA · ink-bg headlines</span></div>
-      </div>
-    </div>
-  </div>
-
-  <hr>
-
-  <h4>Don'ts</h4>
-  <div class="grid-3" style="gap: 12px;">
-    <div class="card" style="border-color: #fca5a5;">
-      <div style="height: 40px; background: linear-gradient(90deg, var(--green), var(--indigo)); border-radius: 4px; margin-bottom: 8px;"></div>
-      <p class="small">Don't blend brand green with non-system colors.</p>
-    </div>
-    <div class="card" style="border-color: #fca5a5;">
-      <div style="height: 40px; background: var(--green); opacity: 0.4; border-radius: 4px; margin-bottom: 8px;"></div>
-      <p class="small">Don't reduce opacity to fake a tint. Use Mist or Pale instead.</p>
-    </div>
-    <div class="card" style="border-color: #fca5a5;">
-      <div style="height: 40px; background: #87c545; border-radius: 4px; margin-bottom: 8px;"></div>
-      <p class="small">Don't use a yellow-shifted "lime" green from outside the system.</p>
-    </div>
-  </div>
-
-  <div class="pn">PennyLime · Brand Book · 011</div>
 </section>
 
 <!-- ═══════════════ 08 — TYPOGRAPHY ═══════════════ -->
@@ -798,15 +626,15 @@
     </div>
     <div class="specimen-row">
       <div class="specimen-meta">Section 800<br>48 / 52</div>
-      <div class="display" style="font-size: 32pt;">Same job. New rules.</div>
+      <div class="display" style="font-size: 32pt;">Funding for drivers, sellers, and operators.</div>
     </div>
     <div class="specimen-row">
       <div class="specimen-meta">Heading 700<br>22 / 28</div>
-      <div style="font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;">Banks don't get gig work.</div>
+      <div style="font-size: 16pt; font-weight: 700; letter-spacing: -0.02em;">Your platform earnings are your credit.</div>
     </div>
     <div class="specimen-row">
       <div class="specimen-meta">Subhead 600<br>16 / 22</div>
-      <div style="font-size: 12pt; font-weight: 600;">Verified earnings, not credit scores.</div>
+      <div style="font-size: 12pt; font-weight: 600;">Verified deposits, plain factor rates.</div>
     </div>
     <div class="specimen-row">
       <div class="specimen-meta">Body 400<br>14 / 22</div>
@@ -822,7 +650,7 @@
     </div>
   </div>
 
-  <div class="pn">PennyLime · Brand Book · 012</div>
+  <div class="pn">PennyLime · Brand Book · 011</div>
 </section>
 
 <!-- ═══════════════ 09 — ICONOGRAPHY ═══════════════ -->
@@ -832,7 +660,7 @@
     <h1 class="section-title">Two-pixel rule.</h1>
   </div>
 
-  <p class="lead">Icons are drawn with a 2-pixel stroke, rounded caps, and rounded joins. No fills. No multi-color icons. They live in a 24-pixel grid and align to whole pixels at common UI sizes. The vibe is engineering, not illustration.</p>
+  <p class="lead">Icons are drawn with a 2-pixel stroke, rounded caps, and rounded joins. No fills. No multi-color icons. They live in a 24-pixel grid and align to whole pixels at common UI sizes. The vibe is engineering, not illustration. The lime mark is the only allowed exception.</p>
 
   <div class="grid-4" style="gap: 12px;">
     <div class="card" style="text-align: center; padding: 22px 14px;">
@@ -871,47 +699,38 @@
 
   <hr>
 
-  <p class="small" style="color: var(--gray-700);">Source: Lucide icons (lucide.dev), MIT-licensed, customized to brand stroke and color. New icons inherit the same 24-grid, 2-pixel stroke, and round join geometry. Filled icons are reserved exclusively for the system status pills (success, warning, error).</p>
+  <p class="small" style="color: var(--gray-700);">Source: Lucide icons (lucide.dev), MIT-licensed, customized to brand stroke and color. New icons inherit the same 24-grid, 2-pixel stroke, and round join geometry. Filled icons are reserved exclusively for the system status pills (success, warning, error). The lime mark stands alone as the brand's only multi-color illustration.</p>
 
-  <div class="pn">PennyLime · Brand Book · 013</div>
+  <div class="pn">PennyLime · Brand Book · 012</div>
 </section>
 
-<!-- ═══════════════ 10 — PHOTOGRAPHY & ILLUSTRATION ═══════════════ -->
+<!-- ═══════════════ 10 — PHOTO & ILLUSTRATION ═══════════════ -->
 <section class="page">
   <div class="section-head">
     <div class="section-num">10 · Photography &amp; Illustration</div>
-    <h1 class="section-title">Real people.<br>Real machines.</h1>
+    <h1 class="section-title">Real people.<br>Real platforms.</h1>
   </div>
 
-  <p class="lead">PennyLime never uses smiling-stock-actor handshake photography. Our visual world is two layers: documentary photography of people working (delivery bags, dashboards, laptops, hands) and clean editorial illustration that shows the product itself in action.</p>
+  <p class="lead">PennyLime never uses smiling-stock-actor handshake photography. Our visual world is two layers: documentary photography of platform work in progress, and the lime mark as the signature illustration accent. Editorial illustration is permitted for product moments only.</p>
 
   <div class="grid-2" style="gap: 22px;">
     <div class="card" style="padding: 0; overflow: hidden;">
       <div style="background: linear-gradient(135deg, #475569, #1e293b); height: 200px; display: flex; align-items: end; padding: 18px; color: white;">
         <div>
-          <div style="width: 40px; height: 40px; border-radius: 999px; background: rgba(255,255,255,0.2); margin-bottom: 8px; display: flex; align-items: center; justify-content: center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
-          </div>
-          <div style="font-size: 11pt; font-weight: 600;">Documentary, candid, available light. Driver's seat at 6am, delivery bag on a sidewalk, the moment of a bank notification.</div>
+          <div style="width: 40px; height: 40px; border-radius: 999px; background: rgba(255,255,255,0.2); margin-bottom: 8px;"></div>
+          <div style="font-size: 11pt; font-weight: 600;">Documentary, candid, available light. Driver's seat at 6am, delivery bag on a sidewalk, an Amazon FBA seller's desk, the moment of a bank notification.</div>
         </div>
       </div>
     </div>
     <div class="card" style="padding: 0; overflow: hidden;">
-      <div style="background: var(--paper-warm); height: 200px; display: flex; align-items: center; justify-content: center; padding: 18px; position: relative;">
-        <svg width="120" height="120" viewBox="0 0 200 200">
-          <rect x="40" y="60" width="120" height="80" rx="12" fill="white" stroke="#15803d" stroke-width="2.5"/>
-          <line x1="55" y1="80" x2="120" y2="80" stroke="#15803d" stroke-width="2" stroke-linecap="round"/>
-          <line x1="55" y1="95" x2="100" y2="95" stroke="#15803d" stroke-width="2" stroke-linecap="round"/>
-          <rect x="55" y="110" width="50" height="20" rx="6" fill="#15803d"/>
-          <circle cx="160" cy="50" r="20" fill="#22c55e"/>
-          <text x="160" y="56" text-anchor="middle" fill="white" font-size="20" font-weight="800">$</text>
-        </svg>
+      <div style="background: var(--paper-warm); height: 200px; display: flex; align-items: center; justify-content: center; padding: 18px;">
+        <img class="lime-img" src="lime-mark.png" style="width: 130px; height: 130px;"/>
       </div>
     </div>
   </div>
   <div class="grid-2" style="font-size: 9.5pt; color: var(--gray-500); text-align: left; margin-top: 8px; gap: 22px;">
-    <div><strong style="color: var(--ink);">Photography</strong> · Documentary. Cool color cast. People working, never posing. Avoid handshakes, board rooms, white-toothed smiles.</div>
-    <div><strong style="color: var(--ink);">Illustration</strong> · Editorial geometry. Receipts, app screens, simple objects on warm paper. Always says "money moving" or "decision made."</div>
+    <div><strong style="color: var(--ink);">Photography</strong> · Documentary. Cool color cast. People working at platforms, never posing. Avoid handshakes, board rooms, white-toothed smiles.</div>
+    <div><strong style="color: var(--ink);">The lime mark</strong> · Sits on warm paper or ink. Gets the spotlight. Never crowded by other illustrations.</div>
   </div>
 
   <hr>
@@ -919,20 +738,20 @@
   <h4>Illustration system rules</h4>
   <div class="grid-3" style="gap: 14px;">
     <div class="card card-paper">
-      <h4 style="color: var(--green);">Geometry first</h4>
-      <p class="small" style="font-size: 10pt;">Compose from rectangles, circles, and 30°/60° angles. Hand-drawn squiggles are permitted as accent only.</p>
+      <h4 style="color: var(--green);">The lime is the star</h4>
+      <p class="small" style="font-size: 10pt;">Editorial illustrations support the lime, never compete with it. The lime gets the warmth; everything else stays geometric.</p>
     </div>
     <div class="card card-paper">
       <h4 style="color: var(--green);">Two-color limit</h4>
-      <p class="small" style="font-size: 10pt;">Brand green plus one neutral. Never a rainbow palette. Tints/shades of green are allowed.</p>
+      <p class="small" style="font-size: 10pt;">Brand green plus one neutral for editorial illustration. Tints/shades of green allowed. The lime mark is the only multicolor exception.</p>
     </div>
     <div class="card card-paper">
-      <h4 style="color: var(--green);">Show the product</h4>
-      <p class="small" style="font-size: 10pt;">Phones, app screens, bank statements, receipts, dashboards. We illustrate the artifact of the transaction, not the handshake.</p>
+      <h4 style="color: var(--green);">Show the artifact</h4>
+      <p class="small" style="font-size: 10pt;">Phones, app screens, bank statements, receipts, dashboards. Illustrate the artifact of the transaction, not the handshake.</p>
     </div>
   </div>
 
-  <div class="pn">PennyLime · Brand Book · 014</div>
+  <div class="pn">PennyLime · Brand Book · 013</div>
 </section>
 
 <!-- ═══════════════ 11 — MOTION ═══════════════ -->
@@ -963,13 +782,13 @@
 
   <h4>Signature interactions</h4>
   <ul style="font-size: 11pt;">
-    <li><strong>Approval moment:</strong> The status ring fills counter-clockwise, then locks with a single soft pulse and a check icon.</li>
+    <li><strong>Approval moment:</strong> The lime mark briefly grows 8% then settles, with a soft ground-shadow pulse. The status badge ticks to "Approved."</li>
     <li><strong>Number reveal:</strong> Currency values count from 0 to final on first paint over 600ms. They do not animate on subsequent loads.</li>
     <li><strong>Step progression:</strong> Vertical scroll between steps. Each step's headline fades in on entry (220ms), supporting copy 80ms after.</li>
     <li><strong>Success disbursement:</strong> A single particle of brand green travels from the bank icon to the user's account icon along a smooth path. One time, never looped.</li>
   </ul>
 
-  <div class="pn">PennyLime · Brand Book · 015</div>
+  <div class="pn">PennyLime · Brand Book · 014</div>
 </section>
 
 <!-- ═══════════════ 12 — UI SYSTEM ═══════════════ -->
@@ -1032,7 +851,7 @@
     </div>
   </div>
 
-  <div class="pn">PennyLime · Brand Book · 016</div>
+  <div class="pn">PennyLime · Brand Book · 015</div>
 </section>
 
 <!-- ═══════════════ 13 — APPLICATIONS ═══════════════ -->
@@ -1051,7 +870,7 @@
         <div class="device-screen">
           <div style="font-size: 10pt; color: var(--gray-500); letter-spacing: 0.06em; text-transform: uppercase;">Step 6 of 7</div>
           <div style="margin-top: 16px;">
-            <div class="mark-circle" style="margin: 0 auto 14px;"></div>
+            <img class="lime-img" src="lime-mark.png" style="width: 80px; height: 80px; display: block; margin: 0 auto 14px;"/>
             <div class="label" style="text-align: center;">You're approved</div>
             <div class="display" style="font-size: 36pt; text-align: center; margin: 4px 0;">$3,000</div>
             <p style="font-size: 9.5pt; color: var(--gray-500); text-align: center;">Funds delivered to your bank in 48 hours.</p>
@@ -1068,9 +887,9 @@
     <div>
       <h4>Email — funded confirmation</h4>
       <div class="card" style="padding: 0; overflow: hidden; margin-top: 14px;">
-        <div style="background: var(--ink); padding: 20px; display: flex; align-items: center; gap: 10px;">
-          <svg width="28" height="28" viewBox="0 0 48 48"><circle cx="24" cy="24" r="22" fill="#15803d"/><circle cx="24" cy="24" r="19" fill="#0a0a0a"/><circle cx="24" cy="24" r="17.5" fill="#22c55e"/><g stroke="#0a0a0a" stroke-width="2" stroke-linecap="round"><line x1="24" y1="24" x2="24" y2="6.5"/><line x1="24" y1="24" x2="39.2" y2="15.2"/><line x1="24" y1="24" x2="39.2" y2="32.8"/><line x1="24" y1="24" x2="24" y2="41.5"/><line x1="24" y1="24" x2="8.8" y2="32.8"/><line x1="24" y1="24" x2="8.8" y2="15.2"/></g><circle cx="24" cy="24" r="2" fill="#0a0a0a"/></svg>
-          <span style="color: white; font-weight: 800; letter-spacing: -0.03em; font-size: 14pt;">Penny<span style="color: var(--green-bright);">Lime</span></span>
+        <div style="background: var(--ink); padding: 20px; display: flex; align-items: center; gap: 12px;">
+          <img class="lime-img" src="lime-mark.png" style="width: 36px; height: 36px;"/>
+          <span style="color: white; font-weight: 800; letter-spacing: -0.03em; font-size: 16pt;">Penny<span style="color: var(--lime-bright);">Lime.</span></span>
         </div>
         <div style="padding: 22px;">
           <div class="display" style="font-size: 18pt;">$3,000 is on the way.</div>
@@ -1086,7 +905,7 @@
     </div>
   </div>
 
-  <div class="pn">PennyLime · Brand Book · 017</div>
+  <div class="pn">PennyLime · Brand Book · 016</div>
 </section>
 
 <!-- ═══════════════ 14 — DON'TS ═══════════════ -->
@@ -1110,17 +929,17 @@
     <div class="card" style="border-color: #fca5a5;">
       <div class="voice-tag" style="color: #b91c1c;">Don't</div>
       <h4 style="margin-bottom: 4px;">Show stock photos of suits shaking hands</h4>
-      <p class="small" style="color: var(--gray-700); font-size: 10pt;">Our customers don't wear suits. Use documentary photography of actual gig work, or system-styled illustration.</p>
+      <p class="small" style="color: var(--gray-700); font-size: 10pt;">Our customers don't wear suits. Use documentary photography of actual gig and platform work, or system-styled illustration.</p>
     </div>
     <div class="card" style="border-color: #fca5a5;">
       <div class="voice-tag" style="color: #b91c1c;">Don't</div>
       <h4 style="margin-bottom: 4px;">Use "easy money" or pity language</h4>
-      <p class="small" style="color: var(--gray-700); font-size: 10pt;">We don't sell desperation. Our copy treats the customer as a smart business owner facing a normal capital need.</p>
+      <p class="small" style="color: var(--gray-700); font-size: 10pt;">We don't sell desperation. Our copy treats the customer as a smart business operator facing a normal capital need.</p>
     </div>
     <div class="card" style="border-color: #fca5a5;">
       <div class="voice-tag" style="color: #b91c1c;">Don't</div>
-      <h4 style="margin-bottom: 4px;">Replace the brand color with a market-trending palette</h4>
-      <p class="small" style="color: var(--gray-700); font-size: 10pt;">Lime green is unique in the MCA space. Drifting toward fintech blue or violet erodes the only visual moat we have.</p>
+      <h4 style="margin-bottom: 4px;">Crop, recolor, or restyle the lime mark</h4>
+      <p class="small" style="color: var(--gray-700); font-size: 10pt;">The lime is the only multicolor illustration in the system. Modifying it dilutes the only visual moat we have.</p>
     </div>
     <div class="card" style="border-color: #fca5a5;">
       <div class="voice-tag" style="color: #b91c1c;">Don't</div>
@@ -1131,20 +950,21 @@
 
   <hr>
 
-  <p class="small" style="color: var(--gray-500); text-align: center; margin-top: 24px;">When in doubt: simpler, clearer, less. Ask "would I trust this if I drove for Uber?" before shipping anything that says "PennyLime."</p>
+  <p class="small" style="color: var(--gray-500); text-align: center; margin-top: 24px;">When in doubt: simpler, clearer, less. Ask "would I trust this if I drove for Uber, sold on Amazon, or freelanced on Fiverr?" before shipping anything that says "PennyLime."</p>
 
-  <div class="pn">PennyLime · Brand Book · 018</div>
+  <div class="pn">PennyLime · Brand Book · 017</div>
 </section>
 
 <!-- ═══════════════ COLOPHON ═══════════════ -->
 <section class="page" style="background: var(--ink); color: white; display: flex; flex-direction: column; justify-content: space-between; padding: 1in;">
   <div>
-    <div class="label" style="color: rgba(255,255,255,0.55);">Brand Book v1.0 · Spring 2026</div>
+    <div class="label" style="color: rgba(255,255,255,0.55);">Brand Book v2.0 · Spring 2026</div>
   </div>
 
   <div>
-    <div class="display" style="font-size: 80pt; line-height: 0.9;">Same job.<br><span style="color: var(--green-bright);">New rules.</span></div>
-    <p style="font-size: 14pt; color: rgba(255,255,255,0.6); max-width: 5in; margin-top: 28px; line-height: 1.5;">Owned and operated by 770 Technology Way LLC, a Florida limited liability company. Document version 1.0, dated Spring 2026. Confidential, internal use only. Brand questions: brand@pennylime.com</p>
+    <img class="lime-img" src="lime-mark.png" style="width: 200px; height: 200px; margin-bottom: 24px;"/>
+    <div class="display" style="font-size: 60pt; line-height: 0.9;">Funding for drivers,<br>sellers, and <span style="color: var(--lime-bright);">operators.</span></div>
+    <p style="font-size: 14pt; color: rgba(255,255,255,0.6); max-width: 5in; margin-top: 28px; line-height: 1.5;">Owned and operated by 770 Technology Way LLC, a Florida limited liability company. Document version 2.0, dated Spring 2026. Confidential, internal use only. Brand questions: brand@pennylime.com</p>
   </div>
 
   <div style="display: flex; justify-content: space-between; font-size: 8.5pt; color: rgba(255,255,255,0.4); letter-spacing: 0.12em; text-transform: uppercase;">
