@@ -12,6 +12,10 @@ export function loanFundedEmail(params: {
   schedule: ScheduleEntry[];
 }) {
   const statusUrl = `${APP_URL}/status/${params.applicationCode}`;
+  const factorRate = 1 + params.interestRate / 100;
+  const totalRepayment = params.fundedAmount * factorRate;
+  const weeks = Math.max(1, Math.round((params.loanTermMonths * 52) / 12));
+  const weeklyRemittance = totalRepayment / weeks;
   const scheduleRows = params.schedule
     .map(
       (p) =>
@@ -24,20 +28,21 @@ export function loanFundedEmail(params: {
     .join("");
 
   return {
-    subject: "Your Loan Has Been Funded, Payment Schedule Inside",
+    subject: `Funded. $${params.fundedAmount.toLocaleString()} is on the way.`,
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #15803d;">Your Loan Has Been Funded!</h2>
+        <h2 style="color: #15803d;">Your advance is funded.</h2>
         <p>Hi ${params.firstName},</p>
-        <p>Your loan of <strong>$${params.fundedAmount.toLocaleString()}</strong> has been funded. Below are your loan details and payment schedule.</p>
+        <p>Your <strong>$${params.fundedAmount.toLocaleString()}</strong> advance is on its way to your linked bank account. Here are the terms and your remittance schedule.</p>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Funded Amount</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${params.fundedAmount.toLocaleString()}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Interest Rate</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${params.interestRate}% APR</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Term</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${params.loanTermMonths} months</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Monthly Payment</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${params.monthlyPayment.toFixed(2)}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">First Payment Due</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${params.firstDueDate.toLocaleDateString()}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Factor Rate</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${factorRate.toFixed(2)}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Total Repayment</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${totalRepayment.toFixed(2)}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Term</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${weeks} weeks</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Weekly Remittance</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${weeklyRemittance.toFixed(2)}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">First Remittance Due</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${params.firstDueDate.toLocaleDateString()}</td></tr>
         </table>
-        <h3>Payment Schedule</h3>
+        <h3>Remittance Schedule</h3>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px;">
           <thead>
             <tr style="background: #f3f4f6;">
@@ -48,10 +53,10 @@ export function loanFundedEmail(params: {
           </thead>
           <tbody>${scheduleRows}</tbody>
         </table>
-        <p>Payments will be automatically debited from your linked bank account on each due date.</p>
-        <p>Track your loan: <a href="${statusUrl}" style="color: #15803d;">${statusUrl}</a></p>
+        <p>Each remittance will be auto-debited from your linked bank account on its scheduled date as a purchase of future receivables.</p>
+        <p>Track your advance: <a href="${statusUrl}" style="color: #15803d;">${statusUrl}</a></p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #6b7280; font-size: 12px;">PennyLime</p>
+        <p style="color: #6b7280; font-size: 12px;">PennyLime purchases a portion of your future receivables at the factor rate above. This is a commercial advance, not a loan.</p>
       </div>
     `,
   };

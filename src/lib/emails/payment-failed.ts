@@ -8,15 +8,15 @@ export function paymentFailedEmail(params: {
 }) {
   const statusUrl = `${APP_URL}/status/${params.applicationCode}`;
   return {
-    subject: "Payment Failed, Action May Be Required",
+    subject: "Remittance failed, you may need to act",
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #dc2626;">Payment Failed</h2>
+        <h2 style="color: #dc2626;">Remittance failed</h2>
         <p>Hi ${params.firstName},</p>
-        <p>We were unable to process your payment #${params.paymentNumber} of <strong>$${params.amount.toFixed(2)}</strong>.</p>
-        <p>We will automatically retry the payment. Please ensure your bank account has sufficient funds.</p>
-        <p>If your bank connection needs to be updated, please contact us.</p>
-        <p>View your loan: <a href="${statusUrl}" style="color: #dc2626;">${statusUrl}</a></p>
+        <p>We couldn't pull remittance #${params.paymentNumber} of <strong>$${params.amount.toFixed(2)}</strong> from your linked bank account.</p>
+        <p>We'll auto-retry on the next cycle. To keep things smooth, double-check that the account has enough on hand.</p>
+        <p>If your bank connection needs a refresh, reach out to support and we'll sort it.</p>
+        <p>View your advance: <a href="${statusUrl}" style="color: #dc2626;">${statusUrl}</a></p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="color: #6b7280; font-size: 12px;">PennyLime</p>
       </div>
