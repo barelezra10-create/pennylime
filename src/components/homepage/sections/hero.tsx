@@ -52,7 +52,7 @@ export function Hero() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen flex items-center bg-[#fafaf7] overflow-hidden px-5 pt-20 pb-12 md:px-6 md:pt-24 md:pb-16"
+      className="relative flex items-start lg:items-center lg:min-h-screen bg-[#fafaf7] overflow-hidden px-5 pt-6 pb-12 md:px-6 md:pt-10 md:pb-16"
     >
       {/* Background atmosphere: subtle dot grid + green glow behind lime */}
       <div className="absolute inset-0 pointer-events-none">
