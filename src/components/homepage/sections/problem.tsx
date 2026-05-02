@@ -72,12 +72,11 @@ export function Problem() {
         ref={pinRef}
         className="bg-[#fafaf7] flex items-center overflow-hidden md:h-screen"
       >
-        <div className="max-w-6xl mx-auto w-full px-5 md:px-6 py-16 md:py-0 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 items-center">
+        <div className="max-w-6xl mx-auto w-full px-5 md:px-6 py-10 md:py-0 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 items-center">
 
-          {/* Mobile: render Problem + WhatWeDo stacked, both fully visible.
-              Desktop: absolutely positioned and animated on scroll. */}
+          {/* Left column: Problem (mobile + desktop), WeDo (desktop only — mobile uses the phone instead) */}
           <div className="relative md:min-h-[300px]">
-            <div ref={problemRef} className="md:absolute md:inset-0 mb-10 md:mb-0">
+            <div ref={problemRef} className="md:absolute md:inset-0">
               <div className="inline-flex items-center gap-2 bg-[#fef2f2] text-[#dc2626] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 The Problem
               </div>
@@ -98,7 +97,7 @@ export function Problem() {
               </div>
             </div>
 
-            <div ref={weDoRef} className="md:absolute md:inset-0 md:opacity-0">
+            <div ref={weDoRef} className="hidden md:block md:absolute md:inset-0 md:opacity-0">
               <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 What We Do
               </div>
@@ -126,28 +125,6 @@ export function Problem() {
             <PhoneMockup screenRefs={screenRefs} />
           </div>
 
-          {/* Mobile-only: a tiny static teaser of the 3 most-important screens
-              under the phone, since the scroll-pinned cycle is disabled. */}
-          <div className="md:hidden -mt-4 flex flex-wrap justify-center gap-3">
-            {[
-              { label: "Apply", caption: "5 minutes" },
-              { label: "Verify", caption: "Plaid, read-only" },
-              { label: "Approved", caption: "in 48 hours" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="flex-1 min-w-[100px] bg-white border border-[#e4e4e7] rounded-2xl px-3 py-3 text-center"
-              >
-                <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#15803d]">
-                  {s.label}
-                </div>
-                <div className="text-[12px] text-[#52525b] mt-1 leading-tight">
-                  {s.caption}
-                </div>
-              </div>
-            ))}
-          </div>
-
         </div>
       </div>
     </section>
@@ -173,20 +150,41 @@ function PhoneMockup({ screenRefs }: { screenRefs: React.RefObject<HTMLDivElemen
             </div>
           </div>
 
-          <div ref={screenRefs[0]} className="absolute inset-0 pt-12 px-5">
+          {/* Desktop: absolutely-positioned screens that fade-cycle on scroll */}
+          <div ref={screenRefs[0]} className="hidden md:block absolute inset-0 pt-12 px-5">
             <ScreenForm />
           </div>
-          <div ref={screenRefs[1]} className="absolute inset-0 pt-12 px-5 hidden md:block">
+          <div ref={screenRefs[1]} className="hidden md:block absolute inset-0 pt-12 px-5">
             <ScreenSubmitting />
           </div>
-          <div ref={screenRefs[2]} className="absolute inset-0 pt-12 px-5 hidden md:block">
+          <div ref={screenRefs[2]} className="hidden md:block absolute inset-0 pt-12 px-5">
             <ScreenVerifying />
           </div>
-          <div ref={screenRefs[3]} className="absolute inset-0 pt-12 px-5 hidden md:block">
+          <div ref={screenRefs[3]} className="hidden md:block absolute inset-0 pt-12 px-5">
             <ScreenReviewing />
           </div>
-          <div ref={screenRefs[4]} className="absolute inset-0 pt-12 px-5 hidden md:block">
+          <div ref={screenRefs[4]} className="hidden md:block absolute inset-0 pt-12 px-5">
             <ScreenApproved />
+          </div>
+
+          {/* Mobile: scrollable stack of screens inside the phone, snap to each */}
+          <div
+            className="md:hidden absolute inset-0 pt-10 overflow-y-auto"
+            style={{
+              scrollSnapType: "y mandatory",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+            }}
+          >
+            {[ScreenForm, ScreenVerifying, ScreenReviewing, ScreenApproved].map((Screen, i) => (
+              <div
+                key={i}
+                className="px-5 pb-4"
+                style={{ minHeight: "calc(100% - 0px)", scrollSnapAlign: "start" }}
+              >
+                <Screen />
+              </div>
+            ))}
           </div>
         </div>
       </div>
