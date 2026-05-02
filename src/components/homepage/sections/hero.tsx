@@ -71,54 +71,8 @@ export function Hero() {
       </div>
 
       <div className="max-w-6xl mx-auto w-full relative z-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-16 items-center">
-        {/* LEFT: copy (mobile gets a product-preview card above the copy) */}
+        {/* LEFT: copy */}
         <div>
-          {/* Mobile-only product preview card with the lime + sample approval */}
-          <div className="lg:hidden mb-8">
-            <div className="relative bg-white rounded-3xl border border-[#e4e4e7] shadow-[0_24px_60px_-24px_rgba(21,128,61,0.25)] p-5 max-w-sm mx-auto">
-              {/* soft halo behind */}
-              <div className="absolute -inset-4 bg-[#bef264] opacity-20 blur-3xl rounded-full -z-10" />
-
-              <div className="flex items-center gap-4">
-                <div className="relative w-24 h-24 shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/lime-mark.svg"
-                    alt="PennyLime"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="inline-flex items-center gap-1.5 bg-[#dcfce7] text-[#15803d] text-[9px] font-bold uppercase tracking-[0.08em] px-2 py-1 rounded-full mb-1.5">
-                    <span className="w-1 h-1 rounded-full bg-[#15803d]" />
-                    Approved
-                  </div>
-                  <div className="font-extrabold text-[#0a0a0a] text-[28px] tracking-[-0.025em] tabular-nums leading-none">
-                    $3,000
-                  </div>
-                  <div className="text-[11px] text-[#52525b] mt-1.5">
-                    7% of daily deposits
-                  </div>
-                </div>
-              </div>
-
-              {/* Verified-income strip at bottom */}
-              <div className="mt-4 pt-4 border-t border-[#f4f4f5] flex items-center justify-between">
-                <div>
-                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-[#71717a]">
-                    Verified income
-                  </div>
-                  <div className="font-extrabold text-[#0a0a0a] text-[15px] tabular-nums mt-0.5">
-                    $5,910
-                  </div>
-                </div>
-                <div className="text-[10px] text-[#71717a] text-right leading-tight">
-                  Uber · DoorDash<br />Instacart · 90d
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div
             ref={eyebrowRef}
             className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-[#dcfce7] text-[#15803d] text-[11px] md:text-[12px] font-bold px-3 py-1.5 rounded-full mb-5 md:mb-7 tracking-[0.06em] uppercase shadow-sm"
@@ -129,15 +83,17 @@ export function Hero() {
 
           <div ref={headlineRef}>
             <h1
-              className="font-extrabold tracking-[-0.04em] leading-[0.95] md:leading-[0.92] text-[#0a0a0a] mb-5 md:mb-6"
+              className="font-extrabold tracking-[-0.04em] leading-[0.95] md:leading-[0.92] text-[#0a0a0a] mb-4 md:mb-5"
               style={{ fontSize: "clamp(38px, 8vw, 96px)" }}
             >
-              Funding for
+              Squeeze your
               <br />
-              drivers, sellers,
-              <br />
-              and <span className="text-[#15803d]">operators<span>.</span></span>
+              earnings into{" "}
+              <span className="text-[#15803d]">cash<span>.</span></span>
             </h1>
+            <h2 className="font-bold tracking-[-0.025em] leading-[1.15] text-[#52525b] text-[18px] md:text-[22px] lg:text-[24px] mb-5 md:mb-6 max-w-xl">
+              Funding for drivers, sellers, and operators.
+            </h2>
           </div>
 
           <p
@@ -174,21 +130,21 @@ export function Hero() {
             </Link>
           </div>
 
-          {/* Stats: brand-book card style */}
-          <div ref={statsRef} className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+          {/* Stats: clean inline strip with green accent dividers */}
+          <div ref={statsRef} className="flex items-stretch divide-x divide-[#e4e4e7] border-y border-[#e4e4e7] py-4">
             {[
               { value: "60M", label: "Americans on platforms" },
-              { value: "90d", label: "of deposits underwritten" },
-              { value: "48h", label: "from app to funded" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="bg-white border border-[#e4e4e7] rounded-2xl px-3 py-3 sm:px-4 sm:min-w-[140px]"
-              >
-                <div className="font-extrabold text-[#0a0a0a] text-[20px] sm:text-[22px] tracking-[-0.025em] tabular-nums leading-none">
-                  {s.value}
+              { value: "90d", label: "of deposits read" },
+              { value: "48h", label: "app to funded" },
+            ].map((s, i) => (
+              <div key={s.label} className={`flex-1 ${i === 0 ? "pr-3 sm:pr-5" : "px-3 sm:px-5"}`}>
+                <div className="flex items-baseline gap-1">
+                  <div className="font-extrabold text-[#0a0a0a] text-[26px] sm:text-[30px] tracking-[-0.03em] tabular-nums leading-none">
+                    {s.value}
+                  </div>
+                  <span className="w-1 h-1 rounded-full bg-[#15803d] mb-1" />
                 </div>
-                <div className="text-[10px] sm:text-[11px] text-[#52525b] uppercase tracking-[0.06em] mt-1.5 font-semibold leading-snug">
+                <div className="text-[10px] sm:text-[11px] text-[#52525b] mt-2 leading-snug">
                   {s.label}
                 </div>
               </div>
