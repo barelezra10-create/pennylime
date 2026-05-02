@@ -132,7 +132,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   <span className="text-[14px] font-extrabold tracking-[-0.02em]">Penny<span className="text-[#15803d]">Lime</span></span>
                 </div>
                 <p className="text-[15px] font-bold text-black mb-1">Need a loan?</p>
-                <p className="text-[13px] text-[#71717a] mb-4">$100 - $10,000 for gig workers. No credit check required.</p>
+                <p className="text-[13px] text-[#71717a] mb-4">$500 to $10,000 for gig workers. No credit check required.</p>
                 <Link href="/apply" className="block w-full bg-[#15803d] text-white text-center text-[13px] font-bold py-3 rounded-xl hover:bg-[#166534] transition-colors">
                   Apply Now
                 </Link>
@@ -222,7 +222,7 @@ function ArticleBody({ html }: { html: string }) {
           return <ContentCta key={`cta-${i}`} variant="banner" text="Did you know?" subtext="PennyLime doesn't check your credit score. We verify your gig platform earnings directly. A low credit score won't hold you back from getting funded." />;
         }
         if (part === "inline") {
-          return <ContentCta key={`cta-${i}`} variant="inline" text="Need cash between gigs?" subtext="$100 - $10,000. No credit check. Funded in 48 hours." />;
+          return <ContentCta key={`cta-${i}`} variant="inline" text="Need cash between gigs?" subtext="$500 to $10,000. No credit check. Funded in 48 hours." />;
         }
         return (
           <article

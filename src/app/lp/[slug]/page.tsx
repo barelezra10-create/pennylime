@@ -303,7 +303,7 @@ export default async function LandingPageRoute({ params }: Props) {
             Penny<span className="text-[#4ade80]">Lime<span className="text-[#4ade80]">.</span></span>
           </div>
           <p className="text-[11px] text-[#71717a] text-center md:text-right max-w-xl">
-            Merchant cash advances $100-$10,000. Factor rates typically 1.20-1.49. Repayment as a fixed percentage of future receivables. Not a loan. Approval subject to eligibility.{" "}
+            Merchant cash advances $500 to $10,000. Factor rates typically 1.20-1.49. Repayment as a fixed percentage of future receivables. Not a loan. Approval subject to eligibility.{" "}
             <Link href="/disclosures" className="underline hover:text-white">See full disclosures</Link>
             {" · "}
             <Link href="/privacy" className="underline hover:text-white">Privacy</Link>

@@ -23,7 +23,7 @@ export default function DisclosuresPage() {
           Advance Terms
         </h2>
         <ul className="text-[15px] text-[#71717a] leading-relaxed space-y-2 list-disc pl-5">
-          <li><strong className="text-[#1a1a1a]">Advance amount:</strong> $100 to $10,000</li>
+          <li><strong className="text-[#1a1a1a]">Advance amount:</strong> $500 to $10,000</li>
           <li><strong className="text-[#1a1a1a]">Factor rate:</strong> typically 1.20 to 1.49 (varies by risk profile)</li>
           <li><strong className="text-[#1a1a1a]">Origination fee:</strong> a one-time fee disclosed in your written agreement before you accept</li>
           <li><strong className="text-[#1a1a1a]">Repayment:</strong> a fixed percentage of your future bank deposits, debited daily or weekly via ACH</li>

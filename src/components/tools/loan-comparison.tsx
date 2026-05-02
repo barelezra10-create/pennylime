@@ -42,7 +42,7 @@ const features: FeatureRow[] = [
   },
   {
     label: "Loan Range",
-    lime: { value: "$100 - $10,000", positive: true },
+    lime: { value: "$500 - $10,000", positive: true },
     mca: { value: "$5,000+", positive: false },
     bank: { value: "$5,000 - $50,000", positive: true },
   },

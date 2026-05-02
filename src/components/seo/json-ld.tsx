@@ -13,7 +13,7 @@ export function organizationSchema() {
     "@type": "Organization",
     name: "PennyLime",
     url: "https://pennylime.com",
-    description: "Fast loans for gig workers. $100 to $10,000.",
+    description: "Fast loans for gig workers. $500 to $10,000.",
     contactPoint: { "@type": "ContactPoint", email: "support@pennylime.com" },
   };
 }
@@ -56,7 +56,7 @@ export function loanProductSchema() {
     name: "PennyLime Merchant Cash Advance",
     description:
       "Merchant cash advance for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of future earnings. Not a loan.",
-    amount: { "@type": "MonetaryAmount", currency: "USD", minValue: 100, maxValue: 10000 },
+    amount: { "@type": "MonetaryAmount", currency: "USD", minValue: 500, maxValue: 10000 },
     provider: { "@type": "Organization", name: "PennyLime", url: "https://pennylime.com" },
   };
 }

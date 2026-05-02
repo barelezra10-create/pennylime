@@ -31,7 +31,7 @@ export default function TermsPage() {
           by PennyLime of a specified dollar amount of your future receivables at a discount, in exchange
           for a lump-sum payment to you. <strong className="text-black">A merchant cash advance is not a loan.</strong>{" "}
           There is no Annual Percentage Rate (APR) or interest rate; the cost is expressed as a factor rate
-          and is fully disclosed before you accept the advance. Advance amounts range from $100 to $10,000
+          and is fully disclosed before you accept the advance. Advance amounts range from $500 to $10,000
           and are repaid through a daily or weekly remittance of a fixed percentage of your future
           receivables.
         </p>

@@ -101,7 +101,7 @@ export function Hero() {
             If you drive for Uber, deliver for DoorDash, sell on Amazon, or run a
             shop on Shopify, your bank deposits are your credit. We read 90 days
             of verified earnings and fund you in 48 hours.{" "}
-            <strong className="text-[#0a0a0a]">$100 to $10,000.</strong>
+            <strong className="text-[#0a0a0a]">$500 to $10,000.</strong>
           </p>
 
           <div ref={ctasRef} className="flex flex-wrap gap-3 mb-12">

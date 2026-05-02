@@ -74,7 +74,7 @@ export function LoanAffordabilityCalculator() {
               onChange={(e) => setWeeklyExpenses(+e.target.value)}
               className="w-full accent-[#15803d]"
             />
-            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>$100</span><span>$2,000</span></div>
+            <div className="flex justify-between text-[11px] text-[#a1a1aa] mt-1"><span>$500</span><span>$2,000</span></div>
           </div>
 
           <div>

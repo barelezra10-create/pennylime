@@ -41,7 +41,7 @@ export async function GET() {
 
   sections.push(`# PennyLime`);
   sections.push(
-    `> Merchant cash advances of $100 to $10,000 for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of your future earnings. PennyLime does not offer loans or extend credit. Owned and operated by 770 Technology Way LLC, a Florida limited liability company.`
+    `> Merchant cash advances of $500 to $10,000 for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of your future earnings. PennyLime does not offer loans or extend credit. Owned and operated by 770 Technology Way LLC, a Florida limited liability company.`
   );
 
   sections.push(`## Apply`);
