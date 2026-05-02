@@ -12,7 +12,6 @@ export function Hero() {
   const headlineRef = useRef<HTMLDivElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const ctasRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<HTMLDivElement>(null);
   const limeRef = useRef<HTMLImageElement>(null);
   const eyebrowRef = useRef<HTMLDivElement>(null);
 
@@ -23,8 +22,7 @@ export function Hero() {
       tl.fromTo(eyebrowRef.current, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 })
         .fromTo(headlineRef.current, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.85 }, "-=0.25")
         .fromTo(subtitleRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.7 }, "-=0.5")
-        .fromTo(ctasRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, "-=0.4")
-        .fromTo(statsRef.current, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.55 }, "-=0.35");
+        .fromTo(ctasRef.current, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6 }, "-=0.4");
 
       // Lime entrance: scale + slight rotate from rest
       gsap.fromTo(
@@ -130,26 +128,6 @@ export function Hero() {
             </Link>
           </div>
 
-          {/* Stats: clean inline strip with green accent dividers */}
-          <div ref={statsRef} className="flex items-stretch divide-x divide-[#e4e4e7] border-y border-[#e4e4e7] py-4">
-            {[
-              { value: "95%", label: "approval rate" },
-              { value: "48h", label: "app to funded" },
-              { value: "0", label: "credit pulls" },
-            ].map((s, i) => (
-              <div key={s.label} className={`flex-1 ${i === 0 ? "pr-3 sm:pr-5" : "px-3 sm:px-5"}`}>
-                <div className="flex items-baseline gap-1">
-                  <div className="font-extrabold text-[#0a0a0a] text-[26px] sm:text-[30px] tracking-[-0.03em] tabular-nums leading-none">
-                    {s.value}
-                  </div>
-                  <span className="w-1 h-1 rounded-full bg-[#15803d] mb-1" />
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-[#52525b] mt-2 leading-snug">
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* RIGHT: the lime mark, dramatic (desktop / large only) */}
