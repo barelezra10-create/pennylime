@@ -97,19 +97,19 @@ export function WhyLimecredit() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-[#fafaf7] py-24 px-6">
+    <section ref={sectionRef} className="bg-[#fafaf7] py-16 md:py-24 px-5 md:px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-14 max-w-2xl">
+        <div className="mb-10 md:mb-14 max-w-2xl">
           <div className="inline-flex items-center gap-2 bg-white border border-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.06em] uppercase shadow-sm">
             Why us
           </div>
           <h2
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#0a0a0a]"
-            style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
+            style={{ fontSize: "clamp(32px, 5vw, 60px)" }}
           >
             Why <span className="text-[#15803d]">PennyLime<span>.</span></span>
           </h2>
-          <p className="text-[#52525b] text-[17px] mt-5 leading-relaxed">
+          <p className="text-[#52525b] text-[16px] md:text-[17px] mt-5 leading-relaxed">
             We built the product we wished existed when we drove gig for the first time.
             Six things that are intentional, not accidental.
           </p>

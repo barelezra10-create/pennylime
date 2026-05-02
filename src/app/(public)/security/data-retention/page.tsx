@@ -21,8 +21,8 @@ const SCHEDULE = [
 
 export default function DataRetentionPage() {
   return (
-    <div className="max-w-[820px] mx-auto py-16 px-6">
-      <h1 className="text-[28px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mb-2">
+    <div className="max-w-[820px] mx-auto py-12 md:py-16 px-5 md:px-6">
+      <h1 className="text-[26px] md:text-[28px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mb-2">
         Data Retention and Disposal Policy
       </h1>
       <p className="text-[13px] text-[#71717a] mb-1">

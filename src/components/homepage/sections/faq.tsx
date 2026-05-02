@@ -40,15 +40,15 @@ export function HomeFaq() {
   return (
     <>
       <JsonLd data={faqSchema(FAQ_ENTRIES)} />
-      <section className="bg-[#fafaf7] py-24 px-6">
+      <section className="bg-[#fafaf7] py-16 md:py-24 px-5 md:px-6">
         <div className="max-w-3xl mx-auto">
-          <div className="mb-12 text-center">
+          <div className="mb-10 md:mb-12 text-center">
             <div className="inline-flex items-center gap-2 bg-white text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase shadow-sm">
               FAQ
             </div>
             <h2
               className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#1a1a1a]"
-              style={{ fontSize: "clamp(32px, 4.5vw, 56px)" }}
+              style={{ fontSize: "clamp(28px, 4.5vw, 56px)" }}
             >
               Common questions.
             </h2>
@@ -61,7 +61,7 @@ export function HomeFaq() {
                 className="bg-white rounded-2xl border border-[#e4e4e7] overflow-hidden"
               >
                 <button
-                  className="w-full flex items-center justify-between px-6 py-5 text-left"
+                  className="w-full flex items-center justify-between px-5 md:px-6 py-5 text-left min-h-[64px]"
                   onClick={() => setOpen(open === i ? null : i)}
                   aria-expanded={open === i}
                 >
@@ -78,7 +78,7 @@ export function HomeFaq() {
                   </span>
                 </button>
                 {open === i && (
-                  <div className="px-6 pb-6">
+                  <div className="px-5 md:px-6 pb-6">
                     <p className="text-[#52525b] text-[14px] leading-relaxed">
                       {entry.answer}
                     </p>

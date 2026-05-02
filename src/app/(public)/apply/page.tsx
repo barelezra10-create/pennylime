@@ -61,13 +61,13 @@ const formSchema = z.object({
 function Navbar() {
   return (
     <nav className="fixed top-0 z-50 w-full bg-[#fafaf7]/90 backdrop-blur-xl border-b border-[#e4e4e7]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 sm:px-10">
-        <Link href="/">
-          <span className="font-extrabold text-lg tracking-[-0.03em]">Penny<span className="text-[#15803d]">Lime<span className="text-[#15803d]">.</span></span></span>
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 sm:px-10 h-16 md:h-20">
+        <Link href="/" className="inline-flex items-center min-h-[44px]">
+          <span className="font-extrabold text-[18px] md:text-lg tracking-[-0.03em]">Penny<span className="text-[#15803d]">Lime<span className="text-[#15803d]">.</span></span></span>
         </Link>
         <Link
           href="/status"
-          className="text-[13px] text-[#71717a] transition-colors hover:text-[#0a0a0a]"
+          className="text-[13px] text-[#52525b] transition-colors hover:text-[#0a0a0a] inline-flex items-center min-h-[44px] px-2"
         >
           Check status
         </Link>
@@ -379,16 +379,16 @@ function StepAmount({
 
       {/* Custom range slider */}
       <div className="w-full px-1">
-        <div className="relative h-[6px] w-full">
-          <div className="absolute inset-0 rounded-full bg-[#e4e4e7]" />
+        <div className="relative h-[28px] md:h-[24px] w-full flex items-center">
+          <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[6px] rounded-full bg-[#e4e4e7]" />
           <motion.div
-            className="absolute inset-y-0 left-0 rounded-full bg-[#15803d]"
+            className="absolute left-0 top-1/2 -translate-y-1/2 h-[6px] rounded-full bg-[#15803d]"
             style={{ width: `${pct}%` }}
             layout
             transition={{ duration: 0.1 }}
           />
           <motion.div
-            className="absolute top-1/2 h-[20px] w-[20px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-[#15803d] shadow-md"
+            className="absolute top-1/2 h-[28px] w-[28px] md:h-[22px] md:w-[22px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-[#15803d] shadow-md pointer-events-none"
             style={{ left: `${pct}%` }}
             layout
             transition={{ duration: 0.1 }}
@@ -400,10 +400,11 @@ function StepAmount({
             step={STEP_SIZE}
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            className="absolute inset-0 w-full cursor-pointer opacity-0"
+            className="absolute inset-0 w-full h-full cursor-pointer opacity-0 touch-manipulation"
+            aria-label="Advance amount"
           />
         </div>
-        <div className="mt-2 flex justify-between text-[11px] text-[#a1a1aa]">
+        <div className="mt-2 flex justify-between text-[12px] text-[#52525b]">
           <span>${MIN_AMOUNT.toLocaleString()}</span>
           <span>${MAX_AMOUNT.toLocaleString()}</span>
         </div>
@@ -447,7 +448,7 @@ function StepAmount({
       <motion.button
         type="button"
         onClick={onNext}
-        className="mt-8 w-full rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+        className="mt-8 w-full rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
         whileTap={{ scale: 0.97 }}
       >
         Continue &rarr;
@@ -597,14 +598,14 @@ function StepInfo({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
         <motion.button
           type="button"
           onClick={onNext}
-          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -788,7 +789,7 @@ function StepPlatforms({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -809,7 +810,7 @@ function StepPlatforms({
             }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1043,7 +1044,7 @@ function StepIdentity({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -1054,7 +1055,7 @@ function StepIdentity({
             if (!bankStatement) { toast.error("Please upload your bank statement"); return; }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1225,7 +1226,7 @@ function StepPlaidLink({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -1238,7 +1239,7 @@ function StepPlaidLink({
             }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1375,7 +1376,7 @@ function StepUpload({
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
         >
           &larr; Back
         </button>
@@ -1388,7 +1389,7 @@ function StepUpload({
             }
             onNext();
           }}
-          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1557,7 +1558,7 @@ function StepReview({
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="rounded-xl bg-[#f0fdf4] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7] disabled:opacity-50"
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7] disabled:opacity-50"
         >
           &larr; Back
         </button>
@@ -1565,7 +1566,7 @@ function StepReview({
           type="button"
           onClick={onSubmit}
           disabled={submitting}
-          className="rounded-xl bg-[#15803d] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] disabled:opacity-70"
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] disabled:opacity-70"
           whileTap={submitting ? {} : { scale: 0.97 }}
         >
           {submitting ? (
@@ -1634,13 +1635,13 @@ function SuccessScreen({ code }: { code: string }) {
       >
         <Link
           href={`/status/${code}`}
-          className="w-full rounded-xl bg-[#15803d] px-5 py-3 text-center text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          className="w-full inline-flex items-center justify-center rounded-xl bg-[#15803d] px-5 min-h-[52px] py-3 text-center text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
         >
           Check status &rarr;
         </Link>
         <Link
           href="/"
-          className="w-full rounded-xl border-2 border-[#0a0a0a] bg-white px-5 py-3 text-center text-[14px] font-semibold text-[#0a0a0a] transition-all hover:bg-[#fafaf7]"
+          className="w-full inline-flex items-center justify-center rounded-xl border-2 border-[#0a0a0a] bg-white px-5 min-h-[52px] py-3 text-center text-[14px] font-semibold text-[#0a0a0a] transition-all hover:bg-[#fafaf7]"
         >
           Back to home
         </Link>
@@ -1823,9 +1824,9 @@ function ApplyPageInner() {
     <div className="min-h-screen bg-[#fafaf7]">
       <Navbar />
 
-      <div className="flex min-h-[calc(100vh-80px)] pt-[80px]">
+      <div className="flex min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)] pt-[64px] md:pt-[80px]">
         {/* Left: Form */}
-        <div className="flex-1 flex flex-col justify-center px-8 md:px-16 py-12 min-w-0">
+        <div className="flex-1 flex flex-col justify-center px-5 md:px-16 py-8 md:py-12 min-w-0">
           <div className="w-full max-w-xl mx-auto">
             {!applicationCode && (
               <StepIndicator current={step} stepNames={activeStepNames} />

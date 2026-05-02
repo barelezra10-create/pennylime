@@ -17,16 +17,20 @@ export function FinalCta() {
 
   useEffect(() => {
     if (!sectionRef.current || !pinRef.current) return;
+    // Skip the pin and keep things simple on mobile.
+    const isMobile = typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches;
     const ctx = gsap.context(() => {
-      // Pin the section briefly
-      ScrollTrigger.create({
-        trigger: sectionRef.current,
-        start: "top top",
-        end: "+=40%",
-        pin: pinRef.current,
-        pinSpacing: true,
-        anticipatePin: 1,
-      });
+      // Pin the section briefly (desktop only)
+      if (!isMobile) {
+        ScrollTrigger.create({
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "+=40%",
+          pin: pinRef.current,
+          pinSpacing: true,
+          anticipatePin: 1,
+        });
+      }
 
       // Elements converge to center on scroll
       gsap.fromTo(
@@ -96,10 +100,10 @@ export function FinalCta() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative" style={{ height: "140vh" }}>
+    <section ref={sectionRef} className="relative md:h-[140vh]">
       <div
         ref={pinRef}
-        className="h-screen flex items-center justify-center overflow-hidden relative"
+        className="min-h-[80vh] md:h-screen flex items-center justify-center overflow-hidden relative py-16 md:py-0"
         style={{
           background: "linear-gradient(135deg, #15803d 0%, #166534 50%, #14532d 100%)",
         }}
@@ -110,11 +114,11 @@ export function FinalCta() {
           <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] rounded-full bg-[#a3e635]/10 blur-3xl" />
         </div>
 
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+        <div className="relative z-10 text-center px-5 md:px-6 max-w-4xl mx-auto">
           <h2
             ref={headlineRef}
-            className="font-extrabold tracking-[-0.04em] leading-[0.92] text-white mb-6"
-            style={{ fontSize: "clamp(56px, 9vw, 110px)", opacity: 0 }}
+            className="font-extrabold tracking-[-0.04em] leading-[0.95] md:leading-[0.92] text-white mb-5 md:mb-6 md:opacity-0"
+            style={{ fontSize: "clamp(38px, 9vw, 110px)" }}
           >
             Ready to get
             <br />
@@ -123,8 +127,7 @@ export function FinalCta() {
 
           <p
             ref={subRef}
-            className="text-[#bbf7d0] text-[18px] leading-relaxed max-w-xl mx-auto mb-10"
-            style={{ opacity: 0 }}
+            className="text-[#bbf7d0] text-[16px] md:text-[18px] leading-relaxed max-w-xl mx-auto mb-8 md:mb-10 md:opacity-0"
           >
             Join 1,200+ drivers, sellers, and operators funded by PennyLime. Apply in 5 minutes.
           </p>
@@ -160,8 +163,7 @@ export function FinalCta() {
             <Link
               ref={btnRef}
               href="/apply"
-              className="inline-flex items-center gap-3 bg-white text-[#15803d] font-extrabold text-[18px] px-10 py-5 rounded-2xl hover:bg-[#f0fdf4] transition-colors shadow-2xl"
-              style={{ opacity: 0 }}
+              className="inline-flex items-center justify-center gap-3 bg-white text-[#15803d] font-extrabold text-[16px] md:text-[18px] px-8 md:px-10 py-4 md:py-5 min-h-[56px] rounded-2xl hover:bg-[#f0fdf4] transition-colors shadow-2xl w-full sm:w-auto md:opacity-0"
             >
               Get funded
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">

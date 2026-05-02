@@ -76,7 +76,7 @@ export function HowItWorks() {
   return (
     <section
       ref={sectionRef}
-      className="relative bg-[#0a0a0a] py-28 md:py-36 px-6 overflow-hidden"
+      className="relative bg-[#0a0a0a] py-20 md:py-36 px-5 md:px-6 overflow-hidden"
     >
       {/* Background dot grid + soft lime glow */}
       <div className="absolute inset-0 pointer-events-none">
@@ -99,7 +99,7 @@ export function HowItWorks() {
           </div>
           <h2
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-white"
-            style={{ fontSize: "clamp(40px, 5.5vw, 68px)" }}
+            style={{ fontSize: "clamp(34px, 5.5vw, 68px)" }}
           >
             Three steps
             <br />
@@ -144,7 +144,7 @@ export function HowItWorks() {
           </p>
           <Link
             href="/apply"
-            className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-7 py-3.5 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_8px_20px_-8px_rgba(21,128,61,0.6)]"
+            className="inline-flex items-center justify-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-6 sm:px-7 min-h-[48px] py-3.5 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_8px_20px_-8px_rgba(21,128,61,0.6)] w-full sm:w-auto"
           >
             Start your application
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">

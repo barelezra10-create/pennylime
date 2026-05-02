@@ -31,7 +31,7 @@ export function Homepage({ latestArticles, platforms }: HomepageProps) {
   return (
     <>
       <Navbar />
-      <main className="pt-20">
+      <main className="pt-16 md:pt-20">
         <Hero />
         <PlatformMarquee />
         <PainPoints />

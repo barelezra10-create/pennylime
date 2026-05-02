@@ -4,8 +4,8 @@ export const metadata = {
 
 export default function DisclosuresPage() {
   return (
-    <div className="max-w-[680px] mx-auto py-16 px-6">
-      <h1 className="text-[28px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mb-8">
+    <div className="max-w-[680px] mx-auto py-12 md:py-16 px-5 md:px-6">
+      <h1 className="text-[26px] md:text-[28px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mb-8">
         Disclosures
       </h1>
       <div className="space-y-6">

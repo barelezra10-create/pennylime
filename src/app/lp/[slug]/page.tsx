@@ -74,8 +74,8 @@ export default async function LandingPageRoute({ params }: Props) {
           <div className="absolute bottom-[-5%] left-[-8%] w-[400px] h-[400px] rounded-full bg-[#d1fae5] opacity-30 blur-3xl" />
         </div>
 
-        <div className="max-w-6xl mx-auto px-4 py-12 md:py-20 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-start">
+        <div className="max-w-6xl mx-auto px-5 md:px-4 py-10 md:py-20 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-10 items-start">
             {/* Left: Copy */}
             <div className="relative">
               {page.heroIllustration && (
@@ -97,8 +97,8 @@ export default async function LandingPageRoute({ params }: Props) {
                 </div>
 
                 <h1
-                  className="font-extrabold tracking-[-0.04em] leading-[0.92] text-[#1a1a1a] mb-5"
-                  style={{ fontSize: "clamp(42px, 6.5vw, 84px)" }}
+                  className="font-extrabold tracking-[-0.04em] leading-[0.95] md:leading-[0.92] text-[#1a1a1a] mb-5"
+                  style={{ fontSize: "clamp(34px, 6.5vw, 84px)" }}
                 >
                   {page.heroHeadlineLine1}
                   {page.heroHeadlineLine2 && (
@@ -115,7 +115,7 @@ export default async function LandingPageRoute({ params }: Props) {
                   )}
                 </h1>
 
-                <p className="text-[#71717a] text-[18px] leading-relaxed max-w-xl mb-6">
+                <p className="text-[#52525b] text-[16px] md:text-[18px] leading-relaxed max-w-xl mb-6">
                   {page.heroSubtext}
                 </p>
 
@@ -166,7 +166,7 @@ export default async function LandingPageRoute({ params }: Props) {
 
       {/* How it works */}
       {howItWorksSteps.length > 0 && (
-        <section className="bg-white py-16 md:py-24 px-4">
+        <section className="bg-white py-14 md:py-24 px-5 md:px-4">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <h2
@@ -205,7 +205,7 @@ export default async function LandingPageRoute({ params }: Props) {
 
       {/* Testimonials */}
       {testimonials.length > 0 && (
-        <section className="bg-[#f0f5f0] py-16 md:py-24 px-4">
+        <section className="bg-[#f0f5f0] py-14 md:py-24 px-5 md:px-4">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-10">
               <h2
@@ -245,7 +245,7 @@ export default async function LandingPageRoute({ params }: Props) {
 
       {/* FAQ */}
       {faqs.length > 0 && (
-        <section className="bg-white py-16 md:py-24 px-4">
+        <section className="bg-white py-14 md:py-24 px-5 md:px-4">
           <div className="max-w-3xl mx-auto">
             <h2
               className="font-extrabold tracking-[-0.03em] leading-tight text-[#1a1a1a] mb-10 text-center"
@@ -270,22 +270,22 @@ export default async function LandingPageRoute({ params }: Props) {
 
       {/* Final CTA */}
       <section
-        className="py-16 md:py-24 px-4"
+        className="py-14 md:py-24 px-5 md:px-4"
         style={{ background: "linear-gradient(135deg, #15803d 0%, #166534 50%, #14532d 100%)" }}
       >
         <div className="max-w-3xl mx-auto text-center">
           <h2
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-white mb-5"
-            style={{ fontSize: "clamp(36px, 5vw, 64px)" }}
+            style={{ fontSize: "clamp(30px, 5vw, 64px)" }}
           >
             {page.finalCtaHeadline}
           </h2>
           {page.finalCtaSubtext && (
-            <p className="text-[#bbf7d0] text-[17px] mb-8 max-w-xl mx-auto">{page.finalCtaSubtext}</p>
+            <p className="text-[#bbf7d0] text-[15px] md:text-[17px] mb-8 max-w-xl mx-auto">{page.finalCtaSubtext}</p>
           )}
           <Link
             href={`/apply?utm_source=${page.utmSource}&utm_campaign=${page.utmCampaign}`}
-            className="inline-flex items-center gap-2 bg-white text-[#15803d] font-extrabold text-[17px] px-10 py-5 rounded-2xl hover:bg-[#f0fdf4] transition-colors shadow-2xl"
+            className="inline-flex items-center justify-center gap-2 bg-white text-[#15803d] font-extrabold text-[16px] md:text-[17px] px-8 md:px-10 py-4 md:py-5 min-h-[56px] rounded-2xl hover:bg-[#f0fdf4] transition-colors shadow-2xl w-full sm:w-auto"
           >
             {page.finalCtaButtonText}
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">

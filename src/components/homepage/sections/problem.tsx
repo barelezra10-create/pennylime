@@ -21,6 +21,11 @@ export function Problem() {
 
   useEffect(() => {
     if (!sectionRef.current || !pinRef.current) return;
+    // Skip the pinned scroll-trigger on mobile, as it is jarring on small viewports.
+    // Instead, render a static stacked layout below md.
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      return;
+    }
     const ctx = gsap.context(() => {
       gsap.set(screenRefs[0].current, { opacity: 1 });
       gsap.set([screenRefs[1].current, screenRefs[2].current, screenRefs[3].current, screenRefs[4].current], { opacity: 0 });
@@ -59,12 +64,20 @@ export function Problem() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative" style={{ height: "400vh" }}>
-      <div ref={pinRef} className="h-screen bg-[#fafaf7] flex items-center overflow-hidden">
-        <div className="max-w-6xl mx-auto w-full px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+    <section
+      ref={sectionRef}
+      className="relative md:h-[400vh]"
+    >
+      <div
+        ref={pinRef}
+        className="bg-[#fafaf7] flex items-center overflow-hidden md:h-screen"
+      >
+        <div className="max-w-6xl mx-auto w-full px-5 md:px-6 py-16 md:py-0 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 items-center">
 
-          <div className="relative min-h-[300px]">
-            <div ref={problemRef} className="absolute inset-0">
+          {/* Mobile: render Problem + WhatWeDo stacked, both fully visible.
+              Desktop: absolutely positioned and animated on scroll. */}
+          <div className="relative md:min-h-[300px]">
+            <div ref={problemRef} className="md:absolute md:inset-0 mb-10 md:mb-0">
               <div className="inline-flex items-center gap-2 bg-[#fef2f2] text-[#dc2626] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 The Problem
               </div>
@@ -85,11 +98,11 @@ export function Problem() {
               </div>
             </div>
 
-            <div ref={weDoRef} className="absolute inset-0">
+            <div ref={weDoRef} className="md:absolute md:inset-0 md:opacity-0">
               <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
                 What We Do
               </div>
-              <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(48px, 6vw, 80px)" }}>
+              <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(36px, 6vw, 80px)" }}>
                 We Do
               </h2>
               <div className="space-y-4">
@@ -111,6 +124,28 @@ export function Problem() {
 
           <div className="flex justify-center">
             <PhoneMockup screenRefs={screenRefs} />
+          </div>
+
+          {/* Mobile-only: a tiny static teaser of the 3 most-important screens
+              under the phone, since the scroll-pinned cycle is disabled. */}
+          <div className="md:hidden -mt-4 flex flex-wrap justify-center gap-3">
+            {[
+              { label: "Apply", caption: "5 minutes" },
+              { label: "Verify", caption: "Plaid, read-only" },
+              { label: "Approved", caption: "in 48 hours" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="flex-1 min-w-[100px] bg-white border border-[#e4e4e7] rounded-2xl px-3 py-3 text-center"
+              >
+                <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#15803d]">
+                  {s.label}
+                </div>
+                <div className="text-[12px] text-[#52525b] mt-1 leading-tight">
+                  {s.caption}
+                </div>
+              </div>
+            ))}
           </div>
 
         </div>
@@ -141,16 +176,16 @@ function PhoneMockup({ screenRefs }: { screenRefs: React.RefObject<HTMLDivElemen
           <div ref={screenRefs[0]} className="absolute inset-0 pt-12 px-5">
             <ScreenForm />
           </div>
-          <div ref={screenRefs[1]} className="absolute inset-0 pt-12 px-5">
+          <div ref={screenRefs[1]} className="absolute inset-0 pt-12 px-5 hidden md:block">
             <ScreenSubmitting />
           </div>
-          <div ref={screenRefs[2]} className="absolute inset-0 pt-12 px-5">
+          <div ref={screenRefs[2]} className="absolute inset-0 pt-12 px-5 hidden md:block">
             <ScreenVerifying />
           </div>
-          <div ref={screenRefs[3]} className="absolute inset-0 pt-12 px-5">
+          <div ref={screenRefs[3]} className="absolute inset-0 pt-12 px-5 hidden md:block">
             <ScreenReviewing />
           </div>
-          <div ref={screenRefs[4]} className="absolute inset-0 pt-12 px-5">
+          <div ref={screenRefs[4]} className="absolute inset-0 pt-12 px-5 hidden md:block">
             <ScreenApproved />
           </div>
         </div>

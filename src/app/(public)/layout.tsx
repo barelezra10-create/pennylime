@@ -5,7 +5,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   return (
     <>
       <Navbar />
-      <main className="pt-20 min-h-screen">{children}</main>
+      <main className="pt-16 md:pt-20 min-h-screen">{children}</main>
       <Footer />
     </>
   );

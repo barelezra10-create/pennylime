@@ -96,22 +96,22 @@ export function Industries() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-white py-20 md:py-28 px-6">
+    <section ref={sectionRef} className="bg-white py-16 md:py-28 px-5 md:px-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="max-w-2xl mb-14">
+        <div className="max-w-2xl mb-10 md:mb-14">
           <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
             Who we fund
           </div>
           <h2
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-4"
-            style={{ fontSize: "clamp(36px, 5vw, 60px)" }}
+            style={{ fontSize: "clamp(32px, 5vw, 60px)" }}
           >
             Drivers, sellers,
             <br />
             <span className="text-[#15803d]">and operators.</span>
           </h2>
-          <p className="text-[#52525b] text-[17px] leading-relaxed">
+          <p className="text-[#52525b] text-[16px] md:text-[17px] leading-relaxed">
             Rideshare, delivery, grocery, freelance, home services, last-mile. If a platform pays you, we read the deposits and size your advance.
           </p>
         </div>
@@ -166,7 +166,7 @@ export function Industries() {
           </p>
           <Link
             href="/apply"
-            className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-5 py-3 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+            className="inline-flex items-center justify-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-6 min-h-[48px] py-3 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] w-full sm:w-auto"
           >
             Get funded
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>

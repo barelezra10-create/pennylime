@@ -102,22 +102,22 @@ export function PainPoints() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-white py-24 md:py-32 px-6 relative overflow-hidden">
+    <section ref={sectionRef} className="bg-white py-16 md:py-32 px-5 md:px-6 relative overflow-hidden">
       <div className="max-w-6xl mx-auto relative z-10">
         {/* Header */}
-        <div className="max-w-2xl mb-14">
+        <div className="max-w-2xl mb-10 md:mb-14">
           <div className="inline-flex items-center gap-2 bg-[#fefce8] text-[#92400e] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-5 tracking-[0.04em] uppercase">
             Where the money goes
           </div>
           <h2
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5"
-            style={{ fontSize: "clamp(38px, 5.5vw, 68px)" }}
+            style={{ fontSize: "clamp(34px, 5.5vw, 68px)" }}
           >
             Real costs.
             <br />
             <span className="text-[#15803d]">Real funding.</span>
           </h2>
-          <p className="text-[#52525b] text-[17px] leading-relaxed max-w-xl">
+          <p className="text-[#52525b] text-[16px] md:text-[17px] leading-relaxed max-w-xl">
             Drivers, sellers, and operators all run a real business. Vehicle repairs, FBA inventory, gear, insurance. When the cost lands before the next payout, we bridge it.
           </p>
         </div>
@@ -146,10 +146,10 @@ export function PainPoints() {
         </div>
 
         {/* Bottom CTA */}
-        <div className="mt-14 flex flex-wrap items-center gap-6">
+        <div className="mt-12 md:mt-14 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-4 sm:gap-6">
           <Link
             href="/apply"
-            className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-5 py-3 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+            className="inline-flex items-center justify-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-6 min-h-[48px] py-3 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] w-full sm:w-auto"
           >
             Get funded
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">

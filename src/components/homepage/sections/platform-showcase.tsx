@@ -82,20 +82,20 @@ export function PlatformShowcase({ platforms: _platforms }: PlatformShowcaseProp
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-white py-24 md:py-28 px-6 border-y border-[#e4e4e7]">
+    <section ref={sectionRef} className="bg-white py-16 md:py-28 px-5 md:px-6 border-y border-[#e4e4e7]">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-10 md:mb-12">
           <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.06em] uppercase">
             We fund earners on
           </div>
           <h2
             className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#0a0a0a] mb-4"
-            style={{ fontSize: "clamp(32px, 4.5vw, 52px)" }}
+            style={{ fontSize: "clamp(28px, 4.5vw, 52px)" }}
           >
             Every major platform.
           </h2>
-          <p className="text-[#52525b] text-[16px] max-w-xl mx-auto">
+          <p className="text-[#52525b] text-[15px] md:text-[16px] max-w-xl mx-auto">
             If your deposits come from any of these, your earnings qualify. No W-2 required.
           </p>
         </div>

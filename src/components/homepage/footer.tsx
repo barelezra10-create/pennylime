@@ -3,9 +3,9 @@ import { LogoMark } from "@/components/brand/logo";
 
 export function Footer() {
   return (
-    <footer className="bg-[#1a1a1a] text-white py-16">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+    <footer className="bg-[#1a1a1a] text-white py-12 md:py-16">
+      <div className="max-w-6xl mx-auto px-5 md:px-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-10 md:gap-8">
           <div>
             <span className="inline-flex items-center gap-2 font-extrabold text-[20px] tracking-[-0.03em]">
               <LogoMark size={40} />

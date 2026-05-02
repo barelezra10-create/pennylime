@@ -54,7 +54,7 @@ export function Hero() {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen flex items-center bg-[#fafaf7] overflow-hidden px-6 pt-24 pb-16"
+      className="relative min-h-screen flex items-center bg-[#fafaf7] overflow-hidden px-5 pt-20 pb-12 md:px-6 md:pt-24 md:pb-16"
     >
       {/* Background atmosphere: subtle dot grid + green glow behind lime */}
       <div className="absolute inset-0 pointer-events-none">
@@ -70,12 +70,58 @@ export function Hero() {
         <div className="absolute bottom-[-20%] left-[-15%] w-[460px] h-[460px] rounded-full bg-[#bef264] opacity-25 blur-3xl" />
       </div>
 
-      <div className="max-w-6xl mx-auto w-full relative z-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-10 lg:gap-16 items-center">
-        {/* LEFT: copy */}
+      <div className="max-w-6xl mx-auto w-full relative z-10 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-16 items-center">
+        {/* LEFT: copy (mobile gets a product-preview card above the copy) */}
         <div>
+          {/* Mobile-only product preview card with the lime + sample approval */}
+          <div className="lg:hidden mb-8">
+            <div className="relative bg-white rounded-3xl border border-[#e4e4e7] shadow-[0_24px_60px_-24px_rgba(21,128,61,0.25)] p-5 max-w-sm mx-auto">
+              {/* soft halo behind */}
+              <div className="absolute -inset-4 bg-[#bef264] opacity-20 blur-3xl rounded-full -z-10" />
+
+              <div className="flex items-center gap-4">
+                <div className="relative w-24 h-24 shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/lime-mark.svg"
+                    alt="PennyLime"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="inline-flex items-center gap-1.5 bg-[#dcfce7] text-[#15803d] text-[9px] font-bold uppercase tracking-[0.08em] px-2 py-1 rounded-full mb-1.5">
+                    <span className="w-1 h-1 rounded-full bg-[#15803d]" />
+                    Approved
+                  </div>
+                  <div className="font-extrabold text-[#0a0a0a] text-[28px] tracking-[-0.025em] tabular-nums leading-none">
+                    $3,000
+                  </div>
+                  <div className="text-[11px] text-[#52525b] mt-1.5">
+                    7% of daily deposits
+                  </div>
+                </div>
+              </div>
+
+              {/* Verified-income strip at bottom */}
+              <div className="mt-4 pt-4 border-t border-[#f4f4f5] flex items-center justify-between">
+                <div>
+                  <div className="text-[9px] font-bold uppercase tracking-[0.08em] text-[#71717a]">
+                    Verified income
+                  </div>
+                  <div className="font-extrabold text-[#0a0a0a] text-[15px] tabular-nums mt-0.5">
+                    $5,910
+                  </div>
+                </div>
+                <div className="text-[10px] text-[#71717a] text-right leading-tight">
+                  Uber · DoorDash<br />Instacart · 90d
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div
             ref={eyebrowRef}
-            className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-[#dcfce7] text-[#15803d] text-[12px] font-bold px-3 py-1.5 rounded-full mb-7 tracking-[0.06em] uppercase shadow-sm"
+            className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-[#dcfce7] text-[#15803d] text-[11px] md:text-[12px] font-bold px-3 py-1.5 rounded-full mb-5 md:mb-7 tracking-[0.06em] uppercase shadow-sm"
           >
             <span className="w-1.5 h-1.5 bg-[#15803d] rounded-full inline-block" />
             Funding for the on-demand economy
@@ -83,8 +129,8 @@ export function Hero() {
 
           <div ref={headlineRef}>
             <h1
-              className="font-extrabold tracking-[-0.04em] leading-[0.92] text-[#0a0a0a] mb-6"
-              style={{ fontSize: "clamp(48px, 7.5vw, 96px)" }}
+              className="font-extrabold tracking-[-0.04em] leading-[0.95] md:leading-[0.92] text-[#0a0a0a] mb-5 md:mb-6"
+              style={{ fontSize: "clamp(38px, 8vw, 96px)" }}
             >
               Funding for
               <br />
@@ -96,7 +142,7 @@ export function Hero() {
 
           <p
             ref={subtitleRef}
-            className="text-[#52525b] text-[17px] md:text-[18px] leading-relaxed max-w-xl mb-10"
+            className="text-[#52525b] text-[16px] md:text-[18px] leading-relaxed max-w-xl mb-8 md:mb-10"
           >
             If you drive for Uber, deliver for DoorDash, sell on Amazon, or run a
             shop on Shopify, your bank deposits are your credit. We read 90 days
@@ -104,10 +150,10 @@ export function Hero() {
             <strong className="text-[#0a0a0a]">$500 to $10,000.</strong>
           </p>
 
-          <div ref={ctasRef} className="flex flex-wrap gap-3 mb-12">
+          <div ref={ctasRef} className="flex flex-col sm:flex-row flex-wrap gap-3 mb-10 md:mb-12">
             <Link
               href="/apply"
-              className="inline-flex items-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-7 py-3.5 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_8px_20px_-8px_rgba(21,128,61,0.55)]"
+              className="inline-flex items-center justify-center gap-2 bg-[#15803d] text-white font-semibold text-[15px] px-6 sm:px-7 min-h-[52px] py-3.5 rounded-xl hover:bg-[#166534] transition-colors shadow-[0_8px_20px_-8px_rgba(21,128,61,0.55)] w-full sm:w-auto"
             >
               See what you qualify for
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -122,14 +168,14 @@ export function Hero() {
             </Link>
             <Link
               href="/status"
-              className="inline-flex items-center gap-2 bg-white border border-[#e4e4e7] text-[#0a0a0a] font-semibold text-[15px] px-7 py-3.5 rounded-xl hover:border-[#0a0a0a] transition-colors"
+              className="inline-flex items-center justify-center gap-2 bg-white border border-[#e4e4e7] text-[#0a0a0a] font-semibold text-[15px] px-6 sm:px-7 min-h-[52px] py-3.5 rounded-xl hover:border-[#0a0a0a] transition-colors w-full sm:w-auto"
             >
               Check status
             </Link>
           </div>
 
           {/* Stats: brand-book card style */}
-          <div ref={statsRef} className="flex flex-wrap gap-3">
+          <div ref={statsRef} className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3">
             {[
               { value: "60M", label: "Americans on platforms" },
               { value: "90d", label: "of deposits underwritten" },
@@ -137,12 +183,12 @@ export function Hero() {
             ].map((s) => (
               <div
                 key={s.label}
-                className="bg-white border border-[#e4e4e7] rounded-2xl px-4 py-3 min-w-[140px]"
+                className="bg-white border border-[#e4e4e7] rounded-2xl px-3 py-3 sm:px-4 sm:min-w-[140px]"
               >
-                <div className="font-extrabold text-[#0a0a0a] text-[22px] tracking-[-0.025em] tabular-nums leading-none">
+                <div className="font-extrabold text-[#0a0a0a] text-[20px] sm:text-[22px] tracking-[-0.025em] tabular-nums leading-none">
                   {s.value}
                 </div>
-                <div className="text-[11px] text-[#71717a] uppercase tracking-[0.06em] mt-1.5 font-semibold">
+                <div className="text-[10px] sm:text-[11px] text-[#52525b] uppercase tracking-[0.06em] mt-1.5 font-semibold leading-snug">
                   {s.label}
                 </div>
               </div>
@@ -150,8 +196,8 @@ export function Hero() {
           </div>
         </div>
 
-        {/* RIGHT: the lime mark, dramatic */}
-        <div className="relative flex items-center justify-center">
+        {/* RIGHT: the lime mark, dramatic (desktop / large only) */}
+        <div className="relative hidden lg:flex items-center justify-center">
           <div className="relative w-full aspect-square max-w-[640px]">
             {/* soft halo behind lime */}
             <div className="absolute inset-[10%] rounded-full bg-[#bef264] opacity-30 blur-3xl" />

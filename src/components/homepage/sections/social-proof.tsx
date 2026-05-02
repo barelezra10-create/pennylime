@@ -91,22 +91,22 @@ export function SocialProof() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-white py-24 px-6 overflow-hidden">
+    <section ref={sectionRef} className="bg-white py-16 md:py-24 px-5 md:px-6 overflow-hidden">
       <div className="max-w-5xl mx-auto">
         {/* Stats */}
         <div
           ref={statsRef}
-          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20"
+          className="grid grid-cols-3 md:grid-cols-3 gap-3 sm:gap-8 mb-14 md:mb-20"
         >
           {STATS.map((stat, i) => (
             <div key={i} className="text-center">
               <div
                 className="stat-value font-extrabold tracking-[-0.05em] text-[#1a1a1a] leading-none"
-                style={{ fontSize: "clamp(48px, 6vw, 80px)" }}
+                style={{ fontSize: "clamp(28px, 6vw, 80px)" }}
               >
                 {stat.display}
               </div>
-              <div className="text-[#71717a] text-[14px] mt-2 uppercase tracking-[0.06em] font-medium">
+              <div className="text-[#52525b] text-[11px] sm:text-[14px] mt-2 uppercase tracking-[0.06em] font-medium leading-snug">
                 {stat.label}
               </div>
             </div>
@@ -114,7 +114,7 @@ export function SocialProof() {
         </div>
 
         {/* Divider squiggle */}
-        <div className="flex justify-center mb-16">
+        <div className="flex justify-center mb-12 md:mb-16">
           <svg width="200" height="16" viewBox="0 0 200 16" fill="none" aria-hidden="true">
             <path
               d="M4 8 C 24 2, 44 14, 64 8 S 104 2, 124 8 S 164 14, 196 6"

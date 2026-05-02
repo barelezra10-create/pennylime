@@ -57,16 +57,16 @@ export function BlogPreview({ articles }: BlogPreviewProps) {
   }, []);
 
   return (
-    <section ref={sectionRef} className="bg-white py-24 px-6">
+    <section ref={sectionRef} className="bg-white py-16 md:py-24 px-5 md:px-6">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-end justify-between mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 md:mb-12">
           <div>
             <div className="inline-flex items-center gap-2 bg-[#dcfce7] text-[#15803d] text-[11px] font-semibold px-3 py-1.5 rounded-full mb-4 tracking-[0.04em] uppercase">
               Field notes
             </div>
             <h2
               className="font-extrabold tracking-[-0.04em] leading-[0.95] text-[#1a1a1a]"
-              style={{ fontSize: "clamp(32px, 4vw, 52px)" }}
+              style={{ fontSize: "clamp(28px, 4vw, 52px)" }}
             >
               From the blog.
             </h2>

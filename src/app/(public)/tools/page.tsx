@@ -27,14 +27,14 @@ export default async function ToolsPage() {
   const tools = await getPublishedToolPages();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
+    <div className="max-w-6xl mx-auto px-5 md:px-4 py-10 md:py-12">
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Tools", href: "/tools" }]} />
 
       <div className="mb-10">
-        <h1 className="text-[36px] font-extrabold tracking-[-0.03em] text-black mb-3">
+        <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-[-0.03em] text-black mb-3">
           Free Tools for Drivers, Sellers &amp; Operators
         </h1>
-        <p className="text-[16px] text-[#52525b] max-w-2xl">
+        <p className="text-[15px] md:text-[16px] text-[#52525b] max-w-2xl">
           Calculators built for Uber, Lyft, DoorDash drivers, Amazon sellers, Shopify shops, and freelancers.
           Know your earnings, expenses, and funding options before you apply.
         </p>
