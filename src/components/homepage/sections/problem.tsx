@@ -167,9 +167,10 @@ function PhoneMockup({ screenRefs }: { screenRefs: React.RefObject<HTMLDivElemen
             <ScreenApproved />
           </div>
 
-          {/* Mobile: scrollable stack of screens inside the phone, snap to each */}
+          {/* Mobile: scrollable stack of screens inside the phone — each child
+              is exactly one scrollport tall so a snap shows one whole screen. */}
           <div
-            className="md:hidden absolute inset-0 pt-10 overflow-y-auto"
+            className="md:hidden absolute inset-0 overflow-y-auto [&::-webkit-scrollbar]:hidden"
             style={{
               scrollSnapType: "y mandatory",
               WebkitOverflowScrolling: "touch",
@@ -179,8 +180,8 @@ function PhoneMockup({ screenRefs }: { screenRefs: React.RefObject<HTMLDivElemen
             {[ScreenForm, ScreenVerifying, ScreenReviewing, ScreenApproved].map((Screen, i) => (
               <div
                 key={i}
-                className="px-5 pb-4"
-                style={{ minHeight: "calc(100% - 0px)", scrollSnapAlign: "start" }}
+                className="pt-10 pb-4 px-5"
+                style={{ height: "100%", scrollSnapAlign: "start", scrollSnapStop: "always" }}
               >
                 <Screen />
               </div>
