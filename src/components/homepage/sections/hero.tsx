@@ -133,9 +133,9 @@ export function Hero() {
           {/* Stats: clean inline strip with green accent dividers */}
           <div ref={statsRef} className="flex items-stretch divide-x divide-[#e4e4e7] border-y border-[#e4e4e7] py-4">
             {[
-              { value: "60M", label: "Americans on platforms" },
-              { value: "90d", label: "of deposits read" },
+              { value: "95%", label: "approval rate" },
               { value: "48h", label: "app to funded" },
+              { value: "0", label: "credit pulls" },
             ].map((s, i) => (
               <div key={s.label} className={`flex-1 ${i === 0 ? "pr-3 sm:pr-5" : "px-3 sm:px-5"}`}>
                 <div className="flex items-baseline gap-1">
