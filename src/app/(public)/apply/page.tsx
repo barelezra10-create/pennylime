@@ -16,6 +16,7 @@ import { logActivity } from "@/actions/activities";
 import type { FormStep } from "@/types/form-template";
 import { DynamicStep } from "@/components/apply/dynamic-step";
 import { PhoneVerification } from "@/components/apply/phone-verification";
+import { PlatformLogo } from "@/components/funnel/platform-logo";
 
 /* ------------------------------------------------------------------ */
 /*  CONSTANTS                                                           */
@@ -25,20 +26,20 @@ const STEPS = ["Amount", "Your info", "Platforms", "Identity", "Bank link", "Doc
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
 
 const GIG_PLATFORMS = [
-  { id: "uber", label: "Uber", icon: "🚗" },
-  { id: "lyft", label: "Lyft", icon: "🚘" },
-  { id: "doordash", label: "DoorDash", icon: "🍔" },
-  { id: "ubereats", label: "Uber Eats", icon: "🥡" },
-  { id: "instacart", label: "Instacart", icon: "🛒" },
-  { id: "grubhub", label: "Grubhub", icon: "🍕" },
-  { id: "amazonflex", label: "Amazon Flex", icon: "📦" },
-  { id: "postmates", label: "Postmates", icon: "📬" },
-  { id: "taskrabbit", label: "TaskRabbit", icon: "🔧" },
-  { id: "fiverr", label: "Fiverr", icon: "💼" },
-  { id: "upwork", label: "Upwork", icon: "💻" },
-  { id: "shipt", label: "Shipt", icon: "🏪" },
-  { id: "gopuff", label: "Gopuff", icon: "⚡" },
-  { id: "spark", label: "Walmart Spark", icon: "🏬" },
+  { id: "uber", label: "Uber" },
+  { id: "lyft", label: "Lyft" },
+  { id: "doordash", label: "DoorDash" },
+  { id: "ubereats", label: "Uber Eats" },
+  { id: "instacart", label: "Instacart" },
+  { id: "grubhub", label: "Grubhub" },
+  { id: "amazonflex", label: "Amazon Flex" },
+  { id: "postmates", label: "Postmates" },
+  { id: "taskrabbit", label: "TaskRabbit" },
+  { id: "fiverr", label: "Fiverr" },
+  { id: "upwork", label: "Upwork" },
+  { id: "shipt", label: "Shipt" },
+  { id: "gopuff", label: "Gopuff" },
+  { id: "spark", label: "Walmart Spark" },
 ];
 const MIN_AMOUNT = 500;
 const MAX_AMOUNT = 10000;
@@ -676,7 +677,7 @@ function StepPlatforms({
               }`}
               whileTap={{ scale: 0.97 }}
             >
-              <span className="text-lg">{p.icon}</span>
+              <PlatformLogo slug={p.id} label={p.label} selected={selected} />
               <span className="text-[13px] font-medium">
                 {p.label}
               </span>
