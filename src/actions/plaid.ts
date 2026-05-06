@@ -121,3 +121,53 @@ export async function ensureIncreaseExternalAccount(applicationId: string) {
   if (!create.ok) return { ok: false, error: create.error } as const;
   return { ok: true, externalAccountId: create.data.id } as const;
 }
+
+/**
+ * Preview the verified monthly income and bank balance immediately after
+ * a Plaid Link succeeds, before any application row is created. Used to
+ * surface "we see $X/mo in deposits" mid-funnel as a trust signal.
+ *
+ * Public-callable (no auth) — the encrypted access token is itself proof
+ * the caller just completed Plaid Link, and decryption only succeeds with
+ * the server's encryption key, so no protected data is at risk.
+ */
+export async function previewPlaidIncome(input: { encryptedAccessToken: string }) {
+  let accessToken: string;
+  try {
+    accessToken = decrypt(input.encryptedAccessToken);
+  } catch {
+    return { ok: false as const, error: "Invalid token" };
+  }
+
+  try {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+    const [txResp, balResp] = await Promise.all([
+      plaidClient.transactionsGet({
+        access_token: accessToken,
+        start_date: threeMonthsAgo.toISOString().split("T")[0],
+        end_date: now.toISOString().split("T")[0],
+      }),
+      plaidClient.accountsBalanceGet({ access_token: accessToken }),
+    ]);
+
+    const deposits = txResp.data.transactions
+      .filter((tx) => tx.amount < 0)
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const monthlyIncome = deposits / 3;
+
+    const balance = balResp.data.accounts[0]?.balances?.current ?? null;
+
+    return {
+      ok: true as const,
+      monthlyIncome,
+      bankBalance: balance,
+    };
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Failed to fetch income",
+    };
+  }
+}

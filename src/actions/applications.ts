@@ -25,9 +25,9 @@ const submitSchema = z.object({
   loanTermMonths: z.number().int().min(3).max(18),
   platform: z.string().optional(),
   ssnRaw: z.string().optional(),
-  plaidAccessToken: z.string().optional(),
+  plaidAccessToken: z.string().min(1, "Bank link is required"),
+  plaidItemId: z.string().min(1, "Bank link is required"),
   plaidAccountId: z.string().optional(),
-  plaidItemId: z.string().optional(),
   files: z.array(
     z.object({
       fileName: z.string(),
@@ -86,9 +86,9 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       platform: data.platform || null,
       ssnEncrypted,
       ssnHash,
-      plaidAccessToken: data.plaidAccessToken || null,
+      plaidAccessToken: data.plaidAccessToken,
       plaidAccountId: data.plaidAccountId || null,
-      plaidItemId: data.plaidItemId || null,
+      plaidItemId: data.plaidItemId,
       documents: {
         create: data.files.map((file) => ({
           fileName: file.fileName,
@@ -99,6 +99,20 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       },
     },
   });
+
+  // Best-effort: pre-fetch verified income/balance and create the Increase
+  // external account so admin gets a fully-prepped row when they review.
+  // Each underlying action persists its own failure state on the row;
+  // exceptions here are swallowed so they don't block the applicant.
+  try {
+    const { fetchAndStoreIncome, ensureIncreaseExternalAccount } = await import("@/actions/plaid");
+    await Promise.allSettled([
+      fetchAndStoreIncome(application.id),
+      ensureIncreaseExternalAccount(application.id),
+    ]);
+  } catch (err) {
+    console.error("Post-submit Plaid pipeline failed:", err);
+  }
 
   return { success: true, applicationCode, applicationId: application.id };
 }

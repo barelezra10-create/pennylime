@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { usePlaidLink } from "react-plaid-link";
 import { CheckCircle, Building2 } from "lucide-react";
 import { submitApplication } from "@/actions/applications";
+import { previewPlaidIncome } from "@/actions/plaid";
 import { upsertContact, updateContactLastStep, linkContactApplication } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
 import type { FormStep } from "@/types/form-template";
@@ -1086,6 +1087,11 @@ function StepPlaidLink({
 }) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [previewIncome, setPreviewIncome] = useState<{
+    monthlyIncome: number;
+    bankBalance: number | null;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const linked = !!(plaidAccessToken && plaidAccountId && plaidItemId);
 
   useEffect(() => {
@@ -1110,6 +1116,30 @@ function StepPlaidLink({
     };
     fetchToken();
   }, [linked]);
+
+  // Once linked, fetch the verified income preview to show as a trust signal.
+  // Re-fetches if the user backs out and re-links (token changes).
+  useEffect(() => {
+    if (!plaidAccessToken) {
+      setPreviewIncome(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    previewPlaidIncome({ encryptedAccessToken: plaidAccessToken })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          setPreviewIncome({ monthlyIncome: res.monthlyIncome, bankBalance: res.bankBalance });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [plaidAccessToken]);
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
@@ -1173,6 +1203,32 @@ function StepPlaidLink({
                 Your bank is securely connected. We can read deposits, never move money.
               </p>
             </div>
+            {previewLoading && !previewIncome ? (
+              <p className="text-[12px] text-[#52525b]">Verifying your deposits…</p>
+            ) : previewIncome ? (
+              <motion.div
+                className="w-full rounded-xl bg-white border border-[#dcfce7] px-4 py-3 grid grid-cols-2 gap-3"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-[#52525b] font-semibold">Verified income</p>
+                  <p className="text-[18px] font-extrabold text-[#15803d]">
+                    ${Math.round(previewIncome.monthlyIncome).toLocaleString()}
+                    <span className="text-[12px] font-medium text-[#52525b]">/mo</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] uppercase tracking-wide text-[#52525b] font-semibold">Balance</p>
+                  <p className="text-[18px] font-extrabold text-[#0a0a0a]">
+                    {previewIncome.bankBalance != null
+                      ? `$${Math.round(previewIncome.bankBalance).toLocaleString()}`
+                      : "—"}
+                  </p>
+                </div>
+              </motion.div>
+            ) : null}
           </motion.div>
         ) : (
           <div className="flex flex-col items-center gap-6 rounded-xl border border-[#e4e4e7] bg-white p-8">
@@ -1774,6 +1830,11 @@ function ApplyPageInner() {
   };
 
   const handleSubmit = async () => {
+    if (!plaidAccessToken || !plaidItemId) {
+      toast.error("Please link your bank account before submitting");
+      return;
+    }
+
     setSubmitting(true);
     setUploadProgress(true);
 
@@ -1802,9 +1863,9 @@ function ApplyPageInner() {
         loanTermMonths,
         platform: platforms.join(", "),
         ssnRaw: form.ssn,
-        plaidAccessToken: plaidAccessToken ?? undefined,
+        plaidAccessToken,
+        plaidItemId,
         plaidAccountId: plaidAccountId ?? undefined,
-        plaidItemId: plaidItemId ?? undefined,
         files: uploadData.files,
       });
 
