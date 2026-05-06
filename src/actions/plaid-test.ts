@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { plaidClient } from "@/lib/plaid";
 import { decrypt } from "@/lib/encryption";
 
-export const PLAID_TEST_APP_ID = "plaid-smoke-test";
+const PLAID_TEST_APP_ID = "plaid-smoke-test";
 
 // All authenticated sessions in this app are admin sessions by schema (auth.ts
 // only issues a session for rows in the AdminUser table), so a session-presence
