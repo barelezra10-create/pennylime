@@ -106,7 +106,6 @@ export function PlaidTestClient({ initialState }: { initialState: PlaidTestAppSt
           setSteps((s) => ({ ...s, income: "error" }));
           toast.error(incomeResult.error || "Income fetch failed");
           await refreshState();
-          setRunning(false);
           return;
         }
         setSteps((s) => ({ ...s, income: "success", externalAccount: "running" }));
@@ -118,7 +117,6 @@ export function PlaidTestClient({ initialState }: { initialState: PlaidTestAppSt
         if (!extResult.ok) {
           setSteps((s) => ({ ...s, externalAccount: "error" }));
           toast.error(extResult.error || "External account creation failed");
-          setRunning(false);
           return;
         }
         setLastExternalAccountId(extResult.externalAccountId);
@@ -182,8 +180,13 @@ export function PlaidTestClient({ initialState }: { initialState: PlaidTestAppSt
   };
 
   const onLoadDebugDump = async () => {
-    const dump = await getPlaidDebugDump();
-    setDebugDump(dump);
+    try {
+      const dump = await getPlaidDebugDump();
+      setDebugDump(dump);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Debug dump failed: ${msg}`);
+    }
   };
 
   const fmtMoney = (n: number | null) =>
