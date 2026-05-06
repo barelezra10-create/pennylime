@@ -17,6 +17,7 @@ const ADMIN_PROTECTED = [
   "/admin/email",
   "/admin/sms",
   "/admin/team",
+  "/admin/plaid-test",
 ];
 
 function generatePennyClickId(): string {
