@@ -4,7 +4,7 @@ import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL || "file:./dev.db" });
 const prisma = new PrismaClient({ adapter });
 
-export const PLAID_TEST_APP_ID = "plaid-smoke-test";
+const PLAID_TEST_APP_ID = "plaid-smoke-test";
 
 async function main() {
   await prisma.application.upsert({
