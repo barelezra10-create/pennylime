@@ -8,6 +8,10 @@ import { decrypt } from "@/lib/encryption";
 
 export const PLAID_TEST_APP_ID = "plaid-smoke-test";
 
+// All authenticated sessions in this app are admin sessions by schema (auth.ts
+// only issues a session for rows in the AdminUser table), so a session-presence
+// check is sufficient for an admin gate today. If a role column is added later,
+// extend this check.
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
