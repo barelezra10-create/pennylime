@@ -858,7 +858,7 @@ function StepPlaidLink({
         const res = await fetch("/api/plaid/create-link-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: tempId }),
+          body: JSON.stringify({ applicationId: tempId }),
         });
         if (!res.ok) throw new Error("Failed to create link token");
         const data = await res.json();
