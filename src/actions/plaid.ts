@@ -123,6 +123,71 @@ export async function ensureIncreaseExternalAccount(applicationId: string) {
 }
 
 /**
+ * Verify the applicant's identity against the names Plaid Identity returned
+ * for the just-linked bank account. Run client-side from the apply funnel
+ * after Plaid Link succeeds. Same security model as previewPlaidIncome:
+ * the encrypted access token is itself proof of legitimate caller.
+ *
+ * Returns `match: true` when the form's first+last name appears in (or
+ * fully contains) any of the bank's listed account-holder names. A `false`
+ * result does NOT block the applicant — it just flags the application for
+ * manual admin review on submit.
+ */
+export async function verifyApplicantIdentity(input: {
+  encryptedAccessToken: string;
+  firstName: string;
+  lastName: string;
+}) {
+  let accessToken: string;
+  try {
+    accessToken = decrypt(input.encryptedAccessToken);
+  } catch {
+    return { ok: false as const, error: "Invalid token" };
+  }
+
+  try {
+    const idResp = await plaidClient.identityGet({ access_token: accessToken });
+
+    const norm = (s: string) =>
+      s.toLowerCase().replace(/[^a-z]/g, "");
+    const formFull = norm(`${input.firstName}${input.lastName}`);
+    const formFirst = norm(input.firstName);
+    const formLast = norm(input.lastName);
+
+    const allNames: string[] = idResp.data.accounts.flatMap((a) =>
+      a.owners.flatMap((o) => o.names ?? [])
+    );
+
+    let match = false;
+    let matchedName: string | null = null;
+    for (const n of allNames) {
+      const normN = norm(n);
+      if (
+        normN.includes(formFull) ||
+        formFull.includes(normN) ||
+        (normN.includes(formFirst) && normN.includes(formLast))
+      ) {
+        match = true;
+        matchedName = n;
+        break;
+      }
+    }
+
+    return {
+      ok: true as const,
+      match,
+      matchedName,
+      allNames,
+    };
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Identity check failed",
+    };
+  }
+}
+
+/**
  * Preview the verified monthly income and bank balance immediately after
  * a Plaid Link succeeds, before any application row is created. Used to
  * surface "we see $X/mo in deposits" mid-funnel as a trust signal.

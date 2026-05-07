@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { usePlaidLink } from "react-plaid-link";
 import { CheckCircle, Building2 } from "lucide-react";
 import { submitApplication } from "@/actions/applications";
-import { previewPlaidIncome } from "@/actions/plaid";
+import { previewPlaidIncome, verifyApplicantIdentity } from "@/actions/plaid";
 import { upsertContact, updateContactLastStep, linkContactApplication } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
 import type { FormStep } from "@/types/form-template";
@@ -22,7 +22,7 @@ import { PlatformLogo } from "@/components/funnel/platform-logo";
 /* ------------------------------------------------------------------ */
 /*  CONSTANTS                                                           */
 /* ------------------------------------------------------------------ */
-const STEPS = ["Amount", "Your info", "Platforms", "Identity", "Bank link", "Documents", "Review"];
+const STEPS = ["Amount", "Your info", "Platforms", "Bank link", "Verified", "Review"];
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
 
@@ -823,252 +823,7 @@ function StepPlatforms({
 }
 
 /* ------------------------------------------------------------------ */
-/*  STEP 4, IDENTITY (Photo ID + Bank Statement)                      */
-/* ------------------------------------------------------------------ */
-function StepIdentity({
-  photoId,
-  setPhotoId,
-  bankStatement,
-  setBankStatement,
-  onNext,
-  onBack,
-}: {
-  photoId: File | null;
-  setPhotoId: (f: File | null) => void;
-  bankStatement: File | null;
-  setBankStatement: (f: File | null) => void;
-  onNext: () => void;
-  onBack: () => void;
-}) {
-  const idInputRef = useRef<HTMLInputElement>(null);
-  const bankInputRef = useRef<HTMLInputElement>(null);
-  const [idPreview, setIdPreview] = useState<string | null>(null);
-
-  const handleIdSelect = (file: File) => {
-    if (!IMAGE_TYPES.includes(file.type)) {
-      toast.error("Photo ID must be an image (PNG or JPEG)");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large. Max 10MB.");
-      return;
-    }
-    setPhotoId(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setIdPreview(e.target?.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleBankSelect = (file: File) => {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error("Bank statement must be PDF, PNG, or JPEG");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File too large. Max 10MB.");
-      return;
-    }
-    setBankStatement(file);
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.4 }}
-      className="w-full"
-    >
-      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
-        Verify your identity
-      </h2>
-      <p className="mt-2 text-[15px] text-[#52525b]">
-        Upload a government-issued photo ID and a recent bank statement.
-      </p>
-
-      <div className="mt-8 flex flex-col gap-6">
-        {/* Photo ID Upload */}
-        <div>
-          <label className="mb-2 flex items-center gap-2 text-[14px] font-semibold text-black">
-            <svg className="h-4 w-4 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" />
-            </svg>
-            Photo ID
-            <span className="text-red-400">*</span>
-          </label>
-          <p className="mb-3 text-[12px] text-[#a1a1aa]">
-            Driver&apos;s license, state ID, or passport. Must show your full name and photo clearly.
-          </p>
-
-          {photoId && idPreview ? (
-            <div className="relative rounded-xl border border-[#e4e4e7] bg-white overflow-hidden">
-              <img src={idPreview} alt="ID preview" className="w-full h-48 object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#15803d]">
-                    <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </div>
-                  <span className="text-[12px] font-medium text-white truncate max-w-[200px]">{photoId.name}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setPhotoId(null); setIdPreview(null); }}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 text-white backdrop-blur hover:bg-white/30 transition-colors"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => idInputRef.current?.click()}
-              className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-[#e4e4e7] bg-white p-8 transition-all hover:border-[#15803d] hover:bg-[#f0fdf4]"
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#f0fdf4]">
-                <svg className="h-6 w-6 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-                </svg>
-              </div>
-              <div className="text-center">
-                <p className="text-[14px] font-medium text-[#1a1a1a]">
-                  Take a photo or <span className="text-[#15803d]">upload your ID</span>
-                </p>
-                <p className="mt-1 text-[12px] text-[#a1a1aa]">PNG or JPEG, max 10MB</p>
-              </div>
-            </button>
-          )}
-          <input
-            ref={idInputRef}
-            type="file"
-            accept="image/png,image/jpeg,image/jpg"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) handleIdSelect(e.target.files[0]);
-              e.target.value = "";
-            }}
-          />
-        </div>
-
-        {/* Bank Statement Upload */}
-        <div>
-          <label className="mb-2 flex items-center gap-2 text-[14px] font-semibold text-black">
-            <svg className="h-4 w-4 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z" />
-            </svg>
-            Bank Statement
-            <span className="text-red-400">*</span>
-          </label>
-          <p className="mb-3 text-[12px] text-[#a1a1aa]">
-            Most recent bank statement (last 30 days) showing your name and account activity.
-          </p>
-
-          {bankStatement ? (
-            <motion.div
-              className="flex items-center gap-3 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] px-4 py-3"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white">
-                <svg className="h-5 w-5 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-[13px] font-medium text-[#1a1a1a]">{bankStatement.name}</p>
-                <p className="text-[11px] text-[#71717a]">{(bankStatement.size / 1024).toFixed(0)} KB</p>
-              </div>
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#15803d]">
-                <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBankStatement(null)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#a1a1aa] hover:bg-red-50 hover:text-red-500 transition-colors"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </motion.div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => bankInputRef.current?.click()}
-              className="flex w-full items-center gap-3 rounded-xl border-2 border-dashed border-[#e4e4e7] bg-white px-6 py-5 transition-all hover:border-[#15803d] hover:bg-[#f0fdf4]"
-            >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f0fdf4]">
-                <svg className="h-5 w-5 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                </svg>
-              </div>
-              <div className="text-left">
-                <p className="text-[14px] font-medium text-[#1a1a1a]">
-                  Upload bank statement
-                </p>
-                <p className="text-[12px] text-[#a1a1aa]">PDF, PNG, or JPEG</p>
-              </div>
-            </button>
-          )}
-          <input
-            ref={bankInputRef}
-            type="file"
-            accept=".pdf,image/png,image/jpeg,image/jpg"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files?.[0]) handleBankSelect(e.target.files[0]);
-              e.target.value = "";
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Security note */}
-      <div className="mt-6 flex items-start gap-2 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-4 py-3">
-        <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-        </svg>
-        <p className="text-[11px] leading-relaxed text-[#15803d]">
-          Your documents are verified automatically and encrypted with bank-level security. We check that IDs are genuine government-issued documents.
-        </p>
-      </div>
-
-      <div className="mt-8 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
-        >
-          &larr; Back
-        </button>
-        <motion.button
-          type="button"
-          onClick={() => {
-            if (!photoId) { toast.error("Please upload your photo ID"); return; }
-            if (!bankStatement) { toast.error("Please upload your bank statement"); return; }
-            onNext();
-          }}
-          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
-          whileTap={{ scale: 0.97 }}
-        >
-          Continue &rarr;
-        </motion.button>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  STEP 5, PLAID BANK LINK                                           */
+/*  STEP 4, PLAID BANK LINK                                           */
 /* ------------------------------------------------------------------ */
 function StepPlaidLink({
   plaidAccessToken,
@@ -1307,32 +1062,55 @@ function StepPlaidLink({
 }
 
 /* ------------------------------------------------------------------ */
-/*  STEP 6, PAY STUBS UPLOAD                                          */
+/*  STEP 5, IDENTITY VERIFIED                                         */
 /* ------------------------------------------------------------------ */
-function StepUpload({
-  files,
-  addFiles,
-  removeFile,
+function StepVerified({
+  plaidAccessToken,
+  firstName,
+  lastName,
+  setIdentityResult,
+  identityResult,
   onNext,
   onBack,
 }: {
-  files: File[];
-  addFiles: (f: FileList | File[]) => void;
-  removeFile: (i: number) => void;
+  plaidAccessToken: string | null;
+  firstName: string;
+  lastName: string;
+  setIdentityResult: (r: { needsReview: boolean; matchedName: string | null }) => void;
+  identityResult: { needsReview: boolean; matchedName: string | null } | null;
   onNext: () => void;
   onBack: () => void;
 }) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragOver, setDragOver] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragOver(false);
-      if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files);
-    },
-    [addFiles]
-  );
+  useEffect(() => {
+    if (!plaidAccessToken || identityResult) return;
+    let cancelled = false;
+    setLoading(true);
+    verifyApplicantIdentity({ encryptedAccessToken: plaidAccessToken, firstName, lastName })
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          setIdentityResult({
+            needsReview: !res.match,
+            matchedName: res.matchedName,
+          });
+        } else {
+          // If the verification call itself errors, flag for review rather than
+          // hard-fail the funnel — admin can rerun it.
+          setIdentityResult({ needsReview: true, matchedName: null });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [plaidAccessToken, firstName, lastName, identityResult, setIdentityResult]);
+
+  const verified = identityResult && !identityResult.needsReview;
+  const needsReview = identityResult && identityResult.needsReview;
 
   return (
     <motion.div
@@ -1343,91 +1121,60 @@ function StepUpload({
       className="w-full"
     >
       <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
-        Upload your earnings statements
+        Identity check
       </h2>
       <p className="mt-2 text-[15px] text-[#52525b]">
-        At least 3 recent earnings statements from your platforms (Uber, DoorDash, Amazon, Shopify, etc.).
+        We use the name on your bank account from Plaid to confirm it&rsquo;s you. No photo ID, no paperwork.
       </p>
 
-      {/* Drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-        className={`mt-8 flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed p-8 transition-all duration-300 ${
-          dragOver
-            ? "border-[#15803d] bg-[#f0fdf4] scale-[1.01]"
-            : "border-[#e4e4e7] bg-white hover:border-[#15803d] hover:bg-[#f0fdf4]"
-        }`}
-      >
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-[#f0fdf4]">
-          <svg className="h-7 w-7 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-          </svg>
-        </div>
-        <div className="text-center">
-          <p className="text-[14px] font-medium text-[#0a0a0a]">
-            Drop files here or <span className="text-[#15803d]">browse</span>
-          </p>
-          <p className="mt-1 text-[12px] text-[#71717a]">
-            PDF, PNG, or JPEG. Screenshots from Uber, DoorDash, Amazon Seller, Shopify, etc.
-          </p>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept=".pdf,.png,.jpg,.jpeg"
-          className="hidden"
-          onChange={(e) => {
-            if (e.target.files) addFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
+      <div className="mt-8">
+        {loading || !identityResult ? (
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-[#e4e4e7] bg-white p-8">
+            <svg className="h-8 w-8 animate-spin text-[#15803d]" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <p className="text-[14px] text-[#52525b]">Checking your bank&rsquo;s account holder name&hellip;</p>
+          </div>
+        ) : verified ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col items-center gap-4 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-8"
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#15803d]">
+              <CheckCircle className="h-8 w-8 text-white" />
+            </div>
+            <div className="text-center">
+              <p className="text-[16px] font-bold text-[#0a0a0a]">Identity verified</p>
+              <p className="mt-1 text-[13px] text-[#52525b]">
+                Your bank confirms you&rsquo;re {identityResult.matchedName || `${firstName} ${lastName}`}.
+              </p>
+            </div>
+          </motion.div>
+        ) : needsReview ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            className="flex flex-col items-center gap-4 rounded-xl border border-[#fde68a] bg-[#fffbeb] p-8"
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#f59e0b]">
+              <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.732 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <p className="text-[16px] font-bold text-[#0a0a0a]">We&rsquo;ll double-check this</p>
+              <p className="mt-1 text-[13px] text-[#52525b]">
+                The name on your bank doesn&rsquo;t match exactly. You can still continue. Our team will manually confirm
+                before approval.
+              </p>
+            </div>
+          </motion.div>
+        ) : null}
       </div>
-
-      {/* File count badge */}
-      <div className="mt-4 flex items-center gap-2">
-        <div className={`h-2 w-2 rounded-full ${files.length >= 3 ? "bg-[#15803d]" : "bg-[#f59e0b]"}`} />
-        <span className={`text-[13px] font-medium ${files.length >= 3 ? "text-[#15803d]" : "text-[#71717a]"}`}>
-          {files.length} of 3 minimum uploaded
-        </span>
-      </div>
-
-      {/* File list */}
-      {files.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-2">
-          {files.map((file, i) => (
-            <motion.li
-              key={`${file.name}-${i}`}
-              className="flex items-center gap-3 rounded-xl bg-[#f0fdf4] border border-[#dcfce7] px-4 py-3"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white">
-                <svg className="h-4 w-4 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-[13px] font-medium text-[#1a1a1a]">{file.name}</p>
-                <p className="text-[11px] text-[#71717a]">{(file.size / 1024).toFixed(0)} KB</p>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); removeFile(i); }}
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-[#a1a1aa] transition-colors hover:bg-red-50 hover:text-red-500"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </motion.li>
-          ))}
-        </ul>
-      )}
 
       <div className="mt-8 grid grid-cols-2 gap-3">
         <button
@@ -1439,14 +1186,9 @@ function StepUpload({
         </button>
         <motion.button
           type="button"
-          onClick={() => {
-            if (files.length < 3) {
-              toast.error("Upload at least 3 pay stubs to continue");
-              return;
-            }
-            onNext();
-          }}
-          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          onClick={onNext}
+          disabled={!identityResult || loading}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] disabled:opacity-50 shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
           Continue &rarr;
@@ -1457,41 +1199,34 @@ function StepUpload({
 }
 
 /* ------------------------------------------------------------------ */
-/*  STEP 7, REVIEW & SUBMIT                                           */
+/*  STEP 6, REVIEW & SUBMIT                                           */
 /* ------------------------------------------------------------------ */
 function StepReview({
   amount,
   loanTermMonths,
   form,
-  files,
-  photoId,
-  bankStatement,
   platforms,
   otherPlatform,
   weeklyEarnings,
   bankLinked,
+  identityNeedsReview,
   submitting,
-  uploadProgress,
   onBack,
   onSubmit,
 }: {
   amount: number;
   loanTermMonths: number;
   form: { firstName: string; lastName: string; email: string; phone: string; ssn: string };
-  files: File[];
-  photoId: File | null;
-  bankStatement: File | null;
   platforms: string[];
   otherPlatform: string;
   weeklyEarnings: string;
   bankLinked: boolean;
+  identityNeedsReview: boolean;
   submitting: boolean;
-  uploadProgress: boolean;
   onBack: () => void;
   onSubmit: () => void;
 }) {
   const maskedSsn = form.ssn ? `***-**-${form.ssn.slice(-4)}` : "";
-  const totalDocs = files.length + (photoId ? 1 : 0) + (bankStatement ? 1 : 0);
   const platformLabels = platforms
     .map((id) => {
       if (id === "other") return otherPlatform || "Other";
@@ -1572,42 +1307,25 @@ function StepReview({
           </div>
         </div>
 
-        {/* Documents card */}
+        {/* Bank link + identity card */}
         <div className="bg-[#f4f4f5] rounded-xl p-4">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Documents ({totalDocs} files)</p>
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Bank &amp; identity</p>
           <div className="flex flex-col gap-2">
-            {photoId && (
-              <div className="flex items-center gap-2 text-[13px]">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#15803d]" />
-                <span className="text-[#71717a]">Photo ID:</span>
-                <span className="font-medium text-[#0a0a0a] truncate">{photoId.name}</span>
-              </div>
-            )}
-            {bankStatement && (
-              <div className="flex items-center gap-2 text-[13px]">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#15803d]" />
-                <span className="text-[#71717a]">Bank statement:</span>
-                <span className="font-medium text-[#0a0a0a] truncate">{bankStatement.name}</span>
-              </div>
-            )}
             <div className="flex items-center gap-2 text-[13px]">
-              <div className="h-1.5 w-1.5 rounded-full bg-[#15803d]" />
-              <span className="text-[#71717a]">Earnings statements:</span>
-              <span className="font-medium text-[#0a0a0a]">{files.length} file{files.length !== 1 ? "s" : ""}</span>
+              <div className={`h-1.5 w-1.5 rounded-full ${bankLinked ? "bg-[#15803d]" : "bg-[#f59e0b]"}`} />
+              <span className="font-medium text-[#0a0a0a]">
+                {bankLinked ? "Bank linked via Plaid" : "Not linked"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[13px]">
+              <div className={`h-1.5 w-1.5 rounded-full ${identityNeedsReview ? "bg-[#f59e0b]" : "bg-[#15803d]"}`} />
+              <span className="font-medium text-[#0a0a0a]">
+                {identityNeedsReview ? "Identity flagged for manual review" : "Identity verified"}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Bank link card */}
-        <div className="bg-[#f4f4f5] rounded-xl p-4">
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#71717a]">Bank account</p>
-          <div className="flex items-center gap-2 text-[13px]">
-            <div className={`h-1.5 w-1.5 rounded-full ${bankLinked ? "bg-[#15803d]" : "bg-[#f59e0b]"}`} />
-            <span className="font-medium text-[#0a0a0a]">
-              {bankLinked ? "Bank linked via Plaid" : "Not linked"}
-            </span>
-          </div>
-        </div>
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-3">
@@ -1632,7 +1350,7 @@ function StepReview({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              {uploadProgress ? "Uploading files..." : "Submitting..."}
+              Submitting...
             </span>
           ) : (
             <>
@@ -1764,33 +1482,16 @@ function ApplyPageInner() {
   });
   const [otherPlatform, setOtherPlatform] = useState("");
   const [weeklyEarnings, setWeeklyEarnings] = useState("");
-  const [photoId, setPhotoId] = useState<File | null>(null);
-  const [bankStatement, setBankStatement] = useState<File | null>(null);
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const [identityResult, setIdentityResult] = useState<{ needsReview: boolean; matchedName: string | null } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(false);
   const [applicationCode, setApplicationCode] = useState<string | null>(null);
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
   const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
-
-  const addFiles = useCallback((newFiles: FileList | File[]) => {
-    const valid: File[] = [];
-    for (const file of Array.from(newFiles)) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(`${file.name}: Invalid file type. Allowed: PDF, PNG, JPEG`);
-        continue;
-      }
-      valid.push(file);
-    }
-    setFiles((prev) => [...prev, ...valid]);
-  }, []);
-
-  const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
 
   useEffect(() => {
     const templateSlug = searchParams.get("template");
@@ -1836,24 +1537,8 @@ function ApplyPageInner() {
     }
 
     setSubmitting(true);
-    setUploadProgress(true);
 
     try {
-      // Upload all files together: pay stubs + photo ID + bank statement
-      const formData = new FormData();
-      for (const file of files) formData.append("files", file);
-      if (photoId) formData.append("files", photoId);
-      if (bankStatement) formData.append("files", bankStatement);
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json();
-        throw new Error(err.error || "Upload failed");
-      }
-
-      const uploadData = await uploadRes.json();
-      setUploadProgress(false);
-
       const result = await submitApplication({
         firstName: form.firstName,
         lastName: form.lastName,
@@ -1866,7 +1551,8 @@ function ApplyPageInner() {
         plaidAccessToken,
         plaidItemId,
         plaidAccountId: plaidAccountId ?? undefined,
-        files: uploadData.files,
+        identityNeedsReview: identityResult?.needsReview ?? true,
+        plaidIdentityName: identityResult?.matchedName ?? undefined,
       });
 
       if (result.error) throw new Error(result.error);
@@ -1878,7 +1564,6 @@ function ApplyPageInner() {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
-      setUploadProgress(false);
     }
   };
 
@@ -1994,19 +1679,6 @@ function ApplyPageInner() {
                       />
                     );
                   }
-                  if (builtinKey === "identity") {
-                    return (
-                      <StepIdentity
-                        key="identity"
-                        photoId={photoId}
-                        setPhotoId={setPhotoId}
-                        bankStatement={bankStatement}
-                        setBankStatement={setBankStatement}
-                        onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
-                        onBack={() => setStep(step - 1)}
-                      />
-                    );
-                  }
                   if (builtinKey === "bank") {
                     return (
                       <StepPlaidLink
@@ -2024,13 +1696,15 @@ function ApplyPageInner() {
                       />
                     );
                   }
-                  if (builtinKey === "documents") {
+                  if (builtinKey === "verified") {
                     return (
-                      <StepUpload
-                        key="upload"
-                        files={files}
-                        addFiles={addFiles}
-                        removeFile={removeFile}
+                      <StepVerified
+                        key="verified"
+                        plaidAccessToken={plaidAccessToken}
+                        firstName={form.firstName}
+                        lastName={form.lastName}
+                        identityResult={identityResult}
+                        setIdentityResult={setIdentityResult}
                         onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
                         onBack={() => setStep(step - 1)}
                       />
@@ -2043,15 +1717,12 @@ function ApplyPageInner() {
                         amount={loanAmount}
                         loanTermMonths={loanTermMonths}
                         form={form}
-                        files={files}
-                        photoId={photoId}
-                        bankStatement={bankStatement}
                         platforms={platforms}
                         otherPlatform={otherPlatform}
                         weeklyEarnings={weeklyEarnings}
                         bankLinked={!!(plaidAccessToken && plaidAccountId && plaidItemId)}
+                        identityNeedsReview={identityResult?.needsReview ?? true}
                         submitting={submitting}
-                        uploadProgress={uploadProgress}
                         onBack={() => setStep(step - 1)}
                         onSubmit={handleSubmit}
                       />
@@ -2110,16 +1781,6 @@ function ApplyPageInner() {
                   onBack={() => setStep(1)}
                 />
               ) : step === 3 ? (
-                <StepIdentity
-                  key="identity"
-                  photoId={photoId}
-                  setPhotoId={setPhotoId}
-                  bankStatement={bankStatement}
-                  setBankStatement={setBankStatement}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 4); } catch {} setStep(4); }}
-                  onBack={() => setStep(2)}
-                />
-              ) : step === 4 ? (
                 <StepPlaidLink
                   key="plaid"
                   plaidAccessToken={plaidAccessToken}
@@ -2130,17 +1791,19 @@ function ApplyPageInner() {
                     setPlaidAccountId(accountId);
                     setPlaidItemId(itemId);
                   }}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 4); } catch {} setStep(4); }}
+                  onBack={() => setStep(2)}
+                />
+              ) : step === 4 ? (
+                <StepVerified
+                  key="verified"
+                  plaidAccessToken={plaidAccessToken}
+                  firstName={form.firstName}
+                  lastName={form.lastName}
+                  identityResult={identityResult}
+                  setIdentityResult={setIdentityResult}
                   onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 5); } catch {} setStep(5); }}
                   onBack={() => setStep(3)}
-                />
-              ) : step === 5 ? (
-                <StepUpload
-                  key="upload"
-                  files={files}
-                  addFiles={addFiles}
-                  removeFile={removeFile}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 6); } catch {} setStep(6); }}
-                  onBack={() => setStep(4)}
                 />
               ) : (
                 <StepReview
@@ -2148,16 +1811,13 @@ function ApplyPageInner() {
                   amount={loanAmount}
                   loanTermMonths={loanTermMonths}
                   form={form}
-                  files={files}
-                  photoId={photoId}
-                  bankStatement={bankStatement}
                   platforms={platforms}
                   otherPlatform={otherPlatform}
                   weeklyEarnings={weeklyEarnings}
                   bankLinked={!!(plaidAccessToken && plaidAccountId && plaidItemId)}
+                  identityNeedsReview={identityResult?.needsReview ?? true}
                   submitting={submitting}
-                  uploadProgress={uploadProgress}
-                  onBack={() => setStep(5)}
+                  onBack={() => setStep(4)}
                   onSubmit={handleSubmit}
                 />
               )}

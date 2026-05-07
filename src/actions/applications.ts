@@ -28,14 +28,8 @@ const submitSchema = z.object({
   plaidAccessToken: z.string().min(1, "Bank link is required"),
   plaidItemId: z.string().min(1, "Bank link is required"),
   plaidAccountId: z.string().optional(),
-  files: z.array(
-    z.object({
-      fileName: z.string(),
-      mimeType: z.string(),
-      fileSize: z.number(),
-      storagePath: z.string(),
-    })
-  ),
+  identityNeedsReview: z.boolean().optional(),
+  plaidIdentityName: z.string().optional(),
 });
 
 export async function submitApplication(input: z.infer<typeof submitSchema>) {
@@ -46,16 +40,11 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
 
   const rules = await getLoanRules();
   const loanLimit = parseFloat(rules.loan_limit || "10000");
-  const requiredStubs = parseInt(rules.required_pay_stubs || "3");
 
   if (parsed.data.loanAmount > loanLimit) {
     return {
       error: `Loan amount cannot exceed $${loanLimit.toLocaleString()}`,
     };
-  }
-
-  if (parsed.data.files.length < requiredStubs) {
-    return { error: `At least ${requiredStubs} pay stubs are required` };
   }
 
   const data = parsed.data;
@@ -89,14 +78,8 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       plaidAccessToken: data.plaidAccessToken,
       plaidAccountId: data.plaidAccountId || null,
       plaidItemId: data.plaidItemId,
-      documents: {
-        create: data.files.map((file) => ({
-          fileName: file.fileName,
-          mimeType: file.mimeType,
-          fileSize: file.fileSize,
-          storagePath: file.storagePath,
-        })),
-      },
+      identityNeedsReview: data.identityNeedsReview ?? false,
+      plaidIdentityName: data.plaidIdentityName || null,
     },
   });
 

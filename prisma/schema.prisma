@@ -38,6 +38,8 @@ model Application {
   increaseTransferId       String?
   increaseTransferStatus   String?
   increaseDisburseError    String?
+  identityNeedsReview      Boolean   @default(false)
+  plaidIdentityName        String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   documents       Document[]
