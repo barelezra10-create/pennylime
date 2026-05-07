@@ -11,7 +11,7 @@ import {
   revealSSN,
 } from "@/actions/applications";
 import { evaluateApplicationAction } from "@/actions/evaluation";
-import { fetchAndStoreIncome } from "@/actions/plaid";
+import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
 import { getPaymentsSummary, retryPayment, waiveLateFee } from "@/actions/payments";
 import type { ApplicationWithDocuments, RiskScoreResult } from "@/types";
 import type { EvaluationResult } from "@/types";
@@ -113,29 +113,8 @@ export function DetailClient({
     }
   }
 
-  /* Plaid income */
-  const [plaidIncome, setPlaidIncome] = useState<number | null>(
-    (application as any).monthlyIncome ? Number((application as any).monthlyIncome) : null
-  );
-  const [fetchingIncome, setFetchingIncome] = useState(false);
-
-  async function handleFetchIncome() {
-    setFetchingIncome(true);
-    try {
-      const result = await fetchAndStoreIncome(application.id);
-      if (result.success && result.monthlyIncome != null) {
-        setPlaidIncome(result.monthlyIncome);
-        toast.success("Income verified from Plaid");
-        router.refresh();
-      } else {
-        toast.error(result.error || "Failed to fetch income");
-      }
-    } catch {
-      toast.error("Failed to fetch income from Plaid");
-    } finally {
-      setFetchingIncome(false);
-    }
-  }
+  // Plaid data is rendered by PlaidInsightsPanel below; refresh triggers
+  // window.location.reload there so server-side cached fields update.
 
   /* income */
   const [income, setIncome] = useState(
@@ -416,39 +395,37 @@ export function DetailClient({
             )}
           </div>
 
-          {/* ── Plaid Income Verification ── */}
-          <div className="bg-white rounded-[10px] p-6">
-            <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-4 flex items-center gap-2">
-              <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
-              Plaid Income Verification
-            </h2>
-
-            <div className="flex items-center gap-4">
-              {plaidIncome !== null ? (
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Verified Monthly Income</p>
-                  <p className="text-2xl font-bold text-[#15803d]">${fmt(plaidIncome)}/mo</p>
-                </div>
-              ) : (
-                <p className="text-sm text-[#a1a1aa]">Not verified</p>
-              )}
-              <button
-                onClick={handleFetchIncome}
-                disabled={fetchingIncome || !(application as any).plaidAccessToken}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-black hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
-                </svg>
-                {fetchingIncome ? "Fetching..." : "Fetch from Plaid"}
-              </button>
-            </div>
-            {!(application as any).plaidAccessToken && (
-              <p className="mt-2 text-xs text-[#a1a1aa]">No Plaid connection available for this application.</p>
-            )}
-          </div>
+          {/* ── Plaid Insights ── */}
+          <PlaidInsightsPanel
+            application={{
+              id: application.id,
+              plaidAccessToken: (application as any).plaidAccessToken ?? null,
+              plaidLinkStale: (application as any).plaidLinkStale ?? false,
+              monthlyIncome: (application as any).monthlyIncome != null ? Number((application as any).monthlyIncome) : null,
+              avgWeeklyIncome: (application as any).avgWeeklyIncome != null ? Number((application as any).avgWeeklyIncome) : null,
+              depositCount90d: (application as any).depositCount90d ?? null,
+              largestDeposit: (application as any).largestDeposit != null ? Number((application as any).largestDeposit) : null,
+              depositCadence: (application as any).depositCadence ?? null,
+              bankBalance: (application as any).bankBalance != null ? Number((application as any).bankBalance) : null,
+              availableBalance: (application as any).availableBalance != null ? Number((application as any).availableBalance) : null,
+              plaidInstitutionName: (application as any).plaidInstitutionName ?? null,
+              plaidAccountName: (application as any).plaidAccountName ?? null,
+              plaidAccountMask: (application as any).plaidAccountMask ?? null,
+              plaidAccountSubtype: (application as any).plaidAccountSubtype ?? null,
+              plaidIdentityName: (application as any).plaidIdentityName ?? null,
+              plaidIdentityAddress: (application as any).plaidIdentityAddress ?? null,
+              plaidIdentityEmail: (application as any).plaidIdentityEmail ?? null,
+              plaidIdentityPhone: (application as any).plaidIdentityPhone ?? null,
+              identityNeedsReview: (application as any).identityNeedsReview ?? false,
+              lastPlaidRefresh: (application as any).lastPlaidRefresh
+                ? new Date((application as any).lastPlaidRefresh).toISOString()
+                : null,
+              formFirstName: application.firstName,
+              formLastName: application.lastName,
+              formEmail: application.email,
+              formPhone: application.phone,
+            }}
+          />
 
           {/* ── Documents ── */}
           <div className="bg-white rounded-[10px] p-6">

@@ -40,6 +40,19 @@ model Application {
   increaseDisburseError    String?
   identityNeedsReview      Boolean   @default(false)
   plaidIdentityName        String?
+  plaidIdentityAddress     String?
+  plaidIdentityEmail       String?
+  plaidIdentityPhone       String?
+  plaidInstitutionName     String?
+  plaidAccountName         String?
+  plaidAccountMask         String?
+  plaidAccountSubtype      String?
+  availableBalance         Decimal?
+  avgWeeklyIncome          Decimal?
+  depositCount90d          Int?
+  largestDeposit           Decimal?
+  depositCadence           String?
+  lastPlaidRefresh         DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   documents       Document[]

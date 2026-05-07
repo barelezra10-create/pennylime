@@ -3,6 +3,32 @@
 import { prisma } from "@/lib/db";
 import { plaidClient } from "@/lib/plaid";
 import { decrypt } from "@/lib/encryption";
+import { CountryCode } from "plaid";
+
+function classifyCadence(depositCount90d: number): string {
+  // 90 days ≈ 13 weeks. Buckets are conservative — pick the heavier signal.
+  if (depositCount90d >= 11) return "weekly";
+  if (depositCount90d >= 5) return "biweekly";
+  if (depositCount90d >= 2) return "monthly";
+  return "irregular";
+}
+
+function formatAddress(addr?: {
+  data?: {
+    street?: string | null;
+    city?: string | null;
+    region?: string | null;
+    postal_code?: string | null;
+    country?: string | null;
+  };
+}): string | null {
+  const d = addr?.data;
+  if (!d) return null;
+  const line1 = d.street ?? "";
+  const cityState = [d.city, d.region].filter(Boolean).join(", ");
+  const tail = [cityState, d.postal_code].filter(Boolean).join(" ");
+  return [line1, tail].filter(Boolean).join(", ") || null;
+}
 
 export async function fetchAndStoreIncome(applicationId: string) {
   const application = await prisma.application.findUnique({
@@ -16,46 +42,91 @@ export async function fetchAndStoreIncome(applicationId: string) {
   try {
     const accessToken = decrypt(application.plaidAccessToken);
 
-    // Use Transactions to estimate income (3-month deposit average)
     const now = new Date();
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const startDate = threeMonthsAgo.toISOString().split("T")[0];
+    const endDate = now.toISOString().split("T")[0];
 
-    const txResponse = await plaidClient.transactionsGet({
-      access_token: accessToken,
-      start_date: threeMonthsAgo.toISOString().split("T")[0],
-      end_date: now.toISOString().split("T")[0],
-    });
+    // Pull transactions, balances, identity, and item info in parallel.
+    const [txResp, balResp, idResp, itemResp] = await Promise.all([
+      plaidClient.transactionsGet({
+        access_token: accessToken,
+        start_date: startDate,
+        end_date: endDate,
+      }),
+      plaidClient.accountsBalanceGet({ access_token: accessToken }),
+      plaidClient.identityGet({ access_token: accessToken }),
+      plaidClient.itemGet({ access_token: accessToken }),
+    ]);
 
-    // Sum deposit transactions (Plaid: negative amount = money in)
-    const deposits = txResponse.data.transactions
-      .filter((tx) => tx.amount < 0)
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    // ── Income & cadence (Plaid convention: negative amount = money in) ──
+    const deposits = txResp.data.transactions.filter((tx) => tx.amount < 0);
+    const totalDeposits = deposits.reduce((s, tx) => s + Math.abs(tx.amount), 0);
+    const monthlyIncome = totalDeposits / 3;
+    const avgWeeklyIncome = totalDeposits / 13; // 90 days ≈ 13 weeks
+    const depositCount90d = deposits.length;
+    const largestDeposit = deposits.reduce(
+      (max, tx) => Math.max(max, Math.abs(tx.amount)),
+      0
+    );
+    const depositCadence = classifyCadence(depositCount90d);
 
-    const monthlyIncome = deposits / 3;
+    // ── Account info (resolve the linked account; fall back to first) ──
+    const account =
+      balResp.data.accounts.find((a) => a.account_id === application.plaidAccountId) ??
+      balResp.data.accounts[0];
+    const availableBalance = account?.balances?.available ?? null;
+    const bankBalance = account?.balances?.current ?? null;
+    const plaidAccountName = account?.name ?? null;
+    const plaidAccountMask = account?.mask ?? null;
+    const plaidAccountSubtype = account?.subtype ?? null;
+
+    // ── Identity (first owner on the account) ──
+    const idAccount =
+      idResp.data.accounts.find((a) => a.account_id === application.plaidAccountId) ??
+      idResp.data.accounts[0];
+    const owner = idAccount?.owners?.[0];
+    const plaidIdentityName = owner?.names?.[0] ?? null;
+    const plaidIdentityAddress = formatAddress(owner?.addresses?.[0]);
+    const plaidIdentityEmail = owner?.emails?.[0]?.data ?? null;
+    const plaidIdentityPhone = owner?.phone_numbers?.[0]?.data ?? null;
+
+    // ── Institution name (item -> institution lookup) ──
+    let plaidInstitutionName: string | null = null;
+    const institutionId = itemResp.data.item.institution_id ?? null;
+    if (institutionId) {
+      try {
+        const instResp = await plaidClient.institutionsGetById({
+          institution_id: institutionId,
+          country_codes: [CountryCode.Us],
+        });
+        plaidInstitutionName = instResp.data.institution.name ?? null;
+      } catch (instErr) {
+        console.warn("Plaid institution lookup failed:", instErr);
+      }
+    }
 
     await prisma.application.update({
       where: { id: applicationId },
-      data: { monthlyIncome },
+      data: {
+        monthlyIncome,
+        avgWeeklyIncome,
+        depositCount90d,
+        largestDeposit,
+        depositCadence,
+        bankBalance,
+        availableBalance,
+        plaidAccountName,
+        plaidAccountMask,
+        plaidAccountSubtype,
+        plaidInstitutionName,
+        plaidIdentityName,
+        plaidIdentityAddress,
+        plaidIdentityEmail,
+        plaidIdentityPhone,
+        lastPlaidRefresh: new Date(),
+      },
     });
-
-    // Fetch and store bank balance
-    try {
-      const balanceResponse = await plaidClient.accountsBalanceGet({
-        access_token: accessToken,
-      });
-      const account = balanceResponse.data.accounts.find(
-        (a) => a.account_id === application.plaidAccountId
-      );
-      if (account?.balances?.current != null) {
-        await prisma.application.update({
-          where: { id: applicationId },
-          data: { bankBalance: account.balances.current },
-        });
-      }
-    } catch (balanceError) {
-      console.warn("Failed to fetch bank balance:", balanceError);
-      // Non-fatal: income was already stored, balance is optional
-    }
 
     return { success: true, monthlyIncome };
   } catch (error) {
@@ -120,6 +191,63 @@ export async function ensureIncreaseExternalAccount(applicationId: string) {
 
   if (!create.ok) return { ok: false, error: create.error } as const;
   return { ok: true, externalAccountId: create.data.id } as const;
+}
+
+/**
+ * Fetch the 30 most recent transactions for a given application's linked
+ * Plaid account. Used live by the admin application detail page so reviewers
+ * can see actual deposit pattern + spending. Not persisted — fresh on each
+ * call (Plaid sandbox is free; production charges per call so we can switch
+ * to caching later if cost becomes a concern).
+ */
+export async function getRecentTransactions(applicationId: string) {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { plaidAccessToken: true, plaidAccountId: true },
+  });
+  if (!application?.plaidAccessToken) {
+    return { ok: false as const, error: "No Plaid connection" };
+  }
+
+  let accessToken: string;
+  try {
+    accessToken = decrypt(application.plaidAccessToken);
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : "decrypt failed" };
+  }
+
+  try {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const resp = await plaidClient.transactionsGet({
+      access_token: accessToken,
+      start_date: threeMonthsAgo.toISOString().split("T")[0],
+      end_date: now.toISOString().split("T")[0],
+      options: { count: 30, offset: 0 },
+    });
+
+    const txs = resp.data.transactions
+      .filter(
+        (tx) =>
+          !application.plaidAccountId || tx.account_id === application.plaidAccountId
+      )
+      .map((tx) => ({
+        id: tx.transaction_id,
+        date: tx.date,
+        name: tx.name,
+        merchantName: tx.merchant_name ?? null,
+        amount: tx.amount,
+        category: tx.personal_finance_category?.primary ?? tx.category?.[0] ?? null,
+        pending: tx.pending,
+      }));
+
+    return { ok: true as const, transactions: txs };
+  } catch (err) {
+    return {
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Failed to fetch transactions",
+    };
+  }
 }
 
 /**
