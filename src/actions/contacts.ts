@@ -114,6 +114,7 @@ export async function upsertContact(data: {
   referrer?: string;
   pennyClickId?: string;
   lastAppStep?: number;
+  loanAmountIntent?: number;
 }) {
   const contact = await prisma.contact.upsert({
     where: { email: data.email },
@@ -122,6 +123,7 @@ export async function upsertContact(data: {
       lastName: data.lastName,
       phone: data.phone,
       lastAppStep: data.lastAppStep,
+      loanAmountIntent: data.loanAmountIntent ?? undefined,
       utmSource: data.utmSource || undefined,
       utmCampaign: data.utmCampaign || undefined,
       utmMedium: data.utmMedium || undefined,

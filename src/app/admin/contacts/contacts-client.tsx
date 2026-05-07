@@ -15,6 +15,10 @@ interface Contact {
   phone: string | null;
   stage: string;
   source: string | null;
+  loanAmountIntent: number | null;
+  landingPage: string | null;
+  referrer: string | null;
+  utmCampaign: string | null;
   createdAt: string;
   updatedAt: string;
   tags: string[];
@@ -165,6 +169,7 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
                 <Th>Contact</Th>
                 <Th>Stage</Th>
                 <Th align="right">Loan</Th>
+                <Th>Source</Th>
                 <Th>Progress</Th>
                 <Th align="right">Payment</Th>
                 <Th align="right">Balance</Th>
@@ -174,7 +179,7 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-[13px] text-[#a1a1aa]">
+                  <td colSpan={8} className="px-4 py-12 text-center text-[13px] text-[#a1a1aa]">
                     No contacts found
                   </td>
                 </tr>
@@ -199,9 +204,22 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
                         <span className="text-[13px] font-bold text-black tabular-nums">
                           {fmtMoney(contact.loan.fundedAmount || contact.loan.loanAmount)}
                         </span>
+                      ) : contact.loanAmountIntent != null ? (
+                        <span className="text-[13px] font-semibold text-[#52525b] tabular-nums" title="Requested amount, not yet submitted">
+                          {fmtMoney(contact.loanAmountIntent)}
+                          <span className="ml-1 text-[10px] uppercase tracking-wide text-[#a1a1aa] font-medium">req</span>
+                        </span>
                       ) : (
                         <span className="text-[12px] text-[#a1a1aa]">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <SourceCell
+                        source={contact.source}
+                        landingPage={contact.landingPage}
+                        referrer={contact.referrer}
+                        utmCampaign={contact.utmCampaign}
+                      />
                     </td>
                     <td className="px-4 py-3 align-top">
                       {contact.loan.hasLoan && contact.loan.totalPayments > 0 ? (
@@ -328,4 +346,56 @@ function NextDuePill({ nextDue, isLate }: { nextDue: { date: string; amount: num
       <div className="text-[10px] text-[#a1a1aa] mt-0.5 tabular-nums">{due.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
     </div>
   );
+}
+
+function SourceCell({
+  source,
+  landingPage,
+  referrer,
+  utmCampaign,
+}: {
+  source: string | null;
+  landingPage: string | null;
+  referrer: string | null;
+  utmCampaign: string | null;
+}) {
+  // Best-available primary label: source slug → utm_campaign → "direct"
+  const primary = source || (utmCampaign ? `lp:${utmCampaign}` : "direct");
+
+  // Build a "from" label for the secondary line: prefer the page they
+  // landed on (path), fall back to the referrer hostname.
+  const landingPath = landingPage ? safePath(landingPage) : null;
+  const referrerHost = referrer ? safeHost(referrer) : null;
+  const fromLabel = landingPath ?? referrerHost;
+  const fullUrl = landingPage || referrer;
+
+  return (
+    <div className="min-w-0 max-w-[220px]">
+      <div className="text-[12px] font-medium text-[#0a0a0a] truncate" title={primary}>
+        {primary}
+      </div>
+      {fromLabel && (
+        <div className="text-[10px] text-[#71717a] truncate" title={fullUrl ?? fromLabel}>
+          {fromLabel}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function safePath(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return u.pathname + (u.search ? u.search : "");
+  } catch {
+    return null;
+  }
+}
+
+function safeHost(url: string): string | null {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
 }

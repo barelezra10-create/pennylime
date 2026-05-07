@@ -1438,6 +1438,13 @@ export default function ApplyPage() {
 
 function attributionFromSearch(searchParams: URLSearchParams) {
   const get = (k: string) => searchParams.get(k) || undefined;
+  // Prefer explicit query-string overrides (set by referrer landing pages),
+  // otherwise fall back to the live browser values so the URL the applicant
+  // actually came from is always captured.
+  const landingFromBrowser =
+    typeof window !== "undefined" ? window.location.href : undefined;
+  const referrerFromBrowser =
+    typeof document !== "undefined" && document.referrer ? document.referrer : undefined;
   return {
     utmSource: get("utm_source"),
     utmCampaign: get("utm_campaign"),
@@ -1450,8 +1457,8 @@ function attributionFromSearch(searchParams: URLSearchParams) {
     fbclid: get("fbclid"),
     ttclid: get("ttclid"),
     msclkid: get("msclkid"),
-    landingPage: get("lp_path"),
-    referrer: get("ref"),
+    landingPage: get("lp_path") || landingFromBrowser,
+    referrer: get("ref") || referrerFromBrowser,
   };
 }
 
@@ -1651,6 +1658,7 @@ function ApplyPageInner() {
                                 ...attributionFromSearch(searchParams as unknown as URLSearchParams),
                                 pennyClickId: readPennyClickIdFromCookie(),
                                 lastAppStep: 2,
+                                loanAmountIntent: loanAmount,
                               });
                               await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                               try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
@@ -1757,6 +1765,7 @@ function ApplyPageInner() {
                           ...attributionFromSearch(searchParams as unknown as URLSearchParams),
                           pennyClickId: readPennyClickIdFromCookie(),
                           lastAppStep: 2,
+                          loanAmountIntent: loanAmount,
                         });
                         await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                         try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}

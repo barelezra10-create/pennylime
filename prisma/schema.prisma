@@ -437,6 +437,7 @@ model Contact {
   applicationId   String?   @unique
   application     Application? @relation(fields: [applicationId], references: [id])
   lastAppStep     Int?
+  loanAmountIntent Decimal?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   tags                ContactTag[]
