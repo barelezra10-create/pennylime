@@ -836,15 +836,14 @@ function StepPlatforms({
       className="w-full"
     >
       <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
-        Where do you earn?
+        How do you earn?
       </h2>
       <p className="mt-2 text-[15px] text-[#52525b]">
-        Pick every platform that pays you. We size the advance to all of them combined.
+        Are you a gig worker or running your own business? This helps us tailor your advance.
       </p>
 
-      {/* Worker classification */}
+      {/* Worker classification — primary question on this step */}
       <div className="mt-8">
-        <p className="mb-3 text-[14px] font-semibold text-black">How would you describe your work?</p>
         <div className="flex flex-col gap-3">
           {WORKER_TYPES.map((wt) => {
             const selected = workerType === wt.id;
@@ -852,7 +851,19 @@ function StepPlatforms({
               <button
                 key={wt.id}
                 type="button"
-                onClick={() => setWorkerType(wt.id)}
+                onClick={() => {
+                  setWorkerType(wt.id);
+                  // Auto-clear or seed platforms based on worker type so a
+                  // user switching between options doesn't carry stale state.
+                  if (wt.id === "BUSINESS_OWNER") {
+                    setPlatforms(["other"]);
+                  } else if (workerType === "BUSINESS_OWNER") {
+                    // Coming back to a gig answer: clear the auto-seeded "other"
+                    // and the business name so the platform grid is empty.
+                    setPlatforms([]);
+                    setOtherPlatform("");
+                  }
+                }}
                 className={`flex flex-col text-left rounded-xl border px-4 py-3.5 transition-all duration-200 ${
                   selected
                     ? "border-[#15803d] bg-[#f0fdf4] ring-2 ring-[#15803d]/20"
@@ -880,7 +891,28 @@ function StepPlatforms({
         </div>
       </div>
 
-      {/* Platform grid */}
+      {/* Business name (BUSINESS_OWNER only) */}
+      {workerType === "BUSINESS_OWNER" && (
+        <motion.div
+          className="mt-8"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">Business name</label>
+          <p className="mb-3 text-[12px] text-[#a1a1aa]">The legal or DBA name customers pay.</p>
+          <input
+            value={otherPlatform}
+            onChange={(e) => setOtherPlatform(e.target.value)}
+            placeholder="Acme LLC"
+            className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+          />
+        </motion.div>
+      )}
+
+      {/* Platform grid (gig workers + not sure) */}
+      {workerType && workerType !== "BUSINESS_OWNER" && (
+      <>
       <div className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {GIG_PLATFORMS.map((p) => {
           const selected = platforms.includes(p.id);
@@ -972,14 +1004,21 @@ function StepPlatforms({
           </span>
         </div>
       )}
+      </>
+      )}
 
-      {/* Average weekly earnings */}
+      {/* Average weekly earnings (or revenue for business owners) */}
+      {workerType && (
       <div className="mt-8">
         <label className="mb-1.5 block text-[14px] font-semibold text-black">
-          Avg. Weekly Earnings (past 12 months)
+          {workerType === "BUSINESS_OWNER"
+            ? "Avg. Weekly Revenue (past 12 months)"
+            : "Avg. Weekly Earnings (past 12 months)"}
         </label>
         <p className="mb-3 text-[12px] text-[#a1a1aa]">
-          Your best estimate across all platforms combined.
+          {workerType === "BUSINESS_OWNER"
+            ? "Your best estimate of weekly business revenue across all customers."
+            : "Your best estimate across all platforms combined."}
         </p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[15px] font-medium text-[#a1a1aa]">$</span>
@@ -1004,11 +1043,19 @@ function StepPlatforms({
           </motion.p>
         )}
       </div>
+      )}
 
       {/* Work start date */}
+      {workerType && (
       <div className="mt-8">
-        <label className="mb-1.5 block text-[14px] font-semibold text-black">When did you start this work?</label>
-        <p className="mb-3 text-[12px] text-[#a1a1aa]">The month and year you began earning from gigs, contracts, or your business.</p>
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">
+          {workerType === "BUSINESS_OWNER" ? "When did you start your business?" : "When did you start this work?"}
+        </label>
+        <p className="mb-3 text-[12px] text-[#a1a1aa]">
+          {workerType === "BUSINESS_OWNER"
+            ? "The month and year your business started taking customers."
+            : "The month and year you began earning from gigs, contracts, or your business."}
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="relative">
             <select
@@ -1044,6 +1091,7 @@ function StepPlatforms({
           </div>
         </div>
       </div>
+      )}
 
       <div className="mt-8 grid grid-cols-2 gap-3">
         <button
@@ -1060,16 +1108,23 @@ function StepPlatforms({
               toast.error("Please select how you work");
               return;
             }
-            if (platforms.length === 0) {
-              toast.error("Select at least one platform");
-              return;
-            }
-            if (hasOther && !otherPlatform.trim()) {
-              toast.error("Please enter your platform name");
-              return;
+            if (workerType === "BUSINESS_OWNER") {
+              if (!otherPlatform.trim()) {
+                toast.error("Please enter your business name");
+                return;
+              }
+            } else {
+              if (platforms.length === 0) {
+                toast.error("Select at least one platform");
+                return;
+              }
+              if (hasOther && !otherPlatform.trim()) {
+                toast.error("Please enter your platform name");
+                return;
+              }
             }
             if (!weeklyEarnings || Number(weeklyEarnings) <= 0) {
-              toast.error("Enter your average weekly earnings");
+              toast.error(workerType === "BUSINESS_OWNER" ? "Enter your average weekly revenue" : "Enter your average weekly earnings");
               return;
             }
             if (!workStartMonth || !workStartYear) {
