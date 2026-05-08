@@ -12,6 +12,8 @@ import {
 } from "@/actions/applications";
 import { evaluateApplicationAction } from "@/actions/evaluation";
 import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
+import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
+import type { OfferTerm } from "@/actions/offers";
 import { getPaymentsSummary, retryPayment, waiveLateFee } from "@/actions/payments";
 import type { ApplicationWithDocuments, RiskScoreResult } from "@/types";
 import type { EvaluationResult } from "@/types";
@@ -394,6 +396,30 @@ export function DetailClient({
               </div>
             )}
           </div>
+
+          {/* ── Offer terms ── */}
+          {(() => {
+            const a = application as any;
+            let parsedTerms: OfferTerm[] = [];
+            try {
+              parsedTerms = a.offeredTermsJson ? JSON.parse(a.offeredTermsJson) : [];
+            } catch {
+              parsedTerms = [];
+            }
+            return (
+              <SetOfferTermsForm
+                applicationId={application.id}
+                existing={{
+                  status: a.offerStatus ?? "PENDING",
+                  minAmount: a.offeredMinAmount != null ? Number(a.offeredMinAmount) : null,
+                  maxAmount: a.offeredMaxAmount != null ? Number(a.offeredMaxAmount) : null,
+                  terms: parsedTerms,
+                  offerToken: a.offerToken ?? null,
+                  applicationCode: application.applicationCode,
+                }}
+              />
+            );
+          })()}
 
           {/* ── Plaid Insights ── */}
           <PlaidInsightsPanel

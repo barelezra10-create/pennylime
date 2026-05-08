@@ -16,7 +16,9 @@ export type AuditAction =
   | "ADD_LATE_FEE"
   | "COLLECTIONS_ESCALATION"
   | "PAYMENT_RECEIVED"
-  | "INITIATE_ACH";
+  | "INITIATE_ACH"
+  | "OFFER_SET"
+  | "OFFER_ACCEPTED";
 
 export type AuditEntityType =
   | "APPLICATION"

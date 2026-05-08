@@ -40,6 +40,15 @@ model Application {
   increaseDisburseError    String?
   identityNeedsReview      Boolean   @default(false)
   plaidIdentityName        String?
+  offerStatus              String    @default("PENDING")
+  offeredMinAmount         Decimal?
+  offeredMaxAmount         Decimal?
+  offeredTermsJson         String?
+  offerToken               String?   @unique
+  offerSentAt              DateTime?
+  acceptedAmount           Decimal?
+  acceptedTermIndex        Int?
+  acceptedAt               DateTime?
   plaidIdentityAddress     String?
   plaidIdentityEmail       String?
   plaidIdentityPhone       String?
