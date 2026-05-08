@@ -53,7 +53,6 @@ const formSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  ssn: z.string().regex(/^\d{3}-?\d{2}-?\d{4}$/, "Enter a valid SSN (XXX-XX-XXXX)"),
   loanAmount: z.number().positive("Loan amount must be positive"),
 });
 
@@ -500,7 +499,6 @@ type InfoForm = {
   lastName: string;
   email: string;
   phone: string;
-  ssn: string;
   dob: string;
   addressStreet: string;
   addressCity: string;
@@ -521,8 +519,6 @@ function StepInfo({
   onNext: () => void;
   onBack: () => void;
 }) {
-  const [showSsn, setShowSsn] = useState(false);
-
   // DOB split state
   const [dobMonth, setDobMonth] = useState(() => form.dob ? form.dob.slice(5, 7) : "");
   const [dobDay, setDobDay] = useState(() => form.dob ? form.dob.slice(8, 10) : "");
@@ -534,13 +530,6 @@ function StepInfo({
     } else {
       setForm({ ...form, dob: "" });
     }
-  };
-
-  const formatSsn = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 9);
-    if (digits.length <= 3) return digits;
-    if (digits.length <= 5) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-    return `${digits.slice(0, 3)}-${digits.slice(3, 5)}-${digits.slice(5)}`;
   };
 
   const inputClass = (field: string) =>
@@ -618,47 +607,6 @@ function StepInfo({
             className={inputClass("phone")}
           />
           {errors.phone && <p className="mt-1 text-[12px] text-red-500">{errors.phone}</p>}
-        </div>
-
-        <div>
-          <label className="mb-1.5 block text-[14px] font-semibold text-black">
-            Social Security number
-          </label>
-          <div className="relative">
-            <input
-              type={showSsn ? "text" : "password"}
-              value={form.ssn}
-              onChange={(e) => setForm({ ...form, ssn: formatSsn(e.target.value) })}
-              placeholder="XXX-XX-XXXX"
-              maxLength={11}
-              className={inputClass("ssn") + " pr-12"}
-            />
-            <button
-              type="button"
-              onClick={() => setShowSsn(!showSsn)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a1a1aa] hover:text-[#71717a] transition-colors"
-            >
-              {showSsn ? (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              )}
-            </button>
-          </div>
-          {errors.ssn && <p className="mt-1 text-[12px] text-red-500">{errors.ssn}</p>}
-          <div className="mt-2 flex items-start gap-2 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-3 py-2">
-            <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-            </svg>
-            <p className="text-[11px] leading-relaxed text-[#15803d]">
-              Your SSN is encrypted end to end and only used for identity verification. We never sell it or share it.
-            </p>
-          </div>
         </div>
 
         {/* Date of birth */}
@@ -1534,7 +1482,7 @@ function StepReview({
 }: {
   amount: number;
   loanTermMonths: number;
-  form: { firstName: string; lastName: string; email: string; phone: string; ssn: string };
+  form: { firstName: string; lastName: string; email: string; phone: string };
   platforms: string[];
   otherPlatform: string;
   weeklyEarnings: string;
@@ -1544,7 +1492,6 @@ function StepReview({
   onBack: () => void;
   onSubmit: () => void;
 }) {
-  const maskedSsn = form.ssn ? `***-**-${form.ssn.slice(-4)}` : "";
   const platformLabels = platforms
     .map((id) => {
       if (id === "other") return otherPlatform || "Other";
@@ -1595,7 +1542,6 @@ function StepReview({
               { label: "Name", value: `${form.firstName} ${form.lastName}` },
               { label: "Email", value: form.email },
               { label: "Phone", value: form.phone },
-              { label: "SSN", value: maskedSsn },
             ].map((item) => (
               <div key={item.label}>
                 <p className="text-[11px] text-[#a1a1aa]">{item.label}</p>
@@ -1879,7 +1825,6 @@ function ApplyPageInner() {
     lastName: "",
     email: "",
     phone: "",
-    ssn: "",
     dob: "",
     addressStreet: "",
     addressCity: "",
@@ -1985,7 +1930,6 @@ function ApplyPageInner() {
         loanAmount,
         loanTermMonths,
         platform: platforms.join(", "),
-        ssnRaw: form.ssn,
         plaidAccessToken,
         plaidItemId,
         plaidAccountId: plaidAccountId ?? undefined,
