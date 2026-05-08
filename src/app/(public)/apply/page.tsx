@@ -1684,6 +1684,83 @@ function StepReview({
 /* ------------------------------------------------------------------ */
 /*  SUCCESS SCREEN                                                      */
 /* ------------------------------------------------------------------ */
+function VerifyingScreen({ onDone }: { onDone: () => void }) {
+  const [progress, setProgress] = useState(1);
+
+  useEffect(() => {
+    // Smoothly animate from 1% to 100% over ~6 seconds with a slight curve
+    // so it feels like real work, not a fixed timer. Once it hits 100%, hand
+    // off to SuccessScreen via onDone.
+    const start = Date.now();
+    const totalMs = 6000;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - start;
+      // Ease-out: spend more time near the start, sprint at the end
+      const linear = Math.min(1, elapsed / totalMs);
+      const eased = 1 - Math.pow(1 - linear, 2);
+      const pct = Math.max(1, Math.round(eased * 100));
+      setProgress(pct);
+      if (pct >= 100) {
+        clearInterval(interval);
+        setTimeout(onDone, 300);
+      }
+    }, 80);
+    return () => clearInterval(interval);
+  }, [onDone]);
+
+  const messages = [
+    { threshold: 0, text: "Reading your bank deposits…" },
+    { threshold: 25, text: "Verifying your identity…" },
+    { threshold: 55, text: "Calculating your advance amount…" },
+    { threshold: 80, text: "Almost done…" },
+  ];
+  const currentMessage = [...messages].reverse().find((m) => progress >= m.threshold)?.text || messages[0].text;
+
+  return (
+    <motion.div
+      key="verifying"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col items-center text-center w-full"
+    >
+      <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#f0fdf4] border-2 border-[#dcfce7]">
+        <svg className="h-10 w-10 animate-spin text-[#15803d]" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+      </div>
+      <h2 className="mt-6 text-[28px] md:text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        We&apos;re verifying your information
+      </h2>
+      <p className="mt-2 text-[14px] text-[#52525b]">{currentMessage}</p>
+
+      <div className="mt-8 w-full max-w-md">
+        <div className="h-2 rounded-full bg-[#f4f4f5] overflow-hidden">
+          <motion.div
+            className="h-full rounded-full bg-[#15803d]"
+            initial={{ width: "0%" }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.2 }}
+          />
+        </div>
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[11px] text-[#71717a]">Underwriting in progress</span>
+          <span className="text-[11px] font-semibold text-[#15803d] tabular-nums">{progress}%</span>
+        </div>
+      </div>
+
+      <div className="mt-6 inline-flex items-start gap-2 rounded-lg bg-[#fffbeb] border border-[#fde68a] px-3 py-2 max-w-md">
+        <span className="text-[#b45309]">⚠</span>
+        <p className="text-[12px] text-[#92400e] text-left">
+          <strong>Don&apos;t close or refresh this page</strong> — we&apos;re finalizing your application.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
 function SuccessScreen({ code }: { code: string }) {
   return (
     <motion.div
@@ -1828,6 +1905,7 @@ function ApplyPageInner() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [applicationCode, setApplicationCode] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
   const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
@@ -1924,7 +2002,14 @@ function ApplyPageInner() {
       });
 
       if (result.error) throw new Error(result.error);
-      if (result.applicationCode) setApplicationCode(result.applicationCode);
+      // Stash the application code, then show the verifying screen first.
+      // VerifyingScreen calls onDone after its progress bar completes, which
+      // unsets `verifying` and the SuccessScreen takes over (it renders when
+      // applicationCode is non-null and verifying is false).
+      if (result.applicationCode) {
+        setApplicationCode(result.applicationCode);
+        setVerifying(true);
+      }
       if (result.applicationId) {
         try { if (form.email) await linkContactApplication(form.email, result.applicationId); } catch {}
       }
@@ -1962,7 +2047,9 @@ function ApplyPageInner() {
             )}
 
             <AnimatePresence mode="wait">
-              {applicationCode ? (
+              {applicationCode && verifying ? (
+                <VerifyingScreen key="verifying" onDone={() => setVerifying(false)} />
+              ) : applicationCode ? (
                 <SuccessScreen key="success" code={applicationCode} />
               ) : pendingPhoneVerification ? (
                 <div key="verify-placeholder" />
