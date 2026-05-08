@@ -49,6 +49,14 @@ model Application {
   acceptedAmount           Decimal?
   acceptedTermIndex        Int?
   acceptedAt               DateTime?
+  workerType               String?
+  workStartMonth           Int?
+  workStartYear            Int?
+  addressStreet            String?
+  addressCity              String?
+  addressState             String?
+  addressZip               String?
+  dateOfBirth              String?
   plaidIdentityAddress     String?
   plaidIdentityEmail       String?
   plaidIdentityPhone       String?

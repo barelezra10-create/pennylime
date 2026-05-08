@@ -30,6 +30,14 @@ const submitSchema = z.object({
   plaidAccountId: z.string().optional(),
   identityNeedsReview: z.boolean().optional(),
   plaidIdentityName: z.string().optional(),
+  workerType: z.string().optional(),
+  workStartMonth: z.number().int().min(1).max(12).optional(),
+  workStartYear: z.number().int().min(1900).max(2100).optional(),
+  addressStreet: z.string().optional(),
+  addressCity: z.string().optional(),
+  addressState: z.string().optional(),
+  addressZip: z.string().optional(),
+  dateOfBirth: z.string().optional(),
 });
 
 export async function submitApplication(input: z.infer<typeof submitSchema>) {
@@ -80,6 +88,14 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       plaidItemId: data.plaidItemId,
       identityNeedsReview: data.identityNeedsReview ?? false,
       plaidIdentityName: data.plaidIdentityName || null,
+      workerType: data.workerType || null,
+      workStartMonth: data.workStartMonth ?? null,
+      workStartYear: data.workStartYear ?? null,
+      addressStreet: data.addressStreet || null,
+      addressCity: data.addressCity || null,
+      addressState: data.addressState || null,
+      addressZip: data.addressZip || null,
+      dateOfBirth: data.dateOfBirth || null,
     },
   });
 
