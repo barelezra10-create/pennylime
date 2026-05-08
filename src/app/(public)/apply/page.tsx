@@ -460,8 +460,54 @@ function StepAmount({
 }
 
 /* ------------------------------------------------------------------ */
+/*  US STATES LIST                                                      */
+/* ------------------------------------------------------------------ */
+const US_STATES = [
+  { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
+  { code: "AZ", name: "Arizona" }, { code: "AR", name: "Arkansas" },
+  { code: "CA", name: "California" }, { code: "CO", name: "Colorado" },
+  { code: "CT", name: "Connecticut" }, { code: "DC", name: "Washington D.C." },
+  { code: "DE", name: "Delaware" }, { code: "FL", name: "Florida" },
+  { code: "GA", name: "Georgia" }, { code: "HI", name: "Hawaii" },
+  { code: "ID", name: "Idaho" }, { code: "IL", name: "Illinois" },
+  { code: "IN", name: "Indiana" }, { code: "IA", name: "Iowa" },
+  { code: "KS", name: "Kansas" }, { code: "KY", name: "Kentucky" },
+  { code: "LA", name: "Louisiana" }, { code: "ME", name: "Maine" },
+  { code: "MD", name: "Maryland" }, { code: "MA", name: "Massachusetts" },
+  { code: "MI", name: "Michigan" }, { code: "MN", name: "Minnesota" },
+  { code: "MS", name: "Mississippi" }, { code: "MO", name: "Missouri" },
+  { code: "MT", name: "Montana" }, { code: "NE", name: "Nebraska" },
+  { code: "NV", name: "Nevada" }, { code: "NH", name: "New Hampshire" },
+  { code: "NJ", name: "New Jersey" }, { code: "NM", name: "New Mexico" },
+  { code: "NY", name: "New York" }, { code: "NC", name: "North Carolina" },
+  { code: "ND", name: "North Dakota" }, { code: "OH", name: "Ohio" },
+  { code: "OK", name: "Oklahoma" }, { code: "OR", name: "Oregon" },
+  { code: "PA", name: "Pennsylvania" }, { code: "RI", name: "Rhode Island" },
+  { code: "SC", name: "South Carolina" }, { code: "SD", name: "South Dakota" },
+  { code: "TN", name: "Tennessee" }, { code: "TX", name: "Texas" },
+  { code: "UT", name: "Utah" }, { code: "VT", name: "Vermont" },
+  { code: "VA", name: "Virginia" }, { code: "WA", name: "Washington" },
+  { code: "WV", name: "West Virginia" }, { code: "WI", name: "Wisconsin" },
+  { code: "WY", name: "Wyoming" },
+];
+const US_STATE_CODES = US_STATES.map((s) => s.code);
+
+/* ------------------------------------------------------------------ */
 /*  STEP 2, PERSONAL INFO                                             */
 /* ------------------------------------------------------------------ */
+type InfoForm = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  ssn: string;
+  dob: string;
+  addressStreet: string;
+  addressCity: string;
+  addressState: string;
+  addressZip: string;
+};
+
 function StepInfo({
   form,
   setForm,
@@ -469,13 +515,26 @@ function StepInfo({
   onNext,
   onBack,
 }: {
-  form: { firstName: string; lastName: string; email: string; phone: string; ssn: string };
-  setForm: (f: { firstName: string; lastName: string; email: string; phone: string; ssn: string }) => void;
+  form: InfoForm;
+  setForm: (f: InfoForm) => void;
   errors: Record<string, string>;
   onNext: () => void;
   onBack: () => void;
 }) {
   const [showSsn, setShowSsn] = useState(false);
+
+  // DOB split state
+  const [dobMonth, setDobMonth] = useState(() => form.dob ? form.dob.slice(5, 7) : "");
+  const [dobDay, setDobDay] = useState(() => form.dob ? form.dob.slice(8, 10) : "");
+  const [dobYear, setDobYear] = useState(() => form.dob ? form.dob.slice(0, 4) : "");
+
+  const updateDob = (m: string, d: string, y: string) => {
+    if (m.length === 2 && d.length === 2 && y.length === 4) {
+      setForm({ ...form, dob: `${y}-${m}-${d}` });
+    } else {
+      setForm({ ...form, dob: "" });
+    }
+  };
 
   const formatSsn = (value: string) => {
     const digits = value.replace(/\D/g, "").slice(0, 9);
@@ -486,6 +545,13 @@ function StepInfo({
 
   const inputClass = (field: string) =>
     `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
+      errors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+    }`;
+
+  const selectClass = (field: string) =>
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] outline-none transition-all duration-200 appearance-none ${
       errors[field]
         ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
         : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
@@ -594,6 +660,128 @@ function StepInfo({
             </p>
           </div>
         </div>
+
+        {/* Date of birth */}
+        <div>
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">Date of birth</label>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={dobMonth}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setDobMonth(v);
+                  updateDob(v, dobDay, dobYear);
+                }}
+                placeholder="MM"
+                className={`w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 text-center ${
+                  errors.dob
+                    ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                }`}
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={dobDay}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setDobDay(v);
+                  updateDob(dobMonth, v, dobYear);
+                }}
+                placeholder="DD"
+                className={`w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 text-center ${
+                  errors.dob
+                    ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                }`}
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={dobYear}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setDobYear(v);
+                  updateDob(dobMonth, dobDay, v);
+                }}
+                placeholder="YYYY"
+                className={`w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 text-center ${
+                  errors.dob
+                    ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                }`}
+              />
+            </div>
+          </div>
+          {errors.dob && <p className="mt-1 text-[12px] text-red-500">{errors.dob}</p>}
+        </div>
+
+        {/* Address */}
+        <div>
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">Home address</label>
+          <div className="flex flex-col gap-3">
+            <div>
+              <input
+                value={form.addressStreet}
+                onChange={(e) => setForm({ ...form, addressStreet: e.target.value })}
+                placeholder="123 Main Street"
+                className={inputClass("addressStreet")}
+              />
+              {errors.addressStreet && <p className="mt-1 text-[12px] text-red-500">{errors.addressStreet}</p>}
+            </div>
+            <div>
+              <input
+                value={form.addressCity}
+                onChange={(e) => setForm({ ...form, addressCity: e.target.value })}
+                placeholder="City"
+                className={inputClass("addressCity")}
+              />
+              {errors.addressCity && <p className="mt-1 text-[12px] text-red-500">{errors.addressCity}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <select
+                  value={form.addressState}
+                  onChange={(e) => setForm({ ...form, addressState: e.target.value })}
+                  className={selectClass("addressState")}
+                >
+                  <option value="">State</option>
+                  {US_STATES.map((s) => (
+                    <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                  <svg className="h-4 w-4 text-[#a1a1aa]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </div>
+                {errors.addressState && <p className="mt-1 text-[12px] text-red-500">{errors.addressState}</p>}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={form.addressZip}
+                  onChange={(e) => setForm({ ...form, addressZip: e.target.value.replace(/\D/g, "").slice(0, 5) })}
+                  placeholder="ZIP"
+                  className={inputClass("addressZip")}
+                />
+                {errors.addressZip && <p className="mt-1 text-[12px] text-red-500">{errors.addressZip}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-3">
@@ -620,6 +808,36 @@ function StepInfo({
 /* ------------------------------------------------------------------ */
 /*  STEP 3, GIG PLATFORMS & EARNINGS                                   */
 /* ------------------------------------------------------------------ */
+const WORKER_TYPES = [
+  {
+    id: "BUSINESS_OWNER",
+    title: "I'm a Business Owner",
+    description: "Best if you earn income through your own business.",
+    bullets: ["Accepts payments from customers", "Manages business expenses", "Income from multiple clients or platforms"],
+  },
+  {
+    id: "INDEPENDENT_CONTRACTOR",
+    title: "I'm an Independent Contractor",
+    description: "Best if you work for yourself and earn income per job, contract, or gig.",
+    bullets: ["Gig workers (Uber, DoorDash, TaskRabbit, etc.)", "Freelancers or 1099 contractors", "Income from multiple clients or platforms"],
+  },
+  {
+    id: "NOT_SURE",
+    title: "Not sure which fits me",
+    description: "Choose this option if you don't earn contractor or business income.",
+    bullets: ["W-2 Employee", "Unemployed", "Retired or disabled", "Other non-contractor income"],
+  },
+];
+
+const MONTHS = [
+  { value: 1, label: "January" }, { value: 2, label: "February" },
+  { value: 3, label: "March" }, { value: 4, label: "April" },
+  { value: 5, label: "May" }, { value: 6, label: "June" },
+  { value: 7, label: "July" }, { value: 8, label: "August" },
+  { value: 9, label: "September" }, { value: 10, label: "October" },
+  { value: 11, label: "November" }, { value: 12, label: "December" },
+];
+
 function StepPlatforms({
   platforms,
   setPlatforms,
@@ -627,6 +845,12 @@ function StepPlatforms({
   setOtherPlatform,
   weeklyEarnings,
   setWeeklyEarnings,
+  workerType,
+  setWorkerType,
+  workStartMonth,
+  setWorkStartMonth,
+  workStartYear,
+  setWorkStartYear,
   onNext,
   onBack,
 }: {
@@ -636,9 +860,17 @@ function StepPlatforms({
   setOtherPlatform: (v: string) => void;
   weeklyEarnings: string;
   setWeeklyEarnings: (v: string) => void;
+  workerType: string;
+  setWorkerType: (v: string) => void;
+  workStartMonth: number;
+  setWorkStartMonth: (v: number) => void;
+  workStartYear: number;
+  setWorkStartYear: (v: number) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
+  const currentYear = new Date().getFullYear();
+  const workYears = Array.from({ length: 31 }, (_, i) => currentYear - i);
   const togglePlatform = (id: string) => {
     setPlatforms(
       platforms.includes(id) ? platforms.filter((p) => p !== id) : [...platforms, id]
@@ -661,6 +893,44 @@ function StepPlatforms({
       <p className="mt-2 text-[15px] text-[#52525b]">
         Pick every platform that pays you. We size the advance to all of them combined.
       </p>
+
+      {/* Worker classification */}
+      <div className="mt-8">
+        <p className="mb-3 text-[14px] font-semibold text-black">How would you describe your work?</p>
+        <div className="flex flex-col gap-3">
+          {WORKER_TYPES.map((wt) => {
+            const selected = workerType === wt.id;
+            return (
+              <button
+                key={wt.id}
+                type="button"
+                onClick={() => setWorkerType(wt.id)}
+                className={`flex flex-col text-left rounded-xl border px-4 py-3.5 transition-all duration-200 ${
+                  selected
+                    ? "border-[#15803d] bg-[#f0fdf4] ring-2 ring-[#15803d]/20"
+                    : "border-[#e4e4e7] bg-white hover:border-[#15803d]/50 hover:bg-[#f0fdf4]/50"
+                }`}
+              >
+                <div className="flex items-center gap-3 mb-1.5">
+                  <div className={`h-4 w-4 flex-shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? "border-[#15803d] bg-[#15803d]" : "border-[#a1a1aa]"}`}>
+                    {selected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </div>
+                  <span className={`text-[14px] font-semibold ${selected ? "text-[#15803d]" : "text-[#0a0a0a]"}`}>{wt.title}</span>
+                </div>
+                <p className={`text-[12px] mb-2 ml-7 ${selected ? "text-[#15803d]/70" : "text-[#71717a]"}`}>{wt.description}</p>
+                <ul className="ml-7 flex flex-col gap-0.5">
+                  {wt.bullets.map((b) => (
+                    <li key={b} className={`text-[11px] flex items-start gap-1.5 ${selected ? "text-[#15803d]/70" : "text-[#71717a]"}`}>
+                      <span className="mt-0.5 flex-shrink-0">•</span>
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Platform grid */}
       <div className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -787,6 +1057,46 @@ function StepPlatforms({
         )}
       </div>
 
+      {/* Work start date */}
+      <div className="mt-8">
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">When did you start this work?</label>
+        <p className="mb-3 text-[12px] text-[#a1a1aa]">The month and year you began earning from gigs, contracts, or your business.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="relative">
+            <select
+              value={workStartMonth}
+              onChange={(e) => setWorkStartMonth(Number(e.target.value))}
+              className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 appearance-none"
+            >
+              {MONTHS.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+              <svg className="h-4 w-4 text-[#a1a1aa]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </div>
+          </div>
+          <div className="relative">
+            <select
+              value={workStartYear}
+              onChange={(e) => setWorkStartYear(Number(e.target.value))}
+              className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 appearance-none"
+            >
+              {workYears.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+              <svg className="h-4 w-4 text-[#a1a1aa]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-8 grid grid-cols-2 gap-3">
         <button
           type="button"
@@ -798,6 +1108,10 @@ function StepPlatforms({
         <motion.button
           type="button"
           onClick={() => {
+            if (!workerType) {
+              toast.error("Please select how you work");
+              return;
+            }
             if (platforms.length === 0) {
               toast.error("Select at least one platform");
               return;
@@ -808,6 +1122,10 @@ function StepPlatforms({
             }
             if (!weeklyEarnings || Number(weeklyEarnings) <= 0) {
               toast.error("Enter your average weekly earnings");
+              return;
+            }
+            if (!workStartMonth || !workStartYear) {
+              toast.error("Please select when you started working");
               return;
             }
             onNext();
@@ -1479,7 +1797,18 @@ function ApplyPageInner() {
     const t = Number(searchParams.get("term"));
     return t && [1, 2, 3, 4, 6, 8, 12, 16].includes(t) ? t : 4;
   });
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", ssn: "" });
+  const [form, setForm] = useState<InfoForm>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    ssn: "",
+    dob: "",
+    addressStreet: "",
+    addressCity: "",
+    addressState: "",
+    addressZip: "",
+  });
   const [platforms, setPlatforms] = useState<string[]>(() => {
     const p = searchParams.get("platform");
     if (p === "Uber") return ["uber"];
@@ -1489,6 +1818,9 @@ function ApplyPageInner() {
   });
   const [otherPlatform, setOtherPlatform] = useState("");
   const [weeklyEarnings, setWeeklyEarnings] = useState("");
+  const [workerType, setWorkerType] = useState("INDEPENDENT_CONTRACTOR");
+  const [workStartMonth, setWorkStartMonth] = useState(() => new Date().getMonth() + 1);
+  const [workStartYear, setWorkStartYear] = useState(() => new Date().getFullYear());
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
@@ -1524,17 +1856,38 @@ function ApplyPageInner() {
       ...form,
       loanAmount,
     });
+    const fieldErrors: Record<string, string> = {};
     if (!parsed.success) {
-      const fieldErrors: Record<string, string> = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
         if (key && key !== "loanAmount") fieldErrors[String(key)] = issue.message;
       }
-      setErrors(fieldErrors);
-      return Object.keys(fieldErrors).length === 0;
     }
-    setErrors({});
-    return true;
+
+    // Validate DOB
+    if (!form.dob || !/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) {
+      fieldErrors.dob = "Enter a valid date of birth";
+    } else {
+      const year = parseInt(form.dob.slice(0, 4), 10);
+      if (year < 1900 || year > 2010) fieldErrors.dob = "Year must be between 1900 and 2010";
+    }
+
+    // Validate address fields
+    if (!form.addressStreet || form.addressStreet.trim().length < 3) {
+      fieldErrors.addressStreet = "Enter your street address";
+    }
+    if (!form.addressCity || form.addressCity.trim().length < 2) {
+      fieldErrors.addressCity = "Enter your city";
+    }
+    if (!form.addressState || !US_STATE_CODES.includes(form.addressState)) {
+      fieldErrors.addressState = "Select a valid state";
+    }
+    if (!form.addressZip || !/^\d{5}$/.test(form.addressZip)) {
+      fieldErrors.addressZip = "Enter a valid 5-digit ZIP";
+    }
+
+    setErrors(fieldErrors);
+    return Object.keys(fieldErrors).length === 0;
   };
 
   const handleSubmit = async () => {
@@ -1560,6 +1913,14 @@ function ApplyPageInner() {
         plaidAccountId: plaidAccountId ?? undefined,
         identityNeedsReview: identityResult?.needsReview ?? true,
         plaidIdentityName: identityResult?.matchedName ?? undefined,
+        workerType,
+        workStartMonth,
+        workStartYear,
+        addressStreet: form.addressStreet,
+        addressCity: form.addressCity,
+        addressState: form.addressState,
+        addressZip: form.addressZip,
+        dateOfBirth: form.dob,
       });
 
       if (result.error) throw new Error(result.error);
@@ -1682,6 +2043,12 @@ function ApplyPageInner() {
                         setOtherPlatform={setOtherPlatform}
                         weeklyEarnings={weeklyEarnings}
                         setWeeklyEarnings={setWeeklyEarnings}
+                        workerType={workerType}
+                        setWorkerType={setWorkerType}
+                        workStartMonth={workStartMonth}
+                        setWorkStartMonth={setWorkStartMonth}
+                        workStartYear={workStartYear}
+                        setWorkStartYear={setWorkStartYear}
                         onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
                         onBack={() => setStep(step - 1)}
                       />
@@ -1786,6 +2153,12 @@ function ApplyPageInner() {
                   setOtherPlatform={setOtherPlatform}
                   weeklyEarnings={weeklyEarnings}
                   setWeeklyEarnings={setWeeklyEarnings}
+                  workerType={workerType}
+                  setWorkerType={setWorkerType}
+                  workStartMonth={workStartMonth}
+                  setWorkStartMonth={setWorkStartMonth}
+                  workStartYear={workStartYear}
+                  setWorkStartYear={setWorkStartYear}
                   onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 3); } catch {} setStep(3); }}
                   onBack={() => setStep(1)}
                 />
