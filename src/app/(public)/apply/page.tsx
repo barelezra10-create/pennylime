@@ -1227,8 +1227,32 @@ function StepPlaidLink({
   const [previewLoading, setPreviewLoading] = useState(false);
   const linked = !!(plaidAccessToken && plaidAccountId && plaidItemId);
 
+  // Detect OAuth return: when an OAuth bank (Chase, Capital One, etc.)
+  // sends the user back, the URL contains `?oauth_state_id=...`. In that
+  // case we must reuse the link_token from before the OAuth handoff (Plaid
+  // tracks the OAuth state by token), not create a new one.
+  const isOAuthReturn =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("oauth_state_id");
+  const oauthReceivedRedirectUri =
+    typeof window !== "undefined" && isOAuthReturn ? window.location.href : undefined;
+
   useEffect(() => {
     if (linked) return;
+
+    // OAuth return: restore the saved link token instead of minting a new one.
+    if (isOAuthReturn) {
+      const saved = typeof window !== "undefined"
+        ? window.sessionStorage.getItem("pennylime_plaid_link_token")
+        : null;
+      if (saved) {
+        setLinkToken(saved);
+        return;
+      }
+      // No saved token (user cleared storage or cross-device) — fall through
+      // to mint a fresh one. The OAuth flow won't resume but they can retry.
+    }
+
     const fetchToken = async () => {
       try {
         setLoading(true);
@@ -1241,6 +1265,11 @@ function StepPlaidLink({
         if (!res.ok) throw new Error("Failed to create link token");
         const data = await res.json();
         setLinkToken(data.linkToken);
+        // Persist the token so we can restore it if Plaid's OAuth step
+        // bounces the user out to a bank and back.
+        try {
+          window.sessionStorage.setItem("pennylime_plaid_link_token", data.linkToken);
+        } catch {}
       } catch (err) {
         toast.error("Could not initialize bank connection. Please try again.");
       } finally {
@@ -1248,7 +1277,7 @@ function StepPlaidLink({
       }
     };
     fetchToken();
-  }, [linked]);
+  }, [linked, isOAuthReturn]);
 
   // Once linked, fetch the verified income preview to show as a trust signal.
   // Re-fetches if the user backs out and re-links (token changes).
@@ -1276,6 +1305,7 @@ function StepPlaidLink({
 
   const { open, ready } = usePlaidLink({
     token: linkToken,
+    receivedRedirectUri: oauthReceivedRedirectUri,
     onSuccess: async (publicToken, metadata) => {
       try {
         setLoading(true);
@@ -1303,6 +1333,24 @@ function StepPlaidLink({
     },
     onExit: () => {},
   });
+
+  // OAuth return: as soon as Plaid Link is ready with our restored token,
+  // auto-call open() so the bank's response is processed without requiring
+  // the user to click "Link bank" again. Plaid SDK detects the
+  // receivedRedirectUri and finishes the flow internally.
+  const autoOpenedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !autoOpenedRef.current &&
+      isOAuthReturn &&
+      ready &&
+      linkToken &&
+      !linked
+    ) {
+      autoOpenedRef.current = true;
+      open();
+    }
+  }, [isOAuthReturn, ready, linkToken, linked, open]);
 
   return (
     <motion.div
@@ -1921,18 +1969,56 @@ function readPennyClickIdFromCookie(): string | undefined {
   return m ? decodeURIComponent(m[1]) : undefined;
 }
 
+// sessionStorage key for funnel state — used to survive Plaid OAuth bounces
+// (Chase, Capital One, etc. redirect the user to the bank's OAuth page and
+// back, which wipes React state). We snapshot every state change here and
+// rehydrate on mount when ?oauth_state_id is on the URL.
+const FUNNEL_STATE_KEY = "pennylime_apply_state";
+
+type PersistedState = {
+  step: number;
+  loanAmount: number;
+  loanTermMonths: number;
+  form: InfoForm;
+  platforms: string[];
+  otherPlatform: string;
+  weeklyEarnings: string;
+  workerType: string;
+  workStartMonth: number;
+  workStartYear: number;
+};
+
+function readPersistedFunnelState(): PersistedState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(FUNNEL_STATE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as PersistedState;
+  } catch {
+    return null;
+  }
+}
+
 function ApplyPageInner() {
   const searchParams = useSearchParams();
-  const [step, setStep] = useState(0);
+  // If the URL has an OAuth return marker, hydrate from sessionStorage on mount.
+  const oauthReturning =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("oauth_state_id");
+  const persisted = oauthReturning ? readPersistedFunnelState() : null;
+
+  const [step, setStep] = useState(persisted?.step ?? 0);
   const [loanAmount, setLoanAmount] = useState(() => {
+    if (persisted) return persisted.loanAmount;
     const a = Number(searchParams.get("amount"));
     return a && a >= 500 && a <= 10000 ? a : 5000;
   });
   const [loanTermMonths, setLoanTermMonths] = useState(() => {
+    if (persisted) return persisted.loanTermMonths;
     const t = Number(searchParams.get("term"));
     return t && [1, 2, 3, 4, 6, 8, 12, 16].includes(t) ? t : 4;
   });
-  const [form, setForm] = useState<InfoForm>({
+  const [form, setForm] = useState<InfoForm>(persisted?.form ?? {
     firstName: "",
     lastName: "",
     email: "",
@@ -1944,17 +2030,18 @@ function ApplyPageInner() {
     addressZip: "",
   });
   const [platforms, setPlatforms] = useState<string[]>(() => {
+    if (persisted) return persisted.platforms;
     const p = searchParams.get("platform");
     if (p === "Uber") return ["uber"];
     if (p === "Lyft") return ["lyft"];
     if (p === "Both") return ["uber", "lyft"];
     return [];
   });
-  const [otherPlatform, setOtherPlatform] = useState("");
-  const [weeklyEarnings, setWeeklyEarnings] = useState("");
-  const [workerType, setWorkerType] = useState("INDEPENDENT_CONTRACTOR");
-  const [workStartMonth, setWorkStartMonth] = useState(() => new Date().getMonth() + 1);
-  const [workStartYear, setWorkStartYear] = useState(() => new Date().getFullYear());
+  const [otherPlatform, setOtherPlatform] = useState(persisted?.otherPlatform ?? "");
+  const [weeklyEarnings, setWeeklyEarnings] = useState(persisted?.weeklyEarnings ?? "");
+  const [workerType, setWorkerType] = useState(persisted?.workerType ?? "INDEPENDENT_CONTRACTOR");
+  const [workStartMonth, setWorkStartMonth] = useState(() => persisted?.workStartMonth ?? new Date().getMonth() + 1);
+  const [workStartYear, setWorkStartYear] = useState(() => persisted?.workStartYear ?? new Date().getFullYear());
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
@@ -1966,6 +2053,42 @@ function ApplyPageInner() {
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
   const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
+
+  // Snapshot funnel state to sessionStorage on every change so we can survive
+  // a Plaid OAuth bounce (Chase, Capital One, etc. send the user out of the
+  // app and back, wiping all React state). Restored on mount when
+  // ?oauth_state_id is on the URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(
+        FUNNEL_STATE_KEY,
+        JSON.stringify({
+          step,
+          loanAmount,
+          loanTermMonths,
+          form,
+          platforms,
+          otherPlatform,
+          weeklyEarnings,
+          workerType,
+          workStartMonth,
+          workStartYear,
+        }),
+      );
+    } catch {}
+  }, [
+    step,
+    loanAmount,
+    loanTermMonths,
+    form,
+    platforms,
+    otherPlatform,
+    weeklyEarnings,
+    workerType,
+    workStartMonth,
+    workStartYear,
+  ]);
 
   useEffect(() => {
     const templateSlug = searchParams.get("template");

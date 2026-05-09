@@ -11,6 +11,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "applicationId required" }, { status: 400 });
     }
 
+    // OAuth banks (Chase, Capital One, Wells Fargo, etc.) require a
+    // redirect_uri that's been registered in the Plaid dashboard. Without it,
+    // those banks will fail at the bank's OAuth handoff step.
+    const redirectUri =
+      process.env.PLAID_REDIRECT_URI ||
+      (process.env.APP_URL ? `${process.env.APP_URL}/apply` : undefined);
+
     const response = await plaidClient.linkTokenCreate({
       user: { client_user_id: applicationId },
       client_name: "PennyLime",
@@ -18,6 +25,7 @@ export async function POST(req: NextRequest) {
       country_codes: [CountryCode.Us],
       language: "en",
       webhook: process.env.PLAID_WEBHOOK_URL,
+      redirect_uri: redirectUri,
     });
 
     return NextResponse.json({ linkToken: response.data.link_token });
