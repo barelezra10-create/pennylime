@@ -30,7 +30,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ linkToken: response.data.link_token });
   } catch (error) {
-    console.error("Plaid link token error:", error);
+    // Plaid returns useful diagnostic data in the response body — surface it
+    // so we can see exactly which field is failing.
+    const err = error as { response?: { status?: number; data?: unknown }; message?: string };
+    console.error(
+      "Plaid link token error:",
+      err?.response?.status,
+      JSON.stringify(err?.response?.data ?? { message: err?.message }),
+    );
     return NextResponse.json({ error: "Failed to create link token" }, { status: 500 });
   }
 }
