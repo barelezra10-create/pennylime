@@ -22,7 +22,7 @@ import { PlatformLogo } from "@/components/funnel/platform-logo";
 /* ------------------------------------------------------------------ */
 /*  CONSTANTS                                                           */
 /* ------------------------------------------------------------------ */
-const STEPS = ["Amount", "Your info", "Platforms", "Bank link", "Verified", "Review"];
+const STEPS = ["Amount", "About you", "Your info", "Platforms", "Bank link", "Verified", "Review"];
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
 
@@ -786,6 +786,110 @@ const MONTHS = [
   { value: 11, label: "November" }, { value: 12, label: "December" },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  STEP 2, WORKER CLASSIFICATION                                     */
+/* ------------------------------------------------------------------ */
+function StepWorkerType({
+  workerType,
+  setWorkerType,
+  setPlatforms,
+  setOtherPlatform,
+  onNext,
+  onBack,
+}: {
+  workerType: string;
+  setWorkerType: (v: string) => void;
+  setPlatforms: (p: string[]) => void;
+  setOtherPlatform: (v: string) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        How do you earn?
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Are you a gig worker or running your own business? This tailors the rest of the form to you.
+      </p>
+
+      <div className="mt-8 flex flex-col gap-3">
+        {WORKER_TYPES.map((wt) => {
+          const selected = workerType === wt.id;
+          return (
+            <button
+              key={wt.id}
+              type="button"
+              onClick={() => {
+                setWorkerType(wt.id);
+                // Coming back and switching answer should reset auto-seeded
+                // platform state so the next step renders fresh.
+                if (wt.id === "BUSINESS_OWNER") {
+                  setPlatforms(["other"]);
+                } else if (workerType === "BUSINESS_OWNER") {
+                  setPlatforms([]);
+                  setOtherPlatform("");
+                }
+              }}
+              className={`flex flex-col text-left rounded-xl border px-4 py-3.5 transition-all duration-200 ${
+                selected
+                  ? "border-[#15803d] bg-[#f0fdf4] ring-2 ring-[#15803d]/20"
+                  : "border-[#e4e4e7] bg-white hover:border-[#15803d]/50 hover:bg-[#f0fdf4]/50"
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className={`h-4 w-4 flex-shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? "border-[#15803d] bg-[#15803d]" : "border-[#a1a1aa]"}`}>
+                  {selected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </div>
+                <span className={`text-[14px] font-semibold ${selected ? "text-[#15803d]" : "text-[#0a0a0a]"}`}>{wt.title}</span>
+              </div>
+              <p className={`text-[12px] mb-2 ml-7 ${selected ? "text-[#15803d]/70" : "text-[#71717a]"}`}>{wt.description}</p>
+              <ul className="ml-7 flex flex-col gap-0.5">
+                {wt.bullets.map((b) => (
+                  <li key={b} className={`text-[11px] flex items-start gap-1.5 ${selected ? "text-[#15803d]/70" : "text-[#71717a]"}`}>
+                    <span className="mt-0.5 flex-shrink-0">•</span>
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={() => {
+            if (!workerType) {
+              toast.error("Please select how you earn");
+              return;
+            }
+            onNext();
+          }}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
 function StepPlatforms({
   platforms,
   setPlatforms,
@@ -836,60 +940,13 @@ function StepPlatforms({
       className="w-full"
     >
       <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
-        How do you earn?
+        {workerType === "BUSINESS_OWNER" ? "Tell us about your business" : "Where do you earn?"}
       </h2>
       <p className="mt-2 text-[15px] text-[#52525b]">
-        Are you a gig worker or running your own business? This helps us tailor your advance.
+        {workerType === "BUSINESS_OWNER"
+          ? "Your business name and weekly revenue help us size the advance."
+          : "Pick every platform that pays you. We size the advance to all of them combined."}
       </p>
-
-      {/* Worker classification — primary question on this step */}
-      <div className="mt-8">
-        <div className="flex flex-col gap-3">
-          {WORKER_TYPES.map((wt) => {
-            const selected = workerType === wt.id;
-            return (
-              <button
-                key={wt.id}
-                type="button"
-                onClick={() => {
-                  setWorkerType(wt.id);
-                  // Auto-clear or seed platforms based on worker type so a
-                  // user switching between options doesn't carry stale state.
-                  if (wt.id === "BUSINESS_OWNER") {
-                    setPlatforms(["other"]);
-                  } else if (workerType === "BUSINESS_OWNER") {
-                    // Coming back to a gig answer: clear the auto-seeded "other"
-                    // and the business name so the platform grid is empty.
-                    setPlatforms([]);
-                    setOtherPlatform("");
-                  }
-                }}
-                className={`flex flex-col text-left rounded-xl border px-4 py-3.5 transition-all duration-200 ${
-                  selected
-                    ? "border-[#15803d] bg-[#f0fdf4] ring-2 ring-[#15803d]/20"
-                    : "border-[#e4e4e7] bg-white hover:border-[#15803d]/50 hover:bg-[#f0fdf4]/50"
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-1.5">
-                  <div className={`h-4 w-4 flex-shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? "border-[#15803d] bg-[#15803d]" : "border-[#a1a1aa]"}`}>
-                    {selected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                  </div>
-                  <span className={`text-[14px] font-semibold ${selected ? "text-[#15803d]" : "text-[#0a0a0a]"}`}>{wt.title}</span>
-                </div>
-                <p className={`text-[12px] mb-2 ml-7 ${selected ? "text-[#15803d]/70" : "text-[#71717a]"}`}>{wt.description}</p>
-                <ul className="ml-7 flex flex-col gap-0.5">
-                  {wt.bullets.map((b) => (
-                    <li key={b} className={`text-[11px] flex items-start gap-1.5 ${selected ? "text-[#15803d]/70" : "text-[#71717a]"}`}>
-                      <span className="mt-0.5 flex-shrink-0">•</span>
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Business name (BUSINESS_OWNER only) */}
       {workerType === "BUSINESS_OWNER" && (
@@ -2201,6 +2258,16 @@ function ApplyPageInner() {
                   onNext={() => setStep(1)}
                 />
               ) : step === 1 ? (
+                <StepWorkerType
+                  key="worker-type"
+                  workerType={workerType}
+                  setWorkerType={setWorkerType}
+                  setPlatforms={setPlatforms}
+                  setOtherPlatform={setOtherPlatform}
+                  onNext={() => setStep(2)}
+                  onBack={() => setStep(0)}
+                />
+              ) : step === 2 ? (
                 <StepInfo
                   key="info"
                   form={form}
@@ -2217,20 +2284,20 @@ function ApplyPageInner() {
                           source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
                           ...attributionFromSearch(searchParams as unknown as URLSearchParams),
                           pennyClickId: readPennyClickIdFromCookie(),
-                          lastAppStep: 2,
+                          lastAppStep: 3,
                           loanAmountIntent: loanAmount,
                         });
                         await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                         try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
-                        setPendingPhoneVerification({ contactId: contact.id, nextStep: 2 });
+                        setPendingPhoneVerification({ contactId: contact.id, nextStep: 3 });
                         return;
                       } catch {}
-                      setStep(2);
+                      setStep(3);
                     }
                   }}
-                  onBack={() => setStep(0)}
+                  onBack={() => setStep(1)}
                 />
-              ) : step === 2 ? (
+              ) : step === 3 ? (
                 <StepPlatforms
                   key="platforms"
                   platforms={platforms}
@@ -2245,10 +2312,10 @@ function ApplyPageInner() {
                   setWorkStartMonth={setWorkStartMonth}
                   workStartYear={workStartYear}
                   setWorkStartYear={setWorkStartYear}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 3); } catch {} setStep(3); }}
-                  onBack={() => setStep(1)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 4); } catch {} setStep(4); }}
+                  onBack={() => setStep(2)}
                 />
-              ) : step === 3 ? (
+              ) : step === 4 ? (
                 <StepPlaidLink
                   key="plaid"
                   plaidAccessToken={plaidAccessToken}
@@ -2259,10 +2326,10 @@ function ApplyPageInner() {
                     setPlaidAccountId(accountId);
                     setPlaidItemId(itemId);
                   }}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 4); } catch {} setStep(4); }}
-                  onBack={() => setStep(2)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 5); } catch {} setStep(5); }}
+                  onBack={() => setStep(3)}
                 />
-              ) : step === 4 ? (
+              ) : step === 5 ? (
                 <StepVerified
                   key="verified"
                   plaidAccessToken={plaidAccessToken}
@@ -2270,8 +2337,8 @@ function ApplyPageInner() {
                   lastName={form.lastName}
                   identityResult={identityResult}
                   setIdentityResult={setIdentityResult}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 5); } catch {} setStep(5); }}
-                  onBack={() => setStep(3)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 6); } catch {} setStep(6); }}
+                  onBack={() => setStep(4)}
                 />
               ) : (
                 <StepReview
@@ -2285,7 +2352,7 @@ function ApplyPageInner() {
                   bankLinked={!!(plaidAccessToken && plaidAccountId && plaidItemId)}
                   identityNeedsReview={identityResult?.needsReview ?? true}
                   submitting={submitting}
-                  onBack={() => setStep(4)}
+                  onBack={() => setStep(5)}
                   onSubmit={handleSubmit}
                 />
               )}
