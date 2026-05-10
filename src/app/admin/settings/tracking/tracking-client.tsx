@@ -31,6 +31,7 @@ type Config = {
   twilioAuthToken: string | null;
   twilioFromNumber: string | null;
   twilioMessagingServiceSid: string | null;
+  twilioVerifyServiceSid: string | null;
   eventMappings: string;
   customHeadHtml: string | null;
   customBodyHtml: string | null;
@@ -146,6 +147,7 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                 <Field name="twilioAuthToken" label="Auth token" defaultValue={config.twilioAuthToken} secret />
                 <Field name="twilioFromNumber" label="From number" placeholder="+15551234567" defaultValue={config.twilioFromNumber} />
                 <Field name="twilioMessagingServiceSid" label="Messaging Service SID (optional)" placeholder="MG..." defaultValue={config.twilioMessagingServiceSid} />
+                <Field name="twilioVerifyServiceSid" label="Verify Service SID (for phone verification — preferred)" placeholder="VA..." defaultValue={config.twilioVerifyServiceSid} />
               </Grid>
               <p className="text-[11px] text-[#71717a] mt-3">
                 In Twilio console, set Status Callback URL to <code className="bg-[#fafafa] px-1.5 py-0.5 rounded">https://pennylime.com/api/twilio/status</code>{" "}

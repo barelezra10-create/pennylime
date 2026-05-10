@@ -22,6 +22,64 @@ export type SendCodeResult =
   | { ok: true; sentTo: string; expiresInSeconds: number; testCode?: string }
   | { ok: false; error: string };
 
+async function sendViaTwilioVerify(opts: {
+  phone: string;
+  accountSid: string;
+  authToken: string;
+  verifyServiceSid: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const url = `https://verify.twilio.com/v2/Services/${opts.verifyServiceSid}/Verifications`;
+  const auth = Buffer.from(`${opts.accountSid}:${opts.authToken}`).toString("base64");
+  const params = new URLSearchParams({ To: opts.phone, Channel: "sms" });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `Twilio Verify ${res.status}: ${text.slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "network error" };
+  }
+}
+
+async function checkViaTwilioVerify(opts: {
+  phone: string;
+  code: string;
+  accountSid: string;
+  authToken: string;
+  verifyServiceSid: string;
+}): Promise<{ ok: true; approved: boolean } | { ok: false; error: string }> {
+  const url = `https://verify.twilio.com/v2/Services/${opts.verifyServiceSid}/VerificationCheck`;
+  const auth = Buffer.from(`${opts.accountSid}:${opts.authToken}`).toString("base64");
+  const params = new URLSearchParams({ To: opts.phone, Code: opts.code });
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${auth}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: `Twilio Verify ${res.status}: ${text.slice(0, 200)}` };
+    }
+    const data = (await res.json()) as { status: string };
+    return { ok: true, approved: data.status === "approved" };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "network error" };
+  }
+}
+
 export async function sendVerificationCode(opts: {
   phone: string;
   ipAddress?: string;
@@ -39,6 +97,37 @@ export async function sendVerificationCode(opts: {
     return { ok: false, error: "too many verification requests, try again in an hour" };
   }
 
+  const cfg = await getTrackingConfig();
+  const verifyConfigured = !!(cfg.twilioAccountSid && cfg.twilioAuthToken && cfg.twilioVerifyServiceSid);
+
+  // ── Path 1: Twilio Verify (preferred when configured) ─────────────
+  // Verify is Twilio's purpose-built OTP product. They handle code generation,
+  // delivery, retries, and abuse prevention server-side. No A2P 10DLC required.
+  // We still record the attempt locally for rate-limiting + audit, but the
+  // codeHash is unused on the Verify path.
+  if (verifyConfigured) {
+    await prisma.phoneVerification.create({
+      data: {
+        phone,
+        codeHash: "TWILIO_VERIFY", // sentinel; Verify owns the code
+        expiresAt: new Date(Date.now() + CODE_TTL_MIN * 60 * 1000),
+        ipAddress: opts.ipAddress || null,
+        contactId: opts.contactId || null,
+      },
+    });
+    const send = await sendViaTwilioVerify({
+      phone,
+      accountSid: cfg.twilioAccountSid!,
+      authToken: cfg.twilioAuthToken!,
+      verifyServiceSid: cfg.twilioVerifyServiceSid!,
+    });
+    if (!send.ok) return { ok: false, error: send.error };
+    return { ok: true, sentTo: phone, expiresInSeconds: CODE_TTL_MIN * 60 };
+  }
+
+  // ── Path 2: Local code + classic Twilio SMS ───────────────────────
+  // Fallback when Verify isn't configured. Generates the code ourselves,
+  // sends via classic SMS. Requires A2P 10DLC for production US delivery.
   const code = String(randomInt(100000, 1000000)); // 6-digit
   const expiresAt = new Date(Date.now() + CODE_TTL_MIN * 60 * 1000);
 
@@ -54,8 +143,6 @@ export async function sendVerificationCode(opts: {
 
   const body = `PennyLime verification code: ${code}. Expires in ${CODE_TTL_MIN} minutes. Reply STOP to opt out.`;
 
-  // Determine if we should bypass real SMS sending
-  const cfg = await getTrackingConfig();
   const twilioConfigured = !!(cfg.twilioAccountSid && cfg.twilioAuthToken && (cfg.twilioFromNumber || cfg.twilioMessagingServiceSid));
 
   if (!twilioConfigured) {
@@ -101,6 +188,54 @@ export async function checkVerificationCode(opts: {
   if (!record) return { ok: false, error: "no active verification, request a new code" };
   if (record.attempts >= MAX_ATTEMPTS) return { ok: false, error: "too many attempts, request a new code" };
 
+  // ── Twilio Verify path ────────────────────────────────────────────
+  // The record was created with codeHash="TWILIO_VERIFY" when Verify was the
+  // sender, so we delegate the actual code check to Twilio's API. They handle
+  // expiration and attempt limits on their side too, but we still track
+  // attempts locally for rate-limiting.
+  if (record.codeHash === "TWILIO_VERIFY") {
+    const cfg = await getTrackingConfig();
+    if (!cfg.twilioAccountSid || !cfg.twilioAuthToken || !cfg.twilioVerifyServiceSid) {
+      return { ok: false, error: "Twilio Verify config missing" };
+    }
+    const check = await checkViaTwilioVerify({
+      phone,
+      code,
+      accountSid: cfg.twilioAccountSid,
+      authToken: cfg.twilioAuthToken,
+      verifyServiceSid: cfg.twilioVerifyServiceSid,
+    });
+    if (!check.ok) return { ok: false, error: check.error };
+    if (!check.approved) {
+      const updated = await prisma.phoneVerification.update({
+        where: { id: record.id },
+        data: { attempts: { increment: 1 } },
+      });
+      return {
+        ok: false,
+        error: "incorrect code",
+        attemptsLeft: Math.max(MAX_ATTEMPTS - updated.attempts, 0),
+      };
+    }
+    await prisma.phoneVerification.update({
+      where: { id: record.id },
+      data: { verifiedAt: new Date(), contactId: opts.contactId || record.contactId },
+    });
+    if (opts.contactId) {
+      await prisma.contact.update({
+        where: { id: opts.contactId },
+        data: { phoneVerifiedAt: new Date(), smsOptIn: true },
+      }).catch(() => {});
+    } else {
+      await prisma.contact.updateMany({
+        where: { phone, phoneVerifiedAt: null },
+        data: { phoneVerifiedAt: new Date() },
+      }).catch(() => {});
+    }
+    return { ok: true, verified: true };
+  }
+
+  // ── Local hash-compare path (legacy / fallback) ───────────────────
   const ok = constantTimeEq(record.codeHash, hashCode(code));
   if (!ok) {
     const updated = await prisma.phoneVerification.update({

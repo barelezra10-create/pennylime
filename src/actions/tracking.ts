@@ -27,6 +27,7 @@ const ALLOWED_FIELDS = [
   "twilioAuthToken",
   "twilioFromNumber",
   "twilioMessagingServiceSid",
+  "twilioVerifyServiceSid",
   "eventMappings",
   "customHeadHtml",
   "customBodyHtml",

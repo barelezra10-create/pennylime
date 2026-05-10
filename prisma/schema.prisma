@@ -645,6 +645,7 @@ model TrackingConfig {
   twilioAuthToken               String?
   twilioFromNumber              String?
   twilioMessagingServiceSid     String?
+  twilioVerifyServiceSid        String?
   // Toggles
   enabled                       Boolean  @default(true)
   testMode                      Boolean  @default(false)
