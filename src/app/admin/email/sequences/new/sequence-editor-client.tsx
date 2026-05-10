@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/admin/page-header";
 import { TiptapEditor } from "@/components/content/tiptap-editor";
-import { createEmailSequence, updateEmailSequence } from "@/actions/email";
+import { createEmailSequence, updateEmailSequence, sendTestEmail } from "@/actions/email";
 import type { SequenceStep } from "@/types/email";
 
 const TRIGGER_TYPES = [
@@ -208,6 +208,9 @@ export function SequenceEditorClient({ sequence }: Props) {
                       placeholder="Email body..."
                     />
                   </div>
+
+                  {/* Send test */}
+                  <SendTestButton subject={step.subject} body={step.body} />
                 </div>
               ))}
             </div>
@@ -246,6 +249,76 @@ export function SequenceEditorClient({ sequence }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SendTestButton({ subject, body }: { subject: string; body: string }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function handleSend() {
+    if (!email.includes("@")) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (!subject.trim() || !body.trim()) {
+      toast.error("Subject and body must be set before sending a test");
+      return;
+    }
+    setSending(true);
+    try {
+      const r = await sendTestEmail({ to: email, subject, body });
+      if (r.ok) {
+        toast.success(`Test sent to ${email}`);
+        setOpen(false);
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#15803d] hover:text-[#166534]"
+      >
+        ✉ Send test email
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-2 rounded-lg bg-[#f0fdf4] border border-[#dcfce7] px-3 py-2">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@example.com"
+        className="flex-1 bg-white rounded px-2.5 py-1.5 text-[12px] border border-[#dcfce7] focus:outline-none focus:ring-1 focus:ring-[#15803d]/40"
+      />
+      <button
+        type="button"
+        onClick={handleSend}
+        disabled={sending}
+        className="rounded bg-[#15803d] text-white px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50 hover:bg-[#166534]"
+      >
+        {sending ? "Sending…" : "Send"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[12px] text-[#71717a] hover:text-black"
+      >
+        Cancel
+      </button>
     </div>
   );
 }

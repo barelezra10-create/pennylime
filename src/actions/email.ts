@@ -150,3 +150,60 @@ export async function getEmailMetrics() {
   const clickRate = totalSent > 0 ? Math.round((totalClicked / totalSent) * 100) : 0;
   return { totalSent, totalOpened, totalClicked, openRate, clickRate, activeCampaigns, activeSequences };
 }
+
+// ─── Test send ──────────────────────────────────────────────
+
+/**
+ * Sends a test email rendered with sample variable values, used by the
+ * sequence editor + template editor "Send test" button. Substitutes the
+ * same {firstName}, {loanAmount}, {applicationCode}, {offerLink}, etc.
+ * placeholders that the email-processor cron handles, but with hardcoded
+ * dummy data so admins can preview without needing a real applicant in
+ * the right state.
+ */
+export async function sendTestEmail(input: {
+  to: string;
+  subject: string;
+  body: string;
+}) {
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/lib/auth");
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return { ok: false as const, error: "Not authenticated" };
+  }
+  if (!input.to || !input.to.includes("@")) {
+    return { ok: false as const, error: "Provide a valid email address" };
+  }
+
+  const sampleVars: Record<string, string> = {
+    firstName: "Sample",
+    lastName: "Applicant",
+    email: input.to,
+    loanAmount: "5,000",
+    applicationCode: "TESTCODE",
+    minAmount: "1,000",
+    maxAmount: "5,000",
+    offerLink: `${process.env.APP_URL || "https://pennylime.com"}/offer/TESTCODE?t=preview`,
+  };
+  const substitute = (text: string) =>
+    text.replace(/\{(\w+)\}/g, (_, key) =>
+      sampleVars[key] != null ? sampleVars[key] : `{${key}}`,
+    );
+
+  const subject = `[TEST] ${substitute(input.subject)}`;
+  const body = substitute(input.body);
+
+  const { sendEmail } = await import("@/lib/emails/send");
+  const result = await sendEmail({ to: input.to, subject, html: body });
+  if (!result.success) {
+    const errorMessage =
+      result.error instanceof Error
+        ? result.error.message
+        : typeof result.error === "string"
+        ? result.error
+        : "Send failed";
+    return { ok: false as const, error: errorMessage };
+  }
+  return { ok: true as const, id: result.id };
+}
