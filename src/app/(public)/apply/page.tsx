@@ -1203,11 +1203,15 @@ function StepPlatforms({
 /* ------------------------------------------------------------------ */
 /*  STEP 4, PLAID BANK LINK                                           */
 /* ------------------------------------------------------------------ */
+type PreviewIncome = { monthlyIncome: number; bankBalance: number | null };
+
 function StepPlaidLink({
   plaidAccessToken,
   plaidAccountId,
   plaidItemId,
   setPlaidData,
+  previewIncome,
+  setPreviewIncome,
   onNext,
   onBack,
 }: {
@@ -1215,15 +1219,13 @@ function StepPlaidLink({
   plaidAccountId: string | null;
   plaidItemId: string | null;
   setPlaidData: (data: { accessToken: string; accountId: string; itemId: string }) => void;
+  previewIncome: PreviewIncome | null;
+  setPreviewIncome: (v: PreviewIncome | null) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [previewIncome, setPreviewIncome] = useState<{
-    monthlyIncome: number;
-    bankBalance: number | null;
-  } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const linked = !!(plaidAccessToken && plaidAccountId && plaidItemId);
 
@@ -1636,6 +1638,7 @@ function StepReview({
   weeklyEarnings,
   bankLinked,
   identityNeedsReview,
+  plaidPreviewIncome,
   submitting,
   onBack,
   onSubmit,
@@ -1648,6 +1651,7 @@ function StepReview({
   weeklyEarnings: string;
   bankLinked: boolean;
   identityNeedsReview: boolean;
+  plaidPreviewIncome: PreviewIncome | null;
   submitting: boolean;
   onBack: () => void;
   onSubmit: () => void;
@@ -1723,11 +1727,30 @@ function StepReview({
               <p className="mt-0.5 text-[13px] font-medium text-[#0a0a0a]">{platformLabels}</p>
             </div>
             <div>
-              <p className="text-[11px] text-[#71717a]">Avg. weekly deposits</p>
-              <p className="mt-0.5 text-[13px] font-medium text-[#15803d]">
+              <p className="text-[11px] text-[#71717a]">You said (avg. weekly)</p>
+              <p className="mt-0.5 text-[13px] font-medium text-[#0a0a0a]">
                 ${Number(weeklyEarnings).toLocaleString()}/week (about ${(Number(weeklyEarnings) * 52).toLocaleString()}/year)
               </p>
             </div>
+            {plaidPreviewIncome && plaidPreviewIncome.monthlyIncome > 0 && (
+              <div className="rounded-lg bg-white border border-[#dcfce7] px-3 py-2.5">
+                <p className="text-[11px] text-[#15803d] font-semibold uppercase tracking-[0.04em]">
+                  Plaid verified (last 3 months)
+                </p>
+                <p className="mt-0.5 text-[13px] font-bold text-[#15803d]">
+                  ${Math.round(plaidPreviewIncome.monthlyIncome).toLocaleString()}/month
+                  <span className="ml-1 text-[#52525b] font-medium">
+                    (~${Math.round(plaidPreviewIncome.monthlyIncome / 4.33).toLocaleString()}/week, ~$
+                    {Math.round(plaidPreviewIncome.monthlyIncome * 12).toLocaleString()}/year)
+                  </span>
+                </p>
+                {plaidPreviewIncome.bankBalance != null && (
+                  <p className="mt-0.5 text-[11px] text-[#71717a]">
+                    Current balance: ${Math.round(plaidPreviewIncome.bankBalance).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -2045,6 +2068,7 @@ function ApplyPageInner() {
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
+  const [plaidPreviewIncome, setPlaidPreviewIncome] = useState<PreviewIncome | null>(null);
   const [identityResult, setIdentityResult] = useState<{ needsReview: boolean; matchedName: string | null } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -2332,6 +2356,8 @@ function ApplyPageInner() {
                           setPlaidAccountId(accountId);
                           setPlaidItemId(itemId);
                         }}
+                        previewIncome={plaidPreviewIncome}
+                        setPreviewIncome={setPlaidPreviewIncome}
                         onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
                         onBack={() => setStep(step - 1)}
                       />
@@ -2363,6 +2389,7 @@ function ApplyPageInner() {
                         weeklyEarnings={weeklyEarnings}
                         bankLinked={!!(plaidAccessToken && plaidAccountId && plaidItemId)}
                         identityNeedsReview={identityResult?.needsReview ?? true}
+                        plaidPreviewIncome={plaidPreviewIncome}
                         submitting={submitting}
                         onBack={() => setStep(step - 1)}
                         onSubmit={handleSubmit}
@@ -2449,6 +2476,8 @@ function ApplyPageInner() {
                     setPlaidAccountId(accountId);
                     setPlaidItemId(itemId);
                   }}
+                  previewIncome={plaidPreviewIncome}
+                  setPreviewIncome={setPlaidPreviewIncome}
                   onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 5); } catch {} setStep(5); }}
                   onBack={() => setStep(3)}
                 />
@@ -2474,6 +2503,7 @@ function ApplyPageInner() {
                   weeklyEarnings={weeklyEarnings}
                   bankLinked={!!(plaidAccessToken && plaidAccountId && plaidItemId)}
                   identityNeedsReview={identityResult?.needsReview ?? true}
+                  plaidPreviewIncome={plaidPreviewIncome}
                   submitting={submitting}
                   onBack={() => setStep(5)}
                   onSubmit={handleSubmit}
