@@ -113,6 +113,23 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
     console.error("Post-submit Plaid pipeline failed:", err);
   }
 
+  // Move the linked contact to APPLICANT stage so the "Application Submitted"
+  // email sequence enrolls them. linkContactApplication is called separately
+  // by the apply page right after this returns; we update stage here so the
+  // enrollment hook fires from one place.
+  try {
+    const { updateContactStage } = await import("@/actions/contacts");
+    const linked = await prisma.contact.findUnique({
+      where: { email: data.email },
+      select: { id: true, stage: true },
+    });
+    if (linked && linked.stage !== "APPLICANT") {
+      await updateContactStage(linked.id, "APPLICANT");
+    }
+  } catch (err) {
+    console.error("Submit-stage update failed:", err);
+  }
+
   return { success: true, applicationCode, applicationId: application.id };
 }
 
@@ -227,6 +244,7 @@ export async function approveApplication(
   });
 
   // Server-side conversion fire (Google Ads OCI / Meta CAPI / TikTok / Microsoft)
+  // and contact stage update (which enrolls in the Application Approved email sequence).
   const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
   if (linkedContact) {
     const { fireServerEvent } = await import("@/lib/tracking/server-events");
@@ -236,6 +254,10 @@ export async function approveApplication(
       applicationId,
       value: Number(application.loanAmount),
     }).catch((err) => console.error("[tracking] approved event failed:", err));
+    const { updateContactStage } = await import("@/actions/contacts");
+    updateContactStage(linkedContact.id, "APPROVED").catch((err) =>
+      console.error("[email] approved stage update failed:", err),
+    );
   }
 
   return { success: true, application: updatedApp };
@@ -265,6 +287,15 @@ export async function rejectApplication(applicationId: string, reason: string) {
     performedBy: session.user.email,
     details: { reason },
   });
+
+  // Move linked contact to REJECTED stage so the Application Declined email fires.
+  const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
+  if (linkedContact) {
+    const { updateContactStage } = await import("@/actions/contacts");
+    updateContactStage(linkedContact.id, "REJECTED").catch((err) =>
+      console.error("[email] rejected stage update failed:", err),
+    );
+  }
 
   return { success: true, application };
 }

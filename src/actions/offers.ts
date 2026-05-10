@@ -269,6 +269,16 @@ export async function acceptOffer(input: {
               increaseTransferStatus: transfer.data.status,
             },
           });
+          // Move linked contact to FUNDED stage so the celebration email fires.
+          const linkedContact = await prisma.contact.findFirst({
+            where: { applicationId: app.id },
+          });
+          if (linkedContact) {
+            const { updateContactStage } = await import("@/actions/contacts");
+            updateContactStage(linkedContact.id, "FUNDED").catch((err) =>
+              console.error("[email] funded stage update failed:", err),
+            );
+          }
         } else {
           await prisma.application.update({
             where: { id: app.id },

@@ -156,6 +156,41 @@ export async function upsertContact(data: {
   return contact;
 }
 
+// Maps a Contact stage to the email sequence that should fire on entry.
+// Driven by EmailSequence.triggerType = "stage_change" + triggerValue = stage.
+// Sequence rows are seeded by scripts/seed-email-sequences.ts.
+const STAGE_EMAIL_TRIGGERS: Record<string, string> = {
+  APPLICANT: "APPLICANT",
+  APPROVED: "APPROVED",
+  REJECTED: "REJECTED",
+  FUNDED: "FUNDED",
+};
+
+async function enrollInStageSequence(contactId: string, stage: string) {
+  const triggerValue = STAGE_EMAIL_TRIGGERS[stage];
+  if (!triggerValue) return;
+  const seq = await prisma.emailSequence.findFirst({
+    where: { triggerType: "stage_change", triggerValue, active: true },
+  });
+  if (!seq) return;
+  await prisma.sequenceEnrollment.upsert({
+    where: { contactId_sequenceId: { contactId, sequenceId: seq.id } },
+    update: {
+      // If they hit the stage again somehow, re-fire from step 0.
+      status: "ACTIVE",
+      currentStep: 0,
+      nextSendAt: new Date(),
+    },
+    create: {
+      contactId,
+      sequenceId: seq.id,
+      status: "ACTIVE",
+      currentStep: 0,
+      nextSendAt: new Date(),
+    },
+  });
+}
+
 export async function updateContactStage(id: string, stage: string) {
   const updated = await prisma.contact.update({ where: { id }, data: { stage } });
   // Fire server-side conversion when entering high-value stages
@@ -171,6 +206,11 @@ export async function updateContactStage(id: string, stage: string) {
       console.error("[tracking] fireServerEvent failed:", err);
     });
   }
+  // Email sequence enrollment for stage-triggered messages. Best-effort —
+  // failures are logged but never break the stage update itself.
+  enrollInStageSequence(id, stage).catch((err) => {
+    console.error("[email] enrollInStageSequence failed:", err);
+  });
   return updated;
 }
 
