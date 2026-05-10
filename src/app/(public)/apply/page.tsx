@@ -2122,14 +2122,22 @@ function StepPlaidLink({
       className="w-full"
     >
       <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
-        Link your bank
+        Where should we send your advance?
       </h2>
       <p className="mt-2 text-[15px] text-[#52525b]">
-        Plaid securely connects your bank so we can read 90 days of platform deposits and set up disbursement.
+        We&rsquo;ll deposit your approved funds into this account. We&rsquo;ll also verify your income via Plaid below.
       </p>
 
-      {/* Manual bank info */}
-      <div className="mt-8 flex flex-col gap-4">
+      {/* Manual bank info — destination account for disbursement */}
+      <div className="mt-8 rounded-xl bg-[#f0fdf4] border border-[#dcfce7] px-4 py-3">
+        <p className="text-[11px] uppercase tracking-[0.06em] font-bold text-[#15803d]">
+          Disbursement account
+        </p>
+        <p className="mt-0.5 text-[12px] text-[#15803d]/80">
+          Funds will be deposited here within 1 business day of approval.
+        </p>
+      </div>
+      <div className="mt-4 flex flex-col gap-4">
         <div>
           <label className="mb-1.5 block text-[14px] font-semibold text-black">Bank name</label>
           <input
@@ -2167,7 +2175,17 @@ function StepPlaidLink({
         </div>
       </div>
 
-      <div className="mt-6">
+      {/* Income verification heading */}
+      <div className="mt-8 mb-3">
+        <p className="text-[11px] uppercase tracking-[0.06em] font-bold text-[#71717a]">
+          Income verification
+        </p>
+        <p className="mt-0.5 text-[12px] text-[#71717a]">
+          Securely connect the same bank so we can verify your deposits (we only read, never move money).
+        </p>
+      </div>
+
+      <div>
         {linked ? (
           <motion.div
             className="flex flex-col items-center gap-4 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-8"
