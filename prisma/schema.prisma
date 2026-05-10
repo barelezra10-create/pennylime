@@ -57,6 +57,12 @@ model Application {
   addressState             String?
   addressZip               String?
   dateOfBirth              String?
+  bankName                 String?
+  bankRoutingNumberManual  String?
+  bankAccountNumberManual  String?
+  bankInfoMismatch         Boolean   @default(false)
+  refinedMonthlyIncome     Decimal?
+  classifications          TransactionClassification[]
   plaidIdentityAddress     String?
   plaidIdentityEmail       String?
   plaidIdentityPhone       String?
@@ -81,6 +87,24 @@ model Application {
   @@index([email])
   @@index([ssnHash])
   @@index([plaidItemId])
+}
+
+model TransactionClassification {
+  id               String   @id @default(uuid())
+  applicationId    String
+  counterpartyName String
+  classification   String
+  txCount          Int
+  totalAmount      Decimal
+  isInflow         Boolean  @default(true)
+  sampleTxId       String
+  sampleTxDate     DateTime
+  sampleTxAmount   Decimal
+  classifiedAt     DateTime @default(now())
+  application      Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@unique([applicationId, counterpartyName])
+  @@index([applicationId])
 }
 
 model Document {

@@ -99,6 +99,14 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       addressState: data.addressState || null,
       addressZip: data.addressZip || null,
       dateOfBirth: data.dateOfBirth || null,
+      bankName: data.bankName || null,
+      bankRoutingNumberManual: data.bankRoutingNumberManual || null,
+      // Encrypt the manually-entered account number with the same key used
+      // for Plaid access tokens — it's a sensitive identifier we shouldn't
+      // store in plaintext.
+      bankAccountNumberManual: data.bankAccountNumberManual
+        ? encrypt(data.bankAccountNumberManual)
+        : null,
     },
   });
 
