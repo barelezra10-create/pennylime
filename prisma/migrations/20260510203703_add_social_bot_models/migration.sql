@@ -1,6 +1,3 @@
--- DropForeignKey
-ALTER TABLE "TransactionClassification" DROP CONSTRAINT "TransactionClassification_applicationId_fkey";
-
 -- CreateTable
 CREATE TABLE "SocialAccount" (
     "id" TEXT NOT NULL,
@@ -88,9 +85,6 @@ CREATE INDEX "EngagementTarget_platform_status_createdAt_idx" ON "EngagementTarg
 
 -- CreateIndex
 CREATE INDEX "EngagementLog_accountId_createdAt_idx" ON "EngagementLog"("accountId", "createdAt");
-
--- AddForeignKey
-ALTER TABLE "TransactionClassification" ADD CONSTRAINT "TransactionClassification_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SocialPost" ADD CONSTRAINT "SocialPost_accountId_fkey" FOREIGN KEY ("accountId") REFERENCES "SocialAccount"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
