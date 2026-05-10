@@ -5,13 +5,16 @@ const IV_LEN = 12;
 const TAG_LEN = 16;
 const SALT = Buffer.from("pennylime-social-v1", "utf8");
 
+let _cachedKey: Buffer | undefined;
 function deriveKey(): Buffer {
+  if (_cachedKey) return _cachedKey;
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) throw new Error("NEXTAUTH_SECRET required for social crypto");
-  return crypto.scryptSync(secret, SALT, 32);
+  _cachedKey = crypto.scryptSync(secret, SALT, 32);
+  return _cachedKey;
 }
 
-export function encrypt(plaintext: string): string {
+export function encryptToken(plaintext: string): string {
   const key = deriveKey();
   const iv = crypto.randomBytes(IV_LEN);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
@@ -21,7 +24,7 @@ export function encrypt(plaintext: string): string {
   return Buffer.concat([iv, tag, encrypted]).toString("base64");
 }
 
-export function decrypt(payload: string): string {
+export function decryptToken(payload: string): string {
   const buf = Buffer.from(payload, "base64");
   const iv = buf.subarray(0, IV_LEN);
   const tag = buf.subarray(IV_LEN, IV_LEN + TAG_LEN);
