@@ -47,29 +47,41 @@ export async function fetchAndStoreIncome(applicationId: string) {
     const startDate = threeMonthsAgo.toISOString().split("T")[0];
     const endDate = now.toISOString().split("T")[0];
 
-    // Pull transactions, balances, identity, and item info in parallel.
-    const [txResp, balResp, idResp, itemResp] = await Promise.all([
-      plaidClient.transactionsGet({
-        access_token: accessToken,
-        start_date: startDate,
-        end_date: endDate,
-      }),
+    // Pull balances, identity, and item info in parallel — these always work
+    // when the corresponding Plaid products are enabled. Transactions is
+    // pulled separately and gracefully skipped if not approved yet.
+    const [balResp, idResp, itemResp] = await Promise.all([
       plaidClient.accountsBalanceGet({ access_token: accessToken }),
       plaidClient.identityGet({ access_token: accessToken }),
       plaidClient.itemGet({ access_token: accessToken }),
     ]);
 
     // ── Income & cadence (Plaid convention: negative amount = money in) ──
-    const deposits = txResp.data.transactions.filter((tx) => tx.amount < 0);
-    const totalDeposits = deposits.reduce((s, tx) => s + Math.abs(tx.amount), 0);
-    const monthlyIncome = totalDeposits / 3;
-    const avgWeeklyIncome = totalDeposits / 13; // 90 days ≈ 13 weeks
-    const depositCount90d = deposits.length;
-    const largestDeposit = deposits.reduce(
-      (max, tx) => Math.max(max, Math.abs(tx.amount)),
-      0
-    );
-    const depositCadence = classifyCadence(depositCount90d);
+    // Skip if Transactions product isn't enabled in production yet.
+    let monthlyIncome: number | null = null;
+    let avgWeeklyIncome: number | null = null;
+    let depositCount90d: number | null = null;
+    let largestDeposit: number | null = null;
+    let depositCadence: string | null = null;
+    try {
+      const txResp = await plaidClient.transactionsGet({
+        access_token: accessToken,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      const deposits = txResp.data.transactions.filter((tx) => tx.amount < 0);
+      const totalDeposits = deposits.reduce((s, tx) => s + Math.abs(tx.amount), 0);
+      monthlyIncome = totalDeposits / 3;
+      avgWeeklyIncome = totalDeposits / 13; // 90 days ≈ 13 weeks
+      depositCount90d = deposits.length;
+      largestDeposit = deposits.reduce(
+        (max, tx) => Math.max(max, Math.abs(tx.amount)),
+        0
+      );
+      depositCadence = classifyCadence(depositCount90d);
+    } catch (txErr) {
+      console.warn("Transactions fetch skipped (product not enabled?):", txErr);
+    }
 
     // ── Account info (resolve the linked account; fall back to first) ──
     const account =
@@ -336,21 +348,24 @@ export async function previewPlaidIncome(input: { encryptedAccessToken: string }
     const now = new Date();
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
 
-    const [txResp, balResp] = await Promise.all([
-      plaidClient.transactionsGet({
+    // Balance always available; transactions may not be (production gating).
+    const balResp = await plaidClient.accountsBalanceGet({ access_token: accessToken });
+    const balance = balResp.data.accounts[0]?.balances?.current ?? null;
+
+    let monthlyIncome = 0;
+    try {
+      const txResp = await plaidClient.transactionsGet({
         access_token: accessToken,
         start_date: threeMonthsAgo.toISOString().split("T")[0],
         end_date: now.toISOString().split("T")[0],
-      }),
-      plaidClient.accountsBalanceGet({ access_token: accessToken }),
-    ]);
-
-    const deposits = txResp.data.transactions
-      .filter((tx) => tx.amount < 0)
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-    const monthlyIncome = deposits / 3;
-
-    const balance = balResp.data.accounts[0]?.balances?.current ?? null;
+      });
+      const deposits = txResp.data.transactions
+        .filter((tx) => tx.amount < 0)
+        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+      monthlyIncome = deposits / 3;
+    } catch (txErr) {
+      console.warn("previewPlaidIncome: transactions skipped:", txErr);
+    }
 
     return {
       ok: true as const,

@@ -18,10 +18,24 @@ export async function POST(req: NextRequest) {
       process.env.PLAID_REDIRECT_URI ||
       (process.env.APP_URL ? `${process.env.APP_URL}/apply` : undefined);
 
+    // PLAID_PRODUCTS env var controls which products we request. Defaults to
+    // all three for full underwriting. Set to e.g. "auth,identity" to drop
+    // Transactions while waiting for production approval.
+    const productMap: Record<string, Products> = {
+      auth: Products.Auth,
+      identity: Products.Identity,
+      transactions: Products.Transactions,
+    };
+    const productList = (process.env.PLAID_PRODUCTS || "auth,identity,transactions")
+      .split(",")
+      .map((p) => p.trim().toLowerCase())
+      .map((p) => productMap[p])
+      .filter((p): p is Products => Boolean(p));
+
     const response = await plaidClient.linkTokenCreate({
       user: { client_user_id: applicationId },
       client_name: "PennyLime",
-      products: [Products.Auth, Products.Identity, Products.Transactions],
+      products: productList.length > 0 ? productList : [Products.Auth, Products.Identity],
       country_codes: [CountryCode.Us],
       language: "en",
       webhook: process.env.PLAID_WEBHOOK_URL,
