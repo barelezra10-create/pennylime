@@ -11,6 +11,7 @@ CREATE TABLE "SocialAccount" (
     "botStatus" TEXT NOT NULL DEFAULT 'healthy',
     "lastBotAction" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SocialAccount_pkey" PRIMARY KEY ("id")
 );

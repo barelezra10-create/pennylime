@@ -803,7 +803,7 @@ model PhoneVerification {
 // ============================================================================
 
 model SocialAccount {
-  id                String          @id @default(cuid())
+  id                String          @id @default(uuid())
   platform          String          // "instagram" | "facebook" | "linkedin" | "tiktok"
   handle            String          // "@pennylime"
   accessToken       String          // encrypted at rest (AES-GCM via NEXTAUTH_SECRET)
@@ -814,6 +814,7 @@ model SocialAccount {
   botStatus         String          @default("healthy") // "healthy" | "challenged" | "banned"
   lastBotAction     DateTime?
   createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   posts             SocialPost[]
   engagements       EngagementLog[]
@@ -822,7 +823,7 @@ model SocialAccount {
 }
 
 model SocialPost {
-  id             String        @id @default(cuid())
+  id             String        @id @default(uuid())
   accountId      String
   account        SocialAccount @relation(fields: [accountId], references: [id])
   topic          String
@@ -839,7 +840,7 @@ model SocialPost {
 }
 
 model TopicPool {
-  id         String    @id @default(cuid())
+  id         String    @id @default(uuid())
   topic      String    @db.Text
   category   String    // "tax" | "cashflow" | "platform-tips" | "earnings" | "savings" | "news"
   lastUsedAt DateTime?
@@ -848,7 +849,7 @@ model TopicPool {
 }
 
 model EngagementTarget {
-  id           String    @id @default(cuid())
+  id           String    @id @default(uuid())
   platform     String
   source       String    // "hashtag:#uberdriver" | "geo:los-angeles+keyword:doordash"
   targetHandle String
@@ -862,7 +863,7 @@ model EngagementTarget {
 }
 
 model EngagementLog {
-  id           String        @id @default(cuid())
+  id           String        @id @default(uuid())
   accountId    String
   account      SocialAccount @relation(fields: [accountId], references: [id])
   platform     String
