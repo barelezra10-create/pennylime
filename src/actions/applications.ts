@@ -38,6 +38,9 @@ const submitSchema = z.object({
   addressState: z.string().optional(),
   addressZip: z.string().optional(),
   dateOfBirth: z.string().optional(),
+  bankName: z.string().optional(),
+  bankRoutingNumberManual: z.string().optional(),
+  bankAccountNumberManual: z.string().optional(),
 });
 
 export async function submitApplication(input: z.infer<typeof submitSchema>) {

@@ -14,6 +14,8 @@ import { submitApplication } from "@/actions/applications";
 import { previewPlaidIncome, verifyApplicantIdentity } from "@/actions/plaid";
 import { upsertContact, updateContactLastStep, linkContactApplication } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
+import { getAmbiguousCounterpartiesByToken, setTransactionClassificationsBulk } from "@/actions/classify-transactions";
+import type { AmbiguousCounterparty } from "@/actions/classify-transactions";
 import type { FormStep } from "@/types/form-template";
 import { DynamicStep } from "@/components/apply/dynamic-step";
 import { PhoneVerification } from "@/components/apply/phone-verification";
@@ -22,7 +24,19 @@ import { PlatformLogo } from "@/components/funnel/platform-logo";
 /* ------------------------------------------------------------------ */
 /*  CONSTANTS                                                           */
 /* ------------------------------------------------------------------ */
-const STEPS = ["Amount", "About you", "Your info", "Platforms", "Bank link", "Verified", "Review"];
+const STEPS = [
+  "Amount",        // 0
+  "Email",         // 1
+  "Phone",         // 2
+  "About you",     // 3
+  "Your details",  // 4
+  "SSN",           // 5
+  "Platforms",     // 6
+  "Bank link",     // 7
+  "Classify",      // 8
+  "Verified",      // 9
+  "Review",        // 10
+];
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
 
@@ -499,6 +513,7 @@ type InfoForm = {
   lastName: string;
   email: string;
   phone: string;
+  ssn: string;
   dob: string;
   addressStreet: string;
   addressCity: string;
@@ -748,6 +763,736 @@ function StepInfo({
         >
           Continue &rarr;
         </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP EMAIL                                                          */
+/* ------------------------------------------------------------------ */
+function StepEmail({
+  email,
+  setEmail,
+  errors,
+  onNext,
+  onBack,
+}: {
+  email: string;
+  setEmail: (v: string) => void;
+  errors: Record<string, string>;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const inputClass = (field: string) =>
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
+      errors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+    }`;
+
+  const handleNext = () => {
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    onNext();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        What&apos;s your email?
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        We&apos;ll send your application status here.
+      </p>
+
+      <div className="mt-8">
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">Email address</label>
+        <input
+          type="email"
+          autoFocus
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleNext(); }}
+          placeholder="you@example.com"
+          className={inputClass("email")}
+        />
+        {errors.email && <p className="mt-1 text-[12px] text-red-500">{errors.email}</p>}
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={handleNext}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP PHONE (phone entry only — verification happens via overlay)    */
+/* ------------------------------------------------------------------ */
+function StepPhoneOnly({
+  phone,
+  setPhone,
+  errors,
+  onNext,
+  onBack,
+}: {
+  phone: string;
+  setPhone: (v: string) => void;
+  errors: Record<string, string>;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const inputClass = (field: string) =>
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
+      errors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+    }`;
+
+  const handleNext = () => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
+    }
+    onNext();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        What&apos;s your phone number?
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        We&apos;ll send a verification code to this number.
+      </p>
+
+      <div className="mt-8">
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">Phone number</label>
+        <input
+          type="tel"
+          autoFocus
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleNext(); }}
+          placeholder="(555) 123-4567"
+          className={inputClass("phone")}
+        />
+        {errors.phone && <p className="mt-1 text-[12px] text-red-500">{errors.phone}</p>}
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={handleNext}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP DETAILS (name + DOB + address — no email/phone)               */
+/* ------------------------------------------------------------------ */
+function StepDetails({
+  form,
+  setForm,
+  errors,
+  onNext,
+  onBack,
+}: {
+  form: InfoForm;
+  setForm: (f: InfoForm) => void;
+  errors: Record<string, string>;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const [dobMonth, setDobMonth] = useState(() => form.dob ? form.dob.slice(5, 7) : "");
+  const [dobDay, setDobDay] = useState(() => form.dob ? form.dob.slice(8, 10) : "");
+  const [dobYear, setDobYear] = useState(() => form.dob ? form.dob.slice(0, 4) : "");
+
+  const updateDob = (m: string, d: string, y: string) => {
+    if (m.length === 2 && d.length === 2 && y.length === 4) {
+      setForm({ ...form, dob: `${y}-${m}-${d}` });
+    } else {
+      setForm({ ...form, dob: "" });
+    }
+  };
+
+  const inputClass = (field: string) =>
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
+      errors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+    }`;
+
+  const selectClass = (field: string) =>
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] outline-none transition-all duration-200 appearance-none ${
+      errors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+    }`;
+
+  const handleNext = () => {
+    const fieldErrors: Record<string, string> = {};
+    if (!form.firstName || form.firstName.trim().length < 1) fieldErrors.firstName = "First name is required";
+    if (!form.lastName || form.lastName.trim().length < 1) fieldErrors.lastName = "Last name is required";
+    if (!form.dob || !/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) {
+      fieldErrors.dob = "Enter a valid date of birth";
+    } else {
+      const year = parseInt(form.dob.slice(0, 4), 10);
+      if (year < 1900 || year > 2010) fieldErrors.dob = "Year must be between 1900 and 2010";
+    }
+    if (!form.addressStreet || form.addressStreet.trim().length < 3) fieldErrors.addressStreet = "Enter your street address";
+    if (!form.addressCity || form.addressCity.trim().length < 2) fieldErrors.addressCity = "Enter your city";
+    if (!form.addressState || !US_STATE_CODES.includes(form.addressState)) fieldErrors.addressState = "Select a valid state";
+    if (!form.addressZip || !/^\d{5}$/.test(form.addressZip)) fieldErrors.addressZip = "Enter a valid 5-digit ZIP";
+
+    if (Object.keys(fieldErrors).length > 0) {
+      // surface inline; parent errors state is managed by parent but we can toast for now
+      toast.error(Object.values(fieldErrors)[0]);
+      return;
+    }
+    onNext();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Tell us about yourself
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        We need this to verify your identity.
+      </p>
+
+      <div className="mt-8 flex flex-col gap-5">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">First name</label>
+            <input
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              placeholder="Marcus"
+              className={inputClass("firstName")}
+            />
+            {errors.firstName && <p className="mt-1 text-[12px] text-red-500">{errors.firstName}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">Last name</label>
+            <input
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              placeholder="Thompson"
+              className={inputClass("lastName")}
+            />
+            {errors.lastName && <p className="mt-1 text-[12px] text-red-500">{errors.lastName}</p>}
+          </div>
+        </div>
+
+        {/* Date of birth */}
+        <div>
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">Date of birth</label>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={dobMonth}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setDobMonth(v);
+                  updateDob(v, dobDay, dobYear);
+                }}
+                placeholder="MM"
+                className={`w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 text-center ${
+                  errors.dob
+                    ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                }`}
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={2}
+                value={dobDay}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                  setDobDay(v);
+                  updateDob(dobMonth, v, dobYear);
+                }}
+                placeholder="DD"
+                className={`w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 text-center ${
+                  errors.dob
+                    ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                }`}
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={dobYear}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                  setDobYear(v);
+                  updateDob(dobMonth, dobDay, v);
+                }}
+                placeholder="YYYY"
+                className={`w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 text-center ${
+                  errors.dob
+                    ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                }`}
+              />
+            </div>
+          </div>
+          {errors.dob && <p className="mt-1 text-[12px] text-red-500">{errors.dob}</p>}
+        </div>
+
+        {/* Address */}
+        <div>
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">Home address</label>
+          <div className="flex flex-col gap-3">
+            <div>
+              <input
+                value={form.addressStreet}
+                onChange={(e) => setForm({ ...form, addressStreet: e.target.value })}
+                placeholder="123 Main Street"
+                className={inputClass("addressStreet")}
+              />
+              {errors.addressStreet && <p className="mt-1 text-[12px] text-red-500">{errors.addressStreet}</p>}
+            </div>
+            <div>
+              <input
+                value={form.addressCity}
+                onChange={(e) => setForm({ ...form, addressCity: e.target.value })}
+                placeholder="City"
+                className={inputClass("addressCity")}
+              />
+              {errors.addressCity && <p className="mt-1 text-[12px] text-red-500">{errors.addressCity}</p>}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <select
+                  value={form.addressState}
+                  onChange={(e) => setForm({ ...form, addressState: e.target.value })}
+                  className={selectClass("addressState")}
+                >
+                  <option value="">State</option>
+                  {US_STATES.map((s) => (
+                    <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                  <svg className="h-4 w-4 text-[#a1a1aa]" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </div>
+                {errors.addressState && <p className="mt-1 text-[12px] text-red-500">{errors.addressState}</p>}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={5}
+                  value={form.addressZip}
+                  onChange={(e) => setForm({ ...form, addressZip: e.target.value.replace(/\D/g, "").slice(0, 5) })}
+                  placeholder="ZIP"
+                  className={inputClass("addressZip")}
+                />
+                {errors.addressZip && <p className="mt-1 text-[12px] text-red-500">{errors.addressZip}</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={handleNext}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP SSN                                                            */
+/* ------------------------------------------------------------------ */
+const formatSsn = (d: string) =>
+  d.replace(/\D/g, "").slice(0, 9).replace(/(\d{3})(\d{2})(\d{4})/, "$1-$2-$3");
+
+function StepSSN({
+  ssn,
+  setSsn,
+  errors,
+  onNext,
+  onBack,
+}: {
+  ssn: string;
+  setSsn: (v: string) => void;
+  errors: Record<string, string>;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const [show, setShow] = useState(false);
+
+  const inputClass = (field: string) =>
+    `w-full rounded-xl border bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 ${
+      errors[field]
+        ? "border-red-300 focus:border-red-400 focus:ring-2 focus:ring-red-100"
+        : "border-[#e4e4e7] focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+    }`;
+
+  const handleNext = () => {
+    const clean = ssn.replace(/\D/g, "");
+    if (!/^\d{9}$/.test(clean)) {
+      toast.error("Please enter a valid 9-digit SSN");
+      return;
+    }
+    onNext();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Verify your identity
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        As a regulated lender we need your SSN to confirm identity. Used only for verification, never shared, never a credit check.
+      </p>
+
+      <div className="mt-8">
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">Social Security Number</label>
+        <div className="relative">
+          <input
+            type={show ? "text" : "password"}
+            inputMode="numeric"
+            value={ssn}
+            onChange={(e) => setSsn(formatSsn(e.target.value))}
+            onKeyDown={(e) => { if (e.key === "Enter") handleNext(); }}
+            placeholder="XXX-XX-XXXX"
+            className={inputClass("ssn") + " pr-12"}
+          />
+          <button
+            type="button"
+            onClick={() => setShow(!show)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#71717a] hover:text-[#0a0a0a] p-1"
+            aria-label={show ? "Hide SSN" : "Show SSN"}
+          >
+            {show ? (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            )}
+          </button>
+        </div>
+        {errors.ssn && <p className="mt-1 text-[12px] text-red-500">{errors.ssn}</p>}
+      </div>
+
+      {/* Trust card */}
+      <div className="mt-6 flex items-start gap-3 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-4 py-4">
+        <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+        </svg>
+        <p className="text-[12px] leading-relaxed text-[#15803d]">
+          Your SSN is encrypted end to end and only used for identity verification. We never sell it or share it.
+        </p>
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={handleNext}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP CLASSIFY TRANSACTIONS                                          */
+/* ------------------------------------------------------------------ */
+function StepClassifyTransactions({
+  plaidAccessToken,
+  classifications,
+  setClassifications,
+  onNext,
+  onBack,
+}: {
+  plaidAccessToken: string | null;
+  classifications: Map<string, { classification: "BUSINESS" | "PERSONAL" | "MIXED"; txCount: number; totalAmount: number; sampleTxId: string; sampleTxDate: string; sampleTxAmount: number }>;
+  setClassifications: (m: Map<string, { classification: "BUSINESS" | "PERSONAL" | "MIXED"; txCount: number; totalAmount: number; sampleTxId: string; sampleTxDate: string; sampleTxAmount: number }>) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const [ambiguous, setAmbiguous] = useState<AmbiguousCounterparty[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!plaidAccessToken) {
+      // Defensive: bank not linked — go back
+      setTimeout(onBack, 500);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    getAmbiguousCounterpartiesByToken(plaidAccessToken)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          setAmbiguous(res.ambiguous);
+          // Skip already-classified ones from previous session
+          const firstUnclassified = res.ambiguous.findIndex(
+            (a) => !classifications.has(a.counterpartyName),
+          );
+          setCurrentIndex(firstUnclassified === -1 ? res.ambiguous.length : firstUnclassified);
+          if (res.ambiguous.length === 0) {
+            onNext();
+          }
+        } else {
+          setError(res.error);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plaidAccessToken]);
+
+  const classify = (label: "BUSINESS" | "PERSONAL" | "MIXED") => {
+    const item = ambiguous[currentIndex];
+    if (!item) return;
+    const next = new Map(classifications);
+    next.set(item.counterpartyName, {
+      classification: label,
+      txCount: item.txCount,
+      totalAmount: item.totalAmount,
+      sampleTxId: item.sampleTxId,
+      sampleTxDate: item.sampleTxDate,
+      sampleTxAmount: item.sampleTxAmount,
+    });
+    setClassifications(next);
+    const nextIndex = currentIndex + 1;
+    setCurrentIndex(nextIndex);
+    if (nextIndex >= ambiguous.length) {
+      // All classified — auto-advance after a short delay
+      setTimeout(onNext, 600);
+    }
+  };
+
+  const item = ambiguous[currentIndex];
+  const allDone = currentIndex >= ambiguous.length && ambiguous.length > 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Quick transaction check
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Help us understand which deposits are business income so we can size your advance accurately.
+      </p>
+
+      {loading ? (
+        <div className="mt-10 flex flex-col items-center gap-4">
+          <svg className="h-8 w-8 animate-spin text-[#15803d]" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-[14px] text-[#52525b]">Loading your transactions&hellip;</p>
+        </div>
+      ) : error ? (
+        <div className="mt-8 rounded-xl border border-[#fde68a] bg-[#fffbeb] p-6 text-center">
+          <p className="text-[14px] text-[#92400e]">Could not load transactions. You can continue anyway.</p>
+          <button type="button" onClick={onNext} className="mt-4 rounded-xl bg-[#15803d] px-6 py-2.5 text-[14px] font-semibold text-white">
+            Continue &rarr;
+          </button>
+        </div>
+      ) : allDone ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mt-10 flex flex-col items-center gap-4 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-8 text-center"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#15803d]">
+            <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <p className="text-[16px] font-bold text-[#0a0a0a]">All classified!</p>
+          <p className="text-[13px] text-[#52525b]">Moving to next step&hellip;</p>
+        </motion.div>
+      ) : item ? (
+        <>
+          {/* Progress header */}
+          <div className="mt-6 flex items-center justify-between text-[13px]">
+            <span className="font-semibold text-[#0a0a0a]">{currentIndex} of {ambiguous.length} classified</span>
+            <span className="text-[#71717a]">{ambiguous.length - currentIndex} remaining</span>
+          </div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-[#e4e4e7] overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-[#15803d]"
+              animate={{ width: `${(currentIndex / ambiguous.length) * 100}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+
+          {/* Transaction card */}
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mt-6 rounded-xl border border-[#e4e4e7] bg-white p-5"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[17px] font-bold text-[#0a0a0a]">{item.counterpartyName}</p>
+                <p className="mt-1 text-[12px] text-[#71717a]">{item.txCount} transaction{item.txCount !== 1 ? "s" : ""} &bull; {item.sampleTxDate}</p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-[18px] font-extrabold text-[#15803d]">${item.totalAmount.toLocaleString()}</p>
+                <p className="text-[11px] text-[#71717a]">total</p>
+              </div>
+            </div>
+            <p className="mt-3 text-[12px] text-[#52525b]">Example: {item.sampleTxName} &bull; ${item.sampleTxAmount.toFixed(2)}</p>
+          </motion.div>
+
+          {/* Classification buttons */}
+          <p className="mt-5 text-[13px] font-semibold text-[#0a0a0a]">Is this income business or personal?</p>
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            {([
+              { label: "Business", value: "BUSINESS" as const, color: "bg-[#15803d]", hover: "hover:bg-[#166534]" },
+              { label: "Personal", value: "PERSONAL" as const, color: "bg-[#52525b]", hover: "hover:bg-[#3f3f46]" },
+              { label: "Mixed", value: "MIXED" as const, color: "bg-[#f59e0b]", hover: "hover:bg-[#d97706]" },
+            ]).map((btn) => (
+              <motion.button
+                key={btn.value}
+                type="button"
+                onClick={() => classify(btn.value)}
+                className={`rounded-xl py-3 text-[14px] font-semibold text-white transition-all ${btn.color} ${btn.hover} shadow-sm`}
+                whileTap={{ scale: 0.96 }}
+              >
+                {btn.label}
+              </motion.button>
+            ))}
+          </div>
+        </>
+      ) : null}
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        {!loading && !allDone && (
+          <motion.button
+            type="button"
+            onClick={onNext}
+            className="rounded-xl bg-[#e4e4e7] min-h-[52px] py-3 text-[15px] font-semibold text-[#52525b] transition-all hover:bg-[#d4d4d8]"
+            whileTap={{ scale: 0.97 }}
+          >
+            Skip &rarr;
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
@@ -1212,6 +1957,12 @@ function StepPlaidLink({
   setPlaidData,
   previewIncome,
   setPreviewIncome,
+  bankName,
+  setBankName,
+  bankRoutingNumberManual,
+  setBankRoutingNumberManual,
+  bankAccountNumberManual,
+  setBankAccountNumberManual,
   onNext,
   onBack,
 }: {
@@ -1221,6 +1972,12 @@ function StepPlaidLink({
   setPlaidData: (data: { accessToken: string; accountId: string; itemId: string }) => void;
   previewIncome: PreviewIncome | null;
   setPreviewIncome: (v: PreviewIncome | null) => void;
+  bankName: string;
+  setBankName: (v: string) => void;
+  bankRoutingNumberManual: string;
+  setBankRoutingNumberManual: (v: string) => void;
+  bankAccountNumberManual: string;
+  setBankAccountNumberManual: (v: string) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
@@ -1354,6 +2111,8 @@ function StepPlaidLink({
     }
   }, [isOAuthReturn, ready, linkToken, linked, open]);
 
+  const bankInputClass = "w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1369,7 +2128,46 @@ function StepPlaidLink({
         Plaid securely connects your bank so we can read 90 days of platform deposits and set up disbursement.
       </p>
 
-      <div className="mt-8">
+      {/* Manual bank info */}
+      <div className="mt-8 flex flex-col gap-4">
+        <div>
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">Bank name</label>
+          <input
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+            placeholder="Chase, Wells Fargo, Bank of America…"
+            className={bankInputClass}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">Routing number</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={9}
+              value={bankRoutingNumberManual}
+              onChange={(e) => setBankRoutingNumberManual(e.target.value.replace(/\D/g, "").slice(0, 9))}
+              placeholder="9 digits"
+              className={bankInputClass}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">Account number</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={17}
+              value={bankAccountNumberManual}
+              onChange={(e) => setBankAccountNumberManual(e.target.value.replace(/\D/g, "").slice(0, 17))}
+              placeholder="4–17 digits"
+              className={bankInputClass}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6">
         {linked ? (
           <motion.div
             className="flex flex-col items-center gap-4 rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-8"
@@ -1473,6 +2271,18 @@ function StepPlaidLink({
         <motion.button
           type="button"
           onClick={() => {
+            if (!bankName.trim()) {
+              toast.error("Please enter your bank name");
+              return;
+            }
+            if (bankRoutingNumberManual.length !== 9) {
+              toast.error("Please enter a valid 9-digit routing number");
+              return;
+            }
+            if (bankAccountNumberManual.length < 4) {
+              toast.error("Please enter your account number");
+              return;
+            }
             if (!linked) {
               toast.error("Please link your bank account to continue");
               return;
@@ -2009,6 +2819,9 @@ type PersistedState = {
   workerType: string;
   workStartMonth: number;
   workStartYear: number;
+  bankName: string;
+  bankRoutingNumberManual: string;
+  bankAccountNumberManual: string;
 };
 
 function readPersistedFunnelState(): PersistedState | null {
@@ -2046,6 +2859,7 @@ function ApplyPageInner() {
     lastName: "",
     email: "",
     phone: "",
+    ssn: "",
     dob: "",
     addressStreet: "",
     addressCity: "",
@@ -2077,6 +2891,10 @@ function ApplyPageInner() {
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
   const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
+  const [bankName, setBankName] = useState(persisted?.bankName ?? "");
+  const [bankRoutingNumberManual, setBankRoutingNumberManual] = useState(persisted?.bankRoutingNumberManual ?? "");
+  const [bankAccountNumberManual, setBankAccountNumberManual] = useState(persisted?.bankAccountNumberManual ?? "");
+  const [classifications, setClassifications] = useState<Map<string, { classification: "BUSINESS" | "PERSONAL" | "MIXED"; txCount: number; totalAmount: number; sampleTxId: string; sampleTxDate: string; sampleTxAmount: number }>>(new Map());
 
   // Snapshot funnel state to sessionStorage on every change so we can survive
   // a Plaid OAuth bounce (Chase, Capital One, etc. send the user out of the
@@ -2098,6 +2916,9 @@ function ApplyPageInner() {
           workerType,
           workStartMonth,
           workStartYear,
+          bankName,
+          bankRoutingNumberManual,
+          bankAccountNumberManual,
         }),
       );
     } catch {}
@@ -2112,6 +2933,9 @@ function ApplyPageInner() {
     workerType,
     workStartMonth,
     workStartYear,
+    bankName,
+    bankRoutingNumberManual,
+    bankAccountNumberManual,
   ]);
 
   useEffect(() => {
@@ -2189,6 +3013,7 @@ function ApplyPageInner() {
         loanAmount,
         loanTermMonths,
         platform: platforms.join(", "),
+        ssnRaw: form.ssn || undefined,
         plaidAccessToken,
         plaidItemId,
         plaidAccountId: plaidAccountId ?? undefined,
@@ -2202,6 +3027,9 @@ function ApplyPageInner() {
         addressState: form.addressState,
         addressZip: form.addressZip,
         dateOfBirth: form.dob,
+        bankName: bankName || undefined,
+        bankRoutingNumberManual: bankRoutingNumberManual || undefined,
+        bankAccountNumberManual: bankAccountNumberManual || undefined,
       });
 
       if (result.error) throw new Error(result.error);
@@ -2215,6 +3043,18 @@ function ApplyPageInner() {
       }
       if (result.applicationId) {
         try { if (form.email) await linkContactApplication(form.email, result.applicationId); } catch {}
+        // Persist transaction classifications collected during the funnel
+        if (classifications.size > 0) {
+          try {
+            await setTransactionClassificationsBulk(
+              result.applicationId,
+              Array.from(classifications.entries()).map(([counterpartyName, v]) => ({
+                counterpartyName,
+                ...v,
+              })),
+            );
+          } catch {}
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -2290,35 +3130,81 @@ function ApplyPageInner() {
                       />
                     );
                   }
-                  if (builtinKey === "info") {
+                  if (builtinKey === "email") {
                     return (
-                      <StepInfo
-                        key="info"
+                      <StepEmail
+                        key="email"
+                        email={form.email}
+                        setEmail={(v) => setForm({ ...form, email: v })}
+                        errors={errors}
+                        onNext={() => setStep(step + 1)}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
+                  if (builtinKey === "phone") {
+                    return (
+                      <StepPhoneOnly
+                        key="phone"
+                        phone={form.phone}
+                        setPhone={(v) => setForm({ ...form, phone: v })}
+                        errors={errors}
+                        onNext={async () => {
+                          try {
+                            const contact = await upsertContact({
+                              email: form.email,
+                              firstName: form.firstName || "Applicant",
+                              phone: form.phone,
+                              source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
+                              ...attributionFromSearch(searchParams as unknown as URLSearchParams),
+                              pennyClickId: readPennyClickIdFromCookie(),
+                              lastAppStep: step + 1,
+                              loanAmountIntent: loanAmount,
+                            });
+                            await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
+                            try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
+                            setPendingPhoneVerification({ contactId: contact.id, nextStep: step + 1 });
+                            return;
+                          } catch {}
+                          setStep(step + 1);
+                        }}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
+                  if (builtinKey === "workerType") {
+                    return (
+                      <StepWorkerType
+                        key="worker-type"
+                        workerType={workerType}
+                        setWorkerType={setWorkerType}
+                        setPlatforms={setPlatforms}
+                        setOtherPlatform={setOtherPlatform}
+                        onNext={() => setStep(step + 1)}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
+                  if (builtinKey === "details") {
+                    return (
+                      <StepDetails
+                        key="details"
                         form={form}
                         setForm={setForm}
                         errors={errors}
-                        onNext={async () => {
-                          if (validateStep2()) {
-                            try {
-                              const contact = await upsertContact({
-                                email: form.email,
-                                firstName: form.firstName,
-                                lastName: form.lastName,
-                                phone: form.phone,
-                                source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
-                                ...attributionFromSearch(searchParams as unknown as URLSearchParams),
-                                pennyClickId: readPennyClickIdFromCookie(),
-                                lastAppStep: 2,
-                                loanAmountIntent: loanAmount,
-                              });
-                              await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
-                              try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
-                              setPendingPhoneVerification({ contactId: contact.id, nextStep: step + 1 });
-                              return;
-                            } catch {}
-                            setStep(step + 1);
-                          }
-                        }}
+                        onNext={() => setStep(step + 1)}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
+                  if (builtinKey === "ssn") {
+                    return (
+                      <StepSSN
+                        key="ssn"
+                        ssn={form.ssn}
+                        setSsn={(v) => setForm({ ...form, ssn: v })}
+                        errors={errors}
+                        onNext={() => setStep(step + 1)}
                         onBack={() => setStep(step - 1)}
                       />
                     );
@@ -2358,6 +3244,24 @@ function ApplyPageInner() {
                         }}
                         previewIncome={plaidPreviewIncome}
                         setPreviewIncome={setPlaidPreviewIncome}
+                        bankName={bankName}
+                        setBankName={setBankName}
+                        bankRoutingNumberManual={bankRoutingNumberManual}
+                        setBankRoutingNumberManual={setBankRoutingNumberManual}
+                        bankAccountNumberManual={bankAccountNumberManual}
+                        setBankAccountNumberManual={setBankAccountNumberManual}
+                        onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
+                  if (builtinKey === "classify") {
+                    return (
+                      <StepClassifyTransactions
+                        key="classify"
+                        plaidAccessToken={plaidAccessToken}
+                        classifications={classifications}
+                        setClassifications={setClassifications}
                         onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
                         onBack={() => setStep(step - 1)}
                       />
@@ -2408,46 +3312,70 @@ function ApplyPageInner() {
                   onNext={() => setStep(1)}
                 />
               ) : step === 1 ? (
+                <StepEmail
+                  key="email"
+                  email={form.email}
+                  setEmail={(v) => setForm({ ...form, email: v })}
+                  errors={errors}
+                  onNext={() => setStep(2)}
+                  onBack={() => setStep(0)}
+                />
+              ) : step === 2 ? (
+                <StepPhoneOnly
+                  key="phone"
+                  phone={form.phone}
+                  setPhone={(v) => setForm({ ...form, phone: v })}
+                  errors={errors}
+                  onNext={async () => {
+                    try {
+                      const contact = await upsertContact({
+                        email: form.email,
+                        firstName: form.firstName || "Applicant",
+                        phone: form.phone,
+                        source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
+                        ...attributionFromSearch(searchParams as unknown as URLSearchParams),
+                        pennyClickId: readPennyClickIdFromCookie(),
+                        lastAppStep: 3,
+                        loanAmountIntent: loanAmount,
+                      });
+                      await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
+                      try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
+                      setPendingPhoneVerification({ contactId: contact.id, nextStep: 3 });
+                      return;
+                    } catch {}
+                    setStep(3);
+                  }}
+                  onBack={() => setStep(1)}
+                />
+              ) : step === 3 ? (
                 <StepWorkerType
                   key="worker-type"
                   workerType={workerType}
                   setWorkerType={setWorkerType}
                   setPlatforms={setPlatforms}
                   setOtherPlatform={setOtherPlatform}
-                  onNext={() => setStep(2)}
-                  onBack={() => setStep(0)}
+                  onNext={() => setStep(4)}
+                  onBack={() => setStep(2)}
                 />
-              ) : step === 2 ? (
-                <StepInfo
-                  key="info"
+              ) : step === 4 ? (
+                <StepDetails
+                  key="details"
                   form={form}
                   setForm={setForm}
                   errors={errors}
-                  onNext={async () => {
-                    if (validateStep2()) {
-                      try {
-                        const contact = await upsertContact({
-                          email: form.email,
-                          firstName: form.firstName,
-                          lastName: form.lastName,
-                          phone: form.phone,
-                          source: searchParams.get("utm_campaign") ? `lp:${searchParams.get("utm_campaign")}` : "direct",
-                          ...attributionFromSearch(searchParams as unknown as URLSearchParams),
-                          pennyClickId: readPennyClickIdFromCookie(),
-                          lastAppStep: 3,
-                          loanAmountIntent: loanAmount,
-                        });
-                        await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
-                        try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
-                        setPendingPhoneVerification({ contactId: contact.id, nextStep: 3 });
-                        return;
-                      } catch {}
-                      setStep(3);
-                    }
-                  }}
-                  onBack={() => setStep(1)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 5); } catch {} setStep(5); }}
+                  onBack={() => setStep(3)}
                 />
-              ) : step === 3 ? (
+              ) : step === 5 ? (
+                <StepSSN
+                  key="ssn"
+                  ssn={form.ssn}
+                  setSsn={(v) => setForm({ ...form, ssn: v })}
+                  errors={errors}
+                  onNext={() => setStep(6)}
+                  onBack={() => setStep(4)}
+                />
+              ) : step === 6 ? (
                 <StepPlatforms
                   key="platforms"
                   platforms={platforms}
@@ -2462,10 +3390,10 @@ function ApplyPageInner() {
                   setWorkStartMonth={setWorkStartMonth}
                   workStartYear={workStartYear}
                   setWorkStartYear={setWorkStartYear}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 4); } catch {} setStep(4); }}
-                  onBack={() => setStep(2)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 7); } catch {} setStep(7); }}
+                  onBack={() => setStep(5)}
                 />
-              ) : step === 4 ? (
+              ) : step === 7 ? (
                 <StepPlaidLink
                   key="plaid"
                   plaidAccessToken={plaidAccessToken}
@@ -2478,10 +3406,25 @@ function ApplyPageInner() {
                   }}
                   previewIncome={plaidPreviewIncome}
                   setPreviewIncome={setPlaidPreviewIncome}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 5); } catch {} setStep(5); }}
-                  onBack={() => setStep(3)}
+                  bankName={bankName}
+                  setBankName={setBankName}
+                  bankRoutingNumberManual={bankRoutingNumberManual}
+                  setBankRoutingNumberManual={setBankRoutingNumberManual}
+                  bankAccountNumberManual={bankAccountNumberManual}
+                  setBankAccountNumberManual={setBankAccountNumberManual}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 8); } catch {} setStep(8); }}
+                  onBack={() => setStep(6)}
                 />
-              ) : step === 5 ? (
+              ) : step === 8 ? (
+                <StepClassifyTransactions
+                  key="classify"
+                  plaidAccessToken={plaidAccessToken}
+                  classifications={classifications}
+                  setClassifications={setClassifications}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 9); } catch {} setStep(9); }}
+                  onBack={() => setStep(7)}
+                />
+              ) : step === 9 ? (
                 <StepVerified
                   key="verified"
                   plaidAccessToken={plaidAccessToken}
@@ -2489,8 +3432,8 @@ function ApplyPageInner() {
                   lastName={form.lastName}
                   identityResult={identityResult}
                   setIdentityResult={setIdentityResult}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 6); } catch {} setStep(6); }}
-                  onBack={() => setStep(4)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 10); } catch {} setStep(10); }}
+                  onBack={() => setStep(8)}
                 />
               ) : (
                 <StepReview
@@ -2505,7 +3448,7 @@ function ApplyPageInner() {
                   identityNeedsReview={identityResult?.needsReview ?? true}
                   plaidPreviewIncome={plaidPreviewIncome}
                   submitting={submitting}
-                  onBack={() => setStep(5)}
+                  onBack={() => setStep(9)}
                   onSubmit={handleSubmit}
                 />
               )}
