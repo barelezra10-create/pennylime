@@ -1,8 +1,6 @@
 const FORBIDDEN_TERMS: ReadonlyArray<RegExp> = [
   /\bguaranteed\b/i,
-  /\bguaranteed approval\b/i,
-  /\bno credit check\b/i,
-  /\bno credit\b/i,
+  /\bno credit\s+(check|score|history|needed|required)\b/i,
   /\binstant approval\b/i,
   /\bzero fees\b/i,
   /\bno fees\b/i,
