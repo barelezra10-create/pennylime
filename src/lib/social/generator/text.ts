@@ -1,6 +1,17 @@
+import "server-only";
 import { GoogleGenAI } from "@google/genai";
+import type { Platform } from "../types";
 
-type Platform = "instagram" | "facebook" | "linkedin" | "tiktok";
+const GEMINI_MODEL = "gemini-2.5-flash";
+
+let _client: GoogleGenAI | undefined;
+function getClient(): GoogleGenAI {
+  if (_client) return _client;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY required");
+  _client = new GoogleGenAI({ apiKey });
+  return _client;
+}
 
 const PLATFORM_BRIEFS: Record<Platform, string> = {
   instagram: `Instagram caption. Punchy hook in line 1, 3-5 short paragraphs, 4-6 relevant hashtags at end. 800 chars max. Speak to gig workers (Uber/DoorDash/Lyft) directly. Conversational, not corporate.`,
@@ -20,10 +31,7 @@ STRICT RULES:
 - No emojis except 1 in the hook line if it fits the platform`;
 
 export async function generatePostText(topic: string, platform: Platform): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY required");
-
-  const client = new GoogleGenAI({ apiKey });
+  const client = getClient();
   const prompt = `${SYSTEM_PROMPT}
 
 PLATFORM BRIEF: ${PLATFORM_BRIEFS[platform]}
@@ -32,13 +40,24 @@ TOPIC: ${topic}
 
 Write the post now. Output ONLY the post body, no preamble, no quotes around it.`;
 
-  const response = await client.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: prompt,
-  });
+  let text: string | undefined;
+  try {
+    const response = await client.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+    });
+    text = response.text;
+  } catch (err) {
+    throw new Error(`Gemini text generation failed [${platform}, "${topic}"]: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!text) throw new Error(`Gemini returned empty text [${platform}, "${topic}"]`);
 
-  const text = response.text;
-  if (!text) throw new Error("Gemini returned empty text");
-  // strip surrounding quotes if model added them
-  return text.replace(/^["']|["']$/g, "").trim();
+  let clean = text.trim();
+  // strip markdown code fences (gemini occasionally wraps despite "no preamble" instruction)
+  clean = clean.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim();
+  // strip ALL surrounding quote characters (handles ""double"" wrapping too)
+  clean = clean.replace(/^["']+|["']+$/g, "").trim();
+  // safety net: per project content rules, NEVER allow em-dashes through
+  clean = clean.replaceAll("—", ",").replaceAll("–", "-");
+  return clean;
 }
