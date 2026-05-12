@@ -2,9 +2,13 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL || "") });
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) throw new Error("DATABASE_URL environment variable is not set");
+const prisma = new PrismaClient({ adapter: new PrismaPg(DATABASE_URL) });
 
-const TOPICS: Array<{ topic: string; category: string }> = [
+type TopicCategory = "tax" | "cashflow" | "platform-tips" | "earnings" | "savings";
+
+const TOPICS: Array<{ topic: string; category: TopicCategory }> = [
   // tax
   { topic: "How to track Uber/Lyft mileage for tax deductions", category: "tax" },
   { topic: "Quarterly estimated taxes for gig workers: exactly how much to set aside", category: "tax" },
@@ -77,4 +81,6 @@ async function main() {
   console.log(`Seeded ${inserted} topics (${TOPICS.length - inserted} already existed)`);
 }
 
-main().finally(() => prisma.$disconnect());
+main()
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(() => prisma.$disconnect());
