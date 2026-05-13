@@ -11,6 +11,10 @@ import crypto from "node:crypto";
 const STORAGE_DIR = process.env.SOCIAL_IMAGE_DIR ?? "/tmp/pennylime-social";
 const PUBLIC_BASE = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
+if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_URL) {
+  throw new Error("NEXTAUTH_URL must be set in production (required for social image URLs)");
+}
+
 export async function saveImage(buffer: Buffer, ext: string): Promise<string> {
   await fs.mkdir(STORAGE_DIR, { recursive: true });
   const name = `${crypto.randomUUID()}.${ext}`;
@@ -20,10 +24,27 @@ export async function saveImage(buffer: Buffer, ext: string): Promise<string> {
 
 export async function readImage(name: string): Promise<Buffer | null> {
   const safe = name.replace(/[^a-zA-Z0-9._-]/g, "");
-  const filePath = path.join(STORAGE_DIR, safe);
+  if (!safe) return null;
+  const filePath = path.resolve(STORAGE_DIR, safe);
+  // defense-in-depth: ensure resolved path stays inside STORAGE_DIR
+  const dirRoot = path.resolve(STORAGE_DIR);
+  if (!filePath.startsWith(dirRoot + path.sep)) return null;
   try {
     return await fs.readFile(filePath);
   } catch {
     return null;
+  }
+}
+
+export async function deleteImage(name: string): Promise<void> {
+  const safe = name.replace(/[^a-zA-Z0-9._-]/g, "");
+  if (!safe) return;
+  const filePath = path.resolve(STORAGE_DIR, safe);
+  const dirRoot = path.resolve(STORAGE_DIR);
+  if (!filePath.startsWith(dirRoot + path.sep)) return;
+  try {
+    await fs.unlink(filePath);
+  } catch {
+    // ignore — file may not exist or already deleted
   }
 }
