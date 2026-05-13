@@ -90,6 +90,35 @@ export async function updateSmsCampaign(id: string, formData: FormData) {
   revalidatePath("/admin/sms/campaigns");
 }
 
+/* Object-shaped wrappers so client components can call the server actions
+   directly without packing into FormData. Mirrors the email actions. */
+
+export async function saveSmsCampaign(data: {
+  id?: string;
+  name: string;
+  body: string;
+  segmentRules: string;
+  status: "DRAFT" | "SCHEDULED";
+  scheduledAt?: string;
+  templateId?: string | null;
+}) {
+  const scheduledAt = data.scheduledAt ? new Date(data.scheduledAt) : null;
+  const payload = {
+    name: data.name,
+    body: data.body,
+    segmentRules: data.segmentRules,
+    status: data.status,
+    scheduledAt,
+    templateId: data.templateId ?? null,
+  };
+  if (data.id) {
+    await prisma.smsCampaign.update({ where: { id: data.id }, data: payload });
+  } else {
+    await prisma.smsCampaign.create({ data: payload });
+  }
+  revalidatePath("/admin/sms/campaigns");
+}
+
 export async function deleteSmsCampaign(id: string) {
   await prisma.smsCampaign.delete({ where: { id } });
   revalidatePath("/admin/sms/campaigns");
@@ -193,4 +222,64 @@ export async function sendSmsCampaign(id: string) {
   revalidatePath("/admin/sms/campaigns");
   return { ok: true, sent, failed };
 }
+
+/* ─── Sequences ─────────────────────────────────────────────── */
+
+export async function getSmsSequences() {
+  return prisma.smsSequence.findMany({ orderBy: { createdAt: "desc" } });
+}
+
+export async function getSmsSequence(id: string) {
+  return prisma.smsSequence.findUnique({ where: { id } });
+}
+
+export async function createSmsSequence(data: {
+  name: string;
+  description?: string;
+  steps: string;
+  triggerType: string;
+  triggerValue?: string;
+  active?: boolean;
+}) {
+  const created = await prisma.smsSequence.create({ data });
+  revalidatePath("/admin/sms/sequences");
+  return created;
+}
+
+export async function updateSmsSequence(id: string, data: Record<string, unknown>) {
+  const updated = await prisma.smsSequence.update({ where: { id }, data: data as never });
+  revalidatePath("/admin/sms/sequences");
+  return updated;
+}
+
+export async function deleteSmsSequence(id: string) {
+  await prisma.smsSequenceEnrollment.deleteMany({ where: { sequenceId: id } });
+  const deleted = await prisma.smsSequence.delete({ where: { id } });
+  revalidatePath("/admin/sms/sequences");
+  return deleted;
+}
+
+/**
+ * Send a single test SMS to the admin's phone, rendered with sample
+ * variable values. Mirrors `sendTestEmail` but for SMS.
+ */
+export async function sendTestSms(input: { to: string; body: string }) {
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/lib/auth");
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  if (!input.to.trim()) return { ok: false as const, error: "Provide a phone number" };
+
+  const sampleVars = {
+    firstName: "Sample",
+    lastName: "User",
+    email: "sample@example.com",
+    phone: input.to,
+    loanAmount: 500,
+    applicationCode: "PL-TEST-0001",
+  };
+  const body = interpolate(input.body, sampleVars);
+  return sendSmsLib({ to: input.to, body });
+}
+
 

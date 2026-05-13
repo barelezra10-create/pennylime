@@ -45,6 +45,8 @@ const TABS: TopTab[] = [
       { href: "/admin/email/campaigns", label: "Email campaigns" },
       { href: "/admin/email/sequences", label: "Sequences" },
       { href: "/admin/email/templates", label: "Email templates" },
+      { href: "/admin/sms/campaigns", label: "SMS campaigns" },
+      { href: "/admin/sms/sequences", label: "SMS sequences" },
       { href: "/admin/sms/templates", label: "SMS templates" },
     ],
   },
