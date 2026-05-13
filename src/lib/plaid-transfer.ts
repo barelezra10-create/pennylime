@@ -1,11 +1,16 @@
-import { plaidClient } from "@/lib/plaid";
-import { decrypt } from "@/lib/encryption";
 import { prisma } from "@/lib/db";
-import { TransferType, TransferNetwork, ACHClass } from "plaid";
 
 /**
- * Initiate an ACH debit via Plaid Transfer for a payment.
- * Returns the transfer ID on success, or an error message.
+ * Initiate an ACH debit for a scheduled payment via Increase.
+ *
+ * Disbursement credits and repayment debits both run through Increase
+ * (despite this file being named plaid-transfer.ts — the name predates
+ * the migration off Plaid Transfer). The Increase ExternalAccount is
+ * lazily created from Plaid Auth's routing/account numbers via
+ * ensureIncreaseExternalAccount; it returns the same id on repeat calls
+ * so we don't accumulate ExternalAccount rows.
+ *
+ * Returns the Increase ach_transfer.id on success.
  */
 export async function initiateACHDebit(paymentId: string): Promise<
   { success: true; transferId: string } | { success: false; error: string }
@@ -17,70 +22,56 @@ export async function initiateACHDebit(paymentId: string): Promise<
 
   if (!payment) return { success: false, error: "Payment not found" };
   if (!payment.application.plaidAccessToken) {
-    return { success: false, error: "No Plaid connection" };
+    return { success: false, error: "No bank connection on application" };
   }
-
-  const accessToken = decrypt(payment.application.plaidAccessToken);
-  const accountId = payment.application.plaidAccountId;
-  if (!accountId) return { success: false, error: "No Plaid account ID" };
 
   const totalAmount = Number(payment.amount) + Number(payment.lateFee);
+  const amountCents = Math.round(totalAmount * 100);
 
-  try {
-    // Step 1: Authorize the transfer
-    const authResponse = await plaidClient.transferAuthorizationCreate({
-      access_token: accessToken,
-      account_id: accountId,
-      type: TransferType.Debit,
-      network: TransferNetwork.Ach,
-      amount: totalAmount.toFixed(2),
-      ach_class: ACHClass.Web,
-      user: {
-        legal_name: `${payment.application.firstName} ${payment.application.lastName}`,
-      },
-    });
-
-    const authorization = authResponse.data.authorization;
-    if (authorization.decision !== "approved") {
-      return {
-        success: false,
-        error: `Transfer not authorized: ${authorization.decision_rationale?.description || authorization.decision}`,
-      };
-    }
-
-    // Step 2: Create the transfer
-    const transferResponse = await plaidClient.transferCreate({
-      access_token: accessToken,
-      account_id: accountId,
-      authorization_id: authorization.id,
-      amount: totalAmount.toFixed(2),
-      description: `Payment #${payment.paymentNumber}`,
-    });
-
-    return { success: true, transferId: transferResponse.data.transfer.id };
-  } catch (error) {
-    console.error("Plaid Transfer error:", error);
-    return { success: false, error: "ACH transfer initiation failed" };
+  // Resolve or create the Increase ExternalAccount for this application.
+  const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
+  const ext = await ensureIncreaseExternalAccount(payment.applicationId);
+  if (!ext.ok) {
+    return { success: false, error: ext.error };
   }
+
+  const { createAchDebit } = await import("@/lib/increase");
+  const result = await createAchDebit({
+    externalAccountId: ext.externalAccountId,
+    amountCents,
+    statementDescriptor: "PENNYLIME PMT",
+    individualName: `${payment.application.firstName} ${payment.application.lastName}`.slice(0, 22),
+  });
+
+  if (!result.ok) {
+    return { success: false, error: result.error };
+  }
+
+  return { success: true, transferId: result.data.id };
 }
 
 /**
- * Check the status of a Plaid Transfer.
- * Returns "posted" (success), "failed", "cancelled", or "pending" (still processing).
+ * Check the status of an Increase ACH transfer for a queued/processing
+ * payment. The webhook handles the realtime case; this is the cron-driven
+ * pull for missed events.
+ *
+ * Maps Increase's transfer states onto our four buckets so the rest of
+ * the app doesn't have to know Increase-specific status strings.
  */
 export async function checkTransferStatus(
   transferId: string
 ): Promise<"posted" | "failed" | "cancelled" | "pending"> {
   try {
-    const response = await plaidClient.transferGet({ transfer_id: transferId });
-    const status = response.data.transfer.status;
-
-    if (status === "posted" || status === "settled") return "posted";
-    if (status === "failed" || status === "returned") return "failed";
-    if (status === "cancelled") return "cancelled";
-    return "pending"; // still in transit
+    const { getAchTransfer } = await import("@/lib/increase");
+    const resp = await getAchTransfer(transferId);
+    if (!resp.ok) return "pending";
+    const status = resp.data.status as string;
+    if (status === "submitted" || status === "settled") return "posted";
+    if (status === "returned" || status === "failed") return "failed";
+    if (status === "canceled" || status === "cancelled") return "cancelled";
+    return "pending";
   } catch (error) {
-    console.error("Plaid Transfer status check error:", error);
-    return "pending"; // safe default: don't mark as failed on API error
+    console.error("Increase transfer status check error:", error);
+    return "pending";
   }
 }
