@@ -45,6 +45,8 @@ export async function POST(request: NextRequest) {
         where: { id: payment.id },
         data: {
           achTransferId: result.transferId,
+          increaseTransferId: result.transferId,
+          increaseTransferStatus: "pending_submission",
           retryCount: { increment: 1 },
           lastRetryAt: new Date(),
         },
