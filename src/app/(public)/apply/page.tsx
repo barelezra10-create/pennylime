@@ -3,6 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,7 +78,15 @@ function Navbar() {
   return (
     <nav className="fixed top-0 z-50 w-full bg-[#fafaf7]/90 backdrop-blur-xl border-b border-[#e4e4e7]">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 sm:px-10 h-16 md:h-20">
-        <Link href="/" className="inline-flex items-center min-h-[44px]">
+        <Link href="/" className="inline-flex items-center gap-2 min-h-[44px]">
+          <Image
+            src="/lime-mark.svg"
+            alt="PennyLime"
+            width={28}
+            height={28}
+            priority
+            className="h-7 w-7"
+          />
           <span className="font-extrabold text-[18px] md:text-lg tracking-[-0.03em]">Penny<span className="text-[#15803d]">Lime<span className="text-[#15803d]">.</span></span></span>
         </Link>
         <Link
@@ -3483,7 +3492,15 @@ function ApplyPageInner() {
             <div className="pointer-events-none absolute top-1/2 right-8 h-32 w-32 rounded-full bg-white/5" />
 
             {/* Logo mark */}
-            <div className="mb-10">
+            <div className="mb-10 inline-flex items-center gap-2">
+              <Image
+                src="/lime-mark.svg"
+                alt="PennyLime"
+                width={32}
+                height={32}
+                priority
+                className="h-8 w-8 brightness-0 invert"
+              />
               <span className="font-extrabold text-[18px] tracking-[-0.03em] text-white">
                 Penny<span className="text-[#a3e635]">Lime<span className="text-[#a3e635]">.</span></span>
               </span>
