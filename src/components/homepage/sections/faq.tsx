@@ -18,7 +18,7 @@ const FAQ_ENTRIES = [
   },
   {
     question: "What does it cost?",
-    answer: "PennyLime advances are priced as a plain factor rate plus a one-time origination fee. No prepayment penalties, no hidden fees. Your total dollar cost is shown above the fold before you accept. Factor rates typically range from 1.20 to 1.49 depending on advance amount, term, and verified deposit history. This is a merchant cash advance, not a loan, so there is no APR or interest rate.",
+    answer: "Your advance accrues a weekly rate of 4% to 10% (compounded on the outstanding balance), depending on your verified deposit history and risk profile. You pick the repayment term in weeks; the rate is the same regardless of term. No prepayment penalties, no hidden fees. Your total dollar cost and weekly payment are shown in plain dollars before you accept. This is a cash advance, not a loan, so there is no APR.",
   },
   {
     question: "How do I apply?",

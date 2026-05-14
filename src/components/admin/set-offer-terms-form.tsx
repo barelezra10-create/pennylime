@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { setOfferTerms, type OfferTerm } from "@/actions/offers";
+import { computeAdvanceTerms } from "@/lib/cash-advance";
 
 type ExistingOffer = {
   status: string;
@@ -22,6 +23,21 @@ const blankTerm = (recommended = false): OfferTerm => ({
   isRecommended: recommended,
 });
 
+function buildDefaultTerms(principal: number, weeklyRate: number): OfferTerm[] {
+  const weeks = [4, 6, 10];
+  return weeks.map((termWeeks, idx) => {
+    const t = computeAdvanceTerms({ principal, weeklyRate, termWeeks });
+    return {
+      weeklyRemittance: t.weeklyPayment,
+      durationWeeks: t.termWeeks,
+      disbursedAmount: t.principal,
+      totalCostOfCapital: t.totalCostOfCapital,
+      processingFee: 0,
+      isRecommended: idx === 1,
+    };
+  });
+}
+
 export function SetOfferTermsForm({
   applicationId,
   existing,
@@ -32,17 +48,19 @@ export function SetOfferTermsForm({
   const [open, setOpen] = useState(existing.status === "PENDING");
   const [minAmount, setMinAmount] = useState<number>(existing.minAmount ?? 300);
   const [maxAmount, setMaxAmount] = useState<number>(existing.maxAmount ?? 2000);
+  const [weeklyRate, setWeeklyRate] = useState<number>(5);
+  const [genPrincipal, setGenPrincipal] = useState<number>(500);
   const [terms, setTerms] = useState<OfferTerm[]>(
     existing.terms.length > 0
       ? existing.terms
-      : [
-          { weeklyRemittance: 450, durationWeeks: 6, disbursedAmount: 2000, totalCostOfCapital: 700, processingFee: 0, isRecommended: false },
-          { weeklyRemittance: 350, durationWeeks: 8, disbursedAmount: 2000, totalCostOfCapital: 800, processingFee: 0, isRecommended: true },
-          { weeklyRemittance: 175, durationWeeks: 8, disbursedAmount: 1000, totalCostOfCapital: 400, processingFee: 0, isRecommended: false },
-        ]
+      : buildDefaultTerms(500, 5),
   );
   const [submitting, setSubmitting] = useState(false);
   const [savedToken, setSavedToken] = useState<string | null>(existing.offerToken);
+
+  function regeneratePlans() {
+    setTerms(buildDefaultTerms(genPrincipal, weeklyRate));
+  }
 
   function updateTerm(idx: number, patch: Partial<OfferTerm>) {
     setTerms((prev) => prev.map((t, i) => (i === idx ? { ...t, ...patch } : t)));
@@ -145,6 +163,38 @@ export function SetOfferTermsForm({
       <div className="grid grid-cols-2 gap-3 mb-5">
         <FieldNum label="Min approved amount" value={minAmount} onChange={setMinAmount} />
         <FieldNum label="Max approved amount" value={maxAmount} onChange={setMaxAmount} />
+      </div>
+
+      {/* Generate plans from weekly rate */}
+      <div className="border border-[#e4e4e7] bg-[#fafafa] rounded-lg p-3 mb-5">
+        <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a] font-semibold mb-2">
+          Auto-generate plans
+        </p>
+        <p className="text-[11px] text-[#71717a] mb-3">
+          Cash advance, compounded weekly at the risk-adjusted rate. Generates 3 plans
+          (4 / 6 / 10 weeks). Plans are editable below after generating.
+        </p>
+        <div className="grid grid-cols-3 gap-3 mb-3">
+          <FieldNum
+            label="Advance amount ($)"
+            value={genPrincipal}
+            onChange={setGenPrincipal}
+          />
+          <FieldNum
+            label="Weekly rate (%)"
+            value={weeklyRate}
+            onChange={setWeeklyRate}
+          />
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={regeneratePlans}
+              className="w-full bg-[#15803d] text-white text-[12px] font-semibold rounded-lg px-3 py-2 hover:bg-[#166534]"
+            >
+              Generate plans
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Terms */}
