@@ -180,11 +180,19 @@ export function computeRiskScore(
 // 4. calculateRate
 // ---------------------------------------------------------------------------
 
+/**
+ * Calculates the **weekly** rate for a cash advance, expressed as a percentage
+ * compounded on the outstanding balance. PennyLime is a merchant cash advance
+ * product, not a loan, so this is not an APR — it's a per-week factor that
+ * accrues against the balance each week.
+ *
+ * Risk score 0 (best) → min_weekly_rate (default 4%).
+ * Risk score 100 (worst) → max_weekly_rate (default 10%).
+ */
 export async function calculateRate(riskScore: number): Promise<number> {
   const rules = await getLoanRules();
-  const minRate = Number(rules.min_interest_rate ?? "30");
-  const maxRate = Number(rules.max_interest_rate ?? "60");
-  // Linear interpolation: score=0 → minRate, score=100 → maxRate
+  const minRate = Number(rules.min_weekly_rate ?? "4");
+  const maxRate = Number(rules.max_weekly_rate ?? "10");
   const rate = minRate + (riskScore / 100) * (maxRate - minRate);
   return Math.round(rate * 100) / 100;
 }
@@ -197,7 +205,7 @@ export async function scoreApplication(
   applicationId: string
 ): Promise<RiskScoreResult> {
   const rules = await getLoanRules();
-  const minRate = Number(rules.min_interest_rate ?? "30");
+  const minRate = Number(rules.min_weekly_rate ?? "4");
   const requiredDocs = Number(rules.required_pay_stubs ?? "3");
 
   // Load application with documents and payments

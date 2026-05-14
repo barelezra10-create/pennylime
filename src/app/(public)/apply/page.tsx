@@ -68,7 +68,7 @@ const formSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  loanAmount: z.number().positive("Loan amount must be positive"),
+  loanAmount: z.number().positive("Advance amount must be positive"),
 });
 
 /* ------------------------------------------------------------------ */
