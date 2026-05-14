@@ -219,7 +219,7 @@ export function PlaidTestClient({ initialState }: { initialState: PlaidTestAppSt
       <section className="rounded-xl border border-[#e4e4e7] bg-white p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide text-[#52525b] mb-3">Pipeline</h2>
         <ul className="flex flex-col gap-2 text-sm">
-          <PipelineRow label="1. Plaid Link (sandbox)" status={steps.link} />
+          <PipelineRow label="1. Plaid Link" status={steps.link} />
           <PipelineRow label="2. Persist tokens to test app" status={steps.persist} />
           <PipelineRow label="3. Fetch income + bank balance" status={steps.income} />
           <PipelineRow label="4. Create Increase external account" status={steps.externalAccount} />
