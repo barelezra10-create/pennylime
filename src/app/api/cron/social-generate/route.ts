@@ -37,13 +37,24 @@ export async function POST(req: NextRequest) {
   const summary: PlatformSummary[] = [];
 
   try {
+    // TODO: add same-day idempotency guard before exposing a manual trigger
+    // (currently safe because Railway cron doesn't fire twice simultaneously)
     for (const platform of PLATFORMS) {
-      summary.push(await runPlatform(prisma, platform));
+      try {
+        summary.push(await runPlatform(prisma, platform));
+      } catch (err) {
+        summary.push({
+          platform,
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     }
   } finally {
     await prisma.$disconnect();
   }
 
+  console.log("[social-generate]", JSON.stringify(summary));
   return NextResponse.json({ summary });
 }
 
