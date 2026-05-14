@@ -38,7 +38,7 @@ const TABS: TopTab[] = [
     id: "marketing",
     label: "Email & SMS",
     icon: "✉",
-    prefixes: ["/admin/email", "/admin/sms"],
+    prefixes: ["/admin/email", "/admin/sms", "/admin/social"],
     href: "/admin/email",
     subnav: [
       { href: "/admin/email", label: "Overview" },
@@ -48,6 +48,7 @@ const TABS: TopTab[] = [
       { href: "/admin/sms/campaigns", label: "SMS campaigns" },
       { href: "/admin/sms/sequences", label: "SMS sequences" },
       { href: "/admin/sms/templates", label: "SMS templates" },
+      { href: "/admin/social", label: "Social" },
     ],
   },
   {
