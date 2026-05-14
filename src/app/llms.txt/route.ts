@@ -41,19 +41,19 @@ export async function GET() {
 
   sections.push(`# PennyLime`);
   sections.push(
-    `> Merchant cash advances of $500 to $10,000 for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of your future earnings. PennyLime does not offer loans or extend credit. Owned and operated by 770 Technology Way LLC, a Florida limited liability company.`
+    `> Merchant cash advances of $500 to $10,000 for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of your future earnings. PennyLime does not extend credit. Owned and operated by 770 Technology Way LLC, a Florida limited liability company.`
   );
 
   sections.push(`## Apply`);
-  sections.push(`- [Apply for a loan](${BASE}/apply): 5-minute application, decision the same day, funded within 48 hours.`);
+  sections.push(`- [Apply for an advance](${BASE}/apply): 5-minute application, decision the same day, funded within 48 hours.`);
 
   if (platforms.length) {
-    sections.push(`## Loans by gig platform`);
+    sections.push(`## Cash advances by gig platform`);
     sections.push(
       platforms
         .map(
           (p) =>
-            `- [${p.platformName} loans](${BASE}/loans/${p.slug}): ${trim(p.heroSubtext) || trim(p.platformDescription)}`
+            `- [${p.platformName} cash advances](${BASE}/advances/${p.slug}): ${trim(p.heroSubtext) || trim(p.platformDescription)}`
         )
         .join("\n")
     );
@@ -74,8 +74,8 @@ export async function GET() {
   }
 
   if (states.length) {
-    sections.push(`## State loan guides`);
-    sections.push(states.map((s) => `- [${s.stateName} loans](${BASE}/states/${s.slug}): ${trim(s.heroSubtext)}`).join("\n"));
+    sections.push(`## State guides`);
+    sections.push(states.map((s) => `- [${s.stateName} cash advances](${BASE}/states/${s.slug}): ${trim(s.heroSubtext)}`).join("\n"));
   }
 
   if (articles.length) {

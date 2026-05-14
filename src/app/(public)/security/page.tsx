@@ -45,7 +45,7 @@ export default function SecurityPage() {
           <li><strong>Internal</strong> – Business records, source code, internal documentation, vendor contracts.</li>
           <li><strong>Public</strong> – Marketing content, published policies, public website material.</li>
         </ul>
-        Handling, retention, and destruction requirements scale to the classification level. Restricted and Confidential data are encrypted at rest and in transit, access-logged, and retained only for the loan or advance lifecycle plus regulatory retention windows, after which data is securely destroyed.
+        Handling, retention, and destruction requirements scale to the classification level. Restricted and Confidential data are encrypted at rest and in transit, access-logged, and retained only for the advance lifecycle plus regulatory retention windows, after which data is securely destroyed.
       </Section>
 
       <Section n="4" title="Access Control and Authentication">

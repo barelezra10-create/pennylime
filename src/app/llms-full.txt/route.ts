@@ -100,16 +100,16 @@ export async function GET() {
 
   out.push(`# PennyLime — Full Content Export`);
   out.push(
-    `> Merchant cash advances of $500 to $10,000 for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of your future earnings. PennyLime does not offer loans or extend credit. Owned and operated by 770 Technology Way LLC, a Florida limited liability company.`
+    `> Merchant cash advances of $500 to $10,000 for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables at a discount and delivers funds in as fast as 48 hours, with repayment as a fixed percentage of your future earnings. PennyLime does not extend credit. Owned and operated by 770 Technology Way LLC, a Florida limited liability company.`
   );
   out.push(`Generated: ${new Date().toISOString()}`);
   out.push(`Site: ${BASE}`);
 
   if (platforms.length) {
-    out.push(`\n---\n\n# Loans by gig platform`);
+    out.push(`\n---\n\n# Cash advances by gig platform`);
     for (const p of platforms) {
       out.push(`## ${p.platformName}`);
-      out.push(`URL: ${BASE}/loans/${p.slug}`);
+      out.push(`URL: ${BASE}/advances/${p.slug}`);
       if (p.heroHeadline) out.push(`### ${p.heroHeadline}`);
       if (p.heroSubtext) out.push(stripHtml(p.heroSubtext));
       if (p.platformDescription) out.push(stripHtml(p.platformDescription));
@@ -155,7 +155,7 @@ export async function GET() {
   }
 
   if (states.length) {
-    out.push(`\n---\n\n# State loan guides`);
+    out.push(`\n---\n\n# State guides`);
     for (const s of states) {
       out.push(`## ${s.stateName}`);
       out.push(`URL: ${BASE}/states/${s.slug}`);
@@ -166,7 +166,7 @@ export async function GET() {
         out.push(stripHtml(s.regulationsSummary));
       }
       if (s.loanAvailability) {
-        out.push(`### Loan availability`);
+        out.push(`### Availability`);
         out.push(stripHtml(s.loanAvailability));
       }
       const faq = formatFaqs(s.faqEntries);

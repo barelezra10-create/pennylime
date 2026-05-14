@@ -7,9 +7,10 @@ import { slugify } from "@/lib/content-helpers";
 import { TabBar } from "@/components/admin/tab-bar";
 
 const TOOL_COMPONENTS = [
-  { value: "loan-calculator", label: "Loan Calculator" },
+  { value: "advance-calculator", label: "Advance Calculator" },
   { value: "income-estimator", label: "Income Estimator" },
-  { value: "loan-comparison", label: "Loan Comparison" },
+  { value: "advance-comparison", label: "Advance Comparison" },
+  { value: "advance-affordability-calculator", label: "Advance Affordability Calculator" },
   { value: "dti-calculator", label: "DTI Calculator" },
   { value: "tax-estimator", label: "Tax Estimator" },
 ];
@@ -36,7 +37,7 @@ export function ToolEditorClient({ tool }: { tool?: ToolFormData }) {
   const isEdit = !!tool?.id;
   const [activeTab, setActiveTab] = useState("content");
   const [form, setForm] = useState<ToolFormData>(
-    tool || { title: "", slug: "", description: "", toolComponent: "loan-calculator", body: "", metaTitle: "", metaDescription: "", published: false }
+    tool || { title: "", slug: "", description: "", toolComponent: "advance-calculator", body: "", metaTitle: "", metaDescription: "", published: false }
   );
   const [saving, setSaving] = useState(false);
 

@@ -41,7 +41,7 @@ const features: FeatureRow[] = [
     bank: { value: "2-4 weeks", positive: false },
   },
   {
-    label: "Loan Range",
+    label: "Advance Range",
     lime: { value: "$500 - $10,000", positive: true },
     mca: { value: "$5,000+", positive: false },
     bank: { value: "$5,000 - $50,000", positive: true },
@@ -60,7 +60,7 @@ const features: FeatureRow[] = [
   },
 ];
 
-export function LoanComparison() {
+export function AdvanceComparison() {
   return (
     <div className="bg-white rounded-[10px] p-6 md:p-8 border border-[#e4e4e7]">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -92,7 +92,7 @@ export function LoanComparison() {
           <h3 className="text-[18px] font-extrabold tracking-[-0.02em] text-[#1a1a1a] mt-2 mb-1">
             Traditional Bank
           </h3>
-          <p className="text-[12px] text-[#71717a]">Personal / business loan</p>
+          <p className="text-[12px] text-[#71717a]">Personal / business advance</p>
         </div>
       </div>
 

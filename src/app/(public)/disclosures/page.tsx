@@ -15,7 +15,7 @@ export default function DisclosuresPage() {
           PennyLime is owned and operated by 770 Technology Way LLC, a Florida limited liability company.
           PennyLime offers <strong className="text-[#1a1a1a]">merchant cash advances</strong> to qualifying drivers, sellers, and operators.
           A merchant cash advance is the purchase of a portion of your future receivables at a discount,
-          in exchange for a lump sum today. <strong className="text-[#1a1a1a]">A merchant cash advance is not a loan.</strong>
+          in exchange for a lump sum today. <strong className="text-[#1a1a1a]">This is a cash advance product, not a credit product.</strong>
           There is no Annual Percentage Rate (APR) or interest rate.
         </p>
 
@@ -41,7 +41,7 @@ export default function DisclosuresPage() {
           How Cost is Calculated
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          PennyLime advances are not loans, so there is no interest rate or APR. Cost is expressed as a factor rate plus a one-time origination fee. The factor rate multiplies the advance amount to produce the total purchased receivables amount. Total cost is fully disclosed in dollar terms before you accept the advance.
+          PennyLime advances are not credit products, so there is no APR. Cost is expressed as a factor rate plus a one-time origination fee. The factor rate multiplies the advance amount to produce the total purchased receivables amount. Total cost is fully disclosed in dollar terms before you accept the advance.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">

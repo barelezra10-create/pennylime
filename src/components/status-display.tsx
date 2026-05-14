@@ -62,7 +62,7 @@ export function StatusDisplay({ application }: { application: StatusApplication 
       {/* Status Card */}
       <div className="rounded-2xl border bg-white p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Loan Status</h2>
+          <h2 className="text-lg font-semibold">Advance Status</h2>
           <StatusBadge status={application.status} />
         </div>
         <dl className="grid grid-cols-2 gap-4 text-sm">
@@ -71,7 +71,7 @@ export function StatusDisplay({ application }: { application: StatusApplication 
             <dd className="font-medium mt-0.5">{application.firstName}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">Loan Amount</dt>
+            <dt className="text-gray-500">Advance Amount</dt>
             <dd className="font-medium mt-0.5">${Number(application.loanAmount).toLocaleString()}</dd>
           </div>
           <div>
@@ -85,12 +85,12 @@ export function StatusDisplay({ application }: { application: StatusApplication 
           {isActiveLoan && application.interestRate && (
             <>
               <div>
-                <dt className="text-gray-500">Interest Rate</dt>
-                <dd className="font-medium mt-0.5">{Number(application.interestRate)}% APR</dd>
+                <dt className="text-gray-500">Weekly Rate</dt>
+                <dd className="font-medium mt-0.5">{Number(application.interestRate)}%</dd>
               </div>
               <div>
                 <dt className="text-gray-500">Term</dt>
-                <dd className="font-medium mt-0.5">{application.loanTermMonths} months</dd>
+                <dd className="font-medium mt-0.5">{application.loanTermMonths} weeks</dd>
               </div>
             </>
           )}
@@ -104,7 +104,7 @@ export function StatusDisplay({ application }: { application: StatusApplication 
         )}
       </div>
 
-      {/* Balance Summary (active loans only) */}
+      {/* Balance Summary (active advances only) */}
       {isActiveLoan && payments.length > 0 && (
         <div className="rounded-2xl border bg-white p-6">
           <h2 className="text-lg font-semibold mb-4">Balance Summary</h2>
@@ -141,7 +141,7 @@ export function StatusDisplay({ application }: { application: StatusApplication 
         </div>
       )}
 
-      {/* Payment History (active loans only) */}
+      {/* Payment History (active advances only) */}
       {isActiveLoan && payments.length > 0 && (
         <div className="rounded-2xl border bg-white p-6">
           <h2 className="text-lg font-semibold mb-4">Payment History</h2>

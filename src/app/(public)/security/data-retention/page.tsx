@@ -6,7 +6,7 @@ export const metadata = {
 const SCHEDULE = [
   ["Merchant application records (approved or declined): legal name, EIN, contact, application data", "7 years from final decision or close of advance", "BSA recordkeeping; state lending and licensing"],
   ["Identity and KYC documentation: government ID, beneficial-owner records, OFAC screening results", "5 years from termination of customer relationship", "BSA / 31 CFR 1010.430"],
-  ["Funded advance and loan records: contracts, receipts, payment schedules, remittance history, payoff records", "7 years from final payment or charge-off", "State lending laws; tax / accounting requirements"],
+  ["Funded advance records: contracts, receipts, payment schedules, remittance history, payoff records", "7 years from final payment or charge-off", "State commercial finance laws; tax / accounting requirements"],
   ["Plaid access tokens (encrypted)", "Active for the life of the account connection; revoked and removed within 30 days of relationship end or revocation", "GLBA Safeguards Rule; minimum-necessary principle"],
   ["Plaid-derived transaction and balance data used in underwriting", "7 years from final decision or close of advance, retained as part of the application file", "Audit trail for underwriting; ECOA Reg B"],
   ["Adverse action notices and supporting consumer-report data", "25 months from notice date", "ECOA / Regulation B 12 CFR 1002.12(b)"],

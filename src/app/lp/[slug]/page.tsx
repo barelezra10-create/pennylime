@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getLandingPageBySlug } from "@/actions/content";
 import { LogoMark } from "@/components/brand/logo";
-import { JsonLd, loanProductSchema, faqSchema } from "@/components/seo/json-ld";
+import { JsonLd, cashAdvanceProductSchema, faqSchema } from "@/components/seo/json-ld";
 import { LandingLeadForm } from "@/components/landing/landing-lead-form";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,7 @@ export default async function LandingPageRoute({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-[#faf8f0]">
-      <JsonLd data={loanProductSchema()} />
+      <JsonLd data={cashAdvanceProductSchema()} />
       {faqs.length > 0 && <JsonLd data={faqSchema(faqs)} />}
 
       {/* Minimal header */}
@@ -303,7 +303,7 @@ export default async function LandingPageRoute({ params }: Props) {
             Penny<span className="text-[#4ade80]">Lime<span className="text-[#4ade80]">.</span></span>
           </div>
           <p className="text-[11px] text-[#71717a] text-center md:text-right max-w-xl">
-            Merchant cash advances $500 to $10,000. Factor rates typically 1.20-1.49. Repayment as a fixed percentage of future receivables. Not a loan. Approval subject to eligibility.{" "}
+            Merchant cash advances $500 to $10,000. Factor rates typically 1.20-1.49. Repayment as a fixed percentage of future receivables.  Approval subject to eligibility.{" "}
             <Link href="/disclosures" className="underline hover:text-white">See full disclosures</Link>
             {" · "}
             <Link href="/privacy" className="underline hover:text-white">Privacy</Link>

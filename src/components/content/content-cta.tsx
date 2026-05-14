@@ -94,7 +94,7 @@ export function ContentCta({ text, subtext, variant = "default" }: { text?: stri
             Start My Application
           </Link>
           <Link
-            href="/tools/loan-calculator"
+            href="/tools/advance-calculator"
             className="text-[#bbf7d0] font-medium text-[14px] hover:text-white transition-colors"
           >
             Calculate my payment &rarr;

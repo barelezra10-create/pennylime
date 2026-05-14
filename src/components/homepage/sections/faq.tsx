@@ -18,7 +18,7 @@ const FAQ_ENTRIES = [
   },
   {
     question: "What does it cost?",
-    answer: "Your advance accrues a weekly rate of 4% to 10% (compounded on the outstanding balance), depending on your verified deposit history and risk profile. You pick the repayment term in weeks; the rate is the same regardless of term. No prepayment penalties, no hidden fees. Your total dollar cost and weekly payment are shown in plain dollars before you accept. This is a cash advance, not a loan, so there is no APR.",
+    answer: "Your advance accrues a weekly rate of 4% to 10% (compounded on the outstanding balance), depending on your verified deposit history and risk profile. You pick the repayment term in weeks; the rate is the same regardless of term. No prepayment penalties, no hidden fees. Your total dollar cost and weekly payment are shown in plain dollars before you accept. This is a cash advance product, not a credit product, so there is no APR.",
   },
   {
     question: "How do I apply?",

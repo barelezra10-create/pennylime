@@ -84,7 +84,7 @@ export function LandingLeadForm({
         }}
       >
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#bbf7d0]">
-          Loan application
+          Advance application
         </p>
         <h3 className="text-[22px] font-extrabold tracking-[-0.02em] mt-1">
           Start your application
@@ -95,11 +95,11 @@ export function LandingLeadForm({
       </div>
 
       <form onSubmit={handleStart} className="p-6 space-y-6">
-        {/* Loan amount slider */}
+        {/* Advance amount slider */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <label className="text-[11px] uppercase tracking-[0.05em] text-[#71717a] font-semibold">
-              Loan amount
+              Advance amount
             </label>
             <span className="text-[22px] font-extrabold text-[#15803d] tracking-[-0.02em]">
               ${amount.toLocaleString()}

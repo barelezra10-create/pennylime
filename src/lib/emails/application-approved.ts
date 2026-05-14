@@ -30,7 +30,7 @@ export function applicationApprovedEmail(params: {
         <p>Next up: we'll wire the funds to your linked bank account. You'll get a confirmation the moment it's out the door.</p>
         <p>Track your advance: <a href="${statusUrl}" style="color: #15803d;">${statusUrl}</a></p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #6b7280; font-size: 12px;">PennyLime purchases a portion of your future receivables. This is a commercial advance, not a loan.</p>
+        <p style="color: #6b7280; font-size: 12px;">PennyLime purchases a portion of your future receivables. This is a cash advance product.</p>
       </div>
     `,
   };

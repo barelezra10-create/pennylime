@@ -231,7 +231,7 @@ export function UberEarningsCalculator() {
             href="/apply"
             className="mt-4 bg-[#15803d] text-white text-center text-[14px] font-bold py-3.5 rounded-xl hover:bg-[#166534] transition-colors"
           >
-            Need cash for car repairs? Apply for a PennyLime loan
+            Need cash for car repairs? Get a PennyLime advance
           </Link>
         </div>
       </div>

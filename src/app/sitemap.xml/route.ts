@@ -35,7 +35,7 @@ export async function GET() {
     </url>`),
     ...platforms.map((p) => `
     <url>
-      <loc>${base}/loans/${p.slug}</loc>
+      <loc>${base}/advances/${p.slug}</loc>
       <lastmod>${p.updatedAt.toISOString()}</lastmod>
       <priority>0.8</priority>
     </url>`),

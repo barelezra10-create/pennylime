@@ -151,7 +151,7 @@ export function OfferClient({
         <section className="mt-6 rounded-xl bg-[#f4f4f5] p-4 text-[12px] text-[#52525b] flex flex-col gap-2">
           <div className="flex items-start gap-2">
             <span className="text-[#15803d] font-bold">$</span>
-            <span>This is a merchant cash advance, not a loan.</span>
+            <span>This is a cash advance.</span>
           </div>
           <div className="flex items-start gap-2">
             <span className="text-[#0ea5e9] font-bold">÷</span>

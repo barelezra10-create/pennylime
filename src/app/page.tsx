@@ -1,6 +1,6 @@
 import { Homepage } from "@/components/homepage/homepage";
 import { getPublishedArticles, getPublishedPlatformPages } from "@/actions/content";
-import { JsonLd, organizationSchema, loanProductSchema } from "@/components/seo/json-ld";
+import { JsonLd, organizationSchema, cashAdvanceProductSchema } from "@/components/seo/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <>
       <JsonLd data={organizationSchema()} />
-      <JsonLd data={loanProductSchema()} />
+      <JsonLd data={cashAdvanceProductSchema()} />
       <Homepage
         latestArticles={articles.map((a) => ({
           title: a.title,

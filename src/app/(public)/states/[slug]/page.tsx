@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { getStatePageBySlug, getPublishedStatePages } from "@/actions/content";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
-import { JsonLd, loanProductSchema } from "@/components/seo/json-ld";
+import { JsonLd, cashAdvanceProductSchema } from "@/components/seo/json-ld";
 import { FaqAccordion } from "@/components/content/faq-accordion";
 import { ContentCta } from "@/components/content/content-cta";
 import { generateMeta } from "@/lib/seo";
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const state = await getStatePageBySlug(slug);
   if (!state) return {};
   return generateMeta({
-    title: state.metaTitle || `1099 Loans in ${state.stateName}`,
+    title: state.metaTitle || `1099 Cash Advances in ${state.stateName}`,
     description: state.metaDescription || state.heroSubtext,
   }) as Metadata;
 }
@@ -36,7 +36,7 @@ export default async function StatePageRoute({ params }: { params: Promise<{ slu
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <JsonLd data={loanProductSchema()} />
+      <JsonLd data={cashAdvanceProductSchema()} />
       <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: `${state.stateName}`, href: `/states/${state.slug}` }]} />
 
       <header className="mb-8">
@@ -67,7 +67,7 @@ export default async function StatePageRoute({ params }: { params: Promise<{ slu
 
       {state.loanAvailability && (
         <section className="mb-8">
-          <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-black mb-3">Loan Availability</h2>
+          <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-black mb-3">Availability</h2>
           <p className="text-[14px] text-[#71717a] leading-relaxed">{state.loanAvailability}</p>
         </section>
       )}

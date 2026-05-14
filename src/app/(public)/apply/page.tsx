@@ -434,7 +434,7 @@ function StepAmount({
         </div>
       </div>
 
-      {/* Loan term selector */}
+      {/* Term selector */}
       <div className="mt-8 w-full">
         <p className="mb-3 text-[14px] font-semibold text-black">
           Repayment term

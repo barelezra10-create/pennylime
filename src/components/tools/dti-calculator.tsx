@@ -46,7 +46,7 @@ const zoneConfig: Record<Zone, { color: string; bg: string; label: string; guida
     bg: "#f0f5f0",
     label: "Good",
     guidance:
-      "Your debt-to-income ratio is healthy. Lenders generally view DTI under 36% favorably, and you likely qualify for most loan products.",
+      "Your debt-to-income ratio is healthy. Lenders generally view DTI under 36% favorably, and your debt load is manageable.",
   },
   caution: {
     color: "#d97706",

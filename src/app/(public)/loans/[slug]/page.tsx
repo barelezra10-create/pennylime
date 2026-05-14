@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { getPlatformPageBySlug, getPublishedPlatformPages } from "@/actions/content";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
-import { JsonLd, loanProductSchema, faqSchema } from "@/components/seo/json-ld";
+import { JsonLd, cashAdvanceProductSchema, faqSchema } from "@/components/seo/json-ld";
 import { FaqAccordion } from "@/components/content/faq-accordion";
 import { ContentCta } from "@/components/content/content-cta";
 import { generateMeta } from "@/lib/seo";
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const platform = await getPlatformPageBySlug(slug);
   if (!platform) return {};
   return generateMeta({
-    title: platform.metaTitle || `Loans for ${platform.platformName} Workers`,
+    title: platform.metaTitle || `Cash Advances for ${platform.platformName} Workers`,
     description: platform.metaDescription || platform.heroSubtext,
   }) as Metadata;
 }
@@ -35,9 +35,9 @@ export default async function PlatformPage({ params }: { params: Promise<{ slug:
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <JsonLd data={loanProductSchema()} />
+      <JsonLd data={cashAdvanceProductSchema()} />
       <JsonLd data={faqSchema(faqs)} />
-      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: platform.platformName, href: `/loans/${platform.slug}` }]} />
+      <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: platform.platformName, href: `/advances/${platform.slug}` }]} />
 
       <header className="mb-8">
         <h1 className="text-[32px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] leading-tight">{platform.heroHeadline}</h1>
@@ -48,7 +48,7 @@ export default async function PlatformPage({ params }: { params: Promise<{ slug:
       </header>
 
       <section className="mb-8">
-        <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#1a1a1a] mb-3">About {platform.platformName} Loans</h2>
+        <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#1a1a1a] mb-3">About {platform.platformName} Cash Advances</h2>
         <p className="text-[14px] text-[#71717a] leading-relaxed">{platform.platformDescription}</p>
       </section>
 
@@ -71,7 +71,7 @@ export default async function PlatformPage({ params }: { params: Promise<{ slug:
 
       {platform.loanDetailsHtml && (
         <section className="mb-8">
-          <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#1a1a1a] mb-3">Loan Details</h2>
+          <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#1a1a1a] mb-3">Advance Details</h2>
           <div className="text-[14px] text-[#71717a] leading-relaxed" dangerouslySetInnerHTML={{ __html: platform.loanDetailsHtml }} />
         </section>
       )}

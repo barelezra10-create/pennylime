@@ -1,7 +1,7 @@
 import { APP_URL } from "@/lib/email";
 import type { ScheduleEntry } from "@/lib/amortization";
 
-export function loanFundedEmail(params: {
+export function advanceFundedEmail(params: {
   firstName: string;
   applicationCode: string;
   fundedAmount: number;
@@ -56,7 +56,7 @@ export function loanFundedEmail(params: {
         <p>Each remittance will be auto-debited from your linked bank account on its scheduled date as a purchase of future receivables.</p>
         <p>Track your advance: <a href="${statusUrl}" style="color: #15803d;">${statusUrl}</a></p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-        <p style="color: #6b7280; font-size: 12px;">PennyLime purchases a portion of your future receivables at the factor rate above. This is a commercial advance, not a loan.</p>
+        <p style="color: #6b7280; font-size: 12px;">PennyLime purchases a portion of your future receivables at the factor rate above. This is a cash advance product.</p>
       </div>
     `,
   };

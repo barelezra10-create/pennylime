@@ -7,7 +7,7 @@ const TERM_WEEKS = [1, 2, 3, 4, 6, 8, 12, 16];
 const MAX_LOAN = 10000;
 const WEEKLY_RATE = 0.30; // 30% weekly interest
 
-export function LoanAffordabilityCalculator() {
+export function AdvanceAffordabilityCalculator() {
   const [weeklyEarnings, setWeeklyEarnings] = useState(800);
   const [weeklyExpenses, setWeeklyExpenses] = useState(400);
   const [paymentPct, setPaymentPct] = useState(30);
@@ -79,7 +79,7 @@ export function LoanAffordabilityCalculator() {
 
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-[14px] font-semibold text-black">% of spare cash to loan payments</label>
+              <label className="text-[14px] font-semibold text-black">% of spare cash to weekly payments</label>
               <span className="text-[18px] font-extrabold text-[#15803d]">{paymentPct}%</span>
             </div>
             <input
@@ -91,7 +91,7 @@ export function LoanAffordabilityCalculator() {
           </div>
 
           <div>
-            <label className="text-[14px] font-semibold text-black mb-3 block">Loan Term</label>
+            <label className="text-[14px] font-semibold text-black mb-3 block">Term</label>
             <div className="grid grid-cols-4 gap-2">
               {TERM_WEEKS.map((w) => (
                 <button
@@ -141,7 +141,7 @@ export function LoanAffordabilityCalculator() {
                 <p className="text-[18px] font-bold text-black">{fmt(weeklyPayment)}</p>
               </div>
               <div className="bg-white/70 rounded-lg p-3">
-                <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a]">Loan Term</p>
+                <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a]">Term</p>
                 <p className="text-[18px] font-bold text-black">{termWeeks} weeks</p>
               </div>
               <div className="bg-white/70 rounded-lg p-3">
@@ -165,7 +165,7 @@ export function LoanAffordabilityCalculator() {
             href="/apply"
             className="mt-4 bg-[#15803d] text-white text-center text-[14px] font-bold py-3.5 rounded-xl hover:bg-[#166534] transition-colors"
           >
-            Apply for your {fmt(maxLoan)} loan now
+            Apply for your {fmt(maxLoan)} advance now
           </Link>
         </div>
       </div>

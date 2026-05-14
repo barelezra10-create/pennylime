@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <p className="text-[15px] text-[#71717a] leading-relaxed">
           PennyLime is owned and operated by 770 Technology Way LLC, a Florida limited liability company.
           PennyLime offers <strong className="text-black">merchant cash advances</strong> to qualifying gig workers,
-          1099 contractors, and small businesses; we do not offer loans or extend credit.
+          1099 contractors, and small businesses; we do not extend credit.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">

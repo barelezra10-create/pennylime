@@ -9,7 +9,7 @@ import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { generateSchedule } from "@/lib/amortization";
-import { loanFundedEmail } from "@/lib/emails/loan-funded";
+import { advanceFundedEmail } from "@/lib/emails/advance-funded";
 import { sendEmail } from "@/lib/emails/send";
 
 function generateApplicationCode(): string {
@@ -443,7 +443,7 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
   // Send funded email with schedule
   await sendEmail({
     to: application.email,
-    ...loanFundedEmail({
+    ...advanceFundedEmail({
       firstName: application.firstName,
       applicationCode: application.applicationCode,
       fundedAmount,

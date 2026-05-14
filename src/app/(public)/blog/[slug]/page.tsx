@@ -131,7 +131,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                   <LogoMark size={24} />
                   <span className="text-[14px] font-extrabold tracking-[-0.02em]">Penny<span className="text-[#15803d]">Lime</span></span>
                 </div>
-                <p className="text-[15px] font-bold text-black mb-1">Need a loan?</p>
+                <p className="text-[15px] font-bold text-black mb-1">Need an advance?</p>
                 <p className="text-[13px] text-[#71717a] mb-4">$500 to $10,000 for gig workers. No credit check required.</p>
                 <Link href="/apply" className="block w-full bg-[#15803d] text-white text-center text-[13px] font-bold py-3 rounded-xl hover:bg-[#166534] transition-colors">
                   Apply Now
@@ -143,8 +143,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               </div>
 
               {/* Calculator link */}
-              <Link href="/tools/loan-calculator" className="block bg-white rounded-2xl border border-[#e4e4e7] p-5 hover:shadow-sm transition-shadow">
-                <p className="text-[13px] font-bold text-black mb-1">Loan Calculator</p>
+              <Link href="/tools/advance-calculator" className="block bg-white rounded-2xl border border-[#e4e4e7] p-5 hover:shadow-sm transition-shadow">
+                <p className="text-[13px] font-bold text-black mb-1">Advance Calculator</p>
                 <p className="text-[12px] text-[#71717a]">See your weekly payments before you apply</p>
                 <span className="text-[12px] font-bold text-[#15803d] mt-2 inline-block">Calculate &rarr;</span>
               </Link>

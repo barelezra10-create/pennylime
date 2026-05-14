@@ -12,7 +12,7 @@ function calculateWeeklyPayment(principal: number, weeklyRatePercent: number, we
   return payment;
 }
 
-export function LoanCalculator() {
+export function AdvanceCalculator() {
   const [amount, setAmount] = useState(3000);
   const [weeks, setWeeks] = useState(4);
   const [weeklyRate, setWeeklyRate] = useState(30); // 30% weekly minimum
@@ -27,7 +27,7 @@ export function LoanCalculator() {
         <div className="space-y-6">
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-[14px] font-semibold text-black">Loan Amount</label>
+              <label className="text-[14px] font-semibold text-black">Advance Amount</label>
               <span className="text-[18px] font-extrabold text-[#15803d]">${amount.toLocaleString()}</span>
             </div>
             <input type="range" min={500} max={10000} step={100} value={amount} onChange={(e) => setAmount(+e.target.value)} className="w-full accent-[#15803d]" />
@@ -88,7 +88,7 @@ export function LoanCalculator() {
             href="/apply"
             className="mt-4 bg-[#15803d] text-white text-center text-[14px] font-bold py-3.5 rounded-xl hover:bg-[#166534] transition-colors"
           >
-            Apply for This Loan
+            Apply for This Advance
           </Link>
         </div>
       </div>
