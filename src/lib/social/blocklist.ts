@@ -1,0 +1,28 @@
+const FORBIDDEN_TERMS: ReadonlyArray<RegExp> = [
+  /\bguaranteed\b/i,
+  /\bno credit\s+(check|score|history|needed|required)\b/i,
+  /\binstant approval\b/i,
+  /\bzero fees\b/i,
+  /\bno fees\b/i,
+  /\b0%\s*apr\b/i,
+  /\bapproved in seconds\b/i,
+  /\beveryone qualifies\b/i,
+  /\bbad credit ok\b/i,
+  /\bany credit accepted\b/i,
+  /\$\d{3,}\s*today\b/i,      // "$500 today" style ($ is non-word, no leading \b needed)
+  /\bget cash now\b/i,
+];
+
+export interface BlocklistResult {
+  passed: boolean;
+  matches: string[];
+}
+
+export function checkBlocklist(text: string): BlocklistResult {
+  const matches: string[] = [];
+  for (const pattern of FORBIDDEN_TERMS) {
+    const m = text.match(pattern);
+    if (m) matches.push(m[0]);
+  }
+  return { passed: matches.length === 0, matches };
+}

@@ -1,0 +1,14 @@
+[project]
+name = "pennylime-bot"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.29",
+    "instagrapi>=2.1",
+    "linkedin-api>=2.0",
+    "TikTokApi>=6.0",
+    "facebook-scraper>=0.2.59",
+    "cryptography>=42.0",
+    "python-dotenv>=1.0",
+    "httpx>=0.27",
+]

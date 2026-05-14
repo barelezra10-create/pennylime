@@ -824,3 +824,82 @@ model PhoneVerification {
   @@index([phone])
   @@index([createdAt])
 }
+
+// ============================================================================
+// Social Bot
+// ============================================================================
+
+model SocialAccount {
+  id                String          @id @default(uuid())
+  platform          String          // "instagram" | "facebook" | "linkedin" | "tiktok"
+  handle            String          // "@pennylime"
+  accessToken       String          // encrypted at rest (AES-GCM via NEXTAUTH_SECRET)
+  refreshToken      String?
+  tokenExpiresAt    DateTime?
+  platformAccountId String?         // IG business user id / FB page id / LI org id (TT not used)
+  botCookies        String?         // encrypted instagrapi/cookie session blob
+  botStatus         String          @default("healthy") // "healthy" | "challenged" | "banned"
+  lastBotAction     DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  posts             SocialPost[]
+  engagements       EngagementLog[]
+
+  @@unique([platform, handle])
+}
+
+model SocialPost {
+  id             String        @id @default(uuid())
+  accountId      String
+  account        SocialAccount @relation(fields: [accountId], references: [id])
+  topic          String
+  body           String        @db.Text
+  imageUrl       String?
+  scheduledFor   DateTime
+  status         String        @default("pending") // "pending"|"published"|"failed"|"blocked"
+  platformPostId String?
+  publishError   String?       @db.Text
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([status, scheduledFor])
+}
+
+model TopicPool {
+  id         String    @id @default(uuid())
+  topic      String    @db.Text
+  category   String    // "tax" | "cashflow" | "platform-tips" | "earnings" | "savings" | "news"
+  lastUsedAt DateTime?
+  useCount   Int       @default(0)
+  active     Boolean   @default(true)
+}
+
+model EngagementTarget {
+  id           String    @id @default(uuid())
+  platform     String
+  source       String    // "hashtag:#uberdriver" | "geo:los-angeles+keyword:doordash"
+  targetHandle String
+  targetPostId String?
+  action       String    // "like" | "follow"
+  status       String    @default("queued") // "queued"|"done"|"skipped"|"failed"
+  createdAt    DateTime  @default(now())
+  processedAt  DateTime?
+
+  @@index([platform, status, createdAt])
+}
+
+model EngagementLog {
+  id           String        @id @default(uuid())
+  accountId    String
+  account      SocialAccount @relation(fields: [accountId], references: [id])
+  platform     String
+  action       String        // "like" | "follow" | "unfollow"
+  targetHandle String
+  targetPostId String?
+  success      Boolean
+  error        String?       @db.Text
+  createdAt    DateTime      @default(now())
+
+  @@index([accountId, createdAt])
+}
