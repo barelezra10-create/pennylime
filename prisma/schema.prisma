@@ -913,7 +913,7 @@ model AgentSession {
   id           String   @id @default(uuid())
   channel      String   // "chat" | "sms" | "voice"
   contactId    String?
-  contact      Contact? @relation(fields: [contactId], references: [id])
+  contact      Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
   authLevel    String   @default("anon")
   startedAt    DateTime @default(now())
   endedAt      DateTime?
@@ -957,7 +957,7 @@ model AgentToolCall {
 model AgentVerification {
   id           String   @id @default(uuid())
   contactId    String
-  contact      Contact  @relation(fields: [contactId], references: [id])
+  contact      Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
   channel      String
   attempts     Int      @default(0)
   lockedUntil  DateTime?
@@ -968,9 +968,11 @@ model AgentVerification {
 model SupportTicket {
   id              String   @id @default(uuid())
   sessionId       String?
-  session         AgentSession? @relation(fields: [sessionId], references: [id])
+  session         AgentSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   contactId       String?
-  contact         Contact? @relation(fields: [contactId], references: [id])
+  // Tickets intentionally survive contact deletion (audit trail). transcript
+  // is snapshotted here so deleting the source session still leaves a record.
+  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   reason          String
   transcript      String
   status          String   @default("open")
