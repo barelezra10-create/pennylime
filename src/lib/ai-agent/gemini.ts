@@ -1,6 +1,8 @@
 import "server-only";
 import { GoogleGenAI, type FunctionDeclaration } from "@google/genai";
 
+// Keep MODEL and the price constants in cost.ts in sync.
+// gemini-2.5-flash is roughly 4x input / 8x output the cost of 2.0-flash.
 const MODEL = "gemini-2.0-flash";
 
 let client: GoogleGenAI | null = null;
