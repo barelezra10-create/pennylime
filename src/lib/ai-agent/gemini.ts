@@ -1,4 +1,5 @@
-import "server-only";
+// Imported by both the Next.js web app and the pennylime-voice Node service,
+// so this module must not depend on the `server-only` marker.
 import { GoogleGenAI, type FunctionDeclaration } from "@google/genai";
 
 // Keep MODEL and the price constants in cost.ts in sync.

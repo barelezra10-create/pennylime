@@ -1,4 +1,5 @@
-import "server-only";
+// runTurn runs in two host processes: the Next.js web app (API routes) and the
+// pennylime-voice Node service. It must not depend on the `server-only` marker.
 import { prisma } from "@/lib/db";
 import { callGemini, type GeminiTurn } from "./gemini";
 import { buildSystemPrompt } from "./systemPrompt";
