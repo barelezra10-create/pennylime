@@ -12,6 +12,7 @@ import { paymentFailedEmail } from "@/lib/emails/payment-failed";
 import { lateFeeAddedEmail } from "@/lib/emails/late-fee-added";
 import { collectionWarningEmail } from "@/lib/emails/collection-warning";
 import { collectionEscalationEmail } from "@/lib/emails/collection-escalation";
+import { wrapTransactionalEmail } from "@/lib/emails/branded-wrapper";
 import {
   applicationSubmittedSms,
   applicationApprovedSms,
@@ -221,6 +222,17 @@ export const TRANSACTIONAL_CATALOG: CatalogEntry[] = [
     }),
   },
 ];
+
+// Wrap every email's HTML in the branded shell so previews match what
+// recipients actually see (sendEmail() applies the same wrapper at send time).
+for (const entry of TRANSACTIONAL_CATALOG) {
+  if (entry.email) {
+    entry.email = {
+      subject: entry.email.subject,
+      html: wrapTransactionalEmail(entry.email.html),
+    };
+  }
+}
 
 export function getCatalogEntry(id: string): CatalogEntry | undefined {
   return TRANSACTIONAL_CATALOG.find((e) => e.id === id);
