@@ -1,15 +1,20 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
-function loadSecret(): string {
+let _secret: string | null = null;
+function getSecret(): string {
+  if (_secret) return _secret;
   const fromEnv = process.env.AGENT_CONFIRM_SECRET;
-  if (fromEnv) return fromEnv;
+  if (fromEnv) {
+    _secret = fromEnv;
+    return _secret;
+  }
   if (process.env.NODE_ENV === "production") {
     throw new Error("AGENT_CONFIRM_SECRET must be set in production");
   }
-  return randomBytes(32).toString("hex");
+  _secret = randomBytes(32).toString("hex");
+  return _secret;
 }
 
-const SECRET = loadSecret();
 const MAX_AGE_MS = 90_000;
 
 function timingSafeEqualHex(a: string, b: string): boolean {
@@ -23,7 +28,7 @@ function timingSafeEqualHex(a: string, b: string): boolean {
 
 function digest(ts: string, sessionId: string, tool: string, payload: unknown): string {
   const body = JSON.stringify({ ts, sessionId, tool, payload });
-  return createHmac("sha256", SECRET).update(body).digest("hex").slice(0, 24);
+  return createHmac("sha256", getSecret()).update(body).digest("hex").slice(0, 24);
 }
 
 export function issueToken(sessionId: string, tool: string, payload: unknown): string {
