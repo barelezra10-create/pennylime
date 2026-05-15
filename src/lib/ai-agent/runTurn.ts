@@ -65,14 +65,18 @@ export async function runTurn(
   let currentAuth: AuthLevel = ctx.authLevel;
   let totalCostCents = 0;
   let reply = "";
+  let lastTokensIn = 0;
+  let lastTokensOut = 0;
+  const contactSummary = await buildContactSummary(ctx);
 
   for (let iter = 0; iter < MAX_TOOL_CALLS_PER_TURN + 1; iter++) {
     const tools = listToolsForAuth(currentAuth).map(toolToGeminiDecl);
-    const contactSummary = await buildContactSummary({ ...ctx, authLevel: currentAuth });
     const sys = buildSystemPrompt({ ...ctx, authLevel: currentAuth }, contactSummary);
 
     const result = await callGemini(sys, history, tools);
     totalCostCents += tokensToCostCents(result.tokensIn, result.tokensOut);
+    lastTokensIn = result.tokensIn;
+    lastTokensOut = result.tokensOut;
 
     if (totalCostCents > COST_HARD_CAP_CENTS) {
       await prisma.supportTicket.create({
@@ -151,20 +155,36 @@ export async function runTurn(
     });
   }
 
+  let cappedAt: "tool_loop" | "cost" | undefined;
   if (!reply) {
     reply = "Let me create a ticket and have someone follow up.";
+    cappedAt = "tool_loop";
     await prisma.supportTicket.create({
       data: { sessionId: ctx.sessionId, contactId: ctx.contactId, reason: "tool_loop", transcript: "" },
+    });
+    await prisma.agentSession.update({
+      where: { id: ctx.sessionId },
+      data: { endedAt: new Date(), endReason: "tool_loop" },
     });
   }
 
   await prisma.agentMessage.create({
-    data: { sessionId: ctx.sessionId, role: "assistant", text: reply },
+    data: {
+      sessionId: ctx.sessionId,
+      role: "assistant",
+      text: reply,
+      tokensIn: lastTokensIn || null,
+      tokensOut: lastTokensOut || null,
+    },
   });
   await prisma.agentSession.update({
     where: { id: ctx.sessionId },
     data: { costCents: { increment: Math.round(totalCostCents) }, authLevel: currentAuth },
   });
 
-  return { reply, newAuthLevel: currentAuth !== ctx.authLevel ? currentAuth : undefined };
+  return {
+    reply,
+    newAuthLevel: currentAuth !== ctx.authLevel ? currentAuth : undefined,
+    cappedAt,
+  };
 }
