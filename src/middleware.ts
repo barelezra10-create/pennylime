@@ -19,6 +19,7 @@ const ADMIN_PROTECTED = [
   "/admin/team",
   "/admin/plaid-test",
   "/admin/increase-test",
+  "/admin/funnel-preview",
 ];
 
 function generatePennyClickId(): string {
@@ -35,10 +36,21 @@ function isAdminProtected(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
 
   // Auth gate for admin pages
   if (isAdminProtected(pathname)) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      const loginUrl = new URL("/admin/login", request.url);
+      loginUrl.searchParams.set("callbackUrl", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // Funnel preview mode (?preview=1 on /apply) requires admin session.
+  // Stops the URL from being shared publicly to bypass Twilio + Plaid.
+  if (pathname === "/apply" && searchParams.get("preview") === "1") {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     if (!token) {
       const loginUrl = new URL("/admin/login", request.url);

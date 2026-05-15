@@ -1974,6 +1974,7 @@ function StepPlaidLink({
   setBankAccountNumberManual,
   onNext,
   onBack,
+  previewMode,
 }: {
   plaidAccessToken: string | null;
   plaidAccountId: string | null;
@@ -1989,11 +1990,28 @@ function StepPlaidLink({
   setBankAccountNumberManual: (v: string) => void;
   onNext: () => void;
   onBack: () => void;
+  previewMode?: boolean;
 }) {
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const linked = !!(plaidAccessToken && plaidAccountId && plaidItemId);
+
+  // Admin preview: auto-fill a fake "linked bank" so the UI moves to the
+  // post-link state without calling Plaid. Lets admin iterate on the rest
+  // of the step (income preview pill, classify-transactions, etc.) without
+  // a real bank login.
+  function fakeLinkForPreview() {
+    setPlaidData({
+      accessToken: "preview-token",
+      accountId: "preview-account",
+      itemId: "preview-item",
+    });
+    setPreviewIncome({ monthlyIncome: 3800, bankBalance: 1250 });
+    setBankName("Preview Bank");
+    setBankRoutingNumberManual("026073150");
+    setBankAccountNumberManual("000123456789");
+  }
 
   // Detect OAuth return: when an OAuth bank (Chase, Capital One, etc.)
   // sends the user back, the URL contains `?oauth_state_id=...`. In that
@@ -2251,6 +2269,15 @@ function StepPlaidLink({
                 Plaid handles the connection. Your bank credentials are never seen or stored by PennyLime.
               </p>
             </div>
+            {previewMode && (
+              <button
+                type="button"
+                onClick={fakeLinkForPreview}
+                className="w-full mb-2 rounded-xl bg-amber-100 text-amber-900 py-2 text-[12px] font-bold uppercase tracking-wide border border-amber-300 hover:bg-amber-200"
+              >
+                ⚠ Preview mode — Use mock bank (skip Plaid)
+              </button>
+            )}
             <motion.button
               type="button"
               onClick={() => open()}
@@ -2918,6 +2945,10 @@ function ApplyPageInner() {
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
   const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
+  // Admin-only preview mode (?preview=1 — gated by middleware to admin sessions).
+  // Skips Twilio Verify + Plaid Link so the funnel UI is navigable end-to-end
+  // for design / copy iteration without real-bank or real-phone friction.
+  const previewMode = searchParams.get("preview") === "1";
   const [bankName, setBankName] = useState(persisted?.bankName ?? "");
   const [bankRoutingNumberManual, setBankRoutingNumberManual] = useState(persisted?.bankRoutingNumberManual ?? "");
   const [bankAccountNumberManual, setBankAccountNumberManual] = useState(persisted?.bankAccountNumberManual ?? "");
@@ -3092,6 +3123,11 @@ function ApplyPageInner() {
 
   return (
     <div className="min-h-screen bg-[#fafaf7]">
+      {previewMode && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-amber-400 text-amber-950 text-center py-1.5 text-[11px] font-bold uppercase tracking-wider">
+          ⚠ Admin preview mode — SMS and Plaid bypassed. Submissions still hit the DB.
+        </div>
+      )}
       <Navbar />
 
       <div className="flex min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)] pt-[64px] md:pt-[80px]">
@@ -3107,6 +3143,7 @@ function ApplyPageInner() {
                 <PhoneVerification
                   phone={form.phone}
                   contactId={pendingPhoneVerification.contactId}
+                  previewMode={previewMode}
                   onVerified={() => {
                     const next = pendingPhoneVerification.nextStep;
                     setPendingPhoneVerification(null);
@@ -3190,6 +3227,10 @@ function ApplyPageInner() {
                             });
                             await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                             try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
+                            if (previewMode) {
+                              setStep(step + 1);
+                              return;
+                            }
                             setPendingPhoneVerification({ contactId: contact.id, nextStep: step + 1 });
                             return;
                           } catch {}
@@ -3277,6 +3318,7 @@ function ApplyPageInner() {
                         setBankRoutingNumberManual={setBankRoutingNumberManual}
                         bankAccountNumberManual={bankAccountNumberManual}
                         setBankAccountNumberManual={setBankAccountNumberManual}
+                        previewMode={previewMode}
                         onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
                         onBack={() => setStep(step - 1)}
                       />
@@ -3367,6 +3409,10 @@ function ApplyPageInner() {
                       });
                       await logActivity({ contactId: contact.id, type: "app_started", title: "Application started" });
                       try { sessionStorage.setItem("pennylime_contact_id", contact.id); } catch {}
+                      if (previewMode) {
+                        setStep(3);
+                        return;
+                      }
                       setPendingPhoneVerification({ contactId: contact.id, nextStep: 3 });
                       return;
                     } catch {}
@@ -3439,6 +3485,7 @@ function ApplyPageInner() {
                   setBankRoutingNumberManual={setBankRoutingNumberManual}
                   bankAccountNumberManual={bankAccountNumberManual}
                   setBankAccountNumberManual={setBankAccountNumberManual}
+                  previewMode={previewMode}
                   onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 8); } catch {} setStep(8); }}
                   onBack={() => setStep(6)}
                 />

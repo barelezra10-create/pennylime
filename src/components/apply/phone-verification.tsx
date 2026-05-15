@@ -8,9 +8,17 @@ type Props = {
   contactId?: string;
   onVerified: () => void;
   onCancel?: () => void;
+  previewMode?: boolean;
 };
 
-export function PhoneVerification({ phone, contactId, onVerified, onCancel }: Props) {
+export function PhoneVerification({ phone, contactId, onVerified, onCancel, previewMode }: Props) {
+  useEffect(() => {
+    if (previewMode) {
+      // Admin preview: skip Twilio entirely so the funnel can be navigated
+      // end-to-end without a real phone number. Auto-mark verified on mount.
+      onVerified();
+    }
+  }, [previewMode, onVerified]);
   const [step, setStep] = useState<"send" | "code">("send");
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
