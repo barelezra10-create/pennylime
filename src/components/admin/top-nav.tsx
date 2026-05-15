@@ -95,6 +95,18 @@ const TABS: TopTab[] = [
       { href: "/admin/team", label: "Team" },
     ],
   },
+  {
+    id: "support",
+    label: "AI Support",
+    icon: "✦",
+    prefixes: ["/admin/agent", "/admin/tickets"],
+    href: "/admin/agent/sessions",
+    subnav: [
+      { href: "/admin/agent/sessions", label: "Sessions" },
+      { href: "/admin/agent/metrics", label: "Metrics" },
+      { href: "/admin/tickets", label: "Tickets" },
+    ],
+  },
 ];
 
 function findActiveTab(pathname: string): TopTab {
