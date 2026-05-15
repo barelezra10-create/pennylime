@@ -1,0 +1,62 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const findContact = vi.fn();
+const findVerif = vi.fn();
+const upsertVerif = vi.fn();
+const updateVerif = vi.fn();
+
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    contact: { findUnique: (...a: unknown[]) => findContact(...a) },
+    agentVerification: {
+      findUnique: (...a: unknown[]) => findVerif(...a),
+      upsert: (...a: unknown[]) => upsertVerif(...a),
+      update: (...a: unknown[]) => updateVerif(...a),
+    },
+  },
+}));
+
+import { verifyIdentity } from "./verifyIdentity";
+
+const ctx = { channel: "sms", sessionId: "s1", contactId: "c1", authLevel: "phone-matched", metadata: {} } as const;
+
+beforeEach(() => {
+  findContact.mockReset();
+  findVerif.mockReset();
+  upsertVerif.mockReset();
+  updateVerif.mockReset();
+});
+
+describe("verifyIdentity", () => {
+  it("returns verified=true on DOB match", async () => {
+    findContact.mockResolvedValue({ id: "c1", application: { dateOfBirth: "1990-04-12" } });
+    findVerif.mockResolvedValue(null);
+    upsertVerif.mockResolvedValue({});
+    const res = await verifyIdentity.handler({ dob: "1990-04-12" }, ctx);
+    expect(res.status).toBe("ok");
+    if (res.status !== "ok") return;
+    expect((res.data as { verified: boolean }).verified).toBe(true);
+  });
+  it("rejects on DOB mismatch and increments attempts", async () => {
+    findContact.mockResolvedValue({ id: "c1", application: { dateOfBirth: "1990-04-12" } });
+    findVerif.mockResolvedValue({ attempts: 0, lockedUntil: null });
+    upsertVerif.mockResolvedValue({});
+    const res = await verifyIdentity.handler({ dob: "1991-01-01" }, ctx);
+    if (res.status !== "ok") return;
+    expect((res.data as { verified: boolean }).verified).toBe(false);
+    expect(upsertVerif).toHaveBeenCalled();
+  });
+  it("returns locked after 3 attempts in 24h", async () => {
+    findContact.mockResolvedValue({ id: "c1", application: { dateOfBirth: "1990-04-12" } });
+    findVerif.mockResolvedValue({ attempts: 3, lockedUntil: new Date(Date.now() + 60_000) });
+    const res = await verifyIdentity.handler({ dob: "1990-04-12" }, ctx);
+    if (res.status !== "ok") return;
+    expect((res.data as { verified: boolean; locked?: boolean }).locked).toBe(true);
+  });
+  it("returns verified=false when contact has no contactId in ctx", async () => {
+    const ctxAnon = { ...ctx, contactId: undefined } as const;
+    const res = await verifyIdentity.handler({ dob: "1990-04-12" }, ctxAnon);
+    if (res.status !== "ok") return;
+    expect((res.data as { verified: boolean }).verified).toBe(false);
+  });
+});
