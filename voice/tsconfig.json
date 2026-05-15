@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": {
+      "@/lib/*": ["src/lib/*"],
+      "@/generated/*": ["src/generated/*"]
+    }
+  },
+  "include": ["src/**/*", "../src/lib/ai-agent/**/*", "../src/lib/db.ts", "../src/generated/**/*"]
+}

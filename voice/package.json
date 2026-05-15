@@ -1,0 +1,21 @@
+{
+  "name": "pennylime-voice",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.48.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.4.2",
+    "tsx": "^4.19.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.6.0"
+  }
+}
