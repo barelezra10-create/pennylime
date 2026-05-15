@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { TRANSACTIONAL_CATALOG } from "@/lib/notifications/transactional-catalog";
+import { TestSendForm } from "./test-send-form";
 
 export default function TransactionalPage() {
   return (
@@ -9,6 +10,8 @@ export default function TransactionalPage() {
         title="Transactional Notifications"
         description="Code-defined emails + SMS that fire on application and payment events. Edit in src/lib/emails/ or src/lib/sms/transactional.ts."
       />
+
+      <TestSendForm />
 
       <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
         <table className="w-full">
