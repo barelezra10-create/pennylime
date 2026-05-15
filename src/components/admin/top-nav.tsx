@@ -42,6 +42,7 @@ const TABS: TopTab[] = [
     href: "/admin/email",
     subnav: [
       { href: "/admin/email", label: "Overview" },
+      { href: "/admin/email/transactional", label: "Transactional" },
       { href: "/admin/email/campaigns", label: "Email campaigns" },
       { href: "/admin/email/sequences", label: "Sequences" },
       { href: "/admin/email/templates", label: "Email templates" },

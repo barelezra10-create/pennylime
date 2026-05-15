@@ -10,7 +10,16 @@ import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { generateSchedule } from "@/lib/amortization";
 import { advanceFundedEmail } from "@/lib/emails/advance-funded";
+import { applicationSubmittedEmail } from "@/lib/emails/application-submitted";
+import { applicationApprovedEmail } from "@/lib/emails/application-approved";
+import { applicationRejectedEmail } from "@/lib/emails/application-rejected";
 import { sendEmail } from "@/lib/emails/send";
+import {
+  applicationSubmittedSms,
+  applicationApprovedSms,
+  advanceFundedSms,
+} from "@/lib/sms/transactional";
+import { sendSms } from "@/lib/sms/twilio";
 
 function generateApplicationCode(): string {
   return uuidv4().replace(/-/g, "").substring(0, 8).toUpperCase();
@@ -124,22 +133,43 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
     console.error("Post-submit Plaid pipeline failed:", err);
   }
 
-  // Move the linked contact to APPLICANT stage so the "Application Submitted"
-  // email sequence enrolls them. linkContactApplication is called separately
-  // by the apply page right after this returns; we update stage here so the
-  // enrollment hook fires from one place.
+  // Update linked contact stage (drives server-side conversion + activity log).
+  // Transactional submit email/SMS fire directly below, not via stage sequence.
+  let linkedContactId: string | null = null;
   try {
     const { updateContactStage } = await import("@/actions/contacts");
     const linked = await prisma.contact.findUnique({
       where: { email: data.email },
       select: { id: true, stage: true },
     });
-    if (linked && linked.stage !== "APPLICANT") {
-      await updateContactStage(linked.id, "APPLICANT");
+    if (linked) {
+      linkedContactId = linked.id;
+      if (linked.stage !== "APPLICANT") {
+        await updateContactStage(linked.id, "APPLICANT");
+      }
     }
   } catch (err) {
     console.error("Submit-stage update failed:", err);
   }
+
+  // Transactional notifications. Best-effort; failures don't block the submit.
+  sendEmail({
+    to: application.email,
+    ...applicationSubmittedEmail({
+      firstName: application.firstName,
+      applicationCode,
+      loanAmount: Number(application.loanAmount),
+    }),
+  }).catch((err) => console.error("[email] submit send failed:", err));
+
+  sendSms({
+    to: application.phone,
+    body: applicationSubmittedSms({
+      firstName: application.firstName,
+      applicationCode,
+    }),
+    contactId: linkedContactId ?? undefined,
+  }).catch((err) => console.error("[sms] submit send failed:", err));
 
   return { success: true, applicationCode, applicationId: application.id };
 }
@@ -255,7 +285,8 @@ export async function approveApplication(
   });
 
   // Server-side conversion fire (Google Ads OCI / Meta CAPI / TikTok / Microsoft)
-  // and contact stage update (which enrolls in the Application Approved email sequence).
+  // and contact stage update. Stage sequence no longer fires APPROVED email;
+  // the transactional email/SMS below send directly.
   const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
   if (linkedContact) {
     const { fireServerEvent } = await import("@/lib/tracking/server-events");
@@ -267,9 +298,30 @@ export async function approveApplication(
     }).catch((err) => console.error("[tracking] approved event failed:", err));
     const { updateContactStage } = await import("@/actions/contacts");
     updateContactStage(linkedContact.id, "APPROVED").catch((err) =>
-      console.error("[email] approved stage update failed:", err),
+      console.error("[stage] approved update failed:", err),
     );
   }
+
+  sendEmail({
+    to: application.email,
+    ...applicationApprovedEmail({
+      firstName: application.firstName,
+      applicationCode: application.applicationCode,
+      loanAmount: Number(application.loanAmount),
+      interestRate,
+      loanTermMonths: loanTermMonths || application.loanTermMonths,
+    }),
+  }).catch((err) => console.error("[email] approved send failed:", err));
+
+  sendSms({
+    to: application.phone,
+    body: applicationApprovedSms({
+      firstName: application.firstName,
+      applicationCode: application.applicationCode,
+      loanAmount: Number(application.loanAmount),
+    }),
+    contactId: linkedContact?.id,
+  }).catch((err) => console.error("[sms] approved send failed:", err));
 
   return { success: true, application: updatedApp };
 }
@@ -299,14 +351,23 @@ export async function rejectApplication(applicationId: string, reason: string) {
     details: { reason },
   });
 
-  // Move linked contact to REJECTED stage so the Application Declined email fires.
+  // Move linked contact to REJECTED stage (drives stage tracking; rejection
+  // email is sent directly below, not via the stage sequence).
   const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
   if (linkedContact) {
     const { updateContactStage } = await import("@/actions/contacts");
     updateContactStage(linkedContact.id, "REJECTED").catch((err) =>
-      console.error("[email] rejected stage update failed:", err),
+      console.error("[stage] rejected update failed:", err),
     );
   }
+
+  sendEmail({
+    to: application.email,
+    ...applicationRejectedEmail({
+      firstName: application.firstName,
+      reason,
+    }),
+  }).catch((err) => console.error("[email] rejected send failed:", err));
 
   return { success: true, application };
 }
@@ -454,6 +515,16 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
       schedule,
     }),
   });
+
+  sendSms({
+    to: application.phone,
+    body: advanceFundedSms({
+      firstName: application.firstName,
+      fundedAmount,
+      firstDueDate: schedule[0].dueDate,
+    }),
+    contactId: linkedContact?.id,
+  }).catch((err) => console.error("[sms] funded send failed:", err));
 
   return { success: true };
 }

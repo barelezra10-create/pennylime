@@ -25,8 +25,9 @@ export function EmailDashboardClient({ metrics }: { metrics: Metrics }) {
         <StatCard label="Active Sequences" value={metrics.activeSequences} color="gray" />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         {[
+          { label: "Transactional", desc: "Code-defined emails + SMS that fire on app and payment events", href: "/admin/email/transactional", cta: "View Transactional" },
           { label: "Campaigns", desc: "Send one-time emails to segments", href: "/admin/email/campaigns", cta: "View Campaigns" },
           { label: "Sequences", desc: "Automated drip sequences triggered by events", href: "/admin/email/sequences", cta: "View Sequences" },
           { label: "Templates", desc: "Reusable email templates", href: "/admin/email/templates", cta: "View Templates" },

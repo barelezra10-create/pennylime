@@ -6,6 +6,8 @@ import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/emails/send";
 import { paymentSuccessEmail } from "@/lib/emails/payment-success";
 import { paymentFailedEmail } from "@/lib/emails/payment-failed";
+import { sendSms } from "@/lib/sms/twilio";
+import { paymentFailedSms } from "@/lib/sms/transactional";
 import { calculateRemainingBalance } from "@/lib/amortization";
 
 export async function POST(request: NextRequest) {
@@ -144,6 +146,20 @@ export async function POST(request: NextRequest) {
           paymentNumber: payment.paymentNumber,
           amount: Number(payment.amount),
         }),
+      });
+
+      const failContact = await prisma.contact.findFirst({
+        where: { applicationId: payment.applicationId },
+        select: { id: true },
+      });
+      await sendSms({
+        to: payment.application.phone,
+        body: paymentFailedSms({
+          firstName: payment.application.firstName,
+          amount: Number(payment.amount),
+          paymentNumber: payment.paymentNumber,
+        }),
+        contactId: failContact?.id,
       });
 
       failed++;

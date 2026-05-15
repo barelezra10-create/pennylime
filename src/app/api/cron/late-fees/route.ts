@@ -5,6 +5,8 @@ import { getLoanRules } from "@/lib/rules-engine";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/emails/send";
 import { lateFeeAddedEmail } from "@/lib/emails/late-fee-added";
+import { sendSms } from "@/lib/sms/twilio";
+import { lateFeeAddedSms } from "@/lib/sms/transactional";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
@@ -54,6 +56,21 @@ export async function POST(request: NextRequest) {
         originalAmount: Number(payment.amount),
         totalDue: Number(payment.amount) + lateFeeAmount,
       }),
+    });
+
+    const contact = await prisma.contact.findFirst({
+      where: { applicationId: payment.applicationId },
+      select: { id: true },
+    });
+    await sendSms({
+      to: payment.application.phone,
+      body: lateFeeAddedSms({
+        firstName: payment.application.firstName,
+        lateFeeAmount,
+        totalDue: Number(payment.amount) + lateFeeAmount,
+        paymentNumber: payment.paymentNumber,
+      }),
+      contactId: contact?.id,
     });
 
     feesAdded++;

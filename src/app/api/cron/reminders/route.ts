@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { sendEmail } from "@/lib/emails/send";
 import { paymentReminderEmail } from "@/lib/emails/payment-reminder";
+import { sendSms } from "@/lib/sms/twilio";
+import { paymentReminderSms } from "@/lib/sms/transactional";
 import { calculateRemainingBalance } from "@/lib/amortization";
 
 export async function POST(request: NextRequest) {
@@ -49,6 +51,20 @@ export async function POST(request: NextRequest) {
         dueDate: payment.dueDate,
         remainingBalance: remaining,
       }),
+    });
+
+    const contact = await prisma.contact.findFirst({
+      where: { applicationId: payment.applicationId },
+      select: { id: true },
+    });
+    await sendSms({
+      to: payment.application.phone,
+      body: paymentReminderSms({
+        firstName: payment.application.firstName,
+        amount: Number(payment.amount),
+        dueDate: payment.dueDate,
+      }),
+      contactId: contact?.id,
     });
 
     sent++;

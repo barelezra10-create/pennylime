@@ -159,12 +159,10 @@ export async function upsertContact(data: {
 // Maps a Contact stage to the email sequence that should fire on entry.
 // Driven by EmailSequence.triggerType = "stage_change" + triggerValue = stage.
 // Sequence rows are seeded by scripts/seed-email-sequences.ts.
-const STAGE_EMAIL_TRIGGERS: Record<string, string> = {
-  APPLICANT: "APPLICANT",
-  APPROVED: "APPROVED",
-  REJECTED: "REJECTED",
-  FUNDED: "FUNDED",
-};
+// APPLICANT/APPROVED/REJECTED/FUNDED are intentionally absent: transactional
+// emails for those stages fire directly from src/actions/applications.ts to
+// avoid duplicate sends. Add new stages here for follow-up drip sequences.
+const STAGE_EMAIL_TRIGGERS: Record<string, string> = {};
 
 async function enrollInStageSequence(contactId: string, stage: string) {
   const triggerValue = STAGE_EMAIL_TRIGGERS[stage];
