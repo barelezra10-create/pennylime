@@ -21,6 +21,7 @@ export const schedulePayment: ToolDefinition = {
     const amount = Number(args.amount);
     const date = String(args.date ?? "");
     if (!Number.isFinite(amount) || amount <= 0) return { status: "error", message: "invalid amount" };
+    if (amount > 5000) return { status: "error", message: "amount cannot exceed $5000" };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { status: "error", message: "date must be YYYY-MM-DD" };
 
     const payload = { amount, date };
@@ -40,21 +41,46 @@ export const schedulePayment: ToolDefinition = {
 
     const contact = await prisma.contact.findUnique({
       where: { id: ctx.contactId },
-      include: { application: { select: { id: true, payments: { orderBy: { paymentNumber: "desc" }, take: 1 } } } },
+      include: {
+        application: {
+          select: {
+            id: true,
+            payments: {
+              orderBy: { paymentNumber: "desc" },
+              select: { paymentNumber: true, principal: true, paidAt: true },
+            },
+          },
+        },
+      },
     });
     if (!contact?.application) return { status: "error", message: "no application" };
 
-    const nextNumber = (contact.application.payments[0]?.paymentNumber ?? 0) + 1;
-    await prisma.payment.create({
-      data: {
-        applicationId: contact.application.id,
-        amount,
-        principal: amount,
-        interest: 0,
-        dueDate: new Date(date + "T00:00:00Z"),
-        status: "PENDING",
-        paymentNumber: nextNumber,
-      },
+    const applicationId = contact.application.id;
+    const unpaidBalance = contact.application.payments
+      .filter((p) => !p.paidAt)
+      .reduce((sum, p) => sum + Number(p.principal), 0);
+    if (amount > unpaidBalance + 0.005) {
+      return { status: "error", message: `amount $${amount.toFixed(2)} exceeds remaining balance $${unpaidBalance.toFixed(2)}` };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const latest = await tx.payment.findFirst({
+        where: { applicationId },
+        orderBy: { paymentNumber: "desc" },
+        select: { paymentNumber: true },
+      });
+      const nextNumber = (latest?.paymentNumber ?? 0) + 1;
+      await tx.payment.create({
+        data: {
+          applicationId,
+          amount,
+          principal: amount,
+          interest: 0,
+          dueDate: new Date(date + "T00:00:00Z"),
+          status: "PENDING",
+          paymentNumber: nextNumber,
+        },
+      });
     });
     return { status: "ok", data: { scheduled: true, amount, date }, summary: `scheduled $${amount.toFixed(2)} on ${date}` };
   },
