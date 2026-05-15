@@ -485,6 +485,9 @@ model Contact {
   activities          Activity[]
   emailEvents         EmailEvent[]
   sequenceEnrollments SequenceEnrollment[]
+  agentSessions       AgentSession[]
+  verifications       AgentVerification[]
+  tickets             SupportTicket[]
 
   @@index([stage])
   @@index([assignedRepId])
@@ -902,4 +905,87 @@ model EngagementLog {
   createdAt    DateTime      @default(now())
 
   @@index([accountId, createdAt])
+}
+
+// ─── AI Support Agent ────────────────────────────────────────
+
+model AgentSession {
+  id           String   @id @default(uuid())
+  channel      String   // "chat" | "sms" | "voice"
+  contactId    String?
+  contact      Contact? @relation(fields: [contactId], references: [id])
+  authLevel    String   @default("anon")
+  startedAt    DateTime @default(now())
+  endedAt      DateTime?
+  endReason    String?
+  costCents    Int      @default(0)
+  metadata     Json?
+  messages     AgentMessage[]
+  toolCalls    AgentToolCall[]
+  tickets      SupportTicket[]
+  @@index([contactId])
+  @@index([channel, startedAt])
+}
+
+model AgentMessage {
+  id          String   @id @default(uuid())
+  sessionId   String
+  session     AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role        String   // "user" | "assistant" | "system" | "tool"
+  text        String
+  tokensIn    Int?
+  tokensOut   Int?
+  createdAt   DateTime @default(now())
+  @@index([sessionId, createdAt])
+}
+
+model AgentToolCall {
+  id            String   @id @default(uuid())
+  sessionId     String
+  session       AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name          String
+  argsRedacted  Json
+  resultStatus  String   // "ok" | "denied_auth" | "denied_confirm" | "error" | "rate_limited"
+  resultSummary String?
+  errorMessage  String?
+  durationMs    Int
+  createdAt     DateTime @default(now())
+  @@index([sessionId, createdAt])
+  @@index([name, resultStatus, createdAt])
+}
+
+model AgentVerification {
+  id           String   @id @default(uuid())
+  contactId    String
+  contact      Contact  @relation(fields: [contactId], references: [id])
+  channel      String
+  attempts     Int      @default(0)
+  lockedUntil  DateTime?
+  lastTriedAt  DateTime @default(now())
+  @@unique([contactId, channel])
+}
+
+model SupportTicket {
+  id              String   @id @default(uuid())
+  sessionId       String?
+  session         AgentSession? @relation(fields: [sessionId], references: [id])
+  contactId       String?
+  contact         Contact? @relation(fields: [contactId], references: [id])
+  reason          String
+  transcript      String
+  status          String   @default("open")
+  assignedTo      String?
+  createdAt       DateTime @default(now())
+  resolvedAt      DateTime?
+  @@index([status, createdAt])
+}
+
+model AgentError {
+  id          String   @id @default(uuid())
+  sessionId   String?
+  toolName    String?
+  message     String
+  stack       String?
+  createdAt   DateTime @default(now())
+  @@index([createdAt])
 }
