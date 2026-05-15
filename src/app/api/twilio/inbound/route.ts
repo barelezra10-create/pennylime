@@ -47,6 +47,28 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  let agentReply: string | null = null;
+  if (action === "other" && contact && contact.smsOptIn !== false) {
+    try {
+      const { runTurn } = await import("@/lib/ai-agent/runTurn");
+      const out = await runTurn(body, {
+        channel: "sms",
+        sessionId: `sms:${contact.id}`,
+        contactId: contact.id,
+        authLevel: "phone-matched",
+        metadata: { from },
+      });
+      agentReply = out.reply;
+    } catch (err) {
+      await prisma.agentError.create({
+        data: {
+          sessionId: `sms:${contact?.id ?? "unknown"}`,
+          message: err instanceof Error ? err.message : "sms agent error",
+        },
+      });
+    }
+  }
+
   let reply = "";
   if (action === "stop") {
     reply = "You've been unsubscribed from PennyLime SMS. Reply START to opt back in.";
@@ -54,6 +76,8 @@ export async function POST(req: NextRequest) {
     reply = "You're back subscribed to PennyLime SMS. Reply STOP to opt out.";
   } else if (action === "help") {
     reply = "PennyLime: msg & data rates may apply. Reply STOP to opt out, START to opt in. Support: support@pennylime.com";
+  } else if (agentReply) {
+    reply = agentReply;
   }
 
   const twiml = reply
