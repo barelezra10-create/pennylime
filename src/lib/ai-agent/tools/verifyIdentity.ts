@@ -48,7 +48,11 @@ export const verifyIdentity: ToolDefinition = {
     const input = normalizeDob(String(args.dob ?? ""));
     const match = stored.length > 0 && constantTimeEqual(stored, input);
 
-    const newAttempts = (verif?.attempts ?? 0) + (match ? 0 : 1);
+    // If the previous lock has expired, treat the row as fresh so the user
+    // doesn't get re-locked immediately by a stale attempts counter.
+    const lockExpired = !!verif?.lockedUntil && verif.lockedUntil <= new Date();
+    const priorAttempts = lockExpired ? 0 : (verif?.attempts ?? 0);
+    const newAttempts = priorAttempts + (match ? 0 : 1);
     const shouldLock = !match && newAttempts >= MAX_ATTEMPTS;
     await prisma.agentVerification.upsert({
       where: { contactId_channel: { contactId: ctx.contactId, channel: ctx.channel } },

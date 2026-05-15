@@ -59,4 +59,29 @@ describe("verifyIdentity", () => {
     if (res.status !== "ok") return;
     expect((res.data as { verified: boolean }).verified).toBe(false);
   });
+
+  it("does not instantly re-lock after a 24h lock has expired", async () => {
+    findContact.mockResolvedValue({ id: "c1", application: { dateOfBirth: "1990-04-12" } });
+    // attempts=3 left over from yesterday, lock window already passed
+    findVerif.mockResolvedValue({ attempts: 3, lockedUntil: new Date(Date.now() - 60_000) });
+    upsertVerif.mockResolvedValue({});
+    const res = await verifyIdentity.handler({ dob: "1991-01-01" }, ctx);
+    if (res.status !== "ok") return;
+    const data = res.data as { verified: boolean; locked?: boolean };
+    expect(data.verified).toBe(false);
+    expect(data.locked).toBe(false);
+    // upsert should reset the counter and store attempts=1, not lock
+    const call = upsertVerif.mock.calls[0][0];
+    expect(call.update.attempts).toBe(1);
+    expect(call.update.lockedUntil).toBeNull();
+  });
+
+  it("normalizes M/D/YYYY input to match stored YYYY-MM-DD", async () => {
+    findContact.mockResolvedValue({ id: "c1", application: { dateOfBirth: "1990-04-12" } });
+    findVerif.mockResolvedValue(null);
+    upsertVerif.mockResolvedValue({});
+    const res = await verifyIdentity.handler({ dob: "4/12/1990" }, ctx);
+    if (res.status !== "ok") return;
+    expect((res.data as { verified: boolean }).verified).toBe(true);
+  });
 });
