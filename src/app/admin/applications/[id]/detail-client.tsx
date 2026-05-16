@@ -166,7 +166,7 @@ export function DetailClient({
   async function handleApprove() {
     const term = parseInt(termMonths);
     if (isNaN(term) || term <= 0) {
-      toast.error("Please enter a valid loan term");
+      toast.error("Please enter a valid term");
       return;
     }
     setApproving(true);
@@ -220,7 +220,7 @@ export function DetailClient({
         if ((result as any).error) {
           toast.error((result as any).error);
         } else {
-          toast.success("Loan marked as funded");
+          toast.success("Advance marked as funded");
           router.refresh();
         }
       } else {
@@ -254,7 +254,7 @@ export function DetailClient({
               <h1 className="text-[22px] font-extrabold tracking-[-0.03em] text-black">
                 {application.firstName} {application.lastName}
               </h1>
-              <p className="text-sm text-[#a1a1aa] mt-0.5">Review and analyze loan application</p>
+              <p className="text-sm text-[#a1a1aa] mt-0.5">Review and analyze advance application</p>
             </div>
           </div>
           <StatusBadge status={application.status} />
@@ -278,8 +278,9 @@ export function DetailClient({
 
               {evaluation.suggestedRate > 0 && (
                 <div className="mb-4">
-                  <span className="text-sm text-[#a1a1aa]">Suggested Rate: </span>
+                  <span className="text-sm text-[#a1a1aa]">Suggested weekly rate: </span>
                   <span className="text-sm font-bold text-black">{evaluation.suggestedRate}%</span>
+                  <span className="text-sm text-[#a1a1aa]"> / week (compounded)</span>
                 </div>
               )}
 
@@ -330,7 +331,7 @@ export function DetailClient({
                 </p>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Loan Amount</p>
+                <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Advance Amount</p>
                 <p className="mt-1 text-2xl font-bold text-[#15803d]">
                   ${fmt(loanAmount)}
                 </p>
@@ -346,14 +347,14 @@ export function DetailClient({
                 </p>
               </div>
 
-              {/* New fields: Platform, Loan Term, Bank Link Status, SSN */}
+              {/* Platform, Term, Bank Link Status, SSN */}
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Platform</p>
                 <p className="mt-1 text-sm text-black">{(application as any).platform || "N/A"}</p>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Loan Term</p>
-                <p className="mt-1 text-sm text-black">{(application as any).loanTermMonths || "N/A"} months</p>
+                <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Term</p>
+                <p className="mt-1 text-sm text-black">{(application as any).loanTermMonths || "N/A"} weeks</p>
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Bank Link Status</p>
@@ -638,7 +639,7 @@ export function DetailClient({
               <div className="mb-5">
                 <div>
                   <label htmlFor="termMonths" className="block text-sm font-medium text-black mb-1.5">
-                    Loan Term (months)
+                    Term (weeks)
                   </label>
                   <input
                     id="termMonths"
@@ -700,14 +701,14 @@ export function DetailClient({
             </div>
           )}
 
-          {/* ── Fund Loan (APPROVED) ── */}
+          {/* ── Fund Advance (APPROVED) ── */}
           {application.status === "APPROVED" && (
             <div className="bg-white rounded-[10px] p-6">
               <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-4 flex items-center gap-2">
                 <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
                 </svg>
-                Fund Loan
+                Fund Advance
               </h2>
 
               <div className="flex items-end gap-3">

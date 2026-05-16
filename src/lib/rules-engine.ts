@@ -30,39 +30,42 @@ export async function evaluateApplication(
   const incomeMultiplier = Number(rules.income_multiplier_ratio || "2.0");
   const minBankBalance = Number(rules.min_bank_balance || "200");
   const requiredPayStubs = Number(rules.required_pay_stubs || "3");
-  const minInterestRate = Number(rules.min_interest_rate || "30");
-  const maxTermMonths = Number(rules.max_loan_term_months || "18");
+  // Term is stored in WEEKS in the loanTermMonths column (legacy field
+  // name from the old monthly model — kept to avoid a migration). Read
+  // the new max_term_weeks rule first, fall back to the legacy key.
+  const maxTermWeeks = Number(rules.max_term_weeks || rules.max_loan_term_months || "16");
 
-  // Check loan amount limits
+  // Check advance amount limits
   if (loanAmount > loanLimit) {
     recommendation = "REJECT";
-    reasons.push(`Loan amount $${loanAmount} exceeds limit of $${loanLimit}`);
+    reasons.push(`Advance amount $${loanAmount} exceeds limit of $${loanLimit}`);
   }
   if (loanAmount < minLoan) {
     recommendation = "REJECT";
-    reasons.push(`Loan amount $${loanAmount} below minimum of $${minLoan}`);
+    reasons.push(`Advance amount $${loanAmount} below minimum of $${minLoan}`);
   }
 
-  // Check loan term
-  const loanTermMonths = application.loanTermMonths || 6;
-  if (loanTermMonths > maxTermMonths) {
+  // Check advance term
+  const loanTermWeeks = application.loanTermMonths || 6;
+  if (loanTermWeeks > maxTermWeeks) {
     recommendation = "REJECT";
-    reasons.push(`Loan term ${loanTermMonths} months exceeds maximum of ${maxTermMonths} months`);
+    reasons.push(`Term ${loanTermWeeks} weeks exceeds maximum of ${maxTermWeeks} weeks`);
   }
 
-  // Check income verification
+  // Check income verification. Expected income over the term =
+  // monthlyIncome × (weeks / 4.33). Must be ≥ incomeMultiplier × advance.
   const monthlyIncome = application.monthlyIncome ? Number(application.monthlyIncome) : null;
 
   if (!monthlyIncome) {
     if (recommendation !== "REJECT") recommendation = "MANUAL_REVIEW";
     reasons.push("Income not yet verified via Plaid");
   } else {
-    const totalIncomeOverTerm = monthlyIncome * loanTermMonths;
+    const totalIncomeOverTerm = monthlyIncome * (loanTermWeeks / 4.33);
     const requiredIncome = incomeMultiplier * loanAmount;
     if (totalIncomeOverTerm < requiredIncome) {
       recommendation = "REJECT";
       reasons.push(
-        `Income over term ($${totalIncomeOverTerm.toFixed(0)}) < ${incomeMultiplier}x loan ($${requiredIncome.toFixed(0)})`
+        `Income over term ($${totalIncomeOverTerm.toFixed(0)}) < ${incomeMultiplier}× advance ($${requiredIncome.toFixed(0)})`
       );
     }
   }
@@ -100,14 +103,15 @@ export async function evaluateApplication(
     reasons.push("All checks passed");
   }
 
-  // Score via risk model (or fallback to min rate)
-  let suggestedRate = minInterestRate;
+  // Score via risk model (or fallback to min weekly rate)
+  const minWeeklyRate = Number(rules.min_weekly_rate || "4");
+  let suggestedRate = minWeeklyRate;
   let riskScoreResult: RiskScoreResult | null = null;
   try {
     riskScoreResult = await scoreApplication(application.id);
     suggestedRate = riskScoreResult.interestRate;
   } catch (error) {
-    console.warn("Risk model scoring failed, using min_interest_rate:", error);
+    console.warn("Risk model scoring failed, using min_weekly_rate:", error);
   }
 
   return {
