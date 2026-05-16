@@ -70,8 +70,12 @@ export async function fetchAndStoreIncome(applicationId: string) {
 
     if (application.plaidUserToken) {
       try {
+        const stored = application.plaidUserToken;
+        // Same usr_-prefix heuristic as the link-token route. Accounts post
+        // Dec 10, 2025 use user_id (usr_...); older accounts use user_token.
+        const userIdField = stored.startsWith("usr_") ? { user_id: stored } : { user_token: stored };
         const incomeResp = await plaidClient.creditBankIncomeGet({
-          user_token: application.plaidUserToken,
+          ...userIdField,
           options: { count: 1 },
         });
         const bankIncome = incomeResp.data.bank_income?.[0];

@@ -911,32 +911,53 @@ model EngagementLog {
 // ─── AI Support Agent ────────────────────────────────────────
 
 model AgentSession {
-  id           String   @id @default(uuid())
-  channel      String   // "chat" | "sms" | "voice"
-  contactId    String?
-  contact      Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  authLevel    String   @default("anon")
-  startedAt    DateTime @default(now())
-  endedAt      DateTime?
-  endReason    String?
-  costCents    Int      @default(0)
-  metadata     Json?
-  messages     AgentMessage[]
-  toolCalls    AgentToolCall[]
-  tickets      SupportTicket[]
+  id             String   @id @default(uuid())
+  channel        String   // "chat" | "sms" | "voice"
+  contactId      String?
+  contact        Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  authLevel      String   @default("anon")
+  // "ai" (Gemini answers automatically) or "human" (admin took over;
+  // user messages don't trigger an AI turn and wait for an admin reply).
+  mode           String   @default("ai")
+  // Lead-capture fields collected by the chat widget before the user can
+  // send a message. Duplicate of contact.firstName / contact.email by
+  // design so we don't lose the lead if the contact upsert fails or the
+  // visitor never makes it past the form.
+  leadFirstName  String?
+  leadLastName   String?
+  leadEmail      String?
+  // Tracks when the user's chat widget last polled for new messages. We
+  // use it as a proxy for "user is online right now" — if it's > 30s
+  // stale and admin sends a message, the message is also emailed.
+  lastPolledAt   DateTime?
+  startedAt      DateTime @default(now())
+  endedAt        DateTime?
+  endReason      String?
+  costCents      Int      @default(0)
+  metadata       Json?
+  messages       AgentMessage[]
+  toolCalls      AgentToolCall[]
+  tickets        SupportTicket[]
   @@index([contactId])
   @@index([channel, startedAt])
+  @@index([mode, startedAt])
 }
 
 model AgentMessage {
-  id          String   @id @default(uuid())
-  sessionId   String
-  session     AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role        String   // "user" | "assistant" | "system" | "tool"
-  text        String
-  tokensIn    Int?
-  tokensOut   Int?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid())
+  sessionId    String
+  session      AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role         String   // "user" | "assistant" | "system" | "tool"
+  // Set to the admin's email when role="assistant" and the message was
+  // typed by a human during takeover. Null when the AI generated it.
+  senderEmail  String?
+  // True when this message was emailed to the user because they were
+  // offline at the time (lastPolledAt was stale). Prevents double-email.
+  emailedAt    DateTime?
+  text         String
+  tokensIn     Int?
+  tokensOut    Int?
+  createdAt    DateTime @default(now())
   @@index([sessionId, createdAt])
 }
 

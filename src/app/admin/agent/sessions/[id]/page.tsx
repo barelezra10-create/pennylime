@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
+import { SessionReplyPanel } from "./reply-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,13 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
 
   const contactName = session.contact
     ? `${session.contact.firstName} ${session.contact.lastName ?? ""}`.trim()
-    : "anon";
+    : session.leadFirstName
+      ? `${session.leadFirstName}${session.leadLastName ? ` ${session.leadLastName}` : ""} (lead)`
+      : "anon";
+
+  const isOnline = session.lastPolledAt
+    ? Date.now() - session.lastPolledAt.getTime() < 30_000
+    : false;
 
   return (
     <div className="max-w-3xl">
@@ -42,14 +49,27 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
         </Link>
         <div className="rounded-lg bg-white border border-[#e4e4e7] px-3 py-1.5 text-[#71717a]">
           Contact: <span className="text-black font-medium">{contactName}</span>
+          {(session.contact?.email || session.leadEmail) && (
+            <span className="ml-2 text-[#a1a1aa]">{session.contact?.email ?? session.leadEmail}</span>
+          )}
           {session.contact?.phone && <span className="ml-2 text-[#a1a1aa]">{session.contact.phone}</span>}
         </div>
         <div className="rounded-lg bg-white border border-[#e4e4e7] px-3 py-1.5 text-[#71717a]">
           Started <span className="text-black font-mono">{session.startedAt.toISOString().slice(0, 16).replace("T", " ")}</span>
         </div>
+        <div className={`rounded-lg px-3 py-1.5 font-semibold text-[12px] uppercase tracking-wide ${
+          session.mode === "human" ? "bg-[#fef3c7] text-[#92400e]" : "bg-[#e0e7ff] text-[#3730a3]"
+        }`}>
+          Mode: {session.mode}
+        </div>
+        <div className={`rounded-lg px-3 py-1.5 font-semibold text-[12px] uppercase tracking-wide ${
+          isOnline ? "bg-[#dcfce7] text-[#15803d]" : "bg-[#f4f4f5] text-[#71717a]"
+        }`}>
+          {isOnline ? "● online" : "○ offline"}
+        </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2 mb-6">
         {events.length === 0 ? (
           <div className="rounded-xl bg-white border border-[#e4e4e7] p-6 text-center text-[13px] text-[#a1a1aa]">
             No transcript yet.
@@ -57,16 +77,20 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
         ) : (
           events.map((e, i) => {
             if (e.kind === "msg") {
+              const isHuman = e.row.role === "assistant" && e.row.senderEmail;
               const bg =
                 e.row.role === "user"
                   ? "bg-blue-50 border-blue-100"
-                  : e.row.role === "assistant"
-                    ? "bg-[#fafafa] border-[#e4e4e7]"
-                    : "bg-yellow-50 border-yellow-100";
+                  : isHuman
+                    ? "bg-[#f0fdf4] border-[#bbf7d0]"
+                    : e.row.role === "assistant"
+                      ? "bg-[#fafafa] border-[#e4e4e7]"
+                      : "bg-yellow-50 border-yellow-100";
+              const label = isHuman ? `admin (${e.row.senderEmail})` : e.row.role;
               return (
                 <div key={i} className={`rounded-xl border p-4 ${bg}`}>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.05em] text-[#71717a] mb-1.5 flex justify-between">
-                    <span>{e.row.role}</span>
+                    <span>{label}{e.row.emailedAt ? " · emailed" : ""}</span>
                     <span className="font-mono">{e.row.createdAt.toISOString().slice(11, 19)}</span>
                   </div>
                   <div className="text-[13px] text-black whitespace-pre-wrap">{e.row.text}</div>
@@ -85,6 +109,8 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
           })
         )}
       </div>
+
+      <SessionReplyPanel sessionId={session.id} initialMode={session.mode} isOnline={isOnline} />
     </div>
   );
 }
