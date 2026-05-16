@@ -22,6 +22,7 @@ model Application {
   plaidAccessToken String?
   plaidAccountId  String?
   plaidItemId     String?
+  plaidUserToken  String?
   plaidLinkStale  Boolean   @default(false)
   monthlyIncome   Decimal?
   totalIncome     Decimal?

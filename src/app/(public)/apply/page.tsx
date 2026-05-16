@@ -1964,6 +1964,7 @@ function StepPlaidLink({
   plaidAccountId,
   plaidItemId,
   setPlaidData,
+  setPlaidUserToken,
   previewIncome,
   setPreviewIncome,
   bankName,
@@ -1980,6 +1981,7 @@ function StepPlaidLink({
   plaidAccountId: string | null;
   plaidItemId: string | null;
   setPlaidData: (data: { accessToken: string; accountId: string; itemId: string }) => void;
+  setPlaidUserToken: (v: string | null) => void;
   previewIncome: PreviewIncome | null;
   setPreviewIncome: (v: PreviewIncome | null) => void;
   bankName: string;
@@ -2031,6 +2033,10 @@ function StepPlaidLink({
       const saved = typeof window !== "undefined"
         ? window.sessionStorage.getItem("pennylime_plaid_link_token")
         : null;
+      const savedUserToken = typeof window !== "undefined"
+        ? window.sessionStorage.getItem("pennylime_plaid_user_token")
+        : null;
+      if (savedUserToken) setPlaidUserToken(savedUserToken);
       if (saved) {
         setLinkToken(saved);
         return;
@@ -2051,7 +2057,13 @@ function StepPlaidLink({
         if (!res.ok) throw new Error("Failed to create link token");
         const data = await res.json();
         setLinkToken(data.linkToken);
-        // Persist the token so we can restore it if Plaid's OAuth step
+        if (data.userToken) {
+          setPlaidUserToken(data.userToken);
+          try {
+            window.sessionStorage.setItem("pennylime_plaid_user_token", data.userToken);
+          } catch {}
+        }
+        // Persist the link token so we can restore it if Plaid's OAuth step
         // bounces the user out to a bank and back.
         try {
           window.sessionStorage.setItem("pennylime_plaid_link_token", data.linkToken);
@@ -2936,6 +2948,7 @@ function ApplyPageInner() {
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
+  const [plaidUserToken, setPlaidUserToken] = useState<string | null>(null);
   const [plaidPreviewIncome, setPlaidPreviewIncome] = useState<PreviewIncome | null>(null);
   const [identityResult, setIdentityResult] = useState<{ needsReview: boolean; matchedName: string | null } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -3075,6 +3088,7 @@ function ApplyPageInner() {
         plaidAccessToken,
         plaidItemId,
         plaidAccountId: plaidAccountId ?? undefined,
+        plaidUserToken: plaidUserToken ?? undefined,
         identityNeedsReview: identityResult?.needsReview ?? true,
         plaidIdentityName: identityResult?.matchedName ?? undefined,
         workerType,
@@ -3310,6 +3324,7 @@ function ApplyPageInner() {
                           setPlaidAccountId(accountId);
                           setPlaidItemId(itemId);
                         }}
+                        setPlaidUserToken={setPlaidUserToken}
                         previewIncome={plaidPreviewIncome}
                         setPreviewIncome={setPlaidPreviewIncome}
                         bankName={bankName}
@@ -3477,6 +3492,7 @@ function ApplyPageInner() {
                     setPlaidAccountId(accountId);
                     setPlaidItemId(itemId);
                   }}
+                  setPlaidUserToken={setPlaidUserToken}
                   previewIncome={plaidPreviewIncome}
                   setPreviewIncome={setPlaidPreviewIncome}
                   bankName={bankName}

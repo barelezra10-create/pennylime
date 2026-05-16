@@ -56,31 +56,74 @@ export async function fetchAndStoreIncome(applicationId: string) {
       plaidClient.itemGet({ access_token: accessToken }),
     ]);
 
-    // ── Income & cadence (Plaid convention: negative amount = money in) ──
-    // Skip if Transactions product isn't enabled in production yet.
+    // ── Income & cadence ──
+    // Prefer Plaid Bank Income (production-enabled): one call returns a
+    // verified monthly income + per-source breakdown + pay frequency.
+    // Falls back to legacy Transactions logic if Bank Income isn't
+    // available (e.g. no user_token, sandbox without income_verification,
+    // or the user skipped the income flow in Link).
     let monthlyIncome: number | null = null;
     let avgWeeklyIncome: number | null = null;
     let depositCount90d: number | null = null;
     let largestDeposit: number | null = null;
     let depositCadence: string | null = null;
-    try {
-      const txResp = await plaidClient.transactionsGet({
-        access_token: accessToken,
-        start_date: startDate,
-        end_date: endDate,
-      });
-      const deposits = txResp.data.transactions.filter((tx) => tx.amount < 0);
-      const totalDeposits = deposits.reduce((s, tx) => s + Math.abs(tx.amount), 0);
-      monthlyIncome = totalDeposits / 3;
-      avgWeeklyIncome = totalDeposits / 13; // 90 days ≈ 13 weeks
-      depositCount90d = deposits.length;
-      largestDeposit = deposits.reduce(
-        (max, tx) => Math.max(max, Math.abs(tx.amount)),
-        0
-      );
-      depositCadence = classifyCadence(depositCount90d);
-    } catch (txErr) {
-      console.warn("Transactions fetch skipped (product not enabled?):", txErr);
+
+    if (application.plaidUserToken) {
+      try {
+        const incomeResp = await plaidClient.creditBankIncomeGet({
+          user_token: application.plaidUserToken,
+          options: { count: 1 },
+        });
+        const bankIncome = incomeResp.data.bank_income?.[0];
+        const summary = bankIncome?.bank_income_summary;
+        const daysRequested = bankIncome?.days_requested ?? 90;
+        if (summary?.total_amount && daysRequested > 0) {
+          monthlyIncome = (summary.total_amount * 30) / daysRequested;
+          avgWeeklyIncome = (summary.total_amount * 7) / daysRequested;
+        }
+        // Best-effort metrics from the source list (counts + largest).
+        const sources = bankIncome?.items?.flatMap((it) => it.bank_income_sources ?? []) ?? [];
+        depositCount90d = sources.reduce((n, s) => n + (s.transaction_count ?? 0), 0) || null;
+        largestDeposit = sources.reduce((max, s) => Math.max(max, s.total_amount ?? 0), 0) || null;
+        // Pick the most common pay frequency among sources as the cadence label.
+        const freqCounts = new Map<string, number>();
+        for (const s of sources) {
+          const f = s.pay_frequency;
+          if (f) freqCounts.set(f, (freqCounts.get(f) ?? 0) + 1);
+        }
+        if (freqCounts.size > 0) {
+          depositCadence =
+            [...freqCounts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+              .toLowerCase()
+              .replace(/_/g, " ");
+        }
+      } catch (incErr) {
+        console.warn("Bank Income fetch skipped:", incErr);
+      }
+    }
+
+    // Legacy fallback: Transactions endpoint (used pre-Bank-Income or
+    // when income_verification product isn't on this Link session).
+    if (monthlyIncome == null) {
+      try {
+        const txResp = await plaidClient.transactionsGet({
+          access_token: accessToken,
+          start_date: startDate,
+          end_date: endDate,
+        });
+        const deposits = txResp.data.transactions.filter((tx) => tx.amount < 0);
+        const totalDeposits = deposits.reduce((s, tx) => s + Math.abs(tx.amount), 0);
+        monthlyIncome = totalDeposits / 3;
+        avgWeeklyIncome = totalDeposits / 13;
+        depositCount90d = deposits.length;
+        largestDeposit = deposits.reduce(
+          (max, tx) => Math.max(max, Math.abs(tx.amount)),
+          0
+        );
+        depositCadence = classifyCadence(depositCount90d);
+      } catch (txErr) {
+        console.warn("Transactions fallback skipped (product not enabled?):", txErr);
+      }
     }
 
     // ── Account info (resolve the linked account; fall back to first) ──
