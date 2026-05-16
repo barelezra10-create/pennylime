@@ -12,6 +12,7 @@ export interface EvaluationResult {
 
 export interface StorageProvider {
   upload(file: Buffer, filename: string): Promise<string>;
+  read(storagePath: string): Promise<Buffer>;
   getUrl(storagePath: string): string;
   delete(storagePath: string): Promise<void>;
 }

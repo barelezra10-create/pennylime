@@ -18,6 +18,10 @@ class LocalStorageProvider implements StorageProvider {
     return filePath;
   }
 
+  async read(storagePath: string): Promise<Buffer> {
+    return fs.readFile(storagePath);
+  }
+
   getUrl(storagePath: string): string {
     return `/api/files/${encodeURIComponent(storagePath)}`;
   }

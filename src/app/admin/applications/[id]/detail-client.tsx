@@ -15,7 +15,7 @@ import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
 import type { OfferTerm } from "@/actions/offers";
 import { getPaymentsSummary, retryPayment, waiveLateFee } from "@/actions/payments";
-import { uploadBankStatements, setVerifiedMonthlyIncome } from "@/actions/bank-statements";
+import { uploadBankStatements, setVerifiedMonthlyIncome, parseBankStatementsWithAI } from "@/actions/bank-statements";
 import type { ApplicationWithDocuments, RiskScoreResult } from "@/types";
 import type { EvaluationResult } from "@/types";
 
@@ -914,11 +914,59 @@ function BankStatementsPanel({
 }) {
   const [uploading, setUploading] = useState(false);
   const [savingIncome, setSavingIncome] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [parseResult, setParseResult] = useState<{
+    monthlyIncome: number;
+    avgWeeklyIncome: number;
+    depositCount: number;
+    largestDeposit: number;
+    cadence: string;
+    confidence: string;
+    accountHolderName: string | null;
+    bankName: string | null;
+    notes: string | null;
+    statementPeriodStart: string | null;
+    statementPeriodEnd: string | null;
+  } | null>(null);
   const [monthly, setMonthly] = useState<string>(
     currentMonthlyIncome != null ? String(Math.round(currentMonthlyIncome)) : "",
   );
 
   const bankDocs = documents.filter((d) => d.documentType === "BANK_STATEMENT_90D");
+
+  async function handleParse() {
+    setParsing(true);
+    setParseResult(null);
+    try {
+      const r = await parseBankStatementsWithAI(applicationId);
+      if (r.ok) {
+        setParseResult({
+          monthlyIncome: r.monthlyIncome,
+          avgWeeklyIncome: r.avgWeeklyIncome,
+          depositCount: r.depositCount,
+          largestDeposit: r.largestDeposit,
+          cadence: r.cadence,
+          confidence: r.confidence,
+          accountHolderName: r.accountHolderName,
+          bankName: r.bankName,
+          notes: r.notes,
+          statementPeriodStart: r.statementPeriodStart,
+          statementPeriodEnd: r.statementPeriodEnd,
+        });
+        setMonthly(String(Math.round(r.monthlyIncome)));
+        toast.success(
+          `Parsed ${r.depositCount} deposits — verified income $${Math.round(r.monthlyIncome).toLocaleString()}/mo (${r.confidence} confidence)`,
+        );
+        onChange();
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Parse failed");
+    } finally {
+      setParsing(false);
+    }
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -1007,23 +1055,95 @@ function BankStatementsPanel({
         </ul>
       )}
 
-      {/* Upload */}
-      <label className="block">
-        <span className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-[#a1a1aa] bg-[#fafafa] px-4 py-2.5 text-sm font-medium text-black hover:bg-[#f4f4f5]">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          {uploading ? "Uploading…" : "Upload PDF or CSV"}
-        </span>
-        <input
-          type="file"
-          multiple
-          accept=".pdf,.csv,image/png,image/jpeg"
-          onChange={handleUpload}
-          disabled={uploading}
-          className="hidden"
-        />
-      </label>
+      {/* Upload + Parse */}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="inline-block">
+          <span className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-[#a1a1aa] bg-[#fafafa] px-4 py-2.5 text-sm font-medium text-black hover:bg-[#f4f4f5]">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            {uploading ? "Uploading…" : "Upload PDF or CSV"}
+          </span>
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.csv,image/png,image/jpeg"
+            onChange={handleUpload}
+            disabled={uploading}
+            className="hidden"
+          />
+        </label>
+        {bankDocs.length > 0 && (
+          <button
+            type="button"
+            onClick={handleParse}
+            disabled={parsing}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#7c3aed] text-white px-4 py-2.5 text-sm font-semibold hover:bg-[#6d28d9] disabled:opacity-50"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+            </svg>
+            {parsing ? "Parsing with AI…" : "Parse with AI"}
+          </button>
+        )}
+      </div>
+
+      {/* Parse result */}
+      {parseResult && (
+        <div className="mt-4 rounded-lg border border-[#ddd6fe] bg-[#faf5ff] p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#7c3aed]">
+              AI parse result
+            </span>
+            <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+              parseResult.confidence === "high" ? "bg-[#dcfce7] text-[#15803d]" :
+              parseResult.confidence === "medium" ? "bg-[#fef3c7] text-[#92400e]" :
+              "bg-[#fef2f2] text-[#dc2626]"
+            }`}>
+              {parseResult.confidence} confidence
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
+            <div>
+              <div className="text-[#71717a] text-[10px] uppercase tracking-wide">Monthly income</div>
+              <div className="font-bold text-black text-[15px]">${Math.round(parseResult.monthlyIncome).toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-[#71717a] text-[10px] uppercase tracking-wide">Weekly avg</div>
+              <div className="font-bold text-black text-[15px]">${Math.round(parseResult.avgWeeklyIncome).toLocaleString()}</div>
+            </div>
+            <div>
+              <div className="text-[#71717a] text-[10px] uppercase tracking-wide">Deposits</div>
+              <div className="font-bold text-black text-[15px]">{parseResult.depositCount}</div>
+            </div>
+            <div>
+              <div className="text-[#71717a] text-[10px] uppercase tracking-wide">Cadence</div>
+              <div className="font-bold text-black text-[15px] capitalize">{parseResult.cadence}</div>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-[11px] text-[#52525b]">
+            {parseResult.accountHolderName && (
+              <div>Account: <span className="text-black font-medium">{parseResult.accountHolderName}</span></div>
+            )}
+            {parseResult.bankName && (
+              <div>Bank: <span className="text-black font-medium">{parseResult.bankName}</span></div>
+            )}
+            {parseResult.statementPeriodStart && parseResult.statementPeriodEnd && (
+              <div className="col-span-2">
+                Period: <span className="text-black font-medium">{parseResult.statementPeriodStart} → {parseResult.statementPeriodEnd}</span>
+              </div>
+            )}
+          </div>
+          {parseResult.notes && (
+            <p className="mt-3 text-[11px] text-[#71717a] italic border-t border-[#e9d5ff] pt-2">
+              {parseResult.notes}
+            </p>
+          )}
+          <p className="mt-3 text-[11px] text-[#7c3aed] font-medium">
+            ✓ Values written into the application — recommendation refreshes below. Adjust manually if needed and click Save.
+          </p>
+        </div>
+      )}
 
       {/* Verified income */}
       <div className="mt-5 pt-5 border-t border-[#f4f4f5]">
