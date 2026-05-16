@@ -73,7 +73,7 @@ interface Contact {
   loan: LoanSummary;
 }
 
-const TOTAL_APP_STEPS = 7;
+const TOTAL_APP_STEPS = 11;
 
 const ACTIVITY_COLORS: Record<string, string> = {
   app_started: "bg-green-500",
@@ -408,7 +408,7 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                   <span className="inline-block text-[11px] font-semibold bg-[#f0fdf4] text-[#15803d] px-2.5 py-1 rounded-lg">{contact.application.status}</span>
                 </div>
                 <div>
-                  <span className={labelClass}>Loan Amount</span>
+                  <span className={labelClass}>Advance Amount</span>
                   <p className="text-[13px] text-black">${contact.application.loanAmount.toLocaleString()}</p>
                 </div>
                 <div>
@@ -454,12 +454,12 @@ function LoanSummaryCard({ loan }: { loan: LoanSummary }) {
   return (
     <div className="bg-white rounded-xl border border-[#e4e4e7] p-5 mb-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">Loan</h2>
+        <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">Advance</h2>
         {loan.isComplete && <span className="inline-flex text-[10px] font-bold uppercase tracking-[0.04em] bg-[#f0fdf4] text-[#15803d] rounded px-2 py-0.5">Paid off</span>}
         {loan.isLate && !loan.isComplete && <span className="inline-flex text-[10px] font-bold uppercase tracking-[0.04em] bg-[#fef2f2] text-[#dc2626] rounded px-2 py-0.5">Late</span>}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-        <Stat label="Loan amount" value={fmtMoney(loan.fundedAmount || loan.loanAmount)} />
+        <Stat label="Advance amount" value={fmtMoney(loan.fundedAmount || loan.loanAmount)} />
         <Stat label="Per payment" value={`${fmtMoney(loan.perPaymentAmount)}${cadenceLabel(loan.cadence)}`} />
         <Stat label="Paid" value={`${fmtMoney(loan.paidAmount)}`} sub={`${loan.paidPayments} of ${loan.totalPayments} payments`} />
         <Stat label="Remaining" value={fmtMoney(loan.remainingAmount)} sub={`${loan.remainingPayments} payments left`} />
