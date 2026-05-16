@@ -75,6 +75,23 @@ export async function getCrmEmailTemplates(): Promise<CrmEmailTemplate[]> {
 <p>— The PennyLime Team</p>`,
     },
     {
+      id: "more-info-bank-transactions",
+      name: "We need more info — 90 days of bank transactions",
+      description: "Continue-the-review framing asking for 90-day bank transactions.",
+      subject: "We need a bit more info to continue your application",
+      body: `<p>Hi {{firstName}},</p>
+<p>Thanks again for applying to <strong>PennyLime</strong>. We've started reviewing your application (#{{applicationCode}}) and need a little more information before we can move forward.</p>
+<p>Could you send us the <strong>last 90 days of transactions</strong> from the bank account where you receive your gig-platform deposits? This helps us verify your deposit history so we can finalize underwriting.</p>
+<p>Two easy options — whichever is simpler for you:</p>
+<ol>
+  <li><strong>PDF statements</strong> — log in to your bank's online portal and download the last 3 monthly statements as PDFs.</li>
+  <li><strong>CSV export</strong> — most banks let you export transactions to CSV from the activity/history page. Download the last 90 days.</li>
+</ol>
+<p>Just reply to this email with the files attached. Your statements are encrypted in transit and stored only as long as needed to fund and service your advance.</p>
+<p>Once we have them, we'll wrap up the review and get back to you with terms within 24 hours.</p>
+<p>Thanks,<br>The PennyLime Team</p>`,
+    },
+    {
       id: "approved-coming-soon",
       name: "Approved — offer coming",
       description: "Sets expectation that the offer link is on its way.",
