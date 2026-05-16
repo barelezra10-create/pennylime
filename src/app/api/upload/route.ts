@@ -7,6 +7,10 @@ const ALLOWED_TYPES = [
   "image/png",
   "image/jpeg",
   "image/jpg",
+  "text/csv",
+  // Excel exports + browser-detected csv variants
+  "application/vnd.ms-excel",
+  "application/csv",
 ];
 
 export async function POST(request: NextRequest) {

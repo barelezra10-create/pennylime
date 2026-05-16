@@ -15,6 +15,7 @@ import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
 import type { OfferTerm } from "@/actions/offers";
 import { getPaymentsSummary, retryPayment, waiveLateFee } from "@/actions/payments";
+import { uploadBankStatements, setVerifiedMonthlyIncome } from "@/actions/bank-statements";
 import type { ApplicationWithDocuments, RiskScoreResult } from "@/types";
 import type { EvaluationResult } from "@/types";
 
@@ -503,6 +504,16 @@ export function DetailClient({
             )}
           </div>
 
+          {/* ── Bank Statements + Verified Income ── */}
+          <BankStatementsPanel
+            applicationId={application.id}
+            documents={application.documents}
+            currentMonthlyIncome={
+              application.monthlyIncome != null ? Number(application.monthlyIncome) : null
+            }
+            onChange={() => router.refresh()}
+          />
+
           {/* ── Income Entry ── */}
           <div className="bg-white rounded-[10px] p-6">
             <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-4 flex items-center gap-2">
@@ -875,6 +886,179 @@ export function DetailClient({
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Bank Statements upload + verified monthly income ─────────────── */
+
+type DocLite = {
+  id: string;
+  fileName: string;
+  documentType: string;
+  fileSize: number;
+  storagePath: string;
+};
+
+function BankStatementsPanel({
+  applicationId,
+  documents,
+  currentMonthlyIncome,
+  onChange,
+}: {
+  applicationId: string;
+  documents: DocLite[];
+  currentMonthlyIncome: number | null;
+  onChange: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [savingIncome, setSavingIncome] = useState(false);
+  const [monthly, setMonthly] = useState<string>(
+    currentMonthlyIncome != null ? String(Math.round(currentMonthlyIncome)) : "",
+  );
+
+  const bankDocs = documents.filter((d) => d.documentType === "BANK_STATEMENT_90D");
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) formData.append("files", files[i]);
+      const r = await uploadBankStatements(applicationId, formData);
+      if (r.ok) {
+        toast.success(`Uploaded ${r.count} file${r.count > 1 ? "s" : ""}`);
+        onChange();
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleSaveIncome() {
+    const value = parseFloat(monthly);
+    if (isNaN(value) || value < 0) {
+      toast.error("Enter a valid monthly amount");
+      return;
+    }
+    setSavingIncome(true);
+    try {
+      const r = await setVerifiedMonthlyIncome(applicationId, value);
+      if (r.ok) {
+        toast.success("Verified income saved — recommendation will refresh");
+        onChange();
+      } else {
+        toast.error(r.error);
+      }
+    } finally {
+      setSavingIncome(false);
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-[10px] p-6">
+      <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-1 flex items-center gap-2">
+        <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.689c0-.864.933-1.405 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061A1.125 1.125 0 0 1 3 16.811V8.69ZM12.75 8.689c0-.864.933-1.405 1.683-.977l7.108 4.061a1.125 1.125 0 0 1 0 1.954l-7.108 4.061a1.125 1.125 0 0 1-1.683-.977V8.69Z" />
+        </svg>
+        Bank Statements (90 days)
+      </h2>
+      <p className="text-xs text-[#71717a] mb-4">
+        Upload PDF statements or CSV exports the applicant emailed in.
+        After reviewing, type the verified monthly income — the rules engine
+        uses this to produce a recommendation.
+      </p>
+
+      {/* Uploaded files */}
+      {bankDocs.length === 0 ? (
+        <p className="text-sm text-[#a1a1aa] mb-4">No bank statements uploaded yet.</p>
+      ) : (
+        <ul className="mb-4 space-y-2">
+          {bankDocs.map((d) => (
+            <li key={d.id} className="flex items-center justify-between rounded-lg bg-[#f8faf8] p-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#f0f5f0] shrink-0">
+                  <svg className="h-5 w-5 text-[#15803d]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-black truncate">{d.fileName}</p>
+                  <p className="text-xs text-[#a1a1aa]">{formatFileSize(d.fileSize)}</p>
+                </div>
+              </div>
+              <a
+                href={`/api/files/${d.storagePath}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50"
+              >
+                View
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Upload */}
+      <label className="block">
+        <span className="inline-flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-[#a1a1aa] bg-[#fafafa] px-4 py-2.5 text-sm font-medium text-black hover:bg-[#f4f4f5]">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          {uploading ? "Uploading…" : "Upload PDF or CSV"}
+        </span>
+        <input
+          type="file"
+          multiple
+          accept=".pdf,.csv,image/png,image/jpeg"
+          onChange={handleUpload}
+          disabled={uploading}
+          className="hidden"
+        />
+      </label>
+
+      {/* Verified income */}
+      <div className="mt-5 pt-5 border-t border-[#f4f4f5]">
+        <label htmlFor="verified-monthly" className="block text-sm font-medium text-black mb-1.5">
+          Verified monthly income
+        </label>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#a1a1aa] text-sm font-medium">$</span>
+              <input
+                id="verified-monthly"
+                type="number"
+                placeholder="0.00"
+                value={monthly}
+                onChange={(e) => setMonthly(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white pl-8 pr-4 py-2.5 text-sm text-black placeholder:text-[#a1a1aa] focus:border-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-black/10"
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveIncome}
+            disabled={savingIncome}
+            className="bg-[#15803d] text-white rounded-lg px-6 py-2.5 font-semibold text-sm disabled:opacity-50 hover:bg-[#166534]"
+          >
+            {savingIncome ? "Saving…" : "Save & re-evaluate"}
+          </button>
+        </div>
+        {currentMonthlyIncome != null && (
+          <p className="mt-2.5 text-xs text-[#71717a]">
+            Current verified monthly: <span className="font-semibold text-[#15803d]">${currentMonthlyIncome.toLocaleString()}</span>
+            <span className="ml-3">3-month total: <span className="font-semibold text-black">${(currentMonthlyIncome * 3).toLocaleString()}</span></span>
+          </p>
+        )}
       </div>
     </div>
   );
