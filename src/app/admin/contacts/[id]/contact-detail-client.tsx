@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TabBar } from "@/components/admin/tab-bar";
 import { StageBadge } from "@/components/admin/stage-badge";
 import { PageHeader } from "@/components/admin/page-header";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
+import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, type CrmEmailTemplate } from "@/actions/crm-email";
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
 import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 import { toast } from "sonner";
@@ -105,6 +106,7 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
   const tabs = [
     { id: "overview", label: "Overview" },
     { id: "activity", label: "Activity", count: contact.activities.length },
+    { id: "email", label: "Email" },
     { id: "application", label: "Application" },
   ];
 
@@ -385,6 +387,11 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
         </div>
       )}
 
+      {/* Email Tab */}
+      {activeTab === "email" && (
+        <EmailTab contactId={contact.id} contactEmail={contact.email} />
+      )}
+
       {/* Application Tab */}
       {activeTab === "application" && (
         <div className="max-w-xl">
@@ -482,6 +489,181 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
       <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-1">{label}</p>
       <p className="text-[18px] font-extrabold tracking-[-0.02em] text-black tabular-nums leading-none">{value}</p>
       {sub && <p className="text-[10px] text-[#a1a1aa] mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail: string }) {
+  const router = useRouter();
+  const [templates, setTemplates] = useState<CrmEmailTemplate[]>([]);
+  const [recentEmails, setRecentEmails] = useState<Array<{ id: string; subject: string | null; createdAt: Date }>>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [tpls, recents] = await Promise.all([
+        getCrmEmailTemplates(),
+        getRecentEmailsForContact(contactId),
+      ]);
+      if (cancelled) return;
+      setTemplates(tpls);
+      setRecentEmails(recents);
+    })();
+    return () => { cancelled = true; };
+  }, [contactId]);
+
+  function applyTemplate(id: string) {
+    setSelectedTemplateId(id);
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    setSubject(t.subject);
+    setBody(t.body);
+  }
+
+  async function handleSend() {
+    if (!subject.trim() || !body.trim()) {
+      toast.error("Subject and body required");
+      return;
+    }
+    setSending(true);
+    try {
+      const r = await sendCrmEmail({ contactId, subject, body });
+      if (r.ok) {
+        toast.success(`Email sent to ${contactEmail}`);
+        setSelectedTemplateId("");
+        setSubject("");
+        setBody("");
+        const recents = await getRecentEmailsForContact(contactId);
+        setRecentEmails(recents);
+        router.refresh();
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+
+  return (
+    <div className="grid grid-cols-3 gap-6">
+      <div className="col-span-2 space-y-4">
+        <div className="bg-white rounded-xl p-6 border border-[#e4e4e7]">
+          <h2 className="text-[13px] font-bold text-black mb-4 uppercase tracking-[0.05em]">
+            Send Email
+          </h2>
+          <p className="text-[12px] text-[#71717a] mb-4">
+            From <code className="bg-[#f4f4f5] px-1 rounded">notifications@pennylime.com</code>{" "}
+            · Reply-to <code className="bg-[#f4f4f5] px-1 rounded">info@pennylime.com</code>{" "}
+            · To <strong className="text-black">{contactEmail}</strong>
+          </p>
+
+          <div className="mb-4">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] mb-1.5 block">
+              Template
+            </label>
+            <select
+              value={selectedTemplateId}
+              onChange={(e) => applyTemplate(e.target.value)}
+              className="w-full text-[13px] px-3.5 py-2.5 bg-[#f4f4f5] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#15803d]/20"
+            >
+              <option value="">— Pick a template or start blank —</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            {selectedTemplate && (
+              <p className="text-[11px] text-[#71717a] mt-1">{selectedTemplate.description}</p>
+            )}
+          </div>
+
+          <div className="mb-4">
+            <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] mb-1.5 block">
+              Subject
+            </label>
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Subject line"
+              className="w-full text-[13px] px-3.5 py-2.5 bg-[#f4f4f5] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#15803d]/20"
+            />
+          </div>
+
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">
+                Body (HTML allowed)
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowPreview(!showPreview)}
+                className="text-[11px] font-semibold text-[#15803d] hover:underline"
+              >
+                {showPreview ? "Edit" : "Preview"}
+              </button>
+            </div>
+            {showPreview ? (
+              <div
+                className="text-[13px] bg-white border border-[#e4e4e7] rounded-xl p-4 min-h-[200px] prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: body }}
+              />
+            ) : (
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={12}
+                placeholder="<p>Hi {{firstName}},</p>..."
+                className="w-full text-[13px] px-3.5 py-2.5 bg-[#f4f4f5] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#15803d]/20 font-mono"
+              />
+            )}
+            <p className="text-[11px] text-[#71717a] mt-1">
+              Vars: <code>{`{{firstName}}`}</code>, <code>{`{{lastName}}`}</code>,{" "}
+              <code>{`{{applicationCode}}`}</code>, <code>{`{{loanAmount}}`}</code>,{" "}
+              <code>{`{{email}}`}</code>, <code>{`{{phone}}`}</code>
+            </p>
+          </div>
+
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="bg-[#15803d] text-white text-[13px] font-semibold rounded-xl px-5 py-2.5 hover:bg-[#166534] disabled:opacity-50"
+          >
+            {sending ? "Sending…" : `Send to ${contactEmail}`}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="bg-white rounded-xl p-6 border border-[#e4e4e7]">
+          <h3 className="text-[13px] font-bold text-black mb-3 uppercase tracking-[0.05em]">
+            Recent emails
+          </h3>
+          {recentEmails.length === 0 ? (
+            <p className="text-[12px] text-[#a1a1aa]">No emails sent yet.</p>
+          ) : (
+            <ul className="space-y-3">
+              {recentEmails.map((e) => (
+                <li key={e.id} className="border-b border-[#f4f4f5] last:border-0 pb-2 last:pb-0">
+                  <p className="text-[12px] font-semibold text-black truncate" title={e.subject ?? ""}>
+                    {e.subject || "(no subject)"}
+                  </p>
+                  <p className="text-[10px] text-[#a1a1aa] mt-0.5">
+                    {new Date(e.createdAt).toLocaleString()}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
