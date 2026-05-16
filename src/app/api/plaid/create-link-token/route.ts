@@ -32,15 +32,22 @@ export async function POST(req: NextRequest) {
     // - auth: routing + account numbers (approved in prod)
     // - identity: owner name + address (approved)
     // - transactions: 90-day deposit history (pending prod approval)
-    // - income_verification: Plaid Bank Income — verified monthly income
-    //   (enabled in prod, used in place of transactions for underwriting)
+    // - assets: 90-day transactions + balances + identity packaged as an
+    //   asset report (enabled in prod, used as the underwriting data source
+    //   since Bank Income's new-API migration is incomplete).
+    // - income_verification: Plaid Bank Income. Currently rejected by Plaid
+    //   for accounts created after Dec 10, 2025 because the product still
+    //   requires the legacy user_token while /user/create only returns
+    //   user_id on new accounts. Left in the map for when Plaid finishes
+    //   the migration.
     const productMap: Record<string, Products> = {
       auth: Products.Auth,
       identity: Products.Identity,
       transactions: Products.Transactions,
+      assets: Products.Assets,
       income_verification: Products.IncomeVerification,
     };
-    const productList = (process.env.PLAID_PRODUCTS || "auth,identity,income_verification")
+    const productList = (process.env.PLAID_PRODUCTS || "auth,identity,assets")
       .split(",")
       .map((p) => p.trim().toLowerCase())
       .map((p) => productMap[p])
@@ -48,9 +55,18 @@ export async function POST(req: NextRequest) {
 
     const wantsIncome = productList.includes(Products.IncomeVerification);
 
-    // Mint or reuse a user_token for the application — required when
-    // income_verification is among the requested products. The token
-    // is tied to the borrower across multiple Link sessions.
+    // Mint or reuse a user identifier for the application — required when
+    // income_verification is among the requested products. Stored in
+    // Application.plaidUserToken (column name is legacy from the pre-Dec-2025
+    // user_token model; for accounts created after the cutover this holds
+    // a user_id instead).
+    //
+    // Plaid's new user-API model (post Dec 10, 2025):
+    //   /user/create → returns user_id (and sometimes user_token, depending
+    //                  on account age)
+    //   /link/token/create + /credit/bank_income/get accept either
+    //                  user_token OR user_id; we pass whichever we got.
+    let userId: string | undefined;
     let userToken: string | undefined;
     if (wantsIncome) {
       const application = await prisma.application.findUnique({
@@ -58,14 +74,21 @@ export async function POST(req: NextRequest) {
         select: { id: true, plaidUserToken: true },
       });
       if (application?.plaidUserToken) {
-        userToken = application.plaidUserToken;
+        // Heuristic: usr_ prefix → user_id; otherwise treat as legacy token.
+        if (application.plaidUserToken.startsWith("usr_")) {
+          userId = application.plaidUserToken;
+        } else {
+          userToken = application.plaidUserToken;
+        }
       } else {
         const userResp = await plaidClient.userCreate({ client_user_id: applicationId });
+        userId = userResp.data.user_id;
         userToken = userResp.data.user_token;
-        if (application) {
+        const persisted = userToken ?? userId;
+        if (application && persisted) {
           await prisma.application.update({
             where: { id: application.id },
-            data: { plaidUserToken: userToken },
+            data: { plaidUserToken: persisted },
           });
         }
       }
@@ -73,6 +96,7 @@ export async function POST(req: NextRequest) {
 
     const response = await plaidClient.linkTokenCreate({
       user: { client_user_id: applicationId },
+      user_id: userId,
       user_token: userToken,
       client_name: "PennyLime",
       products: productList.length > 0 ? productList : [Products.Auth, Products.Identity],
@@ -92,7 +116,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       linkToken: response.data.link_token,
-      userToken: userToken ?? null,
+      // Single field returned to the client; can hold either a user_token
+      // or a user_id depending on Plaid's API version for this account.
+      // The funnel just persists whatever it gets back.
+      userToken: userToken ?? userId ?? null,
     });
   } catch (error) {
     const err = error as { response?: { status?: number; data?: unknown }; message?: string };
