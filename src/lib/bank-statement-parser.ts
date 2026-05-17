@@ -10,11 +10,11 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// gemini-2.0-flash is the same model the chat agent uses, and is the
-// version your API key is approved for. Supports PDF input natively.
-// If a 403 permission error comes back from this model too, the key
-// itself is restricted — set GEMINI_API_KEY on Railway to a working one.
-const MODEL = process.env.GEMINI_PARSE_MODEL || "gemini-2.0-flash";
+// gemini-2.5-flash-lite is the most permissive recent model — accessible
+// on brand-new API keys that 403 on gemini-2.5-flash and 404 on the
+// deprecated gemini-2.0-flash. Supports PDF input natively. Override
+// with GEMINI_PARSE_MODEL on Railway if a more capable tier is approved.
+const MODEL = process.env.GEMINI_PARSE_MODEL || "gemini-2.5-flash-lite";
 
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
