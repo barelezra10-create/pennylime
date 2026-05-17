@@ -14,7 +14,7 @@ import { evaluateApplicationAction } from "@/actions/evaluation";
 import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
 import type { OfferTerm } from "@/actions/offers";
-import { getPaymentsSummary, retryPayment, waiveLateFee } from "@/actions/payments";
+import { getPaymentsSummary, retryPayment, waiveLateFee, chargePaymentNow } from "@/actions/payments";
 import { uploadBankStatements, setVerifiedMonthlyIncome, parseBankStatementsWithAI, deleteBankStatement, deleteApplicationDocument } from "@/actions/bank-statements";
 import type { ApplicationWithDocuments, RiskScoreResult } from "@/types";
 import type { EvaluationResult } from "@/types";
@@ -855,6 +855,27 @@ export function DetailClient({
                           </td>
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
+                              {payment.status === "PENDING" && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`Charge ${payment.paymentNumber === 1 ? "first" : "#" + payment.paymentNumber} payment of $${fmt(Number(payment.amount))} now via ACH debit?`)) return;
+                                    const result = await chargePaymentNow(payment.id);
+                                    if (result.success) {
+                                      toast.success(`ACH debit initiated for payment #${payment.paymentNumber}`);
+                                      getPaymentsSummary(application.id).then(setPaymentSummary);
+                                    } else {
+                                      toast.error(result.error || "Failed to charge");
+                                    }
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-[#15803d] text-white px-2.5 py-1 text-xs font-semibold hover:bg-[#166534]"
+                                  title="ACH debit this payment now (instead of waiting for the daily cron)"
+                                >
+                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.5v15m16.5-15v15M2.25 9h19.5m-19.5 6h19.5M3.75 12h.008m16.484 0H20.25M3.75 19.5h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Z" />
+                                  </svg>
+                                  Charge now
+                                </button>
+                              )}
                               {payment.status === "FAILED" && (
                                 <button
                                   onClick={async () => {

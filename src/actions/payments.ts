@@ -90,6 +90,62 @@ export async function retryPayment(paymentId: string) {
   return { success: true };
 }
 
+/**
+ * Admin-triggered ACH debit for a PENDING payment, ahead of its
+ * scheduled cron run. Same code path the daily cron uses — locks the
+ * row to PROCESSING first so the cron doesn't double-debit, calls
+ * Increase, then updates the row with the transfer id. Used by the
+ * "Charge now" button on the application detail page.
+ */
+export async function chargePaymentNow(paymentId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment) return { success: false, error: "Payment not found" };
+  if (payment.status !== "PENDING") {
+    return { success: false, error: `Payment is ${payment.status}, can only charge PENDING` };
+  }
+
+  // Lock to PROCESSING first so the daily cron can't double-debit.
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { status: "PROCESSING" },
+  });
+
+  const { initiateACHDebit } = await import("@/lib/plaid-transfer");
+  const result = await initiateACHDebit(paymentId);
+
+  if (!result.success) {
+    // Roll back to PENDING so cron can retry, or admin can hit the
+    // button again after fixing whatever was wrong.
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: "PENDING" },
+    });
+    return { success: false, error: result.error };
+  }
+
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      achTransferId: result.transferId,
+      increaseTransferId: result.transferId,
+      increaseTransferStatus: "pending_submission",
+    },
+  });
+
+  await logAudit({
+    action: "MANUAL_CHARGE_PAYMENT",
+    entityType: "PAYMENT",
+    entityId: paymentId,
+    performedBy: session.user.email,
+    details: { applicationId: payment.applicationId, paymentNumber: payment.paymentNumber },
+  });
+
+  return { success: true, transferId: result.transferId };
+}
+
 export async function waiveLateFee(paymentId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { success: false, error: "Not authenticated" };
