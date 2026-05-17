@@ -116,6 +116,13 @@ export async function upsertContact(data: {
   lastAppStep?: number;
   loanAmountIntent?: number;
 }) {
+  // Check if the contact already exists so we can distinguish "new lead"
+  // (fire admin notification) from "returning visitor" (no notification).
+  const existed = await prisma.contact.findUnique({
+    where: { email: data.email },
+    select: { id: true },
+  });
+
   const contact = await prisma.contact.upsert({
     where: { email: data.email },
     update: {
@@ -151,6 +158,31 @@ export async function upsertContact(data: {
       where: { id: data.pennyClickId, contactId: null },
       data: { contactId: contact.id },
     });
+  }
+
+  // Admin notification — only on first creation, never on returning visits.
+  if (!existed) {
+    try {
+      const { notifyAdmins, getAdminUrl } = await import("@/lib/notify");
+      const url = `${getAdminUrl()}/admin/contacts/${contact.id}`;
+      const fullName = [data.firstName, data.lastName].filter(Boolean).join(" ");
+      notifyAdmins("leadCreated", {
+        subject: `New lead — ${fullName || data.email}`,
+        html: `<p>New lead just hit pennylime.com.</p>
+<ul>
+  <li><strong>Name:</strong> ${fullName || "—"}</li>
+  <li><strong>Email:</strong> <a href="mailto:${data.email}">${data.email}</a></li>
+  <li><strong>Phone:</strong> ${data.phone || "—"}</li>
+  <li><strong>Source:</strong> ${data.source || "direct"}</li>
+  <li><strong>UTM campaign:</strong> ${data.utmCampaign || "—"}</li>
+  <li><strong>Landing page:</strong> ${data.landingPage || "—"}</li>
+  ${data.loanAmountIntent ? `<li><strong>Advance amount intent:</strong> $${data.loanAmountIntent.toLocaleString()}</li>` : ""}
+</ul>
+<p><a href="${url}">View in CRM</a></p>`,
+      }).catch(() => {});
+    } catch {
+      // never block the lead capture path
+    }
   }
 
   return contact;

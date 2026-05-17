@@ -99,6 +99,20 @@ export async function POST(req: NextRequest) {
         metadata: { ip: ip ?? undefined, userAgent } as object,
       },
     });
+
+    // Fire admin notification (best-effort, never blocks chat start).
+    if (leadFirstName && leadEmail) {
+      const { notifyAdmins, getAdminUrl } = await import("@/lib/notify");
+      const url = `${getAdminUrl()}/admin/agent/sessions/${session.id}`;
+      notifyAdmins("chatStarted", {
+        subject: `New chat from ${leadFirstName} — PennyLime`,
+        html: `<p><strong>${escapeHtml(leadFirstName)}${leadLastName ? " " + escapeHtml(leadLastName) : ""}</strong> just started a chat on pennylime.com.</p>
+<ul>
+  <li>Email: <a href="mailto:${escapeHtml(leadEmail)}">${escapeHtml(leadEmail)}</a></li>
+</ul>
+<p><a href="${url}">View session in admin</a></p>`,
+      }).catch(() => {});
+    }
   } else {
     // Existing session — bump lastPolledAt every time the user sends.
     await prisma.agentSession.update({
@@ -196,4 +210,13 @@ async function handlePoll(sessionId: string, sinceMessageId: string) {
       createdAt: m.createdAt.toISOString(),
     })),
   });
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

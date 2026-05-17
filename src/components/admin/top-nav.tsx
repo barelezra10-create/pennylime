@@ -30,6 +30,7 @@ const TABS: TopTab[] = [
       { href: "/admin/payments", label: "Payments" },
       { href: "/admin/audit", label: "Audit log" },
       { href: "/admin/settings", label: "Settings" },
+      { href: "/admin/settings/notifications", label: "Notifications" },
       { href: "/admin/funnel-preview", label: "Funnel preview" },
       { href: "/admin/plaid-test", label: "Plaid test" },
       { href: "/admin/increase-test", label: "Increase test" },

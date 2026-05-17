@@ -614,6 +614,22 @@ model EmailEvent {
   @@index([type])
 }
 
+/// Notification center configuration. One singleton row. Each field is a
+/// comma-separated list of emails that receive the notification for that
+/// event. Empty string disables the notification entirely.
+model NotificationConfig {
+  id                          String   @id @default("singleton")
+  // Fired when the chat widget creates a brand-new session (lead provides
+  // their name + email before the first message).
+  chatStartedEmails           String   @default("")
+  // Fired when a public funnel applicant submits the application.
+  applicationSubmittedEmails  String   @default("")
+  // Fired when a brand-new Contact is created (lead capture from any
+  // source: funnel, chat, landing page form, etc.)
+  leadCreatedEmails           String   @default("")
+  updatedAt                   DateTime @updatedAt
+}
+
 model TrackingConfig {
   id                            String   @id @default("singleton")
   // Google Ads

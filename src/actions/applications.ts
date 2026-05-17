@@ -135,6 +135,28 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
     console.error("Post-submit Plaid pipeline failed:", err);
   }
 
+  // Admin notification — best-effort, never blocks applicant.
+  try {
+    const { notifyAdmins, getAdminUrl } = await import("@/lib/notify");
+    const url = `${getAdminUrl()}/admin/applications/${application.id}`;
+    notifyAdmins("applicationSubmitted", {
+      subject: `New application — ${data.firstName} ${data.lastName} ($${data.loanAmount.toLocaleString()})`,
+      html: `<p>New PennyLime application submitted.</p>
+<ul>
+  <li><strong>Name:</strong> ${data.firstName} ${data.lastName}</li>
+  <li><strong>Email:</strong> <a href="mailto:${data.email}">${data.email}</a></li>
+  <li><strong>Phone:</strong> ${data.phone}</li>
+  <li><strong>Requested amount:</strong> $${data.loanAmount.toLocaleString()}</li>
+  <li><strong>Term:</strong> ${data.loanTermMonths} weeks</li>
+  <li><strong>Platform:</strong> ${data.platform || "—"}</li>
+  <li><strong>Application code:</strong> ${applicationCode}</li>
+</ul>
+<p><a href="${url}">Review in admin</a></p>`,
+    }).catch(() => {});
+  } catch (err) {
+    console.error("Application-submitted notification failed:", err);
+  }
+
   // Update linked contact stage (drives server-side conversion + activity log).
   // Transactional submit email/SMS fire directly below, not via stage sequence.
   let linkedContactId: string | null = null;
