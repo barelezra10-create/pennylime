@@ -966,6 +966,7 @@ function BankStatementsPanel({
     notes: string | null;
     statementPeriodStart: string | null;
     statementPeriodEnd: string | null;
+    bestChargeDay: { dayOfWeek: number; dayName: string; reason: string } | null;
   } | null>(null);
   const [monthly, setMonthly] = useState<string>(
     currentMonthlyIncome != null ? String(Math.round(currentMonthlyIncome)) : "",
@@ -991,6 +992,7 @@ function BankStatementsPanel({
           notes: r.notes,
           statementPeriodStart: r.statementPeriodStart,
           statementPeriodEnd: r.statementPeriodEnd,
+          bestChargeDay: r.bestChargeDay ?? null,
         });
         setMonthly(String(Math.round(r.monthlyIncome)));
         toast.success(
@@ -1195,6 +1197,14 @@ function BankStatementsPanel({
               </div>
             )}
           </div>
+          {parseResult.bestChargeDay && (
+            <div className="mt-3 rounded-md bg-white border border-[#bbf7d0] p-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#15803d]">
+                ✦ Best weekly debit day: {parseResult.bestChargeDay.dayName}
+              </p>
+              <p className="text-[11px] text-[#52525b] mt-1">{parseResult.bestChargeDay.reason}</p>
+            </div>
+          )}
           {parseResult.notes && (
             <p className="mt-3 text-[11px] text-[#71717a] italic border-t border-[#e9d5ff] pt-2">
               {parseResult.notes}
@@ -1202,6 +1212,7 @@ function BankStatementsPanel({
           )}
           <p className="mt-3 text-[11px] text-[#7c3aed] font-medium">
             ✓ Values written into the application — recommendation refreshes below. Adjust manually if needed and click Save.
+            {parseResult.bestChargeDay && " Weekly payment schedule will auto-snap to this day when the customer accepts the offer."}
           </p>
         </div>
       )}

@@ -76,6 +76,12 @@ model Application {
   depositCount90d          Int?
   largestDeposit           Decimal?
   depositCadence           String?
+  // Day-of-week (0=Sunday … 6=Saturday) computed from the borrower's
+  // bank deposits — typically the day after the largest recurring
+  // income lands, when balance is freshest. Used by the offer accept
+  // flow to snap each weekly payment due date so ACH debits land when
+  // money is most likely to be there.
+  preferredChargeDay       Int?
   lastPlaidRefresh         DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt

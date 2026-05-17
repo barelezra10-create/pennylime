@@ -175,6 +175,10 @@ export async function parseBankStatementsWithAI(applicationId: string) {
     return { ok: false as const, error: message };
   }
 
+  // Pick the best weekly debit day from the deposit pattern.
+  const { computeBestChargeDay } = await import("@/lib/payment-day");
+  const bestDay = computeBestChargeDay(parsed.deposits ?? []);
+
   // Write into the same fields Plaid would populate so the rules engine
   // + admin UI treat this as verified income, indistinguishable in
   // shape from a Plaid pull.
@@ -189,6 +193,7 @@ export async function parseBankStatementsWithAI(applicationId: string) {
       depositCadence: normalizeCadence(parsed.estimatedCadence),
       plaidIdentityName: parsed.accountHolderName ?? undefined,
       plaidInstitutionName: parsed.bankName ?? undefined,
+      preferredChargeDay: bestDay?.dayOfWeek ?? null,
       lastPlaidRefresh: new Date(),
     },
   });
@@ -223,6 +228,7 @@ export async function parseBankStatementsWithAI(applicationId: string) {
     notes: parsed.notes,
     statementPeriodStart: parsed.statementPeriodStart,
     statementPeriodEnd: parsed.statementPeriodEnd,
+    bestChargeDay: bestDay,
   };
 }
 

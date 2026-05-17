@@ -11,11 +11,29 @@ function generateWeeklySchedule(input: {
   weeklyPayment: number;
   termWeeks: number;
   startDate: Date;
+  // When set (0=Sunday … 6=Saturday), the FIRST payment date snaps
+  // to the next occurrence of this day-of-week, and every subsequent
+  // payment is exactly 7 days later. Lets us land debits one day
+  // after the borrower's typical paycheck day.
+  preferredChargeDay?: number | null;
 }) {
   const totalToRepay = input.weeklyPayment * input.termWeeks;
   const totalInterest = Math.max(0, totalToRepay - input.principal);
   const interestPerPayment = totalInterest / input.termWeeks;
   const principalPerPayment = input.weeklyPayment - interestPerPayment;
+
+  // First-payment anchor: either today + 7 (legacy behavior) or the
+  // next occurrence of preferredChargeDay AFTER today+7 so we never
+  // pull money the same week the advance disburses.
+  const firstDue = new Date(input.startDate);
+  firstDue.setDate(firstDue.getDate() + 7);
+  if (input.preferredChargeDay != null) {
+    const targetDay = input.preferredChargeDay;
+    const currentDay = firstDue.getDay();
+    const diff = (targetDay - currentDay + 7) % 7;
+    firstDue.setDate(firstDue.getDate() + diff);
+  }
+
   const schedule: Array<{
     paymentNumber: number;
     dueDate: Date;
@@ -23,11 +41,11 @@ function generateWeeklySchedule(input: {
     principal: number;
     interest: number;
   }> = [];
-  for (let i = 1; i <= input.termWeeks; i++) {
-    const due = new Date(input.startDate);
+  for (let i = 0; i < input.termWeeks; i++) {
+    const due = new Date(firstDue);
     due.setDate(due.getDate() + 7 * i);
     schedule.push({
-      paymentNumber: i,
+      paymentNumber: i + 1,
       dueDate: due,
       amount: Math.round(input.weeklyPayment * 100) / 100,
       principal: Math.round(principalPerPayment * 100) / 100,
@@ -210,12 +228,16 @@ export async function acceptOffer(input: {
     },
   });
 
-  // Build payment schedule from the selected term.
+  // Build payment schedule from the selected term. Snap each weekly
+  // due date to the borrower's preferredChargeDay if we computed one
+  // from their bank deposit pattern — debit lands when balance is
+  // freshest, lifting success rates.
   const schedule = generateWeeklySchedule({
     principal: input.selectedAmount,
     weeklyPayment: term.weeklyRemittance,
     termWeeks: term.durationWeeks,
     startDate: new Date(),
+    preferredChargeDay: app.preferredChargeDay,
   });
   if (schedule.length > 0) {
     await prisma.payment.createMany({
