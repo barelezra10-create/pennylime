@@ -6,7 +6,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ name: stri
   const buf = await readImage(name);
   if (!buf) return NextResponse.json({ error: "not found" }, { status: 404 });
   const ext = name.split(".").pop()?.toLowerCase() ?? "png";
-  const ct = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+  const ct =
+    ext === "mp4" ? "video/mp4"
+    : ext === "mov" ? "video/quicktime"
+    : ext === "jpg" || ext === "jpeg" ? "image/jpeg"
+    : "image/png";
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "content-type": ct,

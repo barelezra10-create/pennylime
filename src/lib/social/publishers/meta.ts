@@ -50,6 +50,50 @@ export async function publishToInstagram(
   return { platformPostId: pub.id };
 }
 
+export async function publishToInstagramReels(
+  encryptedAccessToken: string,
+  igUserId: string,
+  videoUrl: string,
+  caption: string,
+): Promise<PublishResult> {
+  const token = decryptToken(encryptedAccessToken);
+
+  // Step 1: create REELS container (note media_type=REELS + video_url, no image_url)
+  const containerUrl = `https://graph.facebook.com/v22.0/${igUserId}/media?media_type=REELS&video_url=${encodeURIComponent(videoUrl)}&caption=${encodeURIComponent(caption)}&share_to_feed=true&access_token=${token}`;
+  const containerRes = await fetch(containerUrl, { method: "POST" });
+  const container = await containerRes.json();
+  if (!container.id) {
+    throw new Error(`IG Reels container creation failed: ${JSON.stringify(container)}`);
+  }
+
+  // Step 2: poll container status. Reels need longer than images (Meta has to fetch + transcode).
+  // Cap at 5 min — Reels usually finish in 60-180s.
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const statusRes = await fetch(
+      `https://graph.facebook.com/v22.0/${container.id}?fields=status_code,status&access_token=${token}`,
+    );
+    const status = await statusRes.json();
+    if (status.status_code === "FINISHED") break;
+    if (status.status_code === "ERROR" || status.status_code === "EXPIRED") {
+      throw new Error(`IG Reels container failed status: ${JSON.stringify(status)}`);
+    }
+    if (i === 59) {
+      throw new Error(`IG Reels container timed out (still ${status.status_code}) after 5min`);
+    }
+  }
+
+  // Step 3: publish
+  const publishUrl = `https://graph.facebook.com/v22.0/${igUserId}/media_publish?creation_id=${container.id}&access_token=${token}`;
+  const pubRes = await fetch(publishUrl, { method: "POST" });
+  const pub = await pubRes.json();
+  if (!pub.id) {
+    throw new Error(`IG Reels publish failed: ${JSON.stringify(pub)}`);
+  }
+
+  return { platformPostId: pub.id };
+}
+
 export async function publishToFacebook(
   encryptedPageToken: string,
   pageId: string,
