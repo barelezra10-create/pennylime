@@ -130,7 +130,7 @@ export async function createAchDebit(input: {
     company_name: input.companyName,
     individual_name: input.individualName,
     funding: "checking",
-    standard_entry_class_code: "ppd",
+    standard_entry_class_code: "prearranged_payments_and_deposit",
     require_approval: false,
   });
 }
