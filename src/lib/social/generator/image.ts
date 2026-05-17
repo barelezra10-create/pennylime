@@ -27,8 +27,18 @@ export async function generatePostImage(topic: string, platform: Platform): Prom
   const client = getClient();
   const aspect = ASPECTS[platform];
 
-  const prompt = `Editorial illustration for a social media post about: "${topic}".
-Style: clean, modern, fintech-friendly, gig economy aesthetic. Subtle palette using deep navy, lime green (#7BFF00), white, soft shadows. NO text in image. NO logos. NO faces (avoid likeness issues). Aspect ratio ${aspect.aspectRatio}. ${aspect.width}x${aspect.height}px.`;
+  const prompt = `Editorial illustration for a PennyLime social media post about: "${topic}".
+
+PENNYLIME BRAND RULES (strict):
+- 2-color limit: brand lime green (#15803D primary, #A3E635 vivid highlights, #166534 deep shadow) PLUS one neutral (ink #0A0A0A or cream #FEFCE8). NO other hues.
+- Show the artifact, not the person. Render phone screens, app dashboards, bank deposit notifications, ACH receipts, ride-share map UIs, delivery bags, the driver's seat, the seller's packing desk, gas-pump nozzles. Documentary / editorial style.
+- NO faces, NO smiling stock-actor people, NO handshakes, NO boardrooms, NO suits, NO generic "team standing in office" tropes.
+- NO text, NO numbers visible in the image, NO logos. The post caption carries the message; the image is purely visual.
+- Audience: gig-economy workers (Uber/Lyft drivers, DoorDash/Instacart shoppers, Amazon FBA sellers, Fiverr/Upwork freelancers). Render the world they actually work in.
+- Mood: confident, plain, modern, warm. NOT "stock fintech violet/blue" and NOT "Wall Street."
+- Aspect ratio ${aspect.aspectRatio}, target ${aspect.width}x${aspect.height}px.
+
+If the topic is about taxes, render a tax form + phone showing rideshare app. If about cashflow, render a bank notification on a phone screen on a car dashboard. If about platform-tips, render the platform's app UI (Uber/DoorDash style map, NOT named or branded). If "who we are" intro content, render the lime fruit half-slice illustration on warm paper (cross-section, eight visible segments, juicy pulp).`;
 
   let response;
   try {
