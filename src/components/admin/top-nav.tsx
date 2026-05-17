@@ -52,6 +52,7 @@ const TABS: TopTab[] = [
       { href: "/admin/sms/sequences", label: "SMS sequences" },
       { href: "/admin/sms/templates", label: "SMS templates" },
       { href: "/admin/social", label: "Social" },
+      { href: "/admin/social/calendar/instagram", label: "Social calendar" },
       { href: "/admin/social/schedule", label: "Social schedule" },
     ],
   },

@@ -67,13 +67,60 @@ async function runPlatform(prisma: PrismaClient, platform: Platform): Promise<Pl
     return { platform, status: "no_account" };
   }
 
-  // 2. Pick a topic
+  // 2. Look for a pre-planned post for today (calendar mode). If found,
+  //    skip topic-pick + generation and just publish the already-stored
+  //    text+image. Falls through to fresh generation if no plan exists.
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+
+  const planned = await prisma.socialPost.findFirst({
+    where: {
+      accountId: account.id,
+      status: "planned",
+      scheduledFor: { gte: todayStart, lt: todayEnd },
+    },
+    orderBy: { scheduledFor: "asc" },
+  });
+
+  if (planned && planned.body && planned.imageUrl) {
+    // Publish the pre-planned post
+    try {
+      const { platformPostId } = await publish({
+        platform,
+        encryptedAccessToken: account.accessToken,
+        platformAccountId: account.platformAccountId ?? "",
+        imageUrl: planned.imageUrl,
+        body: planned.body,
+      });
+      await prisma.socialPost.update({
+        where: { id: planned.id },
+        data: { status: "published", platformPostId, publishedAt: new Date() },
+      });
+      return {
+        platform,
+        status: "published",
+        postId: planned.id,
+        platformPostId,
+        topic: planned.topic,
+      };
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      await prisma.socialPost.update({
+        where: { id: planned.id },
+        data: { status: "failed", publishError: errMsg },
+      });
+      return { platform, status: "failed", postId: planned.id, topic: planned.topic, error: errMsg };
+    }
+  }
+
+  // 3. No plan — fresh generation path (original behavior)
   const topic = await pickNextTopic();
   if (!topic) {
     return { platform, status: "no_topic" };
   }
 
-  // 3. Generate text + image in parallel
   let body: string;
   let imageUrl: string;
   try {
@@ -90,7 +137,6 @@ async function runPlatform(prisma: PrismaClient, platform: Platform): Promise<Pl
     };
   }
 
-  // 4. Blocklist check
   const block = checkBlocklist(body);
   if (!block.passed) {
     const post = await prisma.socialPost.create({
@@ -107,7 +153,6 @@ async function runPlatform(prisma: PrismaClient, platform: Platform): Promise<Pl
     return { platform, status: "blocked", postId: post.id, topic: topic.topic, matches: block.matches };
   }
 
-  // 5. Persist as pending, then publish
   const post = await prisma.socialPost.create({
     data: {
       accountId: account.id,
