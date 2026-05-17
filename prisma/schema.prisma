@@ -627,6 +627,9 @@ model NotificationConfig {
   // Fired when a brand-new Contact is created (lead capture from any
   // source: funnel, chat, landing page form, etc.)
   leadCreatedEmails           String   @default("")
+  // Fired when an inbound email lands at info@pennylime.com and matches
+  // a known Contact. POSTed by the email provider's inbound webhook.
+  inboundEmailEmails          String   @default("")
   updatedAt                   DateTime @updatedAt
 }
 

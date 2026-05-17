@@ -11,7 +11,7 @@ import {
 
 type EventDef = {
   key: keyof NotificationConfigState;
-  apiKey: "chatStarted" | "applicationSubmitted" | "leadCreated";
+  apiKey: "chatStarted" | "applicationSubmitted" | "leadCreated" | "inboundEmail";
   title: string;
   description: string;
 };
@@ -34,6 +34,12 @@ const EVENTS: EventDef[] = [
     apiKey: "applicationSubmitted",
     title: "Application submitted",
     description: "A funnel applicant completed and submitted the application.",
+  },
+  {
+    key: "inboundEmailEmails",
+    apiKey: "inboundEmail",
+    title: "Reply received",
+    description: "A known Contact replied to one of our emails (info@pennylime.com). Requires the inbound webhook to be wired up.",
   },
 ];
 

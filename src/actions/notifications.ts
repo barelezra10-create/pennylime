@@ -9,6 +9,7 @@ export type NotificationConfigState = {
   chatStartedEmails: string;
   applicationSubmittedEmails: string;
   leadCreatedEmails: string;
+  inboundEmailEmails: string;
 };
 
 export async function getNotificationConfig(): Promise<NotificationConfigState> {
@@ -21,6 +22,7 @@ export async function getNotificationConfig(): Promise<NotificationConfigState> 
     chatStartedEmails: config.chatStartedEmails,
     applicationSubmittedEmails: config.applicationSubmittedEmails,
     leadCreatedEmails: config.leadCreatedEmails,
+    inboundEmailEmails: config.inboundEmailEmails,
   };
 }
 
@@ -45,12 +47,14 @@ export async function saveNotificationConfig(input: NotificationConfigState) {
       chatStartedEmails: normalize(input.chatStartedEmails),
       applicationSubmittedEmails: normalize(input.applicationSubmittedEmails),
       leadCreatedEmails: normalize(input.leadCreatedEmails),
+      inboundEmailEmails: normalize(input.inboundEmailEmails),
     },
     create: {
       id: "singleton",
       chatStartedEmails: normalize(input.chatStartedEmails),
       applicationSubmittedEmails: normalize(input.applicationSubmittedEmails),
       leadCreatedEmails: normalize(input.leadCreatedEmails),
+      inboundEmailEmails: normalize(input.inboundEmailEmails),
     },
   });
 
@@ -72,7 +76,7 @@ export async function saveNotificationConfig(input: NotificationConfigState) {
  * so admin can verify recipients receive mail without waiting for a real
  * customer event.
  */
-export async function sendTestNotification(event: "chatStarted" | "applicationSubmitted" | "leadCreated") {
+export async function sendTestNotification(event: "chatStarted" | "applicationSubmitted" | "leadCreated" | "inboundEmail") {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
 
@@ -81,6 +85,7 @@ export async function sendTestNotification(event: "chatStarted" | "applicationSu
     chatStarted: "Chat started",
     applicationSubmitted: "Application submitted",
     leadCreated: "Lead created",
+    inboundEmail: "Inbound email",
   };
   const r = await notifyAdmins(event, {
     subject: `[TEST] PennyLime — ${labelByEvent[event]}`,

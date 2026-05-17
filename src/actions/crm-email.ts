@@ -178,13 +178,14 @@ export async function sendCrmEmail(input: {
 }
 
 /**
- * Most recent emails sent to this contact (for the CRM Email tab history).
+ * Most recent emails sent OR received for this contact, mixed chronologically.
+ * Used by the CRM Email tab sidebar so admin sees the full conversation.
  */
 export async function getRecentEmailsForContact(contactId: string) {
   return prisma.emailEvent.findMany({
-    where: { contactId, type: "sent" },
+    where: { contactId, type: { in: ["sent", "received"] } },
     orderBy: { createdAt: "desc" },
-    take: 10,
-    select: { id: true, subject: true, createdAt: true, campaignId: true, sequenceId: true },
+    take: 15,
+    select: { id: true, subject: true, type: true, createdAt: true, campaignId: true, sequenceId: true },
   });
 }

@@ -13,12 +13,14 @@ import { sendEmail } from "@/lib/emails/send";
 export type NotificationEvent =
   | "chatStarted"
   | "applicationSubmitted"
-  | "leadCreated";
+  | "leadCreated"
+  | "inboundEmail";
 
-const FIELD_BY_EVENT: Record<NotificationEvent, "chatStartedEmails" | "applicationSubmittedEmails" | "leadCreatedEmails"> = {
+const FIELD_BY_EVENT: Record<NotificationEvent, "chatStartedEmails" | "applicationSubmittedEmails" | "leadCreatedEmails" | "inboundEmailEmails"> = {
   chatStarted: "chatStartedEmails",
   applicationSubmitted: "applicationSubmittedEmails",
   leadCreated: "leadCreatedEmails",
+  inboundEmail: "inboundEmailEmails",
 };
 
 function parseRecipients(csv: string): string[] {

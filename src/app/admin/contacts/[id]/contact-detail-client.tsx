@@ -496,7 +496,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
 function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail: string }) {
   const router = useRouter();
   const [templates, setTemplates] = useState<CrmEmailTemplate[]>([]);
-  const [recentEmails, setRecentEmails] = useState<Array<{ id: string; subject: string | null; createdAt: Date }>>([]);
+  const [recentEmails, setRecentEmails] = useState<Array<{ id: string; subject: string | null; type: string; createdAt: Date }>>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -650,16 +650,26 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
             <p className="text-[12px] text-[#a1a1aa]">No emails sent yet.</p>
           ) : (
             <ul className="space-y-3">
-              {recentEmails.map((e) => (
-                <li key={e.id} className="border-b border-[#f4f4f5] last:border-0 pb-2 last:pb-0">
-                  <p className="text-[12px] font-semibold text-black truncate" title={e.subject ?? ""}>
-                    {e.subject || "(no subject)"}
-                  </p>
-                  <p className="text-[10px] text-[#a1a1aa] mt-0.5">
-                    {new Date(e.createdAt).toLocaleString()}
-                  </p>
-                </li>
-              ))}
+              {recentEmails.map((e) => {
+                const isReceived = e.type === "received";
+                return (
+                  <li key={e.id} className="border-b border-[#f4f4f5] last:border-0 pb-2 last:pb-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        isReceived ? "bg-[#dcfce7] text-[#15803d]" : "bg-[#f4f4f5] text-[#71717a]"
+                      }`}>
+                        {isReceived ? "↓ in" : "↑ out"}
+                      </span>
+                      <p className="text-[12px] font-semibold text-black truncate flex-1" title={e.subject ?? ""}>
+                        {e.subject || "(no subject)"}
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-[#a1a1aa]">
+                      {new Date(e.createdAt).toLocaleString()}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
