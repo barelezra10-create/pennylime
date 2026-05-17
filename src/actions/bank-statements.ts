@@ -80,11 +80,13 @@ export async function uploadBankStatements(applicationId: string, formData: Form
 }
 
 /**
- * Delete a single uploaded bank-statement document. Tries to remove
- * the file from storage too, best-effort — DB row is the source of
- * truth so even if the file is already gone the row gets cleaned up.
+ * Delete any uploaded document attached to an application (pay stub,
+ * bank statement, ID photo, anything). Best-effort removes the file
+ * from storage too — DB row is the source of truth, so if the file
+ * was already wiped by an ephemeral-disk deploy the row still cleans
+ * up.
  */
-export async function deleteBankStatement(documentId: string) {
+export async function deleteApplicationDocument(documentId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
 
@@ -93,12 +95,7 @@ export async function deleteBankStatement(documentId: string) {
     select: { id: true, applicationId: true, fileName: true, storagePath: true, documentType: true },
   });
   if (!doc) return { ok: false as const, error: "Document not found" };
-  if (doc.documentType !== "BANK_STATEMENT_90D") {
-    return { ok: false as const, error: "Not a bank statement document" };
-  }
 
-  // Best-effort file delete — if the file is missing (e.g. ephemeral
-  // disk wiped between deploys), don't block the row cleanup.
   try {
     await storage.delete(doc.storagePath);
   } catch (err) {
@@ -109,17 +106,21 @@ export async function deleteBankStatement(documentId: string) {
 
   await prisma.auditLog.create({
     data: {
-      action: "DELETE_BANK_STATEMENT",
+      action: "DELETE_DOCUMENT",
       entityType: "APPLICATION",
       entityId: doc.applicationId,
       performedBy: session.user.email,
-      details: JSON.stringify({ fileName: doc.fileName }),
+      details: JSON.stringify({ fileName: doc.fileName, documentType: doc.documentType }),
     },
   });
 
   revalidatePath(`/admin/applications/${doc.applicationId}`);
   return { ok: true as const };
 }
+
+/** @deprecated use deleteApplicationDocument — kept as alias so existing
+ *  imports keep working until they migrate. */
+export const deleteBankStatement = deleteApplicationDocument;
 
 /**
  * Cadence label from the AI parser (e.g. "biweekly") → string that
