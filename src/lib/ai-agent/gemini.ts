@@ -3,8 +3,10 @@
 import { GoogleGenAI, type FunctionDeclaration } from "@google/genai";
 
 // Keep MODEL and the price constants in cost.ts in sync.
-// gemini-2.5-flash is roughly 4x input / 8x output the cost of 2.0-flash.
-const MODEL = "gemini-2.0-flash";
+// gemini-2.5-flash-lite is the cheapest current Gemini Flash variant and is
+// the only one this Google account's API key can call (2.5-flash 403s,
+// 2.0-flash was retired). Override via env if you upgrade the key.
+const MODEL = process.env.GEMINI_AGENT_MODEL || "gemini-2.5-flash-lite";
 
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
