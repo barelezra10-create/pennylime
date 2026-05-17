@@ -21,7 +21,25 @@ export async function publishToInstagram(
     throw new Error(`IG container creation failed: ${JSON.stringify(container)}`);
   }
 
-  // Step 2: publish the container
+  // Step 2: poll container status until FINISHED (Meta needs to fetch + process the image).
+  // Per Meta docs: poll status_code, valid states are IN_PROGRESS, FINISHED, ERROR, EXPIRED, PUBLISHED.
+  // Give it up to 60s.
+  for (let i = 0; i < 12; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const statusRes = await fetch(
+      `https://graph.facebook.com/v22.0/${container.id}?fields=status_code,status&access_token=${token}`,
+    );
+    const status = await statusRes.json();
+    if (status.status_code === "FINISHED") break;
+    if (status.status_code === "ERROR" || status.status_code === "EXPIRED") {
+      throw new Error(`IG container failed status: ${JSON.stringify(status)}`);
+    }
+    if (i === 11) {
+      throw new Error(`IG container timed out (still ${status.status_code}) after 60s`);
+    }
+  }
+
+  // Step 3: publish the container
   const publishUrl = `https://graph.facebook.com/v22.0/${igUserId}/media_publish?creation_id=${container.id}&access_token=${token}`;
   const pubRes = await fetch(publishUrl, { method: "POST" });
   const pub = await pubRes.json();
