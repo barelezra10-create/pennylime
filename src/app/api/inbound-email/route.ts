@@ -1,7 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { storage } from "@/lib/storage";
 
 export const runtime = "nodejs";
+
+/** Max single attachment size — 15MB after base64 decode. */
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024;
+/** Max attachments per email. */
+const MAX_ATTACHMENTS = 10;
 
 /**
  * Provider-agnostic inbound email webhook.
@@ -58,6 +64,7 @@ export async function POST(req: NextRequest) {
     inReplyTo?: string;
     references?: string;
     receivedAt?: string;
+    attachments?: Array<{ filename: string; mimeType: string; contentBase64: string }>;
   };
   try {
     payload = await req.json();
@@ -76,7 +83,7 @@ export async function POST(req: NextRequest) {
   // Match contact by from email (case-insensitive).
   const contact = await prisma.contact.findUnique({
     where: { email: fromEmail },
-    select: { id: true, firstName: true, lastName: true, email: true },
+    select: { id: true, firstName: true, lastName: true, email: true, applicationId: true },
   });
 
   if (!contact) {
@@ -93,6 +100,43 @@ export async function POST(req: NextRequest) {
     return Response.json({ ok: true, matched: false });
   }
 
+  // Save attachments as Documents on the linked Application (if any).
+  // PDFs and CSVs → BANK_STATEMENT_90D so they slot into the existing
+  // panel + AI parser. Images → REPLY_ATTACHMENT (generic) so admin
+  // can recategorize if it's actually an ID photo or pay stub.
+  const savedAttachments: Array<{ fileName: string; documentType: string }> = [];
+  if (payload.attachments && payload.attachments.length > 0 && contact.applicationId) {
+    const attachments = payload.attachments.slice(0, MAX_ATTACHMENTS);
+    for (const att of attachments) {
+      if (!att.filename || !att.contentBase64) continue;
+      try {
+        const buffer = Buffer.from(att.contentBase64, "base64");
+        if (buffer.length === 0 || buffer.length > MAX_ATTACHMENT_BYTES) continue;
+        const mime = att.mimeType || "application/octet-stream";
+        const isStatementType =
+          mime === "application/pdf" ||
+          mime === "text/csv" ||
+          mime === "application/csv" ||
+          mime === "application/vnd.ms-excel";
+        const documentType = isStatementType ? "BANK_STATEMENT_90D" : "REPLY_ATTACHMENT";
+        const storagePath = await storage.upload(buffer, att.filename);
+        await prisma.document.create({
+          data: {
+            applicationId: contact.applicationId,
+            fileName: att.filename,
+            mimeType: mime,
+            fileSize: buffer.length,
+            storagePath,
+            documentType,
+          },
+        });
+        savedAttachments.push({ fileName: att.filename, documentType });
+      } catch (err) {
+        console.error("Failed to save inbound attachment:", att.filename, err);
+      }
+    }
+  }
+
   // Persist as both EmailEvent (analytics) and Activity (timeline).
   await prisma.emailEvent.create({
     data: {
@@ -103,11 +147,16 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const attachSummary =
+    savedAttachments.length > 0
+      ? ` (${savedAttachments.length} attachment${savedAttachments.length > 1 ? "s" : ""}: ${savedAttachments.map((a) => a.fileName).join(", ")})`
+      : "";
+
   await prisma.activity.create({
     data: {
       contactId: contact.id,
       type: "email_received",
-      title: `Email: ${subject || "(no subject)"}`,
+      title: `Email: ${subject || "(no subject)"}${attachSummary}`,
       details: bodyText.slice(0, 2000),
       performedBy: fromEmail,
     },
@@ -135,6 +184,7 @@ export async function POST(req: NextRequest) {
     ok: true,
     matched: true,
     contactId: contact.id,
+    attachmentsSaved: savedAttachments.length,
   });
 }
 
