@@ -157,21 +157,32 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
                     <div className="text-xs text-gray-500 mb-1">{cell.day}</div>
                     {post ? (
                       <div className="space-y-1">
-                        {post.imageUrl && (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={post.imageUrl}
-                            alt=""
-                            className="w-full h-20 object-cover rounded"
-                          />
-                        )}
-                        <div className="text-[10px] line-clamp-3 font-medium">{post.topic}</div>
+                        <Link href={`/admin/social/posts/${post.id}`} className="block group">
+                          {post.imageUrl && (post.imageUrl.match(/\.(mp4|mov)$/i) ? (
+                            <video
+                              src={post.imageUrl}
+                              muted
+                              playsInline
+                              preload="metadata"
+                              className="w-full h-20 object-cover rounded group-hover:opacity-80 transition"
+                            />
+                          ) : (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={post.imageUrl}
+                              alt=""
+                              className="w-full h-20 object-cover rounded group-hover:opacity-80 transition"
+                            />
+                          ))}
+                          <div className="text-[10px] line-clamp-3 font-medium mt-1 group-hover:text-blue-700">{post.topic}</div>
+                        </Link>
                         <div className="flex items-center justify-between mt-1">
                           <span
                             className={`text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded ${
                               post.status === "published" ? "bg-green-100 text-green-800"
                               : post.status === "failed" ? "bg-red-100 text-red-800"
                               : post.status === "blocked" ? "bg-gray-200 text-gray-700"
+                              : post.status === "planned" ? "bg-blue-100 text-blue-800"
                               : "bg-amber-100 text-amber-800"
                             }`}
                           >
