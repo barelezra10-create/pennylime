@@ -80,6 +80,48 @@ export async function uploadBankStatements(applicationId: string, formData: Form
 }
 
 /**
+ * Delete a single uploaded bank-statement document. Tries to remove
+ * the file from storage too, best-effort — DB row is the source of
+ * truth so even if the file is already gone the row gets cleaned up.
+ */
+export async function deleteBankStatement(documentId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { id: true, applicationId: true, fileName: true, storagePath: true, documentType: true },
+  });
+  if (!doc) return { ok: false as const, error: "Document not found" };
+  if (doc.documentType !== "BANK_STATEMENT_90D") {
+    return { ok: false as const, error: "Not a bank statement document" };
+  }
+
+  // Best-effort file delete — if the file is missing (e.g. ephemeral
+  // disk wiped between deploys), don't block the row cleanup.
+  try {
+    await storage.delete(doc.storagePath);
+  } catch (err) {
+    console.warn("Failed to delete storage file:", doc.storagePath, err);
+  }
+
+  await prisma.document.delete({ where: { id: doc.id } });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "DELETE_BANK_STATEMENT",
+      entityType: "APPLICATION",
+      entityId: doc.applicationId,
+      performedBy: session.user.email,
+      details: JSON.stringify({ fileName: doc.fileName }),
+    },
+  });
+
+  revalidatePath(`/admin/applications/${doc.applicationId}`);
+  return { ok: true as const };
+}
+
+/**
  * Cadence label from the AI parser (e.g. "biweekly") → string that
  * matches what Plaid Transactions sets in application.depositCadence
  * (lowercase, space-separated).

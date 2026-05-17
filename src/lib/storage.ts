@@ -6,7 +6,11 @@ class LocalStorageProvider implements StorageProvider {
   private uploadDir: string;
 
   constructor() {
-    this.uploadDir = process.env.UPLOAD_DIR || "./uploads";
+    // Resolve to an absolute path at construction time so subsequent
+    // reads work regardless of process.cwd() — relative paths break
+    // when storage.read() is called from a request whose working
+    // directory differs from when upload() ran.
+    this.uploadDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
   }
 
   async upload(file: Buffer, filename: string): Promise<string> {
@@ -19,7 +23,20 @@ class LocalStorageProvider implements StorageProvider {
   }
 
   async read(storagePath: string): Promise<Buffer> {
-    return fs.readFile(storagePath);
+    // Old rows may have relative paths from before we resolved
+    // uploadDir to absolute. Best-effort: try the stored path first,
+    // fall back to joining with the current uploadDir.
+    try {
+      return await fs.readFile(storagePath);
+    } catch {
+      // If the stored path was relative, try resolving against the
+      // current absolute upload dir.
+      if (!path.isAbsolute(storagePath)) {
+        const absolute = path.resolve(storagePath);
+        return await fs.readFile(absolute);
+      }
+      throw new Error(`Storage path not readable: ${storagePath}`);
+    }
   }
 
   getUrl(storagePath: string): string {
