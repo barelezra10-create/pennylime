@@ -40,6 +40,15 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                 paidAt: p.paidAt ? p.paidAt.toISOString() : null,
                 status: p.status,
               })),
+              documents: contact.application.documents.map((d) => ({
+                id: d.id,
+                fileName: d.fileName,
+                mimeType: d.mimeType,
+                fileSize: d.fileSize,
+                storagePath: d.storagePath,
+                documentType: d.documentType,
+                createdAt: d.createdAt.toISOString(),
+              })),
             }
           : null,
         loan,

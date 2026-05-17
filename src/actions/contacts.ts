@@ -73,6 +73,7 @@ export async function getContact(id: string) {
       application: {
         include: {
           payments: { orderBy: { paymentNumber: "asc" } },
+          documents: { orderBy: { createdAt: "desc" } },
         },
       },
       activities: { orderBy: { createdAt: "desc" }, take: 50 },

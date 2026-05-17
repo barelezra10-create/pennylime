@@ -34,6 +34,16 @@ interface PaymentRow {
   status: string;
 }
 
+interface ContactDocument {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  storagePath: string;
+  documentType: string;
+  createdAt: string;
+}
+
 interface Application {
   id: string;
   applicationCode: string;
@@ -41,6 +51,7 @@ interface Application {
   loanAmount: number;
   createdAt: string;
   payments: PaymentRow[];
+  documents: ContactDocument[];
 }
 
 interface TeamMember {
@@ -103,10 +114,12 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
   const [noteText, setNoteText] = useState("");
   const [addingNote, setAddingNote] = useState(false);
 
+  const documents = contact.application?.documents ?? [];
   const tabs = [
     { id: "overview", label: "Overview" },
     { id: "activity", label: "Activity", count: contact.activities.length },
     { id: "email", label: "Email" },
+    { id: "files", label: "Files", count: documents.length },
     { id: "application", label: "Application" },
   ];
 
@@ -392,6 +405,11 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
         <EmailTab contactId={contact.id} contactEmail={contact.email} />
       )}
 
+      {/* Files Tab */}
+      {activeTab === "files" && (
+        <FilesTab documents={documents} />
+      )}
+
       {/* Application Tab */}
       {activeTab === "application" && (
         <div className="max-w-xl">
@@ -674,6 +692,69 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function FilesTab({ documents }: { documents: ContactDocument[] }) {
+  if (documents.length === 0) {
+    return (
+      <div className="bg-white rounded-xl border border-[#e4e4e7] p-8 text-center text-[13px] text-[#a1a1aa]">
+        No files attached yet. Anything the customer uploads in the funnel or sends as an email attachment shows up here.
+      </div>
+    );
+  }
+
+  function fmtSize(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function labelFor(type: string) {
+    if (type === "BANK_STATEMENT_90D") return { text: "Bank statement", bg: "bg-[#dcfce7]", color: "text-[#15803d]" };
+    if (type === "REPLY_ATTACHMENT") return { text: "Email attachment", bg: "bg-[#e0e7ff]", color: "text-[#3730a3]" };
+    if (type === "PAY_STUB") return { text: "Pay stub", bg: "bg-[#fef3c7]", color: "text-[#92400e]" };
+    return { text: type, bg: "bg-[#f4f4f5]", color: "text-[#71717a]" };
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
+      <ul className="divide-y divide-[#f4f4f5]">
+        {documents.map((d) => {
+          const tag = labelFor(d.documentType);
+          return (
+            <li key={d.id} className="flex items-center justify-between gap-3 p-4 hover:bg-[#fafafa]">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f0f5f0] shrink-0">
+                  <svg className="h-5 w-5 text-[#15803d]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />
+                  </svg>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <p className="text-[13px] font-semibold text-black truncate">{d.fileName}</p>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${tag.bg} ${tag.color} whitespace-nowrap`}>
+                      {tag.text}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#a1a1aa]">
+                    {fmtSize(d.fileSize)} · uploaded {new Date(d.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <a
+                href={`/api/files/${d.storagePath}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 whitespace-nowrap"
+              >
+                View
+              </a>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
