@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db";
 import type { Platform } from "./types";
 import { generateAndStorePlanned } from "./generate-and-store";
 
+// Sleep between Imagen generations to stay under per-minute quota.
+// Imagen 4.0 limit is ~60 requests/min — at 4s per iteration we cap
+// ourselves at 15/min, plenty of headroom.
+const PLANNER_INTERVAL_MS = 4000;
+
 /**
  * Compute the scheduledFor datetime for a given platform-day.
  * Posts publish at 15:00 UTC (matches the existing social-generate cron).
@@ -55,6 +60,7 @@ export async function planMonth(
 
   const result: PlanResult = { planned: 0, skipped: 0, failed: 0, details: [] };
 
+  let first = true;
   for (let day = 1; day <= daysInMonth; day++) {
     const scheduledFor = publishTimeForDay(year, monthIdx, day);
     const dateStr = scheduledFor.toISOString().slice(0, 10);
@@ -65,6 +71,12 @@ export async function planMonth(
       continue;
     }
 
+    // Pace ourselves: only sleep BEFORE actually generating (skip-days are free).
+    if (!first) {
+      await new Promise((r) => setTimeout(r, PLANNER_INTERVAL_MS));
+    }
+    first = false;
+
     try {
       const r = await generateAndStorePlanned(platform, account.id, scheduledFor);
       if (r.status === "planned") {
@@ -73,6 +85,10 @@ export async function planMonth(
       } else if (r.status === "failed") {
         result.failed++;
         result.details.push({ date: dateStr, status: "failed", error: r.error });
+        // Likely quota — back off harder before next attempt
+        if (r.error?.includes("429") || r.error?.toLowerCase().includes("quota")) {
+          await new Promise((r) => setTimeout(r, 30_000));
+        }
       } else {
         // blocked — still count as planned slot (just needs manual review)
         result.planned++;
