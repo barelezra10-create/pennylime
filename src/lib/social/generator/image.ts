@@ -10,9 +10,8 @@ const ASPECTS: Record<Platform, { width: number; height: number; aspectRatio: st
   tiktok: { width: 1080, height: 1920, aspectRatio: "9:16" },
 };
 
-// Verified available 2026-05-13 via /v1beta/models endpoint.
-// Fallback order if this 404s: imagen-3.0-generate-002 then imagen-3.0-generate-001
 const IMAGEN_MODEL = "imagen-4.0-generate-001";
+const SCENE_MODEL = "gemini-2.5-flash";
 
 let _client: GoogleGenAI | undefined;
 function getClient(): GoogleGenAI {
@@ -23,22 +22,63 @@ function getClient(): GoogleGenAI {
   return _client;
 }
 
+// Step 1: translate the topic into a *wordless visual scene* via Gemini.
+// We don't pass the topic verbatim to Imagen because Imagen will render the
+// words. Instead we ask Gemini to describe one concrete object/setting that
+// represents the topic visually (no people, no signage, no captions).
+async function describeScene(client: GoogleGenAI, topic: string): Promise<string> {
+  const prompt = `Given this content topic for a gig-economy finance brand:
+
+"${topic}"
+
+Describe ONE concrete visual scene that represents this topic. Constraints:
+- 1-2 sentences, ~25 words
+- Specific physical objects only (phone showing app UI, car dashboard, gas pump nozzle, paper receipt, delivery bag on doorstep, packing tape on cardboard box, etc.)
+- NO people, NO faces, NO signs with readable words, NO logos, NO numbers
+- Concrete time-of-day + lighting cue (e.g. "early morning sunlight through windshield", "neon glow from phone in dark cab", "kitchen-table light on tax forms")
+
+Output ONLY the scene description. No preamble. No quotes.`;
+
+  const res = await client.models.generateContent({
+    model: SCENE_MODEL,
+    contents: prompt,
+  });
+  return (res.text ?? "").replace(/^["']|["']$/g, "").trim();
+}
+
+function buildImagenPrompt(scene: string, aspectRatio: string): string {
+  // Deliberately written in positive, visual language only.
+  // No hex codes (Imagen prints them as text). No brand name (Imagen tries
+  // to render it as a logo). No "no text" rule (mentioning text triggers it).
+  return `Editorial flat illustration with subtle dimension and grain.
+
+Scene: ${scene}
+
+Visual style:
+A two-color palette only. Deep emerald forest green for primary shapes, vivid citrus lime green for highlights and accents. Background and neutrals in either warm cream paper or deep charcoal ink. No other hues. Soft drop shadows. Hand-drawn line quality.
+
+Composition:
+Documentary observational angle, as if a passerby caught the moment. Tight on the object. The objects fill the frame; they are the subject. The scene is wordless and silent — purely a still life of the thing.
+
+Render quality:
+Editorial, modern, calm, confident. Like a New York Times opinion-page illustration. Not 3D rendered. Not cartoonish. Not stock photo. Not generic fintech gradient. ${aspectRatio} aspect ratio.`;
+}
+
 export async function generatePostImage(topic: string, platform: Platform): Promise<string> {
   const client = getClient();
   const aspect = ASPECTS[platform];
 
-  const prompt = `Editorial illustration for a PennyLime social media post about: "${topic}".
+  let scene: string;
+  try {
+    scene = await describeScene(client, topic);
+    if (!scene) throw new Error("Gemini returned empty scene description");
+  } catch (err) {
+    throw new Error(
+      `Scene description failed [${platform}, "${topic}"]: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
 
-PENNYLIME BRAND RULES (strict):
-- 2-color limit: brand lime green (#15803D primary, #A3E635 vivid highlights, #166534 deep shadow) PLUS one neutral (ink #0A0A0A or cream #FEFCE8). NO other hues.
-- Show the artifact, not the person. Render phone screens, app dashboards, bank deposit notifications, ACH receipts, ride-share map UIs, delivery bags, the driver's seat, the seller's packing desk, gas-pump nozzles. Documentary / editorial style.
-- NO faces, NO smiling stock-actor people, NO handshakes, NO boardrooms, NO suits, NO generic "team standing in office" tropes.
-- NO text, NO numbers visible in the image, NO logos. The post caption carries the message; the image is purely visual.
-- Audience: gig-economy workers (Uber/Lyft drivers, DoorDash/Instacart shoppers, Amazon FBA sellers, Fiverr/Upwork freelancers). Render the world they actually work in.
-- Mood: confident, plain, modern, warm. NOT "stock fintech violet/blue" and NOT "Wall Street."
-- Aspect ratio ${aspect.aspectRatio}, target ${aspect.width}x${aspect.height}px.
-
-If the topic is about taxes, render a tax form + phone showing rideshare app. If about cashflow, render a bank notification on a phone screen on a car dashboard. If about platform-tips, render the platform's app UI (Uber/DoorDash style map, NOT named or branded). If "who we are" intro content, render the lime fruit half-slice illustration on warm paper (cross-section, eight visible segments, juicy pulp).`;
+  const prompt = buildImagenPrompt(scene, aspect.aspectRatio);
 
   let response;
   try {

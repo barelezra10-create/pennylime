@@ -1,4 +1,5 @@
 import "server-only";
+import { GoogleGenAI } from "@google/genai";
 import type { Platform } from "../types";
 import { saveImage } from "../storage"; // re-used: writes any buffer + ext, returns served URL
 
@@ -11,6 +12,7 @@ import { saveImage } from "../storage"; // re-used: writes any buffer + ext, ret
 // We use 3.1-fast preview (cheapest of the 3.1 family, ~30-60s gen).
 
 const VEO_MODEL = "veo-3.1-fast-generate-preview";
+const SCENE_MODEL = "gemini-2.5-flash";
 const POLL_INTERVAL_MS = 5000;
 const POLL_MAX_MS = 5 * 60 * 1000; // 5 min hard cap
 
@@ -21,19 +23,52 @@ const ASPECTS: Record<Platform, string> = {
   tiktok: "9:16",
 };
 
-function brandPrompt(topic: string, aspectRatio: string): string {
-  return `8-second editorial video clip for a PennyLime social reel about: "${topic}".
+let _client: GoogleGenAI | undefined;
+function getClient(): GoogleGenAI {
+  if (_client) return _client;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY required");
+  _client = new GoogleGenAI({ apiKey });
+  return _client;
+}
 
-PENNYLIME BRAND RULES (strict):
-- 2-color limit: brand lime green (#15803D primary, #A3E635 vivid highlights, #166534 deep) PLUS one neutral (ink #0A0A0A or cream #FEFCE8). NO other hues.
-- Show the artifact, not the person. Render phone screens displaying rideshare maps, app dashboards, ACH bank deposit notifications, delivery bag on a doorstep, the driver's seat with a phone mounted, the seller's packing desk.
-- NO faces, NO people, NO handshakes, NO offices, NO suits, NO generic team tropes.
-- NO text overlays, NO numbers visible in the frame, NO logos. The reel caption carries the message.
-- Audience: gig economy workers (Uber/Lyft, DoorDash/Instacart, Amazon FBA sellers, Fiverr freelancers).
-- Mood: confident, plain, modern, documentary. Cool color cast. NOT generic fintech violet/blue, NOT Wall Street.
-- Camera: slow, intentional. Subtle handheld breathing or smooth gimbal motion. Single sustained scene per clip. NO cuts, NO transitions, NO zooms past 1.2x.
+// Translate the topic into a *wordless visual scene with camera motion*.
+// We avoid passing the topic verbatim, the brand name, or any hex codes —
+// Veo (like Imagen) will render text it sees in its prompt.
+async function describeShot(client: GoogleGenAI, topic: string): Promise<string> {
+  const prompt = `Given this content topic for a gig-economy finance brand:
 
-Aspect ratio ${aspectRatio}. 8 seconds.`;
+"${topic}"
+
+Describe ONE concrete 8-second video shot that represents this topic. Constraints:
+- 1-2 sentences, ~30 words
+- Specific physical objects only (phone screen with app UI, car dashboard, gas pump, paper receipt, delivery bag on doorstep, packing tape on cardboard box, etc.)
+- One sustained scene, slow intentional camera move (slow push-in, subtle pan, gentle hand-held drift)
+- NO people, NO faces, NO hands, NO signs with readable words, NO logos, NO numbers
+- Concrete time-of-day + lighting cue (early-morning windshield light, neon glow from phone in dark cab, kitchen-table light on tax forms, etc.)
+
+Output ONLY the shot description. No preamble. No quotes.`;
+
+  const res = await client.models.generateContent({
+    model: SCENE_MODEL,
+    contents: prompt,
+  });
+  return (res.text ?? "").replace(/^["']|["']$/g, "").trim();
+}
+
+function buildVeoPrompt(shot: string, aspectRatio: string): string {
+  return `8-second editorial documentary video clip, ${aspectRatio} aspect ratio.
+
+Shot: ${shot}
+
+Visual style:
+A two-color palette only. Deep emerald forest green for primary shapes, vivid citrus lime green for highlights and accents. Background and neutrals in either warm cream paper or deep charcoal ink. No other hues. Soft natural lighting. Slight film grain.
+
+Composition and camera:
+Documentary observational angle, tight on the object. Single sustained scene, no cuts, no transitions. Slow intentional camera motion only (subtle hand-held breathing, gentle gimbal drift, very slow push-in under 1.2x). The scene is wordless and silent.
+
+Quality:
+Editorial, modern, calm, confident. Real-world physical lighting. Not 3D rendered. Not cartoonish. Not stock footage. Not generic fintech gradient.`;
 }
 
 interface VeoOperation {
@@ -53,7 +88,18 @@ export async function generatePostVideo(topic: string, platform: Platform): Prom
   if (!apiKey) throw new Error("GEMINI_API_KEY required");
 
   const aspectRatio = ASPECTS[platform];
-  const prompt = brandPrompt(topic, aspectRatio);
+  const client = getClient();
+
+  let shot: string;
+  try {
+    shot = await describeShot(client, topic);
+    if (!shot) throw new Error("Gemini returned empty shot description");
+  } catch (err) {
+    throw new Error(
+      `Shot description failed [${platform}, "${topic}"]: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  const prompt = buildVeoPrompt(shot, aspectRatio);
 
   // 1. Kick off the long-running operation
   const startUrl = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_MODEL}:predictLongRunning?key=${apiKey}`;
