@@ -12,12 +12,17 @@ function assertPlatform(p: string): asserts p is Platform {
   }
 }
 
+// Cap each click at 8 days. With ~5-9s per Imagen generation that's
+// ~45-70s per click, well under Cloudflare's 100s edge timeout. User
+// clicks the button multiple times to fill a full month.
+const CHUNK_SIZE = 8;
+
 export async function planMonthAction(formData: FormData) {
   const platform = String(formData.get("platform"));
   const year = Number(formData.get("year"));
   const month = Number(formData.get("month"));
   assertPlatform(platform);
-  await planMonth(platform, year, month);
+  await planMonth(platform, year, month, CHUNK_SIZE);
   revalidatePath(`/admin/social/calendar/${platform}`);
 }
 

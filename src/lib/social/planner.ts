@@ -29,11 +29,15 @@ interface PlanResult {
  *
  * year: full year (e.g., 2026)
  * month: 1-12 (human-friendly)
+ * maxDays: optional cap on how many NEW posts to plan in this call.
+ *   Useful for chunking so calls finish under Cloudflare's 100s timeout
+ *   (planning 1 day takes ~5-9s; 5 days = ~30s fits well).
  */
 export async function planMonth(
   platform: Platform,
   year: number,
   month: number,
+  maxDays?: number,
 ): Promise<PlanResult> {
   const account = await prisma.socialAccount.findUnique({
     where: { platform_handle: { platform, handle: "@pennylime" } },
@@ -61,6 +65,7 @@ export async function planMonth(
   const result: PlanResult = { planned: 0, skipped: 0, failed: 0, details: [] };
 
   let first = true;
+  let generatedCount = 0;
   for (let day = 1; day <= daysInMonth; day++) {
     const scheduledFor = publishTimeForDay(year, monthIdx, day);
     const dateStr = scheduledFor.toISOString().slice(0, 10);
@@ -71,6 +76,12 @@ export async function planMonth(
       continue;
     }
 
+    // Stop if we've hit the chunk cap (lets the caller retry to make progress
+    // without hitting Cloudflare's 100s edge timeout).
+    if (maxDays !== undefined && generatedCount >= maxDays) {
+      break;
+    }
+
     // Pace ourselves: only sleep BEFORE actually generating (skip-days are free).
     if (!first) {
       await new Promise((r) => setTimeout(r, PLANNER_INTERVAL_MS));
@@ -79,6 +90,7 @@ export async function planMonth(
 
     try {
       const r = await generateAndStorePlanned(platform, account.id, scheduledFor);
+      generatedCount++;
       if (r.status === "planned") {
         result.planned++;
         result.details.push({ date: dateStr, status: "planned", topic: r.topic });
