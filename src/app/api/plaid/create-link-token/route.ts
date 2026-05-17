@@ -123,11 +123,22 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const err = error as { response?: { status?: number; data?: unknown }; message?: string };
+    const plaidErr = err?.response?.data as { error_code?: string; error_message?: string } | undefined;
     console.error(
       "Plaid link token error:",
       err?.response?.status,
       JSON.stringify(err?.response?.data ?? { message: err?.message }),
     );
-    return NextResponse.json({ error: "Failed to create link token" }, { status: 500 });
+    // Surface the Plaid error_code/error_message so admin can see exactly
+    // what's wrong (wrong PLAID_PRODUCTS, wrong key, missing redirect URI,
+    // etc.) instead of the previous opaque "Failed to create link token".
+    return NextResponse.json(
+      {
+        error: plaidErr?.error_message || err?.message || "Failed to create link token",
+        code: plaidErr?.error_code ?? null,
+        status: err?.response?.status ?? null,
+      },
+      { status: 500 },
+    );
   }
 }
