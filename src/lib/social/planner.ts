@@ -53,14 +53,27 @@ export async function planMonth(
   // Find existing posts for this account in this month so we skip duplicates
   const monthStart = new Date(Date.UTC(year, monthIdx, 1));
   const monthEnd = new Date(Date.UTC(year, monthIdx + 1, 1));
+  // Only count NON-failed posts as "filled." Failed rows are noise from
+  // earlier quota/503s; we should be free to retry their slots.
   const existing = await prisma.socialPost.findMany({
     where: {
       accountId: account.id,
       scheduledFor: { gte: monthStart, lt: monthEnd },
+      status: { in: ["planned", "published", "blocked", "pending"] },
     },
     select: { id: true, scheduledFor: true },
   });
   const existingDays = new Set(existing.map((p) => p.scheduledFor.getUTCDate()));
+
+  // Auto-clean failed posts for this account/month so we don't accumulate
+  // junk and so the retry-from-fresh path doesn't write a 2nd row per day.
+  await prisma.socialPost.deleteMany({
+    where: {
+      accountId: account.id,
+      scheduledFor: { gte: monthStart, lt: monthEnd },
+      status: "failed",
+    },
+  });
 
   const result: PlanResult = { planned: 0, skipped: 0, failed: 0, details: [] };
 
