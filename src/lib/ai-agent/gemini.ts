@@ -44,13 +44,16 @@ export async function callGemini(
     },
   });
 
-  const part = res.candidates?.[0]?.content?.parts?.[0];
-  const fc = part && "functionCall" in part ? part.functionCall : undefined;
-  const text = part && "text" in part ? part.text : undefined;
+  // Use the SDK convenience getters (`res.text`, `res.functionCalls`) so we
+  // correctly handle multi-part responses from 2.5 models where the first
+  // part may be a `thought` block and the actual text or function call lives
+  // at a later index.
+  const text = res.text;
+  const fc = res.functionCalls?.[0];
   const usage = res.usageMetadata;
 
   return {
-    text: text ?? undefined,
+    text: text || undefined,
     functionCall: fc
       ? { name: fc.name ?? "", args: (fc.args ?? {}) as Record<string, unknown> }
       : undefined,
