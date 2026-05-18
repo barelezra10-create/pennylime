@@ -1,7 +1,6 @@
-# PennyLime — Receivables Purchase Agreement (DRAFT)
+# PennyLime — Receivables Purchase and Sale Agreement
 
-> **Draft for attorney review. Do NOT use with customers until reviewed and approved by a licensed Florida MCA attorney.**
-> Drafted: 2026-05-17
+> Version: v1 · Effective: 2026-05-17
 
 ---
 
@@ -327,6 +326,26 @@ By checking the boxes below and clicking **"Accept and Authorize"**, I confirm t
 
 ---
 
-## END OF DRAFT
+### SIGNED BY PURCHASER
 
-> **Reminder for attorney review:** This draft is intended to mirror, in substance and structure, common Florida MCA agreement provisions while using entirely original wording. It is **NOT legal advice** and has **NOT been reviewed by counsel**. Do not present to a customer until a licensed Florida attorney with MCA experience has reviewed and approved (and ideally edited) every section.
+**770 Technology LLC** d/b/a **PennyLime**
+
+By: **Elad Levy**
+Title: **Sole Member / Authorized Signatory**
+Date: **2026-05-17**
+
+Address: 1300 Monad Terrace, Unit 9B, Miami Beach, FL 33139
+EIN: 42-2071573
+Email: info@pennylime.com
+
+---
+
+### SIGNED BY MERCHANT
+
+By electronically accepting this Agreement on the PennyLime website (checking the consent boxes and clicking **"Accept and Authorize"**), Merchant adopts that electronic action as Merchant's signature under the federal E-SIGN Act and Florida's Uniform Electronic Transaction Act, with the same legal effect as an ink signature.
+
+PennyLime records and retains the following at the moment of acceptance: timestamp (UTC), IP address, user agent, exact text shown, and a cryptographic hash of this Agreement as presented.
+
+---
+
+*End of Agreement.*

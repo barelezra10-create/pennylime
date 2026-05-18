@@ -22,7 +22,7 @@ export default async function AgreementPage() {
     process.cwd(),
     "docs",
     "legal",
-    "2026-05-17-receivables-purchase-agreement-draft.md",
+    "2026-05-17-receivables-purchase-agreement.md",
   );
   const md = await fs.readFile(mdPath, "utf8");
   const html = await marked.parse(md);
