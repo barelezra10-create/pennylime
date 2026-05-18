@@ -3,7 +3,7 @@ import type { ToolDefinition } from "../types";
 
 export const getLoanSummary: ToolDefinition = {
   name: "getLoanSummary",
-  description: "Get the verified borrower's loan summary: remaining balance, next payment, APR, payoff.",
+  description: "Get the verified borrower's advance summary: remaining balance, next payment, APR, payoff.",
   parameters: { type: "object", properties: {} },
   requiredAuth: "verified",
   isWrite: false,

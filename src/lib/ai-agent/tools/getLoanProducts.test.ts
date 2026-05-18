@@ -9,7 +9,7 @@ describe("getLoanProducts", () => {
     expect(res.status).toBe("ok");
     if (res.status !== "ok") return;
     const data = res.data as { minAmount: number; maxAmount: number; eligibility: string[] };
-    expect(data.minAmount).toBe(100);
+    expect(data.minAmount).toBe(500);
     expect(data.maxAmount).toBe(10000);
     expect(data.eligibility).toContain("Uber");
   });

@@ -5,7 +5,7 @@ const STAGE_NEXT_STEP: Record<string, string> = {
   PENDING: "We're reviewing your application. Most decisions come back within 24 hours.",
   APPROVED: "Your application is approved. The next step is to accept your offer in your dashboard.",
   REJECTED: "Unfortunately we could not approve this application at this time.",
-  FUNDED: "Your loan has been funded. The next step is to review your repayment schedule.",
+  FUNDED: "Your advance has been funded. The next step is to review your repayment schedule.",
   WITHDRAWN: "This application was withdrawn.",
 };
 

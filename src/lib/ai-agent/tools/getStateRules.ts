@@ -3,11 +3,11 @@ import type { ToolDefinition } from "../types";
 // PennyLime state availability + APR caps. Source-of-truth lives in
 // the existing disclosures content; this table mirrors it for the agent.
 const STATE_RULES: Record<string, { aprCap: number; minAmount: number; maxAmount: number }> = {
-  FL: { aprCap: 36, minAmount: 100, maxAmount: 10000 },
-  TX: { aprCap: 36, minAmount: 100, maxAmount: 10000 },
-  GA: { aprCap: 36, minAmount: 100, maxAmount: 10000 },
-  AZ: { aprCap: 36, minAmount: 100, maxAmount: 10000 },
-  NV: { aprCap: 36, minAmount: 100, maxAmount: 10000 },
+  FL: { aprCap: 36, minAmount: 500, maxAmount: 10000 },
+  TX: { aprCap: 36, minAmount: 500, maxAmount: 10000 },
+  GA: { aprCap: 36, minAmount: 500, maxAmount: 10000 },
+  AZ: { aprCap: 36, minAmount: 500, maxAmount: 10000 },
+  NV: { aprCap: 36, minAmount: 500, maxAmount: 10000 },
 };
 
 export const getStateRules: ToolDefinition = {

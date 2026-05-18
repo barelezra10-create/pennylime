@@ -3,7 +3,7 @@ import type { ToolDefinition } from "../types";
 
 export const getPaymentHistory: ToolDefinition = {
   name: "getPaymentHistory",
-  description: "Return the most recent payments on the verified borrower's loan.",
+  description: "Return the most recent payments on the verified borrower's advance.",
   parameters: {
     type: "object",
     properties: { limit: { type: "number", description: "Max payments to return (default 5)" } },

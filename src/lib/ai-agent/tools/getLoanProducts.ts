@@ -9,7 +9,8 @@ export const getLoanProducts: ToolDefinition = {
   handler: async () => ({
     status: "ok",
     data: {
-      minAmount: 100,
+      product: "cash advance",
+      minAmount: 500,
       maxAmount: 10000,
       termMonthsMin: 3,
       termMonthsMax: 18,
