@@ -1023,7 +1023,7 @@ export function DetailClient({
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                   </svg>
-                  {funding ? "Funding..." : "Mark as Funded"}
+                  {funding ? "Funding…" : "Fund this"}
                 </button>
               </div>
             </div>
