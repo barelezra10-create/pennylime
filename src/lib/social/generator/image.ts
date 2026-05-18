@@ -83,11 +83,14 @@ export async function generatePostImage(topic: string, platform: Platform): Prom
 
   let response;
   try {
-    response = await client.models.generateImages({
-      model: IMAGEN_MODEL,
-      prompt,
-      config: { numberOfImages: 1, aspectRatio: aspect.aspectRatio },
-    });
+    response = await withRetry(
+      () => client.models.generateImages({
+        model: IMAGEN_MODEL,
+        prompt,
+        config: { numberOfImages: 1, aspectRatio: aspect.aspectRatio },
+      }),
+      { label: `imagen [${platform}]` },
+    );
   } catch (err) {
     throw new Error(
       `Imagen generation failed [${platform}, "${topic}"]: ${err instanceof Error ? err.message : String(err)}`

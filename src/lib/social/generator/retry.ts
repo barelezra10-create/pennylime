@@ -8,8 +8,8 @@ export async function withRetry<T>(
   fn: () => Promise<T>,
   opts: { label: string; maxRetries?: number } = { label: "op" },
 ): Promise<T> {
-  const max = opts.maxRetries ?? 4;
-  const waits = [5_000, 15_000, 30_000, 60_000];
+  const max = opts.maxRetries ?? 2;
+  const waits = [5_000, 15_000];
   let lastErr: unknown;
   for (let i = 0; i <= max; i++) {
     try {

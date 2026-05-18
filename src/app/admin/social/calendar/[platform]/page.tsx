@@ -129,9 +129,9 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
               <button
                 type="submit"
                 className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 disabled:opacity-60"
-                title={`Plans up to 8 days per click. Click ${Math.ceil(unplannedCount / 8)}x to fill all ${unplannedCount} empty days.`}
+                title={`Plans up to 3 days per click. Click ${Math.ceil(unplannedCount / 3)}x to fill all ${unplannedCount} empty days.`}
               >
-                Plan next {Math.min(8, unplannedCount)} of {unplannedCount} empty
+                Plan next {Math.min(3, unplannedCount)} of {unplannedCount} empty
               </button>
             </form>
           )}
