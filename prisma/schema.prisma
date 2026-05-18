@@ -843,6 +843,29 @@ model SmsSequenceEnrollment {
   @@index([nextSendAt])
 }
 
+/// Immutable record of a customer's ACH authorization at offer
+/// acceptance. Captures the exact text shown, the schedule they
+/// agreed to, IP/user-agent, and the agreement version hash so we
+/// can prove later what was on screen when they clicked.
+model AchAuthorization {
+  id                  String   @id @default(uuid())
+  applicationId       String
+  contactId           String?
+  acceptedAt          DateTime @default(now())
+  ipAddress           String?
+  userAgent           String?
+  bankAccountMask     String?  // last 4 of debited account
+  bankName            String?
+  scheduleJson        String   // JSON: [{ date, amount, principal, interest }]
+  totalDebitAmount    Decimal
+  authorizationText   String   // exact text shown on screen
+  agreementHash       String?  // SHA-256 of the agreement template version
+  agreementVersion    String?  @default("v1-2026-05-17")
+
+  @@index([applicationId])
+  @@index([contactId])
+}
+
 model PhoneVerification {
   id          String    @id @default(uuid())
   phone       String

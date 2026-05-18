@@ -26,6 +26,9 @@ type InitialOffer = {
   acceptedAmount: number | null;
   acceptedTermIndex: number | null;
   acceptedAt: string | null;
+  preferredChargeDay: number | null;
+  bankName: string | null;
+  bankAccountMask: string | null;
 };
 
 const fmt = (n: number) =>
@@ -48,6 +51,42 @@ export function OfferClient({
   );
   const [submitting, setSubmitting] = useState(false);
   const [accepted, setAccepted] = useState(initial.status === "ACCEPTED");
+  // Two required consents — both must be checked to enable Accept.
+  const [agreedToAgreement, setAgreedToAgreement] = useState(false);
+  const [agreedToAch, setAgreedToAch] = useState(false);
+
+  // Compute the schedule we're about to show the borrower for ACH auth.
+  // Mirrors the server-side generateWeeklySchedule snap-to-charge-day
+  // logic so what the borrower sees exactly matches what we create.
+  function computeSchedule() {
+    const term = initial.terms[selectedTerm];
+    if (!term) return [];
+    const weekly = Math.round(term.weeklyRemittance * (amount / Math.max(term.disbursedAmount, 1)) * 100) / 100;
+    const firstDue = new Date();
+    firstDue.setDate(firstDue.getDate() + 7);
+    if (initial.preferredChargeDay != null) {
+      const targetDay = initial.preferredChargeDay;
+      const currentDay = firstDue.getDay();
+      const diff = (targetDay - currentDay + 7) % 7;
+      firstDue.setDate(firstDue.getDate() + diff);
+    }
+    const out: { paymentNumber: number; date: Date; amount: number }[] = [];
+    for (let i = 0; i < term.durationWeeks; i++) {
+      const due = new Date(firstDue);
+      due.setDate(due.getDate() + 7 * i);
+      out.push({ paymentNumber: i + 1, date: due, amount: weekly });
+    }
+    return out;
+  }
+  const schedule = computeSchedule();
+  const totalDebit = schedule.reduce((s, p) => s + p.amount, 0);
+  const bankLabel = initial.bankName
+    ? `${initial.bankName}${initial.bankAccountMask ? " ending in " + initial.bankAccountMask : ""}`
+    : "your linked bank account";
+
+  const authorizationText = `I authorize PennyLime (770 Technology Way LLC) to ACH debit ${bankLabel} for ${schedule.length} weekly payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
+
+  const canAccept = agreedToAgreement && agreedToAch && !submitting;
 
   if (accepted || initial.status === "ACCEPTED") {
     return (
@@ -59,6 +98,10 @@ export function OfferClient({
   }
 
   async function handleAccept() {
+    if (!agreedToAgreement || !agreedToAch) {
+      toast.error("Please check both boxes to accept.");
+      return;
+    }
     setSubmitting(true);
     try {
       const r = await acceptOffer({
@@ -66,6 +109,10 @@ export function OfferClient({
         token,
         selectedAmount: amount,
         selectedTermIndex: selectedTerm,
+        authorizationText,
+        userAgent: typeof window !== "undefined" ? window.navigator.userAgent : undefined,
+        agreedToAgreement,
+        agreedToAch,
       });
       if (r.ok) {
         toast.success("Offer accepted! Funds are on the way.");
@@ -147,38 +194,94 @@ export function OfferClient({
           </div>
         </section>
 
-        {/* Disclaimers */}
-        <section className="mt-6 rounded-xl bg-[#f4f4f5] p-4 text-[12px] text-[#52525b] flex flex-col gap-2">
-          <div className="flex items-start gap-2">
-            <span className="text-[#15803d] font-bold">$</span>
-            <span>This is a cash advance.</span>
+        {/* ACH authorization & schedule */}
+        <section className="mt-6 rounded-xl bg-white border border-[#e4e4e7] p-5 md:p-6">
+          <h3 className="text-[15px] font-extrabold tracking-[-0.02em] text-[#0a0a0a] mb-1">
+            Payment schedule & ACH authorization
+          </h3>
+          <p className="text-[12px] text-[#71717a] mb-4">
+            Below is the exact debit schedule. Please review and authorize before accepting.
+          </p>
+
+          <div className="rounded-lg border border-[#e4e4e7] overflow-hidden mb-4">
+            <table className="w-full text-[13px]">
+              <thead className="bg-[#fafafa]">
+                <tr>
+                  <th className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#71717a]">#</th>
+                  <th className="text-left px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#71717a]">Date</th>
+                  <th className="text-right px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-[#71717a]">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {schedule.map((p) => (
+                  <tr key={p.paymentNumber} className="border-t border-[#f4f4f5]">
+                    <td className="px-3 py-2 text-[#52525b]">{p.paymentNumber}</td>
+                    <td className="px-3 py-2 text-[#0a0a0a] font-medium">
+                      {p.date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td className="px-3 py-2 text-right text-[#0a0a0a] font-semibold">{fmt(p.amount)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-[#e4e4e7] bg-[#fafafa]">
+                  <td colSpan={2} className="px-3 py-2.5 text-[13px] font-bold text-[#0a0a0a]">Total to be debited</td>
+                  <td className="px-3 py-2.5 text-right text-[15px] font-extrabold text-[#0a0a0a]">{fmt(totalDebit)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <div className="flex items-start gap-2">
-            <span className="text-[#0ea5e9] font-bold">÷</span>
-            <span>The duration and total cost shown are based on your sales pattern.</span>
+
+          <div className="rounded-lg bg-[#fafaf7] border border-[#e4e4e7] p-3.5 text-[12px] leading-relaxed text-[#52525b] mb-4">
+            {authorizationText}
           </div>
-          <div className="flex items-start gap-2">
-            <span className="text-[#71717a] font-bold">*</span>
-            <span>
-              Disclaimer: Disbursed amount displayed does not include same day fees if option is selected.
+
+          <label className="flex items-start gap-3 cursor-pointer py-2 select-none">
+            <input
+              type="checkbox"
+              checked={agreedToAgreement}
+              onChange={(e) => setAgreedToAgreement(e.target.checked)}
+              className="mt-0.5 w-5 h-5 rounded border-[#a1a1aa] accent-[#15803d] cursor-pointer flex-shrink-0"
+            />
+            <span className="text-[13px] text-[#0a0a0a] leading-snug">
+              I have read and agree to the{" "}
+              <a href="/terms" target="_blank" className="text-[#15803d] underline font-semibold">Receivables Purchase and Sale Agreement</a>
+              {" "}and the{" "}
+              <a href="/disclosures" target="_blank" className="text-[#15803d] underline font-semibold">Cash Advance Disclosures</a>.
             </span>
-          </div>
+          </label>
+
+          <label className="flex items-start gap-3 cursor-pointer py-2 select-none">
+            <input
+              type="checkbox"
+              checked={agreedToAch}
+              onChange={(e) => setAgreedToAch(e.target.checked)}
+              className="mt-0.5 w-5 h-5 rounded border-[#a1a1aa] accent-[#15803d] cursor-pointer flex-shrink-0"
+            />
+            <span className="text-[13px] text-[#0a0a0a] leading-snug">
+              I authorize PennyLime to ACH debit {bankLabel} according to the schedule above.
+            </span>
+          </label>
         </section>
 
         {/* Accept button */}
-        <div className="mt-8 sticky bottom-0 bg-[#fafaf7] py-4 -mx-5 px-5 md:relative md:bg-transparent md:p-0">
+        <div className="mt-6 sticky bottom-0 bg-[#fafaf7] py-4 -mx-5 px-5 md:relative md:bg-transparent md:p-0">
           <motion.button
             type="button"
             onClick={handleAccept}
-            disabled={submitting}
-            className="w-full rounded-xl bg-[#15803d] min-h-[56px] py-4 text-[16px] font-bold text-white transition-all hover:bg-[#166534] disabled:opacity-70 shadow-[0_8px_20px_-8px_rgba(21,128,61,0.5)]"
-            whileTap={submitting ? {} : { scale: 0.98 }}
+            disabled={!canAccept}
+            className="w-full rounded-xl bg-[#15803d] min-h-[56px] py-4 text-[16px] font-bold text-white transition-all hover:bg-[#166534] disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_8px_20px_-8px_rgba(21,128,61,0.5)]"
+            whileTap={!canAccept ? {} : { scale: 0.98 }}
           >
-            {submitting ? "Processing…" : `Accept ${fmt(amount)} advance`}
+            {submitting ? "Processing…" : `Accept & Authorize ${fmt(amount)} advance`}
           </motion.button>
-          <p className="mt-3 text-center text-[11px] text-[#71717a]">
-            By accepting, you authorize ACH credit and weekly debits to your linked bank.
-          </p>
+          {!agreedToAgreement || !agreedToAch ? (
+            <p className="mt-3 text-center text-[11px] text-[#a1a1aa]">
+              Check both boxes above to enable.
+            </p>
+          ) : (
+            <p className="mt-3 text-center text-[11px] text-[#15803d] font-semibold">
+              ✓ Ready to accept. Your signature, IP, and timestamp will be recorded.
+            </p>
+          )}
         </div>
       </main>
     </div>

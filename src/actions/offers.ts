@@ -142,6 +142,11 @@ export async function getOfferForApplicant(input: {
       acceptedAmount: true,
       acceptedTermIndex: true,
       acceptedAt: true,
+      preferredChargeDay: true,
+      plaidAccountMask: true,
+      plaidInstitutionName: true,
+      bankName: true,
+      bankAccountNumberManual: true,
     },
   });
   if (!app) return { ok: false as const, error: "Offer not found" };
@@ -159,6 +164,14 @@ export async function getOfferForApplicant(input: {
     return { ok: false as const, error: "Offer is corrupted" };
   }
 
+  // Bank info to show on the ACH authorization. Prefer Plaid metadata
+  // (came from the verified linked bank); fall back to admin-entered.
+  const bankName = app.plaidInstitutionName ?? app.bankName ?? null;
+  // bankAccountNumberManual is encrypted — only safe to surface last 4
+  // and only when there's no Plaid mask; in practice we always have one
+  // or the other.
+  const bankAccountMask = app.plaidAccountMask ?? null;
+
   return {
     ok: true as const,
     firstName: app.firstName,
@@ -170,6 +183,9 @@ export async function getOfferForApplicant(input: {
     acceptedAmount: app.acceptedAmount ? Number(app.acceptedAmount) : null,
     acceptedTermIndex: app.acceptedTermIndex,
     acceptedAt: app.acceptedAt ? app.acceptedAt.toISOString() : null,
+    preferredChargeDay: app.preferredChargeDay ?? null,
+    bankName,
+    bankAccountMask,
   };
 }
 
@@ -183,7 +199,19 @@ export async function acceptOffer(input: {
   token: string;
   selectedAmount: number;
   selectedTermIndex: number;
+  // ACH authorization payload — captured at acceptance time so we have
+  // an immutable record of what the borrower agreed to.
+  authorizationText?: string;
+  userAgent?: string;
+  agreedToAgreement?: boolean;
+  agreedToAch?: boolean;
 }) {
+  // Refuse if the new consent gate wasn't satisfied. Old clients that
+  // don't pass the booleans (e.g. browser cached the older page)
+  // still work — backward-compatible — but new clients must pass true.
+  if (input.agreedToAgreement === false || input.agreedToAch === false) {
+    return { ok: false as const, error: "You must agree to both the agreement and the ACH authorization to accept." };
+  }
   const app = await prisma.application.findUnique({
     where: { applicationCode: input.applicationCode.toUpperCase() },
   });
@@ -252,6 +280,49 @@ export async function acceptOffer(input: {
         status: "SCHEDULED",
       })),
     });
+  }
+
+  // Immutable ACH authorization record — captures IP, UA, exact text
+  // shown, and the schedule snapshot. Legal evidence for any future
+  // dispute about whether the borrower agreed.
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    const ipAddress =
+      h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      h.get("x-real-ip") ||
+      null;
+    const linkedContact = await prisma.contact.findFirst({
+      where: { applicationId: app.id },
+      select: { id: true },
+    });
+    const totalDebit = schedule.reduce((s, p) => s + p.amount, 0);
+    await prisma.achAuthorization.create({
+      data: {
+        applicationId: app.id,
+        contactId: linkedContact?.id ?? null,
+        ipAddress,
+        userAgent: input.userAgent ?? null,
+        bankAccountMask: app.plaidAccountMask ?? app.bankAccountNumberManual?.slice(-4) ?? null,
+        bankName: app.plaidInstitutionName ?? app.bankName ?? null,
+        scheduleJson: JSON.stringify(
+          schedule.map((p) => ({
+            paymentNumber: p.paymentNumber,
+            date: p.dueDate.toISOString().slice(0, 10),
+            amount: p.amount,
+            principal: p.principal,
+            interest: p.interest,
+          })),
+        ),
+        totalDebitAmount: totalDebit,
+        authorizationText:
+          input.authorizationText ??
+          `I authorize PennyLime (770 Technology Way LLC) to ACH debit my linked bank account for ${schedule.length} weekly payments totaling $${totalDebit.toFixed(2)}, on the schedule above. This authorization remains in effect until the full amount has been delivered or I revoke in writing by emailing info@pennylime.com at least 3 business days before the next debit.`,
+        agreementVersion: "v1-2026-05-17",
+      },
+    });
+  } catch (err) {
+    console.error("Failed to persist AchAuthorization:", err);
   }
 
   await logAudit({
