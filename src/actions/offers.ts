@@ -508,13 +508,27 @@ export async function acceptOffer(input: {
     },
   });
 
-  // Build payment schedule from the selected term. Snap each weekly
-  // due date to the borrower's preferredChargeDay if we computed one
-  // from their bank deposit pattern — debit lands when balance is
-  // freshest, lifting success rates.
+  // Build payment schedule from the selected term. The plan rows in
+  // offeredTermsJson are priced for a specific disbursedAmount (the
+  // base the admin used in "Generate plans"). When the borrower slides
+  // to a *different* amount on the offer page, the offer-page client
+  // scales the numbers linearly — disbursedAmount × N → weeklyPayment × N
+  // and the agreement / authorization text shows the scaled totals. The
+  // schedule we persist HAS to use the same scaled values, otherwise
+  // we'd debit less than what the borrower agreed to (e.g. Harrison
+  // accepted $2,000 against a plan priced for $500 → we'd only collect
+  // 25% of the agreed total).
+  const scaleRatio =
+    term.disbursedAmount > 0 ? input.selectedAmount / term.disbursedAmount : 1;
+  const scaledWeeklyPayment =
+    Math.round(term.weeklyRemittance * scaleRatio * 100) / 100;
+
+  // Snap each weekly due date to the borrower's preferredChargeDay if
+  // we computed one from their bank deposit pattern — debit lands when
+  // balance is freshest, lifting success rates.
   const schedule = generateWeeklySchedule({
     principal: input.selectedAmount,
-    weeklyPayment: term.weeklyRemittance,
+    weeklyPayment: scaledWeeklyPayment,
     termWeeks: term.durationWeeks,
     startDate: new Date(),
     preferredChargeDay: app.preferredChargeDay,
