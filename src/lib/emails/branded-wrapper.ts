@@ -44,7 +44,7 @@ ${preheader ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:al
               Need help? <a href="mailto:${SUPPORT_EMAIL}" style="color:#15803d;text-decoration:none;">${SUPPORT_EMAIL}</a>
             </p>
             <p style="margin:0 0 8px 0;">
-              PennyLime is a service of 770 Technology Way LLC. Cash advance product. Not a loan.
+              PennyLime is a service of 770 Technology LLC. Cash advance product. Not a loan.
             </p>
             <p style="margin:0;color:#d4d4d8;font-size:11px;">
               You're getting this because you have an active application or advance with PennyLime.

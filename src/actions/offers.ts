@@ -317,7 +317,7 @@ export async function acceptOffer(input: {
         totalDebitAmount: totalDebit,
         authorizationText:
           input.authorizationText ??
-          `I authorize PennyLime (770 Technology Way LLC) to ACH debit my linked bank account for ${schedule.length} weekly payments totaling $${totalDebit.toFixed(2)}, on the schedule above. This authorization remains in effect until the full amount has been delivered or I revoke in writing by emailing info@pennylime.com at least 3 business days before the next debit.`,
+          `I authorize PennyLime (770 Technology LLC) to ACH debit my linked bank account for ${schedule.length} weekly payments totaling $${totalDebit.toFixed(2)}, on the schedule above. This authorization remains in effect until the full amount has been delivered or I revoke in writing by emailing info@pennylime.com at least 3 business days before the next debit.`,
         agreementVersion: "v1-2026-05-17",
       },
     });

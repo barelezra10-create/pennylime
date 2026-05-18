@@ -28,7 +28,7 @@ function wrap(innerHtml: string) {
           ${innerHtml}
         </td></tr>
         <tr><td style="background-color:#fafafa;padding:24px 32px;border-top:1px solid #e4e4e7;color:#71717a;font-size:12px;line-height:1.5;">
-          <p style="margin:0 0 8px 0;font-weight:600;color:#52525b;">PennyLime &mdash; operated by 770 Technology Way LLC</p>
+          <p style="margin:0 0 8px 0;font-weight:600;color:#52525b;">PennyLime &mdash; operated by 770 Technology LLC</p>
           <p style="margin:0 0 8px 0;">A Florida limited liability company. Cash advances for gig workers and self-employed earners. This is a merchant cash advance, not a loan.</p>
           <p style="margin:0 0 8px 0;">Questions? Reply to this email or write to <a href="mailto:notifications@pennylime.com" style="color:#15803d;text-decoration:underline;">notifications@pennylime.com</a>.</p>
           <p style="margin:0;color:#a1a1aa;font-size:11px;">You received this because you started or completed a PennyLime application. <a href="https://pennylime.com/unsubscribe?email={email}" style="color:#a1a1aa;text-decoration:underline;">Unsubscribe</a>.</p>

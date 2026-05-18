@@ -9,7 +9,7 @@
 
 This Receivables Purchase and Sale Agreement (the **"Purchase Agreement"**), together with the attached **Standard Terms** and the **Electronic Payment Authorization** (collectively, the **"Agreement"**), is entered into as of **[Acceptance Date]** between:
 
-**770 Technology Way LLC**, a Florida limited liability company doing business as **PennyLime** (referred to in this Agreement as **"PennyLime"**, **"we"**, or the **"Purchaser"**), and
+**770 Technology LLC**, a Florida limited liability company (EIN **42-2071573**), with principal place of business at **1300 Monad Terrace, Unit 9B, Miami Beach, FL 33139**, doing business as **PennyLime** (referred to in this Agreement as **"PennyLime"**, **"we"**, or the **"Purchaser"**), and
 
 **[Merchant Legal Name]**, with principal place of business at **[Merchant Address]**, together with **[Owner Legal Name]** (the individual signer), collectively referred to as the **"Merchant"**, **"you"**, or the **"Seller"**.
 
@@ -210,9 +210,10 @@ In no event will PennyLime be liable to Merchant for indirect, incidental, speci
 
 **12.6 Opt-out from arbitration.** Merchant may opt out of the arbitration and class waiver provisions by sending written notice to PennyLime by certified mail within **14 days** after the Acceptance Date, to:
 
-> 770 Technology Way LLC
+> 770 Technology LLC
 > Attn: Legal — Arbitration Opt-Out
-> [PennyLime mailing address]
+> 1300 Monad Terrace, Unit 9B
+> Miami Beach, FL 33139
 
 Opting out does not affect any other provision of this Agreement.
 
@@ -282,7 +283,7 @@ Merchant may opt out of marketing-style communications by emailing `info@pennyli
 
 I, **[Owner Legal Name]**, am authorized to bind **[Merchant Legal Name]** ("Merchant") and to authorize debits against Merchant's bank account.
 
-I authorize **PennyLime** (770 Technology Way LLC) and its servicers, agents, and assigns to initiate ACH debits, RCC entries, and debit-card pulls against the following account:
+I authorize **PennyLime** (770 Technology LLC) and its servicers, agents, and assigns to initiate ACH debits, RCC entries, and debit-card pulls against the following account:
 
 | Field | Value |
 |---|---|

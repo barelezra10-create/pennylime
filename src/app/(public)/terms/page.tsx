@@ -12,7 +12,7 @@ export default function TermsPage() {
         <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: April 2026</p>
 
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          PennyLime is owned and operated by 770 Technology Way LLC, a Florida limited liability company.
+          PennyLime is owned and operated by 770 Technology LLC, a Florida limited liability company (EIN 42-2071573), with principal place of business at 1300 Monad Terrace, Unit 9B, Miami Beach, FL 33139.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">

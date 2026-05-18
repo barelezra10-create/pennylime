@@ -12,7 +12,7 @@ export default function DisclosuresPage() {
         <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: May 2026</p>
 
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          PennyLime is owned and operated by 770 Technology Way LLC, a Florida limited liability company.
+          PennyLime is owned and operated by 770 Technology LLC, a Florida limited liability company (EIN 42-2071573), with principal place of business at 1300 Monad Terrace, Unit 9B, Miami Beach, FL 33139.
           PennyLime offers <strong className="text-[#1a1a1a]">merchant cash advances</strong> to qualifying drivers, sellers, and operators.
           A merchant cash advance is the purchase of a portion of your future receivables at a discount,
           in exchange for a lump sum today. <strong className="text-[#1a1a1a]">This is a cash advance product, not a credit product.</strong>

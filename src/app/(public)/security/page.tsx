@@ -26,7 +26,7 @@ export default function SecurityPage() {
       </a>
 
       <p className="text-[15px] text-[#52525b] leading-relaxed mb-10">
-        PennyLime, operated by 770 Technology Way LLC, a Florida limited liability company, maintains this Information Security Policy to govern the confidentiality, integrity, and availability of information assets entrusted to us by merchant applicants, customers, employees, partners, and regulators. This policy is binding on all personnel, contractors, and service providers acting on behalf of PennyLime.
+        PennyLime, operated by 770 Technology LLC, a Florida limited liability company, maintains this Information Security Policy to govern the confidentiality, integrity, and availability of information assets entrusted to us by merchant applicants, customers, employees, partners, and regulators. This policy is binding on all personnel, contractors, and service providers acting on behalf of PennyLime.
       </p>
 
       <Section n="1" title="Scope">
@@ -94,7 +94,7 @@ export default function SecurityPage() {
 
       <div className="mt-12 pt-6 border-t border-[#e4e4e7] text-[12px] text-[#71717a]">
         Questions, security disclosures, or incident reports may be directed to{" "}
-        <a href="mailto:security@pennylime.com" className="text-[#15803d] hover:underline">security@pennylime.com</a>. PennyLime, operated by 770 Technology Way LLC.
+        <a href="mailto:security@pennylime.com" className="text-[#15803d] hover:underline">security@pennylime.com</a>. PennyLime, operated by 770 Technology LLC.
       </div>
     </div>
   );

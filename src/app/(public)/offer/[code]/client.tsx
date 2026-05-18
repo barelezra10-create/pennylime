@@ -84,7 +84,7 @@ export function OfferClient({
     ? `${initial.bankName}${initial.bankAccountMask ? " ending in " + initial.bankAccountMask : ""}`
     : "your linked bank account";
 
-  const authorizationText = `I authorize PennyLime (770 Technology Way LLC) to ACH debit ${bankLabel} for ${schedule.length} weekly payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
+  const authorizationText = `I authorize PennyLime (770 Technology LLC) to ACH debit ${bankLabel} for ${schedule.length} weekly payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
 
   const canAccept = agreedToAgreement && agreedToAch && !submitting;
 
