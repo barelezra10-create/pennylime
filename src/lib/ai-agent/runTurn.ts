@@ -145,12 +145,31 @@ export async function runTurn(
       role: "model",
       parts: [{ functionCall: { name: result.functionCall.name, args: result.functionCall.args } }],
     });
+    // Gemini expects function responses on a `user` turn (not "function" or
+    // "tool"). Wrap the tool outcome so the model sees a clean output/error
+    // shape rather than our internal status flags.
+    const responseForModel: Record<string, unknown> =
+      toolResult.status === "error"
+        ? { error: toolResult.message }
+        : toolResult.status === "denied_auth"
+          ? { error: `Authorization required: ${toolResult.required}` }
+          : toolResult.status === "denied_confirm"
+            ? {
+                output: {
+                  needsConfirmation: true,
+                  summary: toolResult.summary,
+                  token: toolResult.token,
+                },
+              }
+            : toolResult.status === "rate_limited"
+              ? { error: "rate_limited" }
+              : { output: toolResult.data };
     history.push({
-      role: "function",
+      role: "user",
       parts: [{
         functionResponse: {
           name: result.functionCall.name,
-          response: toolResult as unknown as Record<string, unknown>,
+          response: responseForModel,
         },
       }],
     });

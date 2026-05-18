@@ -18,9 +18,8 @@ function getClient(): GoogleGenAI {
 }
 
 export type GeminiTurn =
-  | { role: "user"; parts: Array<{ text: string }> }
-  | { role: "model"; parts: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }> }
-  | { role: "function"; parts: Array<{ functionResponse: { name: string; response: Record<string, unknown> } }> };
+  | { role: "user"; parts: Array<{ text?: string; functionResponse?: { name: string; response: Record<string, unknown> } }> }
+  | { role: "model"; parts: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }> };
 
 export type GeminiCallResult = {
   text?: string;
