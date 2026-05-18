@@ -444,38 +444,90 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     return { success: false, error: "Application must be APPROVED to fund" };
   }
 
-  const interestRate = Number(application.interestRate);
-  const loanTermMonths = application.loanTermMonths;
-
-  if (!interestRate || !loanTermMonths) {
-    return { success: false, error: "Missing interest rate or loan term" };
+  // ── Try the Increase ACH credit FIRST. If it fails (NSF, account
+  // suspended, etc.) we want to surface the error and stay in APPROVED —
+  // not mark the app as ACTIVE with a phantom transfer that never went
+  // out. The old flow flipped status optimistically, which silently
+  // hid Increase errors and left the borrower thinking they were funded.
+  if (!process.env.INCREASE_API_KEY) {
+    return { success: false, error: "Increase is not configured (INCREASE_API_KEY missing)." };
+  }
+  let transferId: string;
+  let transferStatus: string;
+  try {
+    const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
+    const { createAchCredit } = await import("@/lib/increase");
+    const ext = await ensureIncreaseExternalAccount(applicationId);
+    if (!ext.ok) {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { increaseDisburseError: ext.error },
+      });
+      return { success: false, error: `Couldn't set up Increase external account: ${ext.error}` };
+    }
+    const transfer = await createAchCredit({
+      externalAccountId: ext.externalAccountId,
+      amountCents: Math.round(fundedAmount * 100),
+      statementDescriptor: "PENNYLIME ADV",
+      individualName: `${application.firstName} ${application.lastName}`.slice(0, 22),
+    });
+    if (!transfer.ok) {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { increaseDisburseError: transfer.error },
+      });
+      return { success: false, error: `Increase ACH credit failed: ${transfer.error}` };
+    }
+    transferId = transfer.data.id;
+    transferStatus = transfer.data.status;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "increase error";
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { increaseDisburseError: message },
+    }).catch(() => {});
+    return { success: false, error: `Increase error: ${message}` };
   }
 
-  // Generate amortization schedule
-  const schedule = generateSchedule(fundedAmount, interestRate, loanTermMonths);
+  // ── Increase credit succeeded. Now flip status to ACTIVE and ensure
+  // a payment schedule exists. Don't duplicate: if the offer-accept
+  // flow already created payments, we skip schedule generation.
+  const existingPayments = await prisma.payment.count({ where: { applicationId } });
+  let paymentsCreated = 0;
+  if (existingPayments === 0) {
+    // Legacy / fallback path: generate from interestRate + loanTermMonths
+    // for the rare case the offer flow didn't create one. Modern path
+    // (offerStatus === "ACCEPTED") always pre-creates the schedule.
+    const interestRate = Number(application.interestRate);
+    const loanTermMonths = application.loanTermMonths;
+    if (interestRate && loanTermMonths) {
+      const schedule = generateSchedule(fundedAmount, interestRate, loanTermMonths);
+      await prisma.payment.createMany({
+        data: schedule.map((entry) => ({
+          applicationId,
+          amount: entry.amount,
+          principal: entry.principal,
+          interest: entry.interest,
+          dueDate: entry.dueDate,
+          paymentNumber: entry.paymentNumber,
+          status: "PENDING",
+        })),
+      });
+      paymentsCreated = schedule.length;
+    }
+  }
 
-  // Update application and create payments in a transaction
-  await prisma.$transaction(async (tx) => {
-    await tx.application.update({
-      where: { id: applicationId },
-      data: {
-        status: "ACTIVE",
-        fundedAt: new Date(),
-        fundedAmount,
-      },
-    });
-
-    await tx.payment.createMany({
-      data: schedule.map((entry) => ({
-        applicationId,
-        amount: entry.amount,
-        principal: entry.principal,
-        interest: entry.interest,
-        dueDate: entry.dueDate,
-        paymentNumber: entry.paymentNumber,
-        status: "PENDING",
-      })),
-    });
+  await prisma.application.update({
+    where: { id: applicationId },
+    data: {
+      status: "ACTIVE",
+      fundedAt: new Date(),
+      fundedAmount,
+      increaseTransferId: transferId,
+      increaseTransferStatus: transferStatus,
+      // Clear any stale error from a prior failed attempt.
+      increaseDisburseError: null,
+    },
   });
 
   await logAudit({
@@ -483,48 +535,37 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     entityType: "APPLICATION",
     entityId: applicationId,
     performedBy: session.user.email,
-    details: { fundedAmount, paymentsCreated: schedule.length },
+    details: {
+      fundedAmount,
+      paymentsCreated,
+      existingPayments,
+      increaseTransferId: transferId,
+    },
   });
 
-  // Disburse via Increase ACH (push to merchant's verified bank account)
-  if (process.env.INCREASE_API_KEY) {
-    try {
-      const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-      const { createAchCredit } = await import("@/lib/increase");
-      const ext = await ensureIncreaseExternalAccount(applicationId);
-      if (!ext.ok) {
-        await prisma.application.update({
-          where: { id: applicationId },
-          data: { increaseDisburseError: ext.error },
-        });
-      } else {
-        const transfer = await createAchCredit({
-          externalAccountId: ext.externalAccountId,
-          amountCents: Math.round(fundedAmount * 100),
-          statementDescriptor: "PENNYLIME ADV",
-          individualName: `${application.firstName} ${application.lastName}`.slice(0, 22),
-        });
-        if (transfer.ok) {
-          await prisma.application.update({
-            where: { id: applicationId },
-            data: { increaseTransferId: transfer.data.id, increaseTransferStatus: transfer.data.status },
-          });
-        } else {
-          await prisma.application.update({
-            where: { id: applicationId },
-            data: { increaseDisburseError: transfer.error },
-          });
-        }
-      }
-    } catch (err) {
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: { increaseDisburseError: err instanceof Error ? err.message : "increase error" },
-      }).catch(() => {});
-    }
-  }
+  // Pull the real schedule we'll show in the funded email — either
+  // pre-created by the offer-accept flow or by the legacy block above.
+  const schedule = await prisma.payment.findMany({
+    where: { applicationId },
+    orderBy: { paymentNumber: "asc" },
+    select: {
+      paymentNumber: true,
+      amount: true,
+      principal: true,
+      interest: true,
+      dueDate: true,
+    },
+  });
+  const scheduleForEmail = schedule.map((p) => ({
+    paymentNumber: p.paymentNumber,
+    amount: Number(p.amount),
+    principal: Number(p.principal),
+    interest: Number(p.interest),
+    dueDate: p.dueDate,
+    lateFee: 0,
+  }));
 
-  // Server-side conversion fire for funded loan
+  // Server-side conversion fire for funded advance.
   const linkedContact = await prisma.contact.findFirst({ where: { applicationId } });
   if (linkedContact) {
     const { fireServerEvent } = await import("@/lib/tracking/server-events");
@@ -536,32 +577,38 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     }).catch((err) => console.error("[tracking] funded event failed:", err));
   }
 
-  // Send funded email with schedule
-  await sendEmail({
-    to: application.email,
-    ...advanceFundedEmail({
-      firstName: application.firstName,
-      applicationCode: application.applicationCode,
-      fundedAmount,
-      interestRate,
-      loanTermMonths,
-      monthlyPayment: schedule[0].amount,
-      firstDueDate: schedule[0].dueDate,
-      schedule,
-    }),
-    contactId: linkedContact?.id,
-    templateId: "advance-funded",
-  });
+  // Send funded email + SMS with the real schedule. The legacy email
+  // template wants interestRate + loanTermMonths — pass what we have
+  // on the application; if absent we fall back to derived values.
+  const emailInterestRate = Number(application.interestRate ?? 0);
+  const emailTermMonths = application.loanTermMonths ?? scheduleForEmail.length;
+  if (scheduleForEmail.length > 0) {
+    sendEmail({
+      to: application.email,
+      ...advanceFundedEmail({
+        firstName: application.firstName,
+        applicationCode: application.applicationCode,
+        fundedAmount,
+        interestRate: emailInterestRate,
+        loanTermMonths: emailTermMonths,
+        monthlyPayment: scheduleForEmail[0].amount,
+        firstDueDate: scheduleForEmail[0].dueDate,
+        schedule: scheduleForEmail,
+      }),
+      contactId: linkedContact?.id,
+      templateId: "advance-funded",
+    }).catch((err) => console.error("[email] funded send failed:", err));
 
-  sendSms({
-    to: application.phone,
-    body: advanceFundedSms({
-      firstName: application.firstName,
-      fundedAmount,
-      firstDueDate: schedule[0].dueDate,
-    }),
-    contactId: linkedContact?.id,
-  }).catch((err) => console.error("[sms] funded send failed:", err));
+    sendSms({
+      to: application.phone,
+      body: advanceFundedSms({
+        firstName: application.firstName,
+        fundedAmount,
+        firstDueDate: scheduleForEmail[0].dueDate,
+      }),
+      contactId: linkedContact?.id,
+    }).catch((err) => console.error("[sms] funded send failed:", err));
+  }
 
   return { success: true };
 }
