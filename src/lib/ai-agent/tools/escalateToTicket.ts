@@ -3,10 +3,11 @@ import type { ToolDefinition } from "../types";
 
 export const escalateToTicket: ToolDefinition = {
   name: "escalateToTicket",
-  description: "Create a support ticket so a human can follow up. Use when the issue is beyond what you can resolve.",
+  description:
+    "Hand the conversation off to a human specialist. Creates a support ticket, flips the chat into human-takeover mode (admin will reply), and logs an activity on the contact's CRM timeline. Call this whenever you cannot move the user forward, when the user explicitly asks for a human, when you have tried the same tool twice without resolving, or when the user expresses frustration.",
   parameters: {
     type: "object",
-    properties: { reason: { type: "string" } },
+    properties: { reason: { type: "string", description: "Short why-the-escalation summary." } },
     required: ["reason"],
   },
   requiredAuth: "anon",
@@ -25,6 +26,39 @@ export const escalateToTicket: ToolDefinition = {
     const ticket = await prisma.supportTicket.create({
       data: { sessionId: ctx.sessionId, contactId: ctx.contactId, reason, transcript },
     });
-    return { status: "ok", data: { ticketId: ticket.id }, summary: `ticket created: ${reason}` };
+
+    // Flip the session into human-takeover mode so the chat route stops
+    // running AI turns and the admin sessions page surfaces it for reply.
+    // Voice/SMS sessions don't have an admin-takeover surface yet, so only
+    // chat sessions get the mode flip.
+    if (ctx.channel === "chat") {
+      await prisma.agentSession
+        .update({ where: { id: ctx.sessionId }, data: { mode: "human" } })
+        .catch(() => {});
+    }
+
+    // CRM timeline entry so the contact-detail view shows the escalation.
+    if (ctx.contactId) {
+      await prisma.activity
+        .create({
+          data: {
+            contactId: ctx.contactId,
+            type: "chat_escalated",
+            title: `AI escalated chat: ${reason}`,
+            performedBy: "ai-agent",
+          },
+        })
+        .catch(() => {});
+    }
+
+    return {
+      status: "ok",
+      data: {
+        ticketId: ticket.id,
+        message:
+          "Tell the user a specialist will reply here shortly, and that they can keep typing. Do not promise a specific timeframe.",
+      },
+      summary: `escalated to human: ${reason}`,
+    };
   },
 };

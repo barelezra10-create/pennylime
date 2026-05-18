@@ -15,7 +15,16 @@ export default async function AgentSessionsPage({
     where,
     orderBy: { startedAt: "desc" },
     take: 100,
-    include: { contact: { select: { firstName: true, lastName: true, phone: true, email: true } } },
+    include: {
+      contact: { select: { firstName: true, lastName: true, phone: true, email: true } },
+      // Pull the latest message so we can flag rows where the customer
+      // is the last to have spoken (= needs admin reply / "unread").
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { role: true, createdAt: true, text: true },
+      },
+    },
   });
 
   const channels: { key: string; label: string }[] = [
@@ -50,6 +59,7 @@ export default async function AgentSessionsPage({
         <table className="w-full">
           <thead>
             <tr className="bg-[#fafafa]">
+              <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Status</th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Started</th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Channel</th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Contact</th>
@@ -63,7 +73,7 @@ export default async function AgentSessionsPage({
           <tbody>
             {sessions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-[13px] text-[#a1a1aa]">
+                <td colSpan={9} className="px-4 py-8 text-center text-[13px] text-[#a1a1aa]">
                   No sessions yet.
                 </td>
               </tr>
@@ -74,10 +84,35 @@ export default async function AgentSessionsPage({
                   s.contact ? `${s.contact.firstName} ${s.contact.lastName ?? ""}`.trim() :
                   s.leadFirstName ? `${s.leadFirstName}${s.leadLastName ? ` ${s.leadLastName}` : ""} (lead)` :
                   "anon";
+                // "Needs reply" = the latest message in this session is
+                // from the customer (role="user") and the session hasn't
+                // been formally ended. That's our "unread" signal.
+                const lastMessage = s.messages[0];
+                const needsReply = !s.endedAt && lastMessage?.role === "user";
+                const noMessages = s.messages.length === 0;
                 return (
-                <tr key={s.id} className="transition-colors hover:bg-[#f8f8f6] border-t border-[#f4f4f5]">
+                <tr key={s.id} className={`transition-colors border-t border-[#f4f4f5] ${
+                  needsReply ? "bg-[#fff5f5] hover:bg-[#ffe9e9] font-medium" : "hover:bg-[#f8f8f6]"
+                }`}>
+                  <td className="px-3 py-3">
+                    {needsReply ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dc2626] text-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        Needs reply
+                      </span>
+                    ) : noMessages ? (
+                      <span className="text-[11px] text-[#a1a1aa]">no messages</span>
+                    ) : s.endedAt ? (
+                      <span className="text-[11px] text-[#a1a1aa]">ended</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] text-[#15803d] font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#15803d]" />
+                        Caught up
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-[13px]">
-                    <Link href={`/admin/agent/sessions/${s.id}`} className="text-[#15803d] hover:underline font-medium">
+                    <Link href={`/admin/agent/sessions/${s.id}`} className={`hover:underline ${needsReply ? "text-[#dc2626] font-bold" : "text-[#15803d] font-medium"}`}>
                       {s.startedAt.toISOString().slice(0, 16).replace("T", " ")}
                     </Link>
                   </td>
