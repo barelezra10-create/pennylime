@@ -74,7 +74,7 @@ export async function createExternalAccount(input: {
   funding?: "checking" | "savings";
 }): Promise<{ ok: true; data: ExternalAccount } | { ok: false; error: string }> {
   return call<ExternalAccount>("POST", "/external_accounts", {
-    route_number: input.routingNumber,
+    routing_number: input.routingNumber,
     account_number: input.accountNumber,
     description: input.description,
     account_holder: input.accountHolder || "individual",
