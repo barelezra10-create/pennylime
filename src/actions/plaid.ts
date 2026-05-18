@@ -444,6 +444,53 @@ export async function previewPlaidIncome(input: { encryptedAccessToken: string }
    depositCount90d, largestDeposit, depositCadence, preferredChargeDay.
    ─────────────────────────────────────────────────────────────── */
 
+/**
+ * Admin-triggered "Pull Plaid Asset Report" — composes
+ * createAssetReport + fetchAssetReportAndStoreIncome into a single
+ * action with retry behaviour for the typical case where the
+ * webhook is slow or never fires:
+ *
+ *   1. If no report token exists, create one.
+ *   2. Try fetch immediately. If Plaid says "not ready yet"
+ *      (PRODUCT_NOT_READY), poll up to ~60s for the report to
+ *      finish, then fetch.
+ *   3. Return the resulting income summary or a clear error.
+ */
+export async function triggerPlaidAssetReport(applicationId: string) {
+  // Step 1: ensure a report exists.
+  const created = await createAssetReport(applicationId);
+  if (!created.success) {
+    return { success: false as const, error: created.error };
+  }
+  // Step 2: poll for readiness (up to ~60s).
+  const start = Date.now();
+  const TIMEOUT_MS = 90_000;
+  const POLL_MS = 4_000;
+  let lastErr: string | null = null;
+  while (Date.now() - start < TIMEOUT_MS) {
+    const fetched = await fetchAssetReportAndStoreIncome(applicationId);
+    if (fetched.success) {
+      return {
+        success: true as const,
+        message: created.alreadyCreated
+          ? "Pulled existing Plaid asset report."
+          : "Plaid asset report generated and pulled.",
+      };
+    }
+    lastErr = fetched.error ?? null;
+    // Plaid returns PRODUCT_NOT_READY while the report is still being
+    // built — any other error is terminal and we bail.
+    if (!lastErr || !/not[_ ]ready/i.test(lastErr)) {
+      return { success: false as const, error: lastErr ?? "asset report fetch failed" };
+    }
+    await new Promise((r) => setTimeout(r, POLL_MS));
+  }
+  return {
+    success: false as const,
+    error: `Asset report not ready after ${Math.round(TIMEOUT_MS / 1000)}s. Try the button again in a minute — Plaid sometimes needs longer.`,
+  };
+}
+
 export async function createAssetReport(applicationId: string) {
   const application = await prisma.application.findUnique({
     where: { id: applicationId },

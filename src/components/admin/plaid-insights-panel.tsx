@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { fetchAndStoreIncome, getRecentTransactions } from "@/actions/plaid";
+import { fetchAndStoreIncome, getRecentTransactions, triggerPlaidAssetReport } from "@/actions/plaid";
 
 type Tx = {
   id: string;
@@ -60,11 +60,13 @@ const cadenceLabel: Record<string, string> = {
 
 export function PlaidInsightsPanel({ application }: { application: PlaidInsightsApplication }) {
   const [refreshing, setRefreshing] = useState(false);
+  const [pullingAssets, setPullingAssets] = useState(false);
   const [loadingTxs, setLoadingTxs] = useState(false);
   const [txs, setTxs] = useState<Tx[] | null>(null);
   const [showTxs, setShowTxs] = useState(false);
 
   const hasConnection = !!application.plaidAccessToken;
+  const hasDepositData = application.monthlyIncome != null || application.depositCount90d != null;
 
   async function handleRefresh() {
     setRefreshing(true);
@@ -81,6 +83,26 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
       toast.error(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function handlePullAssets() {
+    setPullingAssets(true);
+    toast.message("Pulling Plaid Asset Report…", {
+      description: "Plaid typically returns in 30-60s. Please wait.",
+    });
+    try {
+      const result = await triggerPlaidAssetReport(application.id);
+      if (result.success) {
+        toast.success(result.message);
+        window.location.reload();
+      } else {
+        toast.error(result.error || "Asset report failed");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Asset report failed");
+    } finally {
+      setPullingAssets(false);
     }
   }
 
@@ -142,16 +164,36 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
             )}
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 disabled:opacity-50 transition-colors"
-        >
-          <svg className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
-          </svg>
-          {refreshing ? "Refreshing..." : "Refresh from Plaid"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePullAssets}
+            disabled={pullingAssets || refreshing}
+            className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+              hasDepositData
+                ? "border border-gray-200 bg-white text-black hover:bg-gray-50"
+                : "bg-[#15803d] text-white hover:bg-[#166534]"
+            }`}
+          >
+            <svg className={`h-3.5 w-3.5 ${pullingAssets ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+            {pullingAssets
+              ? "Pulling…"
+              : hasDepositData
+              ? "Re-pull Asset Report"
+              : "Pull Asset Report"}
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || pullingAssets}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            <svg className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+            </svg>
+            {refreshing ? "Refreshing..." : "Refresh"}
+          </button>
+        </div>
       </div>
 
       {/* ── Top-line metrics ── */}
