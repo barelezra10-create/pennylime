@@ -3,6 +3,7 @@ import { Inter, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { TrackingScripts } from "@/components/tracking/tracking-scripts";
 import { ClickIdCapture } from "@/components/tracking/click-id-capture";
+import { ChatWidgetGate } from "@/components/chat/ChatWidgetGate";
 import "./globals.css";
 
 const inter = Inter({
@@ -54,6 +55,7 @@ export default async function RootLayout({
       >
         <ClickIdCapture />
         {children}
+        <ChatWidgetGate />
         <Toaster
           toastOptions={{
             style: {
