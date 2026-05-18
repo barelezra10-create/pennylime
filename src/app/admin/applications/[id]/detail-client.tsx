@@ -15,7 +15,9 @@ import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
 import type { OfferTerm } from "@/actions/offers";
 import { getPaymentsSummary, retryPayment, waiveLateFee, chargePaymentNow } from "@/actions/payments";
 import { uploadBankStatements, setVerifiedMonthlyIncome, parseBankStatementsWithAI, deleteBankStatement, deleteApplicationDocument } from "@/actions/bank-statements";
-import type { ApplicationWithDocuments, RiskScoreResult } from "@/types";
+import { runAiRiskAnalysis, getAiRiskAnalysis } from "@/actions/risk";
+import type { AiRiskAnalysis } from "@/lib/risk/ai-risk";
+import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 
 /* ── helpers ── */
@@ -103,16 +105,37 @@ export function DetailClient({
 
   /* evaluation */
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
-  const [riskResult, setRiskResult] = useState<RiskScoreResult | null>(null);
 
   useEffect(() => {
     evaluateApplicationAction(application.id).then((evalResult) => {
       setEvaluation(evalResult);
-      if (evalResult.riskScore) {
-        setRiskResult(evalResult.riskScore);
-      }
     });
   }, [application.id]);
+
+  /* AI risk analysis — persisted on the Application, fetched on mount,
+     re-run on demand. */
+  const [aiRisk, setAiRisk] = useState<AiRiskAnalysis | null>(null);
+  const [aiRiskLoading, setAiRiskLoading] = useState(false);
+  useEffect(() => {
+    getAiRiskAnalysis(application.id).then((r) => setAiRisk(r ?? null));
+  }, [application.id]);
+
+  async function handleRunAiRisk() {
+    setAiRiskLoading(true);
+    try {
+      const r = await runAiRiskAnalysis(application.id);
+      if (r.ok) {
+        setAiRisk(r.analysis);
+        toast.success("AI risk analysis complete.");
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setAiRiskLoading(false);
+    }
+  }
 
   /* payments */
   const [paymentSummary, setPaymentSummary] = useState<Awaited<ReturnType<typeof getPaymentsSummary>> | null>(null);
@@ -747,82 +770,158 @@ export function DetailClient({
             )}
           </div>
 
-          {/* ── Risk Assessment (model-driven) ── */}
-          {riskResult && (
-            <div className="bg-white rounded-[10px] p-6">
-              <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-5 flex items-center gap-2">
-                <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+          {/* ── AI Risk Analysis ──
+              Replaces the old statistical risk-model card. Reads the
+              applicant's Plaid Assets + AI-parsed bank statements and
+              calls Gemini for a structured underwriting verdict. */}
+          <div className="bg-white rounded-[10px] p-6">
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div>
+                <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black flex items-center gap-2">
+                  <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.847.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                  </svg>
+                  AI Risk Analysis
+                </h2>
+                <p className="text-[11px] text-[#71717a] mt-0.5">
+                  Gemini-powered underwriting on Plaid Assets + parsed bank statements.
+                  {aiRisk?.generatedAt && (
+                    <> Last run: <span className="font-mono">{new Date(aiRisk.generatedAt).toLocaleString()}</span></>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRunAiRisk}
+                disabled={aiRiskLoading}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] text-white text-[12px] font-semibold px-3 py-2 hover:bg-[#166534] disabled:opacity-50"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                 </svg>
-                Risk Assessment
-              </h2>
+                {aiRiskLoading ? "Analyzing…" : aiRisk ? "Re-run analysis" : "Run AI risk analysis"}
+              </button>
+            </div>
 
+            {!aiRisk && !aiRiskLoading && (
+              <div className="rounded-lg bg-[#fafafa] border border-dashed border-[#e4e4e7] p-6 text-center">
+                <p className="text-[13px] text-[#71717a]">
+                  No AI analysis run yet. Click <span className="font-semibold">"Run AI risk analysis"</span> to underwrite this applicant based on their verified income, deposits, and bank context.
+                </p>
+              </div>
+            )}
+
+            {aiRisk && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                {/* Headline numbers */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-lg bg-[#f8faf8] p-4 text-center">
                     <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold mb-1">Risk Score</p>
                     <p className={`text-3xl font-bold ${
-                      riskResult.riskScore < 33 ? "text-[#15803d]" :
-                      riskResult.riskScore < 66 ? "text-[#b45309]" :
+                      aiRisk.riskScore < 33 ? "text-[#15803d]" :
+                      aiRisk.riskScore < 66 ? "text-[#b45309]" :
                       "text-[#dc2626]"
                     }`}>
-                      {riskResult.riskScore.toFixed(1)}
+                      {aiRisk.riskScore.toFixed(0)}
                     </p>
-                    <p className="text-xs text-[#a1a1aa] mt-1">out of 100 (higher = riskier)</p>
+                    <p className="text-xs text-[#a1a1aa] mt-1">/ 100 (higher = riskier)</p>
                   </div>
                   <div className="rounded-lg bg-[#f8faf8] p-4 text-center">
-                    <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold mb-1">Calculated Rate</p>
-                    <p className="text-3xl font-bold text-black">{riskResult.interestRate.toFixed(2)}%</p>
-                    <p className="text-xs text-[#a1a1aa] mt-1">auto-set on approval</p>
+                    <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold mb-1">Recommended Rate</p>
+                    <p className="text-3xl font-bold text-black">{aiRisk.recommendedWeeklyRate.toFixed(1)}%</p>
+                    <p className="text-xs text-[#a1a1aa] mt-1">per week, compound</p>
+                  </div>
+                  <div className="rounded-lg bg-[#f8faf8] p-4 text-center">
+                    <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold mb-1">Verdict</p>
+                    <p className={`text-lg font-bold ${
+                      aiRisk.verdict === "APPROVE" ? "text-[#15803d]" :
+                      aiRisk.verdict === "MANUAL_REVIEW" ? "text-[#b45309]" :
+                      "text-[#dc2626]"
+                    }`}>
+                      {aiRisk.verdict.replace("_", " ")}
+                    </p>
+                    <p className="text-xs text-[#a1a1aa] mt-1">confidence: {aiRisk.confidence}</p>
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-semibold text-black mb-2">Feature Breakdown</h4>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-100">
-                          <th className="text-left py-2.5 px-3 text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Feature</th>
-                          <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Raw Value</th>
-                          <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Normalized</th>
-                          <th className="text-right py-2.5 px-3 text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Weight</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {riskResult.features.map((f) => (
-                          <tr key={f.name} className="border-b border-gray-50 last:border-0">
-                            <td className="py-2.5 px-3 font-mono text-xs text-black">{f.name}</td>
-                            <td className="py-2.5 px-3 text-right text-black">{f.rawValue?.toFixed(2) ?? "N/A"}</td>
-                            <td className="py-2.5 px-3 text-right text-black">{f.normalizedValue.toFixed(3)}</td>
-                            <td className={`py-2.5 px-3 text-right font-medium ${f.weight > 0 ? "text-[#dc2626]" : "text-[#15803d]"}`}>
-                              {f.weight.toFixed(3)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {riskResult.features.find(f => f.name === "aggregate_exposure")?.rawValue != null &&
-                  riskResult.features.find(f => f.name === "aggregate_exposure")!.rawValue! > 0 && (
-                  <div className="rounded-lg bg-[#fef9ec] p-3">
-                    <p className="text-sm font-medium text-[#b45309]">Concurrent Loans Detected</p>
-                    <p className="text-sm text-[#b45309]">
-                      Exposure ratio: {riskResult.features.find(f => f.name === "aggregate_exposure")?.rawValue?.toFixed(2)}
+                {/* Recommended max amount */}
+                {aiRisk.recommendedMaxAmount > 0 && (
+                  <div className="rounded-lg bg-[#f0fdf4] border border-[#dcfce7] p-3">
+                    <p className="text-[12px] text-[#15803d]">
+                      <span className="font-semibold">Recommended max approval:</span>{" "}
+                      <span className="font-bold">${aiRisk.recommendedMaxAmount.toLocaleString("en-US", { minimumFractionDigits: 0 })}</span>
+                      {" "}— use this as the "Max approved amount" in Set offer terms.
                     </p>
                   </div>
                 )}
 
-                {!riskResult.modelId && (
-                  <p className="text-sm text-[#b45309]">
-                    No risk model loaded, using default rate. Run the seed script to initialize.
-                  </p>
+                {/* Summary */}
+                <div className="rounded-lg bg-[#fafafa] border border-[#e4e4e7] p-4">
+                  <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a] font-semibold mb-1.5">Summary</p>
+                  <p className="text-[13px] text-[#0a0a0a] leading-relaxed">{aiRisk.summary}</p>
+                </div>
+
+                {/* Green / red flags */}
+                {(aiRisk.greenFlags.length > 0 || aiRisk.redFlags.length > 0) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {aiRisk.greenFlags.length > 0 && (
+                      <div className="rounded-lg bg-[#f0fdf4] border border-[#dcfce7] p-3">
+                        <p className="text-[11px] uppercase tracking-[0.05em] text-[#15803d] font-semibold mb-2">✓ Green flags</p>
+                        <ul className="space-y-1.5">
+                          {aiRisk.greenFlags.map((f, i) => (
+                            <li key={i} className="text-[12px] text-[#14532d] leading-snug pl-3 relative before:content-['•'] before:absolute before:left-0">{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {aiRisk.redFlags.length > 0 && (
+                      <div className="rounded-lg bg-[#fef2f2] border border-[#fecaca] p-3">
+                        <p className="text-[11px] uppercase tracking-[0.05em] text-[#dc2626] font-semibold mb-2">⚠ Red flags</p>
+                        <ul className="space-y-1.5">
+                          {aiRisk.redFlags.map((f, i) => (
+                            <li key={i} className="text-[12px] text-[#7f1d1d] leading-snug pl-3 relative before:content-['•'] before:absolute before:left-0">{f}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Key factors */}
+                {aiRisk.keyFactors.length > 0 && (
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a] font-semibold mb-2">Key factors</p>
+                    <div className="rounded-lg border border-[#e4e4e7] overflow-hidden">
+                      <table className="w-full text-[12px]">
+                        <thead className="bg-[#fafafa]">
+                          <tr>
+                            <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider text-[#a1a1aa] font-semibold">Factor</th>
+                            <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider text-[#a1a1aa] font-semibold">Value</th>
+                            <th className="text-right py-2 px-3 text-[10px] uppercase tracking-wider text-[#a1a1aa] font-semibold">Impact</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {aiRisk.keyFactors.map((f, i) => (
+                            <tr key={i} className="border-t border-[#f4f4f5]">
+                              <td className="py-2 px-3 text-[#0a0a0a]">{f.factor}</td>
+                              <td className="py-2 px-3 text-[#52525b]">{f.value}</td>
+                              <td className={`py-2 px-3 text-right font-semibold ${
+                                f.impact === "positive" ? "text-[#15803d]" :
+                                f.impact === "negative" ? "text-[#dc2626]" :
+                                "text-[#71717a]"
+                              }`}>
+                                {f.impact === "positive" ? "+" : f.impact === "negative" ? "−" : "•"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* ── Reject Application (PENDING only) ──
               Approval now happens through "Set offer terms" below — the

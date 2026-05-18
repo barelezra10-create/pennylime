@@ -33,6 +33,17 @@ model Application {
   riskScore       Decimal?
   bankBalance     Decimal?
   riskModelId     String?
+  // AI-driven risk analysis (Gemini). Reads from Plaid Assets + parsed
+  // bank statements + applicant context and returns a score, recommended
+  // weekly rate, verdict, green/red flags, and key factors. Populated
+  // by runAiRiskAnalysis() — see src/lib/risk/ai-risk.ts. The full
+  // structured JSON lives in aiRiskAnalysisJson; the headline fields
+  // are duplicated for easy querying/sorting.
+  aiRiskScore         Float?
+  aiRecommendedRate   Float?
+  aiRiskVerdict       String?  // "APPROVE" | "MANUAL_REVIEW" | "REJECT"
+  aiRiskAnalysisJson  String?
+  aiRiskAnalysisAt    DateTime?
   interestRate    Decimal?
   approvedBy      String?
   approvedAt      DateTime?

@@ -20,7 +20,8 @@ export type AuditAction =
   | "INITIATE_ACH"
   | "OFFER_SET"
   | "OFFER_ACCEPTED"
-  | "OFFER_NOTIFICATION_RESENT";
+  | "OFFER_NOTIFICATION_RESENT"
+  | "AI_RISK_ANALYSIS";
 
 export type AuditEntityType =
   | "APPLICATION"
