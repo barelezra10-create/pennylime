@@ -26,7 +26,7 @@ interface Props {
   campaign?: Campaign;
 }
 
-const STAGES = ["LEAD", "APPLICANT", "QUALIFIED", "APPROVED", "FUNDED", "REJECTED", "CHURN"];
+const STAGES = ["LEAD", "APPLICANT", "QUALIFIED", "APPROVED", "OFFER_ACCEPTED", "FUNDED", "REJECTED", "CHURN"];
 
 export function SmsCampaignEditorClient({ campaign }: Props) {
   const router = useRouter();

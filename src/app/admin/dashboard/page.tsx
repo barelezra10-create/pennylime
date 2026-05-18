@@ -7,7 +7,7 @@ import { DashboardTabs } from "./dashboard-tabs";
 
 export const dynamic = "force-dynamic";
 
-const APPLICANT_OR_BEYOND = ["APPLICANT", "APPROVED", "FUNDED", "REPAYING", "PAID_OFF"];
+const APPLICANT_OR_BEYOND = ["APPLICANT", "APPROVED", "OFFER_ACCEPTED", "FUNDED", "REPAYING", "PAID_OFF"];
 
 export default async function AdminDashboardPage() {
   const [

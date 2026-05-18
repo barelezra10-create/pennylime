@@ -592,6 +592,22 @@ export async function acceptOffer(input: {
     },
   });
 
+  // Advance the linked contact to OFFER_ACCEPTED unless they've already
+  // moved past it (FUNDED/REPAYING/PAID_OFF/DEFAULTED). Best-effort —
+  // failures must not break offer acceptance.
+  try {
+    const linkedContact = await prisma.contact.findFirst({
+      where: { applicationId: app.id },
+      select: { id: true, stage: true },
+    });
+    if (linkedContact && ["LEAD", "CONTACTED", "APPLICANT", "APPROVED"].includes(linkedContact.stage)) {
+      const { updateContactStage } = await import("@/actions/contacts");
+      await updateContactStage(linkedContact.id, "OFFER_ACCEPTED");
+    }
+  } catch (err) {
+    console.error("[contacts] OFFER_ACCEPTED stage update failed:", err);
+  }
+
   // Best-effort ACH disbursement using existing Increase pipeline.
   // Failures here don't block acceptance — admin can retry from the detail page.
   try {

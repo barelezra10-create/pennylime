@@ -74,7 +74,7 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-const FUNNEL_STAGES = ["LEAD", "CONTACTED", "APPLICANT", "APPROVED", "FUNDED", "REPAYING"] as const;
+const FUNNEL_STAGES = ["LEAD", "CONTACTED", "APPLICANT", "APPROVED", "OFFER_ACCEPTED", "FUNDED", "REPAYING"] as const;
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

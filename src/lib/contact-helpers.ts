@@ -3,6 +3,7 @@ export const PIPELINE_STAGES = [
   "CONTACTED",
   "APPLICANT",
   "APPROVED",
+  "OFFER_ACCEPTED",
   "REJECTED",
   "FUNDED",
   "REPAYING",
@@ -18,6 +19,7 @@ export const STAGE_COLORS: Record<string, { bg: string; text: string }> = {
   CONTACTED: { bg: "bg-[#eff6ff]", text: "text-[#2563eb]" },
   APPLICANT: { bg: "bg-[#fef9ec]", text: "text-[#b45309]" },
   APPROVED: { bg: "bg-[#f0fdf4]", text: "text-[#15803d]" },
+  OFFER_ACCEPTED: { bg: "bg-[#dcfce7]", text: "text-[#166534]" },
   REJECTED: { bg: "bg-[#fef2f2]", text: "text-[#dc2626]" },
   FUNDED: { bg: "bg-[#f0fdf4]", text: "text-[#15803d]" },
   REPAYING: { bg: "bg-[#eff6ff]", text: "text-[#2563eb]" },
@@ -31,6 +33,7 @@ export const KANBAN_STAGES: PipelineStage[] = [
   "CONTACTED",
   "APPLICANT",
   "APPROVED",
+  "OFFER_ACCEPTED",
   "FUNDED",
   "REPAYING",
 ];
