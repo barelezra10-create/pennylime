@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import {
   updateTotalIncome,
-  approveApplication,
   rejectApplication,
   revealSSN,
 } from "@/actions/applications";
@@ -153,16 +152,10 @@ export function DetailClient({
   );
   const [savingIncome, setSavingIncome] = useState(false);
 
-  /* decision */
-  const [approving, setApproving] = useState(false);
+  /* decision — rejection path only; approval is via "Set offer terms" */
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
-
-  /* approval inputs */
-  const [termMonths, setTermMonths] = useState<string>(
-    String((application as any).loanTermMonths || 6)
-  );
 
   /* funding */
   const [funding, setFunding] = useState(false);
@@ -238,31 +231,6 @@ export function DetailClient({
       toast.error("Failed to save income");
     } finally {
       setSavingIncome(false);
-    }
-  }
-
-  async function handleApprove() {
-    const term = parseInt(termMonths);
-    if (isNaN(term) || term <= 0) {
-      toast.error("Please enter a valid term");
-      return;
-    }
-    setApproving(true);
-    try {
-      const result = await approveApplication(application.id, term || undefined);
-      if (result.error) {
-        toast.error(result.error);
-        if ((result as any).reasons) {
-          (result as any).reasons.forEach((r: string) => toast.error(r));
-        }
-      } else {
-        toast.success("Application approved");
-        router.refresh();
-      }
-    } catch {
-      toast.error("Failed to approve application");
-    } finally {
-      setApproving(false);
     }
   }
 
@@ -856,61 +824,40 @@ export function DetailClient({
             </div>
           )}
 
-          {/* ── Decision Section (PENDING) ── */}
+          {/* ── Reject Application (PENDING only) ──
+              Approval now happens through "Set offer terms" below — the
+              admin picks a range + 1-3 repayment plans and the applicant
+              chooses on the offer page. Reject is the only one-click
+              decision that still lives at the application level. */}
           {application.status === "PENDING" && (
             <div className="bg-white rounded-[10px] p-6">
-              <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-4 flex items-center gap-2">
-                <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-                Decision
-              </h2>
-
-              {/* Term Input, interest rate is auto-set by risk model on approval */}
-              <div className="mb-5">
-                <div>
-                  <label htmlFor="termMonths" className="block text-sm font-medium text-black mb-1.5">
-                    Term (weeks)
-                  </label>
-                  <input
-                    id="termMonths"
-                    type="number"
-                    step="1"
-                    min="1"
-                    placeholder="6"
-                    value={termMonths}
-                    onChange={(e) => setTermMonths(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-black placeholder:text-[#a1a1aa] focus:border-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-black/10"
-                  />
+              {!showRejectForm ? (
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-[14px] font-bold tracking-[-0.02em] text-black">
+                      Reject application
+                    </h2>
+                    <p className="text-[12px] text-[#71717a] mt-0.5">
+                      Use this only when the applicant doesn't qualify. To approve, scroll down to "Set offer terms".
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowRejectForm(true)}
+                    className="inline-flex items-center gap-2 border border-[#dc2626] text-[#dc2626] bg-transparent rounded-lg px-4 py-2 font-semibold text-sm transition-colors hover:bg-[#fff1f2]"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                    Reject
+                  </button>
                 </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={handleApprove}
-                  disabled={approving}
-                  className="inline-flex items-center gap-2 bg-[#1a1a1a] text-white rounded-lg px-6 py-2.5 font-semibold text-sm disabled:opacity-50 disabled:pointer-events-none transition-colors hover:bg-black"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                  </svg>
-                  {approving ? "Approving..." : "Approve"}
-                </button>
-                <button
-                  onClick={() => setShowRejectForm(!showRejectForm)}
-                  className="inline-flex items-center gap-2 border border-[#dc2626] text-[#dc2626] bg-transparent rounded-lg px-6 py-2.5 font-semibold text-sm transition-colors hover:bg-[#fff1f2]"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                  </svg>
-                  Reject
-                </button>
-              </div>
-
-              {showRejectForm && (
-                <div className="mt-4 rounded-lg bg-[#fff1f2] p-4">
+              ) : (
+                <div>
+                  <h2 className="text-[14px] font-bold tracking-[-0.02em] text-[#dc2626] mb-3">
+                    Reject application
+                  </h2>
                   <label htmlFor="reason" className="block text-sm font-medium text-[#dc2626] mb-1.5">
-                    Rejection Reason
+                    Rejection reason (shown to applicant)
                   </label>
                   <textarea
                     id="reason"
@@ -920,13 +867,22 @@ export function DetailClient({
                     rows={3}
                     className="w-full rounded-lg border border-[#dc2626]/30 bg-white px-4 py-2.5 text-sm text-black placeholder:text-[#a1a1aa] focus:border-[#dc2626] focus:outline-none focus:ring-2 focus:ring-[#dc2626]/20 mb-3"
                   />
-                  <button
-                    onClick={handleReject}
-                    disabled={rejecting}
-                    className="border border-[#dc2626] text-[#dc2626] bg-transparent rounded-lg px-6 py-2.5 font-semibold text-sm disabled:opacity-50 disabled:pointer-events-none transition-colors hover:bg-[#fff1f2]"
-                  >
-                    {rejecting ? "Rejecting..." : "Confirm Reject"}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleReject}
+                      disabled={rejecting}
+                      className="border border-[#dc2626] text-[#dc2626] bg-transparent rounded-lg px-6 py-2.5 font-semibold text-sm disabled:opacity-50 disabled:pointer-events-none transition-colors hover:bg-[#fff1f2]"
+                    >
+                      {rejecting ? "Rejecting..." : "Confirm Reject"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowRejectForm(false)}
+                      className="text-sm text-[#71717a] hover:text-black"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
