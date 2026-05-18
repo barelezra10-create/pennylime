@@ -67,10 +67,31 @@ function RecommendationBadge({ recommendation }: { recommendation: string }) {
 
 /* ── main component ── */
 
+type AchAuthSnapshot = {
+  id: string;
+  acceptedAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  bankName: string | null;
+  bankAccountMask: string | null;
+  totalDebitAmount: number;
+  authorizationText: string;
+  agreementVersion: string | null;
+  schedule: Array<{
+    paymentNumber: number;
+    date: string;
+    amount: number;
+    principal: number;
+    interest: number;
+  }>;
+};
+
 export function DetailClient({
   application,
+  achAuth,
 }: {
   application: ApplicationWithDocuments;
+  achAuth?: AchAuthSnapshot | null;
 }) {
   const router = useRouter();
 
@@ -521,6 +542,89 @@ export function DetailClient({
               </div>
             )}
           </div>
+
+          {/* ── ACH Authorization Proof (when customer has accepted) ── */}
+          {achAuth && (
+            <div className="bg-white rounded-[10px] border-2 border-[#15803d] p-6">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black flex items-center gap-2">
+                    <svg className="h-5 w-5 text-[#15803d]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    ACH Authorization (signed)
+                  </h2>
+                  <p className="text-[11px] text-[#71717a] mt-0.5">
+                    Customer's electronic signature for ACH debit. Legal evidence if a debit is ever disputed.
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono text-[#a1a1aa]">ID: {achAuth.id.slice(0, 8)}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[12px] mb-4 pt-3 border-t border-[#f4f4f5]">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa]">Accepted at</p>
+                  <p className="font-mono text-[#0a0a0a]">{new Date(achAuth.acceptedAt).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa]">IP address</p>
+                  <p className="font-mono text-[#0a0a0a]">{achAuth.ipAddress ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa]">Bank</p>
+                  <p className="text-[#0a0a0a]">
+                    {achAuth.bankName ?? "—"}
+                    {achAuth.bankAccountMask ? ` ending in ${achAuth.bankAccountMask}` : ""}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa]">Total authorized</p>
+                  <p className="font-bold text-[#0a0a0a]">${achAuth.totalDebitAmount.toFixed(2)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa]">Agreement version</p>
+                  <p className="font-mono text-[#0a0a0a]">{achAuth.agreementVersion ?? "—"}</p>
+                </div>
+                {achAuth.userAgent && (
+                  <div className="col-span-2">
+                    <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa]">User agent</p>
+                    <p className="font-mono text-[10px] text-[#52525b] break-all">{achAuth.userAgent}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-[#fafafa] border border-[#e4e4e7] rounded-lg p-3 text-[12px] leading-relaxed text-[#52525b] mb-4">
+                <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa] mb-1.5">Exact text shown to customer</p>
+                {achAuth.authorizationText}
+              </div>
+
+              <details className="text-[12px]">
+                <summary className="cursor-pointer text-[#15803d] font-semibold hover:underline">
+                  View signed schedule ({achAuth.schedule.length} payments)
+                </summary>
+                <div className="mt-3 rounded-lg border border-[#e4e4e7] overflow-hidden">
+                  <table className="w-full text-[12px]">
+                    <thead className="bg-[#fafafa]">
+                      <tr>
+                        <th className="text-left px-3 py-1.5">#</th>
+                        <th className="text-left px-3 py-1.5">Date</th>
+                        <th className="text-right px-3 py-1.5">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {achAuth.schedule.map((p) => (
+                        <tr key={p.paymentNumber} className="border-t border-[#f4f4f5]">
+                          <td className="px-3 py-1.5">{p.paymentNumber}</td>
+                          <td className="px-3 py-1.5">{p.date}</td>
+                          <td className="px-3 py-1.5 text-right font-semibold">${p.amount.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
+          )}
 
           {/* ── Bank Statements + Verified Income ── */}
           <BankStatementsPanel

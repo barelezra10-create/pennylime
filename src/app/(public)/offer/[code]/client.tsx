@@ -243,7 +243,7 @@ export function OfferClient({
             />
             <span className="text-[13px] text-[#0a0a0a] leading-snug">
               I have read and agree to the{" "}
-              <a href="/terms" target="_blank" className="text-[#15803d] underline font-semibold">Receivables Purchase and Sale Agreement</a>
+              <a href="/agreement" target="_blank" className="text-[#15803d] underline font-semibold">Receivables Purchase and Sale Agreement</a>
               {" "}and the{" "}
               <a href="/disclosures" target="_blank" className="text-[#15803d] underline font-semibold">Cash Advance Disclosures</a>.
             </span>
