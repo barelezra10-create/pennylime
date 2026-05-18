@@ -17,6 +17,7 @@ import { getPaymentsSummary, retryPayment, waiveLateFee, chargePaymentNow } from
 import { uploadBankStatements, setVerifiedMonthlyIncome, parseBankStatementsWithAI, deleteBankStatement, deleteApplicationDocument } from "@/actions/bank-statements";
 import { runAiRiskAnalysis, getAiRiskAnalysis } from "@/actions/risk";
 import type { AiRiskAnalysis } from "@/lib/risk/ai-risk";
+import { generateSignedAgreementPdf } from "@/actions/signed-agreement";
 import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 
@@ -621,7 +622,10 @@ export function DetailClient({
                     Customer's electronic signature for ACH debit. Legal evidence if a debit is ever disputed.
                   </p>
                 </div>
-                <span className="text-[10px] font-mono text-[#a1a1aa]">ID: {achAuth.id.slice(0, 8)}</span>
+                <div className="flex items-center gap-2">
+                  <SignedAgreementPdfButton applicationId={application.id} />
+                  <span className="text-[10px] font-mono text-[#a1a1aa]">ID: {achAuth.id.slice(0, 8)}</span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[12px] mb-4 pt-3 border-t border-[#f4f4f5]">
@@ -1510,5 +1514,41 @@ function BankStatementsPanel({
         )}
       </div>
     </div>
+  );
+}
+
+function SignedAgreementPdfButton({ applicationId }: { applicationId: string }) {
+  const [generating, setGenerating] = useState(false);
+  async function handleClick() {
+    if (generating) return;
+    setGenerating(true);
+    toast.message("Generating signed-agreement PDF…", {
+      description: "Saves to CRM Files. Takes 10-30s.",
+    });
+    try {
+      const r = await generateSignedAgreementPdf(applicationId);
+      if (r.ok) {
+        toast.success(`Saved ${r.fileName} (${Math.round((r.fileSize ?? 0) / 1024)} KB) to CRM Files.`);
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={generating}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[#15803d]/30 bg-[#f0fdf4] text-[#15803d] px-3 py-1.5 text-xs font-semibold hover:bg-[#dcfce7] disabled:opacity-50 transition-colors"
+    >
+      <svg className={`h-3.5 w-3.5 ${generating ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+      </svg>
+      {generating ? "Generating…" : "Save PDF to CRM"}
+    </button>
   );
 }

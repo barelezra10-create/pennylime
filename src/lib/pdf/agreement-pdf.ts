@@ -20,6 +20,20 @@ type FillParams = {
   accountSubtype: string | null;
   approvedAmount: number;
   recommendedTerm: Term;
+  // When the borrower has accepted, we render an "Executed" version
+  // of the agreement instead of the pre-acceptance preview: real plan
+  // (not just the recommended one), real schedule, and a signed-by
+  // block at the bottom with name + timestamp + IP + UA. Showing the
+  // ink-equivalent of their click-to-sign.
+  signed?: {
+    signedName: string | null;
+    signedAt: string | null;
+    ipAddress: string | null;
+    userAgent: string | null;
+    scrolledToBottom: boolean;
+    realSchedule: Array<{ paymentNumber: number; date: string; amount: number }>;
+    agreementVersion: string | null;
+  };
 };
 
 function fmt(n: number): string {
@@ -85,8 +99,20 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
     if (s.includes("saving")) return "Savings";
     return "Checking";
   })();
-  const schedule = buildScheduleRows(params.approvedAmount, params.recommendedTerm);
+  // Signed mode uses the actual persisted schedule (from AchAuthorization
+  // / Payment rows). Preview mode computes one from the recommended plan.
+  const schedule = params.signed?.realSchedule
+    ? params.signed.realSchedule.map((p) => ({
+        paymentNumber: p.paymentNumber,
+        date: p.date,
+        amount: p.amount,
+      }))
+    : buildScheduleRows(params.approvedAmount, params.recommendedTerm);
   const totalDebit = schedule.reduce((s, p) => s + p.amount, 0);
+  // Scale the recommended-plan weekly remittance to whatever amount
+  // they actually accepted, so the cover + agreement body show the
+  // numbers that match the schedule.
+  const effectiveWeekly = schedule[0]?.amount ?? params.recommendedTerm.weeklyRemittance;
 
   const subs: Record<string, string> = {
     "[Acceptance Date]": todayLong,
@@ -101,7 +127,7 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
     "[Disbursed Amount]": fmt(params.approvedAmount),
     "[Total Receivables]": fmt(totalDebit),
     "[Specified Percentage]": "100",
-    "[Weekly Remittance]": fmt(params.recommendedTerm.weeklyRemittance),
+    "[Weekly Remittance]": fmt(effectiveWeekly),
     "[Origination Fee]": fmt(params.recommendedTerm.processingFee),
   };
   for (const [token, value] of Object.entries(subs)) {
@@ -120,12 +146,32 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
     `<tbody>${realRows}</tbody>`,
   );
 
+  // Signed footer — appended when this is the executed version.
+  const isExecuted = !!params.signed;
+  const signedFooter = isExecuted
+    ? `
+  <div class="signed-block">
+    <h3 style="margin-top:0">Borrower Electronic Signature</h3>
+    <p class="signed-name">${params.signed!.signedName ?? fullName}</p>
+    <p class="signed-meta">
+      <strong>Signed:</strong> ${params.signed!.signedAt ? new Date(params.signed!.signedAt).toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" }) : "—"}
+      &nbsp;·&nbsp; <strong>IP:</strong> ${params.signed!.ipAddress ?? "—"}
+      &nbsp;·&nbsp; <strong>Scroll-to-end confirmed:</strong> ${params.signed!.scrolledToBottom ? "Yes" : "No"}
+      ${params.signed!.agreementVersion ? `&nbsp;·&nbsp; <strong>Version:</strong> ${params.signed!.agreementVersion}` : ""}
+    </p>
+    ${params.signed!.userAgent ? `<p class="signed-ua">User-Agent: ${params.signed!.userAgent}</p>` : ""}
+    <p class="signed-recital">
+      By checking the consent boxes and clicking "Accept and Authorize" on the PennyLime offer page, Merchant adopted this electronic action as Merchant's signature under the federal E-SIGN Act and Florida's Uniform Electronic Transaction Act, with the same legal effect as an ink signature.
+    </p>
+  </div>`
+    : "";
+
   // Wrap in a print-friendly standalone document.
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>PennyLime — Offer Agreement for ${fullName}</title>
+<title>PennyLime — ${isExecuted ? "Signed" : "Offer"} Agreement for ${fullName}</title>
 <style>
   @page { size: Letter; margin: 0.6in; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #1a1a1a; font-size: 11pt; line-height: 1.5; }
@@ -150,18 +196,24 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
   .cover-amount { font-size: 28pt; font-weight: 800; color: #0a0a0a; margin: 0; letter-spacing: -0.02em; }
   .cover-row { display: flex; justify-content: space-between; margin-top: 10px; font-size: 10pt; color: #52525b; }
   .cover-row strong { color: #0a0a0a; }
+  .signed-block { margin-top: 28px; padding: 18px 20px; border: 2px solid #15803d; border-radius: 8px; background: #f0fdf4; page-break-inside: avoid; }
+  .signed-name { font-family: 'Caveat', 'Brush Script MT', cursive; font-size: 26pt; color: #0a0a0a; margin: 4px 0 8px; line-height: 1.1; }
+  .signed-meta { font-size: 10pt; color: #52525b; margin: 0 0 4px; }
+  .signed-ua { font-size: 8pt; color: #71717a; font-family: ui-monospace, Menlo, monospace; word-break: break-all; margin: 0 0 8px; }
+  .signed-recital { font-size: 9pt; color: #14532d; margin: 8px 0 0; line-height: 1.4; }
 </style>
 </head>
 <body>
   <div class="cover">
-    <p class="cover-label">Approved offer for ${fullName || "—"}</p>
+    <p class="cover-label">${isExecuted ? "Executed agreement for" : "Approved offer for"} ${fullName || "—"}</p>
     <p class="cover-amount">$${fmt(params.approvedAmount)}</p>
     <div class="cover-row">
-      <span>Recommended plan</span>
-      <span><strong>${params.recommendedTerm.durationWeeks} weeks</strong> · <strong>$${fmt(params.recommendedTerm.weeklyRemittance)}</strong>/week · Total <strong>$${fmt(totalDebit)}</strong></span>
+      <span>${isExecuted ? "Accepted plan" : "Recommended plan"}</span>
+      <span><strong>${params.recommendedTerm.durationWeeks} weeks</strong> · <strong>$${fmt(effectiveWeekly)}</strong>/week · Total <strong>$${fmt(totalDebit)}</strong></span>
     </div>
   </div>
   ${html}
+  ${signedFooter}
 </body>
 </html>`;
 }

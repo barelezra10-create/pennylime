@@ -593,6 +593,19 @@ export async function acceptOffer(input: {
     console.error("Failed to persist AchAuthorization:", err);
   }
 
+  // Generate the executed agreement PDF and save it as a Document so
+  // it appears in the borrower's CRM Files tab. Best-effort — never
+  // blocks acceptance; if Chromium / PDF gen fails the borrower is
+  // still officially accepted and the admin can re-trigger later.
+  try {
+    const { generateSignedAgreementPdf } = await import("@/actions/signed-agreement");
+    generateSignedAgreementPdf(app.id).catch((err) =>
+      console.error("[signed-agreement] PDF gen failed (non-blocking):", err),
+    );
+  } catch (err) {
+    console.error("[signed-agreement] import failed:", err);
+  }
+
   await logAudit({
     action: "OFFER_ACCEPTED",
     entityType: "APPLICATION",

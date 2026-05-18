@@ -715,6 +715,8 @@ function FilesTab({ documents }: { documents: ContactDocument[] }) {
     if (type === "BANK_STATEMENT_90D") return { text: "Bank statement", bg: "bg-[#dcfce7]", color: "text-[#15803d]" };
     if (type === "REPLY_ATTACHMENT") return { text: "Email attachment", bg: "bg-[#e0e7ff]", color: "text-[#3730a3]" };
     if (type === "PAY_STUB") return { text: "Pay stub", bg: "bg-[#fef3c7]", color: "text-[#92400e]" };
+    if (type === "PLAID_ASSET_REPORT_PDF") return { text: "Plaid Asset Report", bg: "bg-[#e0e7ff]", color: "text-[#3730a3]" };
+    if (type === "SIGNED_AGREEMENT_PDF") return { text: "Signed Agreement", bg: "bg-[#dcfce7]", color: "text-[#15803d]" };
     return { text: type, bg: "bg-[#f4f4f5]", color: "text-[#71717a]" };
   }
 
