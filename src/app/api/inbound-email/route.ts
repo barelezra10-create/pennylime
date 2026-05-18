@@ -105,13 +105,27 @@ export async function POST(req: NextRequest) {
   // panel + AI parser. Images → REPLY_ATTACHMENT (generic) so admin
   // can recategorize if it's actually an ID photo or pay stub.
   const savedAttachments: Array<{ fileName: string; documentType: string }> = [];
+  const droppedAttachments: Array<{ filename?: string; reason: string }> = [];
   if (payload.attachments && payload.attachments.length > 0 && contact.applicationId) {
     const attachments = payload.attachments.slice(0, MAX_ATTACHMENTS);
     for (const att of attachments) {
-      if (!att.filename || !att.contentBase64) continue;
+      if (!att.filename || !att.contentBase64) {
+        droppedAttachments.push({
+          filename: att.filename,
+          reason: !att.filename ? "missing filename" : "missing contentBase64",
+        });
+        continue;
+      }
       try {
         const buffer = Buffer.from(att.contentBase64, "base64");
-        if (buffer.length === 0 || buffer.length > MAX_ATTACHMENT_BYTES) continue;
+        if (buffer.length === 0) {
+          droppedAttachments.push({ filename: att.filename, reason: "empty buffer after decode" });
+          continue;
+        }
+        if (buffer.length > MAX_ATTACHMENT_BYTES) {
+          droppedAttachments.push({ filename: att.filename, reason: `oversize (${buffer.length} > ${MAX_ATTACHMENT_BYTES})` });
+          continue;
+        }
         const mime = att.mimeType || "application/octet-stream";
         const isStatementType =
           mime === "application/pdf" ||
@@ -132,9 +146,50 @@ export async function POST(req: NextRequest) {
         });
         savedAttachments.push({ fileName: att.filename, documentType });
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
         console.error("Failed to save inbound attachment:", att.filename, err);
+        droppedAttachments.push({ filename: att.filename, reason: `save error: ${msg.slice(0, 200)}` });
       }
     }
+  }
+
+  // Diagnostic flag: if the body suggests an attachment ("attached",
+  // "here you go", "see attached", "PDF") but we received zero, surface
+  // it in the Activity title with a ⚠ so admin sees it at a glance.
+  // Also log the raw payload metadata to audit for debugging the
+  // upstream forwarder (Gmail Apps Script, Cloudflare, etc.).
+  const bodyLooksLikeItHasAttachment =
+    /\b(attached|attachment|here you go|here's|here is|please find|pdf|csv|statement)\b/i.test(
+      bodyText,
+    );
+  const noAttachmentsReceived =
+    !payload.attachments || payload.attachments.length === 0;
+  const attachmentMismatch = bodyLooksLikeItHasAttachment && noAttachmentsReceived;
+
+  if (attachmentMismatch || droppedAttachments.length > 0) {
+    await prisma.auditLog.create({
+      data: {
+        action: "INBOUND_EMAIL_ATTACHMENT_ISSUE",
+        entityType: "EMAIL",
+        entityId: payload.messageId ?? `${contact.id}-${Date.now()}`,
+        performedBy: fromEmail,
+        details: JSON.stringify({
+          contactId: contact.id,
+          applicationId: contact.applicationId,
+          subject,
+          payloadAttachmentCount: payload.attachments?.length ?? 0,
+          payloadAttachmentSummary:
+            payload.attachments?.map((a) => ({
+              filename: a.filename,
+              mimeType: a.mimeType,
+              base64Length: a.contentBase64?.length ?? 0,
+            })) ?? [],
+          dropped: droppedAttachments,
+          attachmentMismatch,
+          bodyPreview: bodyText.slice(0, 300),
+        }),
+      },
+    }).catch((err) => console.error("[inbound] audit log failed:", err));
   }
 
   // Persist as both EmailEvent (analytics) and Activity (timeline).
@@ -150,6 +205,8 @@ export async function POST(req: NextRequest) {
   const attachSummary =
     savedAttachments.length > 0
       ? ` (${savedAttachments.length} attachment${savedAttachments.length > 1 ? "s" : ""}: ${savedAttachments.map((a) => a.fileName).join(", ")})`
+      : attachmentMismatch
+      ? ` ⚠ ATTACHMENT EXPECTED BUT NOT RECEIVED`
       : "";
 
   await prisma.activity.create({

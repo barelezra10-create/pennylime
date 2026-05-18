@@ -3,59 +3,58 @@
 import { useRouter } from "next/navigation";
 import type { ApplicationWithDocuments } from "@/types";
 
-function StatusBadge({ status }: { status: string }) {
-  const config: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-    APPROVED: {
-      bg: "bg-[#f0f5f0]",
-      text: "text-[#15803d]",
-      dot: "bg-[#15803d]",
-      label: "Approved",
-    },
-    REJECTED: {
-      bg: "bg-[#fff1f2]",
-      text: "text-[#dc2626]",
-      dot: "bg-[#dc2626]",
-      label: "Rejected",
-    },
-    PENDING: {
-      bg: "bg-[#fef9ec]",
-      text: "text-[#b45309]",
-      dot: "bg-[#b45309]",
-      label: "Pending",
-    },
-    ACTIVE: {
-      bg: "bg-[#eef4ff]",
-      text: "text-[#2563eb]",
-      dot: "bg-[#2563eb]",
-      label: "Active",
-    },
-    LATE: {
-      bg: "bg-[#fff1f2]",
-      text: "text-[#dc2626]",
-      dot: "bg-[#dc2626]",
-      label: "Late",
-    },
-    COLLECTIONS: {
-      bg: "bg-[#fff1f2]",
-      text: "text-[#dc2626]",
-      dot: "bg-[#dc2626]",
-      label: "Collections",
-    },
-    DEFAULTED: {
-      bg: "bg-[#fff1f2]",
-      text: "text-[#dc2626]",
-      dot: "bg-[#dc2626]",
-      label: "Defaulted",
-    },
-    PAID_OFF: {
-      bg: "bg-[#f0f5f0]",
-      text: "text-[#15803d]",
-      dot: "bg-[#15803d]",
-      label: "Paid Off",
-    },
-  };
+type BadgeStyle = { bg: string; text: string; dot: string; label: string };
 
-  const c = config[status] ?? config.PENDING;
+const GREEN: Omit<BadgeStyle, "label"> = {
+  bg: "bg-[#f0f5f0]",
+  text: "text-[#15803d]",
+  dot: "bg-[#15803d]",
+};
+const RED: Omit<BadgeStyle, "label"> = {
+  bg: "bg-[#fff1f2]",
+  text: "text-[#dc2626]",
+  dot: "bg-[#dc2626]",
+};
+const AMBER: Omit<BadgeStyle, "label"> = {
+  bg: "bg-[#fef9ec]",
+  text: "text-[#b45309]",
+  dot: "bg-[#b45309]",
+};
+const BLUE: Omit<BadgeStyle, "label"> = {
+  bg: "bg-[#eef4ff]",
+  text: "text-[#2563eb]",
+  dot: "bg-[#2563eb]",
+};
+
+function StatusBadge({ status, offerStatus }: { status: string; offerStatus?: string | null }) {
+  let c: BadgeStyle;
+
+  if (status === "APPROVED") {
+    switch (offerStatus) {
+      case "OFFERED":
+        c = { ...BLUE, label: "Offer Sent" };
+        break;
+      case "ACCEPTED":
+        c = { ...GREEN, label: "Offer Accepted" };
+        break;
+      case "DECLINED":
+        c = { ...RED, label: "Offer Declined" };
+        break;
+      default:
+        c = { ...GREEN, label: "Approved" };
+    }
+  } else {
+    const config: Record<string, BadgeStyle> = {
+      REJECTED: { ...RED, label: "Rejected" },
+      PENDING: { ...AMBER, label: "Pending" },
+      ACTIVE: { ...BLUE, label: "Active" },
+      LATE: { ...RED, label: "Late" },
+      COLLECTIONS: { ...RED, label: "Collections" },
+      DEFAULTED: { ...RED, label: "Defaulted" },
+      PAID_OFF: { ...GREEN, label: "Paid Off" },
+    };
+    c = config[status] ?? { ...AMBER, label: "Pending" };
+  }
 
   return (
     <span
@@ -200,7 +199,7 @@ export function ApplicationTable({
                 </span>
               </td>
               <td className="px-6 py-4">
-                <StatusBadge status={app.status} />
+                <StatusBadge status={app.status} offerStatus={app.offerStatus} />
               </td>
             </tr>
           ))}
