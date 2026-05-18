@@ -189,6 +189,8 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       applicationCode,
       loanAmount: Number(application.loanAmount),
     }),
+    contactId: linkedContactId ?? undefined,
+    templateId: "application-submitted",
   }).catch((err) => console.error("[email] submit send failed:", err));
 
   sendSms({
@@ -340,6 +342,8 @@ export async function approveApplication(
       interestRate,
       loanTermMonths: loanTermMonths || application.loanTermMonths,
     }),
+    contactId: linkedContact?.id,
+    templateId: "application-approved",
   }).catch((err) => console.error("[email] approved send failed:", err));
 
   sendSms({
@@ -396,6 +400,8 @@ export async function rejectApplication(applicationId: string, reason: string) {
       firstName: application.firstName,
       reason,
     }),
+    contactId: linkedContact?.id,
+    templateId: "application-rejected",
   }).catch((err) => console.error("[email] rejected send failed:", err));
 
   return { success: true, application };
@@ -543,6 +549,8 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
       firstDueDate: schedule[0].dueDate,
       schedule,
     }),
+    contactId: linkedContact?.id,
+    templateId: "advance-funded",
   });
 
   sendSms({

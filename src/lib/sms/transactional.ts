@@ -36,6 +36,18 @@ export function applicationApprovedSms(p: {
   return `PennyLime: Approved, ${p.firstName}. ${money(p.loanAmount)} advance is ready. ${statusLine(p.applicationCode)}`;
 }
 
+export function offerReadySms(p: {
+  firstName: string;
+  applicationCode: string;
+  offerToken: string;
+  approvedAmount: number;
+}): string {
+  // Full token is required — server validates exact match. Length runs
+  // ~145 chars, still fits a single GSM-7 segment.
+  const url = `${SHORT_URL}/offer/${p.applicationCode}?t=${p.offerToken}`;
+  return `PennyLime: Approved ${p.firstName}! ${money(p.approvedAmount)} advance ready. Review & accept: ${url}`;
+}
+
 export function advanceFundedSms(p: {
   firstName: string;
   fundedAmount: number;

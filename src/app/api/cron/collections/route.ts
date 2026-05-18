@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
   for (const app of applications) {
     if (app.payments.length === 0) continue;
 
+    // Cached contact lookup for CRM logging on any email we send below.
+    const linkedContact = await prisma.contact.findFirst({
+      where: { applicationId: app.id },
+      select: { id: true },
+    });
+
       // DEFAULTED escalation: COLLECTIONS for 90+ days
       if (app.status === "COLLECTIONS") {
         const ruleMap = rules; // rules is already loaded as Record<string, string>
@@ -153,6 +159,8 @@ export async function POST(request: NextRequest) {
           applicationCode: app.applicationCode,
           totalOverdue,
         }),
+        contactId: linkedContact?.id,
+        templateId: "collection-escalation",
       });
 
       escalated++;
@@ -191,6 +199,8 @@ export async function POST(request: NextRequest) {
             totalOverdue,
             isSecondWarning: true,
           }),
+          contactId: linkedContact?.id,
+          templateId: "collection-warning",
         });
 
         warnings14++;
@@ -221,6 +231,8 @@ export async function POST(request: NextRequest) {
             totalOverdue,
             isSecondWarning: false,
           }),
+          contactId: linkedContact?.id,
+          templateId: "collection-warning",
         });
 
         warnings7++;

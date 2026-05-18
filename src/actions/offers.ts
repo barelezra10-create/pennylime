@@ -89,11 +89,15 @@ export async function setOfferTerms(input: {
   // Reuse existing token if already set; otherwise mint a fresh one.
   const existing = await prisma.application.findUnique({
     where: { id: input.applicationId },
-    select: { offerToken: true },
+    select: { offerToken: true, offerStatus: true },
   });
   const offerToken = existing?.offerToken ?? randomBytes(24).toString("hex");
+  // Only notify on the first time an offer goes out. Edits to an
+  // existing OFFERED record (e.g. Bar tweaking the plans, recompute
+  // button) shouldn't spam the borrower with duplicate emails.
+  const wasFirstOffer = existing?.offerStatus !== "OFFERED";
 
-  await prisma.application.update({
+  const updated = await prisma.application.update({
     where: { id: input.applicationId },
     data: {
       offerStatus: "OFFERED",
@@ -102,6 +106,14 @@ export async function setOfferTerms(input: {
       offeredTermsJson: JSON.stringify(input.terms),
       offerToken,
       offerSentAt: new Date(),
+    },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      applicationCode: true,
     },
   });
 
@@ -114,10 +126,106 @@ export async function setOfferTerms(input: {
       min: input.offeredMinAmount,
       max: input.offeredMaxAmount,
       planCount: input.terms.length,
+      notified: wasFirstOffer,
     },
   });
 
-  return { ok: true as const, offerToken };
+  // Fire the offer-ready notification on first send. Pulled out into
+  // a helper so callers (and tests) can also trigger it explicitly.
+  if (wasFirstOffer) {
+    await sendOfferReadyNotification({
+      applicationId: input.applicationId,
+      email: updated.email,
+      phone: updated.phone,
+      firstName: updated.firstName,
+      applicationCode: updated.applicationCode,
+      offerToken,
+      approvedAmount: input.offeredMaxAmount,
+      terms: input.terms,
+    }).catch((err) =>
+      console.error("[offer-ready] notification dispatch failed:", err),
+    );
+  }
+
+  return { ok: true as const, offerToken, notified: wasFirstOffer };
+}
+
+/**
+ * Fires the offer-ready email + SMS for a freshly approved applicant.
+ * Idempotent at the dispatch level — caller decides when to invoke.
+ * Always passes contactId when there's a linked Contact so the CRM
+ * timeline shows the touch.
+ */
+export async function sendOfferReadyNotification(input: {
+  applicationId: string;
+  email: string;
+  phone: string | null;
+  firstName: string;
+  applicationCode: string;
+  offerToken: string;
+  approvedAmount: number;
+  terms: OfferTerm[];
+}) {
+  const recommended = input.terms.find((t) => t.isRecommended) ?? input.terms[0];
+  if (!recommended) return;
+
+  // Back-derive the weekly compound rate from the recommended plan so
+  // the customer-facing copy says "5% per week" without us having to
+  // store the rate explicitly on the application.
+  let weeklyRate = 0;
+  if (recommended.disbursedAmount > 0 && recommended.durationWeeks > 0 && recommended.weeklyRemittance > 0) {
+    const total = recommended.weeklyRemittance * recommended.durationWeeks;
+    const ratio = total / recommended.disbursedAmount;
+    if (ratio > 1) {
+      weeklyRate = Math.round((Math.pow(ratio, 1 / recommended.durationWeeks) - 1) * 10000) / 100;
+    }
+  }
+  const totalRepaid = recommended.weeklyRemittance * recommended.durationWeeks;
+
+  // Find the linked CRM contact so EmailEvent + Activity + SmsMessage
+  // all attach to the timeline.
+  const contact = await prisma.contact.findFirst({
+    where: { applicationId: input.applicationId },
+    select: { id: true },
+  });
+
+  // Email
+  const { offerReadyEmail } = await import("@/lib/emails/offer-ready");
+  const { sendEmail } = await import("@/lib/emails/send");
+  const emailContent = offerReadyEmail({
+    firstName: input.firstName,
+    applicationCode: input.applicationCode,
+    offerToken: input.offerToken,
+    approvedAmount: input.approvedAmount,
+    weeklyRate,
+    recommendedDurationWeeks: recommended.durationWeeks,
+    recommendedWeeklyRemittance: recommended.weeklyRemittance,
+    recommendedTotalRepaid: totalRepaid,
+  });
+  await sendEmail({
+    to: input.email,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    contactId: contact?.id,
+    templateId: "offer-ready",
+  });
+
+  // SMS (only if we have a phone)
+  if (input.phone) {
+    const { offerReadySms } = await import("@/lib/sms/transactional");
+    const { sendSms } = await import("@/lib/sms/twilio");
+    await sendSms({
+      to: input.phone,
+      body: offerReadySms({
+        firstName: input.firstName,
+        applicationCode: input.applicationCode,
+        offerToken: input.offerToken,
+        approvedAmount: input.approvedAmount,
+      }),
+      contactId: contact?.id,
+      templateId: "offer-ready",
+    });
+  }
 }
 
 /**

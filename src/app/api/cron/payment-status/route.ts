@@ -115,6 +115,10 @@ export async function POST(request: NextRequest) {
       }
 
       // Send success email
+      const successContact = await prisma.contact.findFirst({
+        where: { applicationId: payment.applicationId },
+        select: { id: true },
+      });
       await sendEmail({
         to: payment.application.email,
         ...paymentSuccessEmail({
@@ -124,6 +128,8 @@ export async function POST(request: NextRequest) {
           amount: Number(payment.amount) + Number(payment.lateFee),
           remainingBalance: remaining,
         }),
+        contactId: successContact?.id,
+        templateId: "payment-success",
       });
 
       settled++;
@@ -137,6 +143,10 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      const failContact = await prisma.contact.findFirst({
+        where: { applicationId: payment.applicationId },
+        select: { id: true },
+      });
       // Send failure email
       await sendEmail({
         to: payment.application.email,
@@ -146,11 +156,8 @@ export async function POST(request: NextRequest) {
           paymentNumber: payment.paymentNumber,
           amount: Number(payment.amount),
         }),
-      });
-
-      const failContact = await prisma.contact.findFirst({
-        where: { applicationId: payment.applicationId },
-        select: { id: true },
+        contactId: failContact?.id,
+        templateId: "payment-failed",
       });
       await sendSms({
         to: payment.application.phone,

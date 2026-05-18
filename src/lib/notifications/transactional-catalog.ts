@@ -5,6 +5,7 @@
 import { applicationSubmittedEmail } from "@/lib/emails/application-submitted";
 import { applicationApprovedEmail } from "@/lib/emails/application-approved";
 import { applicationRejectedEmail } from "@/lib/emails/application-rejected";
+import { offerReadyEmail } from "@/lib/emails/offer-ready";
 import { advanceFundedEmail } from "@/lib/emails/advance-funded";
 import { paymentReminderEmail } from "@/lib/emails/payment-reminder";
 import { paymentSuccessEmail } from "@/lib/emails/payment-success";
@@ -16,6 +17,7 @@ import { wrapTransactionalEmail } from "@/lib/emails/branded-wrapper";
 import {
   applicationSubmittedSms,
   applicationApprovedSms,
+  offerReadySms,
   advanceFundedSms,
   paymentReminderSms,
   paymentFailedSms,
@@ -79,6 +81,30 @@ export const TRANSACTIONAL_CATALOG: CatalogEntry[] = [
       firstName: "Alex",
       applicationCode: "ABC12345",
       loanAmount: 2500,
+    }),
+  },
+  {
+    id: "offer-ready",
+    name: "Offer Ready",
+    description: "Sent the moment an admin sets offer terms on a PENDING application — includes the offer link, approved amount, and recommended weekly plan.",
+    trigger: "src/actions/offers.ts → setOfferTerms() (on first PENDING→OFFERED transition)",
+    source: "src/lib/emails/offer-ready.ts + src/lib/sms/transactional.ts",
+    channels: ["email", "sms"],
+    email: offerReadyEmail({
+      firstName: "Alex",
+      applicationCode: "ABC12345",
+      offerToken: "sampletoken1234567890",
+      approvedAmount: 2500,
+      weeklyRate: 5,
+      recommendedDurationWeeks: 10,
+      recommendedWeeklyRemittance: 407.22,
+      recommendedTotalRepaid: 4072.20,
+    }),
+    sms: offerReadySms({
+      firstName: "Alex",
+      applicationCode: "ABC12345",
+      offerToken: "sampletoken1234567890",
+      approvedAmount: 2500,
     }),
   },
   {

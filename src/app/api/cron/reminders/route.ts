@@ -41,6 +41,10 @@ export async function POST(request: NextRequest) {
       }))
     );
 
+    const contact = await prisma.contact.findFirst({
+      where: { applicationId: payment.applicationId },
+      select: { id: true },
+    });
     await sendEmail({
       to: payment.application.email,
       ...paymentReminderEmail({
@@ -51,12 +55,10 @@ export async function POST(request: NextRequest) {
         dueDate: payment.dueDate,
         remainingBalance: remaining,
       }),
+      contactId: contact?.id,
+      templateId: "payment-reminder",
     });
 
-    const contact = await prisma.contact.findFirst({
-      where: { applicationId: payment.applicationId },
-      select: { id: true },
-    });
     await sendSms({
       to: payment.application.phone,
       body: paymentReminderSms({
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
         dueDate: payment.dueDate,
       }),
       contactId: contact?.id,
+      templateId: "payment-reminder",
     });
 
     sent++;

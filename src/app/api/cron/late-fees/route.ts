@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
       details: { lateFeeAmount, daysOverdue: graceDays + 1 },
     });
 
+    const contact = await prisma.contact.findFirst({
+      where: { applicationId: payment.applicationId },
+      select: { id: true },
+    });
     await sendEmail({
       to: payment.application.email,
       ...lateFeeAddedEmail({
@@ -56,12 +60,10 @@ export async function POST(request: NextRequest) {
         originalAmount: Number(payment.amount),
         totalDue: Number(payment.amount) + lateFeeAmount,
       }),
+      contactId: contact?.id,
+      templateId: "late-fee-added",
     });
 
-    const contact = await prisma.contact.findFirst({
-      where: { applicationId: payment.applicationId },
-      select: { id: true },
-    });
     await sendSms({
       to: payment.application.phone,
       body: lateFeeAddedSms({
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
         paymentNumber: payment.paymentNumber,
       }),
       contactId: contact?.id,
+      templateId: "late-fee-added",
     });
 
     feesAdded++;

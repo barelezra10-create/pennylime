@@ -63,6 +63,10 @@ export async function POST(request: NextRequest) {
         data: { status: "FAILED", retryCount: { increment: 1 }, lastRetryAt: new Date() },
       });
 
+      const failContact = await prisma.contact.findFirst({
+        where: { applicationId: payment.applicationId },
+        select: { id: true },
+      });
       // Send failure email to borrower (spec: Day 0 failure notification)
       await sendEmail({
         to: payment.application.email,
@@ -72,11 +76,8 @@ export async function POST(request: NextRequest) {
           paymentNumber: payment.paymentNumber,
           amount: Number(payment.amount),
         }),
-      });
-
-      const failContact = await prisma.contact.findFirst({
-        where: { applicationId: payment.applicationId },
-        select: { id: true },
+        contactId: failContact?.id,
+        templateId: "payment-failed",
       });
       await sendSms({
         to: payment.application.phone,
