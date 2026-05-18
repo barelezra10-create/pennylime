@@ -62,8 +62,67 @@ export function SetOfferTermsForm({
     setTerms(buildDefaultTerms(genPrincipal, weeklyRate));
   }
 
+  // Recompute weekly remittance + cost of capital from disbursed + duration +
+  // the form's current weekly rate. Keeps a plan row internally consistent
+  // when the admin tweaks duration or disbursed amount after auto-generate.
+  function syncRowFromRate(row: OfferTerm, rate: number): OfferTerm {
+    if (row.disbursedAmount <= 0 || row.durationWeeks <= 0 || rate <= 0) {
+      return row;
+    }
+    const t = computeAdvanceTerms({
+      principal: row.disbursedAmount,
+      weeklyRate: rate,
+      termWeeks: row.durationWeeks,
+    });
+    return {
+      ...row,
+      weeklyRemittance: t.weeklyPayment,
+      totalCostOfCapital: t.totalCostOfCapital,
+    };
+  }
+
   function updateTerm(idx: number, patch: Partial<OfferTerm>) {
-    setTerms((prev) => prev.map((t, i) => (i === idx ? { ...t, ...patch } : t)));
+    setTerms((prev) =>
+      prev.map((t, i) => {
+        if (i !== idx) return t;
+        const merged = { ...t, ...patch };
+        // If the admin touched duration or disbursed amount, recompute
+        // the derived numbers so a plan can never silently save with
+        // weekly × duration mismatching disbursed + cost.
+        const recompute =
+          patch.durationWeeks !== undefined ||
+          patch.disbursedAmount !== undefined;
+        return recompute ? syncRowFromRate(merged, weeklyRate) : merged;
+      }),
+    );
+  }
+
+  // When the admin changes the global weekly rate, re-sync every row
+  // that has duration + disbursed amount set. Manual rate-free rows
+  // (weekly = 0 or duration = 0) are left alone.
+  function handleWeeklyRateChange(rate: number) {
+    setWeeklyRate(rate);
+    setTerms((prev) => prev.map((t) => syncRowFromRate(t, rate)));
+  }
+
+  // Detect rows where the saved numbers don't reconcile — i.e.
+  // weeklyRemittance × durationWeeks ≠ disbursedAmount + totalCostOfCapital.
+  // We tolerate 1 cent of rounding noise per row.
+  const inconsistentRows = terms.reduce<number[]>((acc, t, i) => {
+    if (
+      t.disbursedAmount <= 0 ||
+      t.durationWeeks <= 0 ||
+      t.weeklyRemittance <= 0
+    ) return acc;
+    const expectedTotal = t.weeklyRemittance * t.durationWeeks;
+    const reportedTotal = t.disbursedAmount + t.totalCostOfCapital;
+    if (Math.abs(expectedTotal - reportedTotal) > 0.05) acc.push(i + 1);
+    return acc;
+  }, []);
+
+  function recomputeAllAtCurrentRate() {
+    setTerms((prev) => prev.map((t) => syncRowFromRate(t, weeklyRate)));
+    toast.success("Plan values recomputed at the current weekly rate.");
   }
 
   function setRecommended(idx: number) {
@@ -183,7 +242,7 @@ export function SetOfferTermsForm({
           <FieldNum
             label="Weekly rate (%)"
             value={weeklyRate}
-            onChange={setWeeklyRate}
+            onChange={handleWeeklyRateChange}
           />
           <div className="flex items-end">
             <button
@@ -198,6 +257,25 @@ export function SetOfferTermsForm({
       </div>
 
       {/* Terms */}
+      {inconsistentRows.length > 0 && (
+        <div className="mb-3 rounded-lg border border-[#fcd34d] bg-[#fffbeb] p-3 flex items-start justify-between gap-3">
+          <div className="text-[12px] text-[#78350f]">
+            <p className="font-bold">
+              Plan {inconsistentRows.join(", ")} {inconsistentRows.length > 1 ? "have" : "has"} inconsistent values.
+            </p>
+            <p className="text-[11px] mt-0.5 text-[#92400e]">
+              Weekly × duration doesn't equal disbursed + cost. Click "Recompute" to recalculate using the current weekly rate ({weeklyRate}%).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={recomputeAllAtCurrentRate}
+            className="shrink-0 bg-[#b45309] text-white text-[12px] font-semibold rounded-lg px-3 py-1.5 hover:bg-[#92400e]"
+          >
+            Recompute
+          </button>
+        </div>
+      )}
       <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a] font-semibold mb-2">
         Repayment plans (1-3)
       </p>
@@ -254,6 +332,17 @@ export function SetOfferTermsForm({
                 onChange={(v) => updateTerm(idx, { processingFee: v })}
               />
             </div>
+            {/* Inline sanity check — what the borrower actually pays in
+                total under this row, so the admin can eyeball the math. */}
+            {t.weeklyRemittance > 0 && t.durationWeeks > 0 && (
+              <p className="mt-2 text-[11px] text-[#52525b]">
+                Total repaid:{" "}
+                <span className="font-semibold text-[#0a0a0a]">
+                  ${(t.weeklyRemittance * t.durationWeeks).toFixed(2)}
+                </span>{" "}
+                = {t.durationWeeks} × ${t.weeklyRemittance.toFixed(2)}
+              </p>
+            )}
           </div>
         ))}
         {terms.length < 3 && (
