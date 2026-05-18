@@ -161,11 +161,60 @@ export function DetailClient({
 
   /* funding */
   const [funding, setFunding] = useState(false);
-  const [fundAmount, setFundAmount] = useState(String(Number(application.loanAmount)));
+  const [fundAmount, setFundAmount] = useState(
+    String(
+      application.acceptedAmount
+        ? Number(application.acceptedAmount)
+        : application.offeredMaxAmount
+        ? Number(application.offeredMaxAmount)
+        : Number(application.loanAmount),
+    ),
+  );
 
   /* derived values */
-  const loanAmount = Number(application.loanAmount);
+  const requestedAmount = Number(application.loanAmount);
   const totalIncome = application.totalIncome ? Number(application.totalIncome) : null;
+
+  // Resolve the actual deal numbers from the offer state, not the
+  // applicant's request. Pedro asked for $4,100; Bar approved $2,500
+  // at 5% weekly — the admin headline should reflect what was
+  // approved/accepted, with the original request as a sub-line.
+  const offerTerms: Array<{
+    weeklyRemittance: number;
+    durationWeeks: number;
+    disbursedAmount: number;
+    totalCostOfCapital: number;
+    processingFee: number;
+    isRecommended: boolean;
+  }> = (() => {
+    try {
+      return application.offeredTermsJson ? JSON.parse(application.offeredTermsJson) : [];
+    } catch {
+      return [];
+    }
+  })();
+  const recommendedTerm =
+    offerTerms.find((t) => t.isRecommended) ?? offerTerms[0] ?? null;
+  const approvedAmount = application.acceptedAmount
+    ? Number(application.acceptedAmount)
+    : application.offeredMaxAmount
+    ? Number(application.offeredMaxAmount)
+    : null;
+  const displayAmount = approvedAmount ?? requestedAmount;
+  const displayTermWeeks = recommendedTerm?.durationWeeks ?? null;
+  // Back-derive the weekly compound rate from any saved plan so the
+  // admin sees what rate the borrower is being offered. Uses the
+  // identity: total / principal = (1 + r)^weeks.
+  const derivedWeeklyRate = (() => {
+    if (!recommendedTerm) return null;
+    const { weeklyRemittance, durationWeeks, disbursedAmount } = recommendedTerm;
+    if (disbursedAmount <= 0 || durationWeeks <= 0 || weeklyRemittance <= 0) return null;
+    const total = weeklyRemittance * durationWeeks;
+    const ratio = total / disbursedAmount;
+    if (ratio <= 1) return 0;
+    const rate = Math.pow(ratio, 1 / durationWeeks) - 1;
+    return Math.round(rate * 10000) / 100; // e.g. 5.00
+  })();
 
   /* ── handlers ── */
 
@@ -355,10 +404,22 @@ export function DetailClient({
                 </p>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Advance Amount</p>
-                <p className="mt-1 text-2xl font-bold text-[#15803d]">
-                  ${fmt(loanAmount)}
+                <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">
+                  {approvedAmount ? "Approved Amount" : "Requested Amount"}
                 </p>
+                <p className="mt-1 text-2xl font-bold text-[#15803d]">
+                  ${fmt(displayAmount)}
+                </p>
+                {approvedAmount && approvedAmount !== requestedAmount && (
+                  <p className="mt-0.5 text-[11px] text-[#71717a]">
+                    Requested: ${fmt(requestedAmount)}
+                  </p>
+                )}
+                {derivedWeeklyRate != null && (
+                  <p className="mt-0.5 text-[11px] text-[#52525b]">
+                    @ <span className="font-semibold text-[#0a0a0a]">{derivedWeeklyRate}%</span> / week compounded
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Submitted</p>
@@ -378,7 +439,11 @@ export function DetailClient({
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Term</p>
-                <p className="mt-1 text-sm text-black">{(application as any).loanTermMonths || "N/A"} weeks</p>
+                <p className="mt-1 text-sm text-black">
+                  {displayTermWeeks
+                    ? `${displayTermWeeks} weeks${recommendedTerm?.isRecommended ? " (recommended)" : ""}`
+                    : `${(application as any).loanTermMonths ?? "N/A"} weeks (requested)`}
+                </p>
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Bank Link Status</p>
