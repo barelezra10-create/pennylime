@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getInboxBadges, type InboxBadges } from "@/actions/inbox-badges";
 
 type SubItem = { href: string; label: string };
 
@@ -151,6 +153,47 @@ export function AdminTopNav({ userName }: { userName: string }) {
   const activeTab = findActiveTab(pathname);
   const activeSubHref = findActiveSub(pathname, activeTab.subnav);
 
+  // Poll for inbox badges (pending chats + recent inbound emails) every
+  // 30s. Triggers a tab title prefix + favicon badge when there's
+  // something needing attention.
+  const [badges, setBadges] = useState<InboxBadges>({ pendingChats: 0, recentInboundEmails: 0 });
+  useEffect(() => {
+    let cancelled = false;
+    async function poll() {
+      try {
+        const result = await getInboxBadges();
+        if (!cancelled) setBadges(result);
+      } catch {
+        /* swallow */
+      }
+    }
+    poll();
+    const id = setInterval(poll, 30_000);
+    // Re-poll whenever the tab regains focus so admin sees fresh state
+    // when they switch back to a stale tab.
+    const focusHandler = () => poll();
+    window.addEventListener("focus", focusHandler);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      window.removeEventListener("focus", focusHandler);
+    };
+  }, []);
+
+  // Set the document title prefix with the total so the unread state
+  // is visible even when the admin is on another browser tab.
+  useEffect(() => {
+    const total = badges.pendingChats + badges.recentInboundEmails;
+    const baseTitle = document.title.replace(/^\(\d+\)\s*/, "");
+    document.title = total > 0 ? `(${total}) ${baseTitle}` : baseTitle;
+  }, [badges]);
+
+  // Map tab id → badge count so we can render the right number per tab.
+  const tabBadges: Record<string, number> = {
+    crm: badges.recentInboundEmails,
+    support: badges.pendingChats,
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#e4e4e7]">
       <div className="px-6">
@@ -176,6 +219,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
         <nav className="-mb-px flex items-center gap-1 overflow-x-auto">
           {TABS.map((t) => {
             const active = t.id === activeTab.id;
+            const badgeCount = tabBadges[t.id] ?? 0;
             return (
               <Link
                 key={t.id}
@@ -184,8 +228,13 @@ export function AdminTopNav({ userName }: { userName: string }) {
                   active ? "text-black" : "text-[#71717a] hover:text-black"
                 }`}
               >
-                <span className="mr-1.5 text-[#15803d]">{t.icon}</span>
+                <span className={`mr-1.5 ${badgeCount > 0 ? "text-[#dc2626]" : "text-[#15803d]"}`}>{t.icon}</span>
                 {t.label}
+                {badgeCount > 0 && (
+                  <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold leading-none animate-pulse">
+                    {badgeCount > 99 ? "99+" : badgeCount}
+                  </span>
+                )}
                 {active && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#15803d]" />}
               </Link>
             );
