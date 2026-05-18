@@ -23,6 +23,10 @@ model Application {
   plaidAccountId  String?
   plaidItemId     String?
   plaidUserToken  String?
+  // Token returned by /asset_report/create. Plaid uses it as the key
+  // to /asset_report/get. Stored so the webhook handler can fetch the
+  // report when ASSETS:PRODUCT_READY fires.
+  plaidAssetReportToken String?
   plaidLinkStale  Boolean   @default(false)
   monthlyIncome   Decimal?
   totalIncome     Decimal?

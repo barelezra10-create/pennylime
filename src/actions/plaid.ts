@@ -426,3 +426,150 @@ export async function previewPlaidIncome(input: { encryptedAccessToken: string }
     };
   }
 }
+
+/* ───────────────────────────────────────────────────────────────
+   PLAID ASSETS — automated underwriting income fetch.
+
+   Two-step async flow:
+   1. createAssetReport: POST /asset_report/create with the access
+      token. Plaid returns an asset_report_token. We persist it on
+      the Application row. Plaid then builds the report (10-60s).
+   2. fetchAssetReport: POST /asset_report/get with that token.
+      Returns the structured transactions/balances/identity payload.
+      Called from the Plaid webhook handler when ASSETS:PRODUCT_READY
+      fires, OR by a manual admin trigger as a fallback.
+
+   Same downstream effect as Plaid Transactions / Bank Income:
+   populates Application.monthlyIncome, avgWeeklyIncome,
+   depositCount90d, largestDeposit, depositCadence, preferredChargeDay.
+   ─────────────────────────────────────────────────────────────── */
+
+export async function createAssetReport(applicationId: string) {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { id: true, plaidAccessToken: true, plaidAssetReportToken: true },
+  });
+  if (!application?.plaidAccessToken) {
+    return { success: false as const, error: "No Plaid connection" };
+  }
+  // Don't double-create — if we already have a token in flight, just
+  // re-trigger the get path (webhook may have fired earlier).
+  if (application.plaidAssetReportToken) {
+    return { success: true as const, alreadyCreated: true, token: application.plaidAssetReportToken };
+  }
+  try {
+    const accessToken = decrypt(application.plaidAccessToken);
+    const response = await plaidClient.assetReportCreate({
+      access_tokens: [accessToken],
+      days_requested: 90,
+      options: {
+        client_report_id: applicationId,
+        // Optional but useful for audit reports — admin's name as report owner.
+        webhook: process.env.PLAID_WEBHOOK_URL,
+      },
+    });
+    const token = response.data.asset_report_token;
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { plaidAssetReportToken: token },
+    });
+    return { success: true as const, token, alreadyCreated: false };
+  } catch (err) {
+    console.error("createAssetReport error:", err);
+    return {
+      success: false as const,
+      error: err instanceof Error ? err.message : "asset report create failed",
+    };
+  }
+}
+
+/**
+ * Fetches the asset report from Plaid and writes the parsed income
+ * data onto the Application row. Idempotent — safe to call multiple
+ * times (webhook + manual admin retry).
+ */
+export async function fetchAssetReportAndStoreIncome(applicationId: string) {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { id: true, plaidAssetReportToken: true, plaidAccountId: true },
+  });
+  if (!application?.plaidAssetReportToken) {
+    return { success: false as const, error: "No asset report token — call createAssetReport first" };
+  }
+  try {
+    const response = await plaidClient.assetReportGet({
+      asset_report_token: application.plaidAssetReportToken,
+      include_insights: true,
+    });
+    const report = response.data.report;
+    const item = report.items?.[0];
+    if (!item) return { success: false as const, error: "Asset report has no items" };
+
+    // Pick the linked account (or first one).
+    const account =
+      item.accounts.find((a) => a.account_id === application.plaidAccountId) ??
+      item.accounts[0];
+    if (!account) return { success: false as const, error: "Asset report has no accounts" };
+
+    const txns = account.transactions ?? [];
+
+    // Plaid convention: negative amount = deposit (money in).
+    const deposits = txns.filter((t) => Number(t.amount) < 0);
+    const totalDeposits = deposits.reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    const monthlyIncome = totalDeposits / 3;
+    const avgWeeklyIncome = totalDeposits / 13;
+    const depositCount90d = deposits.length;
+    const largestDeposit = deposits.reduce(
+      (max, t) => Math.max(max, Math.abs(Number(t.amount))),
+      0,
+    );
+    const depositCadence = classifyCadence(depositCount90d);
+
+    // Best charge day, same algorithm as the manual AI parser.
+    const { computeBestChargeDay } = await import("@/lib/payment-day");
+    const bestDay = computeBestChargeDay(
+      deposits.map((t) => ({
+        date: typeof t.date === "string" ? t.date : new Date(t.date as unknown as string).toISOString().slice(0, 10),
+        amount: Number(t.amount),
+        classification: "income",
+      })),
+    );
+
+    const owner = account.owners?.[0];
+    const plaidIdentityName = owner?.names?.[0] ?? null;
+    const balances = account.balances;
+
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: {
+        monthlyIncome,
+        totalIncome: monthlyIncome * 3,
+        avgWeeklyIncome,
+        depositCount90d,
+        largestDeposit,
+        depositCadence,
+        bankBalance: balances?.current ?? null,
+        availableBalance: balances?.available ?? null,
+        plaidAccountName: account.name ?? null,
+        plaidAccountMask: account.mask ?? null,
+        plaidIdentityName: plaidIdentityName ?? undefined,
+        preferredChargeDay: bestDay?.dayOfWeek ?? null,
+        lastPlaidRefresh: new Date(),
+      },
+    });
+
+    return {
+      success: true as const,
+      monthlyIncome,
+      depositCount90d,
+      cadence: depositCadence,
+      preferredChargeDay: bestDay,
+    };
+  } catch (err) {
+    console.error("fetchAssetReportAndStoreIncome error:", err);
+    return {
+      success: false as const,
+      error: err instanceof Error ? err.message : "asset report fetch failed",
+    };
+  }
+}
