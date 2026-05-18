@@ -513,9 +513,15 @@ model Contact {
 
   @@index([stage])
   @@index([assignedRepId])
+  // Admin-archived contacts are hidden from the default contacts list
+  // (and from CRM stats) but kept in the DB so we don't lose history.
+  // Null = active. Set = archived at this timestamp.
+  archivedAt   DateTime?
+
   @@index([email])
   @@index([createdAt])
   @@index([pennyClickId])
+  @@index([archivedAt])
 }
 
 model ContactTag {
@@ -1002,12 +1008,16 @@ model AgentSession {
   endReason      String?
   costCents      Int      @default(0)
   metadata       Json?
+  // Admin-archived sessions hide from the default sessions list and
+  // from the unread-count badge. Null = active.
+  archivedAt     DateTime?
   messages       AgentMessage[]
   toolCalls      AgentToolCall[]
   tickets        SupportTicket[]
   @@index([contactId])
   @@index([channel, startedAt])
   @@index([mode, startedAt])
+  @@index([archivedAt])
 }
 
 model AgentMessage {

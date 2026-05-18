@@ -6,6 +6,7 @@ import { TabBar } from "@/components/admin/tab-bar";
 import { StageBadge } from "@/components/admin/stage-badge";
 import { PageHeader } from "@/components/admin/page-header";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
+import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archive";
 import { logActivity } from "@/actions/activities";
 import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, type CrmEmailTemplate } from "@/actions/crm-email";
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
@@ -78,6 +79,7 @@ interface Contact {
   assignedRep?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string | null;
   tags: string[];
   activities: Activity[];
   application: Application | null;
@@ -196,10 +198,22 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
 
   return (
     <div>
-      <PageHeader
-        title={fullName}
-        description={contact.email}
-      />
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <PageHeader
+          title={fullName}
+          description={contact.email}
+        />
+        <ContactArchiveActions
+          contactId={contact.id}
+          archived={!!contact.archivedAt}
+          hasLinkedApplication={!!contact.application}
+        />
+      </div>
+      {contact.archivedAt && (
+        <div className="mb-4 rounded-lg border border-[#e4e4e7] bg-[#fafafa] p-3 text-[12px] text-[#71717a]">
+          This contact was archived on {new Date(contact.archivedAt).toLocaleString()}. It's hidden from the default Contacts list. Click "Unarchive" above to restore.
+        </div>
+      )}
 
       {contact.loan.hasLoan && <LoanSummaryCard loan={contact.loan} />}
 
@@ -757,6 +771,81 @@ function FilesTab({ documents }: { documents: ContactDocument[] }) {
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+function ContactArchiveActions({
+  contactId,
+  archived,
+  hasLinkedApplication,
+}: {
+  contactId: string;
+  archived: boolean;
+  hasLinkedApplication: boolean;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<"archive" | "delete" | null>(null);
+
+  async function handleArchive() {
+    setBusy("archive");
+    try {
+      if (archived) {
+        await unarchiveContact(contactId);
+        toast.success("Contact restored");
+      } else {
+        await archiveContact(contactId);
+        toast.success("Contact archived");
+      }
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleDelete() {
+    if (hasLinkedApplication) {
+      toast.error("This contact has a linked application — archive instead.");
+      return;
+    }
+    if (!confirm("Permanently delete this contact and all their activity / emails / tags? Can't be undone.")) return;
+    setBusy("delete");
+    try {
+      const r = await deleteContact(contactId);
+      if (r.ok) {
+        toast.success("Contact deleted");
+        router.push("/admin/contacts");
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-1 shrink-0">
+      <button
+        type="button"
+        onClick={handleArchive}
+        disabled={busy !== null}
+        className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-[#71717a] hover:bg-gray-50 hover:text-black disabled:opacity-50"
+      >
+        {busy === "archive" ? "…" : archived ? "Unarchive" : "Archive"}
+      </button>
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={busy !== null || hasLinkedApplication}
+        title={hasLinkedApplication ? "Can't delete a contact with a linked application — archive instead." : "Delete permanently"}
+        className="rounded-lg border border-[#dc2626]/30 bg-white px-3 py-1.5 text-[12px] font-semibold text-[#dc2626] hover:bg-[#fff1f2] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {busy === "delete" ? "…" : "Delete"}
+      </button>
     </div>
   );
 }

@@ -17,6 +17,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         ...contact,
         createdAt: contact.createdAt.toISOString(),
         updatedAt: contact.updatedAt.toISOString(),
+        archivedAt: contact.archivedAt ? contact.archivedAt.toISOString() : null,
         tags: contact.tags.map((t) => t.tag),
         activities: contact.activities.map((a) => ({
           ...a,

@@ -1,16 +1,21 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
+import { SessionRowActions } from "./row-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function AgentSessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ channel?: string }>;
+  searchParams: Promise<{ channel?: string; archived?: string }>;
 }) {
   const sp = await searchParams;
-  const where = sp.channel ? { channel: sp.channel } : {};
+  const showArchived = sp.archived === "1";
+  const where: { channel?: string; archivedAt?: { not: null } | null } = {};
+  if (sp.channel) where.channel = sp.channel;
+  // Default: hide archived. ?archived=1 shows ONLY archived.
+  where.archivedAt = showArchived ? { not: null } : null;
   const sessions = await prisma.agentSession.findMany({
     where,
     orderBy: { startedAt: "desc" },
@@ -38,13 +43,17 @@ export default async function AgentSessionsPage({
     <div>
       <PageHeader title="Agent Sessions" description={`${sessions.length} most recent sessions`} />
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         {channels.map((c) => {
           const active = (sp.channel ?? "") === c.key;
+          const params = new URLSearchParams();
+          if (c.key) params.set("channel", c.key);
+          if (showArchived) params.set("archived", "1");
+          const href = `?${params.toString()}` || "?";
           return (
             <Link
               key={c.key || "all"}
-              href={c.key ? `?channel=${c.key}` : "?"}
+              href={href}
               className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all ${
                 active ? "bg-[#1a1a1a] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
               }`}
@@ -53,6 +62,22 @@ export default async function AgentSessionsPage({
             </Link>
           );
         })}
+        <span className="mx-2 h-5 w-px bg-[#e4e4e7]" />
+        {(() => {
+          const params = new URLSearchParams();
+          if (sp.channel) params.set("channel", sp.channel);
+          if (!showArchived) params.set("archived", "1");
+          return (
+            <Link
+              href={`?${params.toString()}`}
+              className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all ${
+                showArchived ? "bg-[#1a1a1a] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
+              }`}
+            >
+              {showArchived ? "Archived only" : "Show archived"}
+            </Link>
+          );
+        })()}
       </div>
 
       <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
@@ -68,12 +93,13 @@ export default async function AgentSessionsPage({
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Auth</th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Cost</th>
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Ended</th>
+              <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Actions</th>
             </tr>
           </thead>
           <tbody>
             {sessions.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-[13px] text-[#a1a1aa]">
+                <td colSpan={10} className="px-4 py-8 text-center text-[13px] text-[#a1a1aa]">
                   No sessions yet.
                 </td>
               </tr>
@@ -144,6 +170,9 @@ export default async function AgentSessionsPage({
                   <td className="px-4 py-3 text-[13px] text-[#71717a]">{s.authLevel}</td>
                   <td className="px-4 py-3 text-[13px] text-black font-mono">${(s.costCents / 100).toFixed(3)}</td>
                   <td className="px-4 py-3 text-[13px] text-[#a1a1aa]">{s.endReason ?? "open"}</td>
+                  <td className="px-3 py-3 text-right">
+                    <SessionRowActions sessionId={s.id} archived={!!s.archivedAt} />
+                  </td>
                 </tr>
                 );
               })

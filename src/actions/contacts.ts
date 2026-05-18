@@ -10,12 +10,21 @@ export async function getContacts(filters?: {
   search?: string;
   page?: number;
   perPage?: number;
+  includeArchived?: boolean;
+  archivedOnly?: boolean;
 }) {
   const where: Record<string, unknown> = {};
   if (filters?.stage) where.stage = filters.stage;
   if (filters?.assignedRepId) where.assignedRepId = filters.assignedRepId;
   if (filters?.tag) {
     where.tags = { some: { tag: filters.tag } };
+  }
+  // Hide archived contacts from the default list. Opt in via
+  // archivedOnly=true (filter dropdown) or includeArchived=true.
+  if (filters?.archivedOnly) {
+    where.archivedAt = { not: null };
+  } else if (!filters?.includeArchived) {
+    where.archivedAt = null;
   }
   if (filters?.search) {
     where.OR = [
