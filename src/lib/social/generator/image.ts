@@ -11,7 +11,10 @@ const ASPECTS: Record<Platform, { width: number; height: number; aspectRatio: st
   tiktok: { width: 1080, height: 1920, aspectRatio: "9:16" },
 };
 
-const IMAGEN_MODEL = "imagen-4.0-generate-001";
+// Using FAST variant: separate quota bucket from imagen-4.0-generate-001
+// (which we kept exhausting during bulk planner runs). Roughly half the
+// cost too. Quality bracket is basically equivalent for editorial use.
+const IMAGEN_MODEL = "imagen-4.0-fast-generate-001";
 const SCENE_MODEL = "gemini-2.5-flash";
 
 let _client: GoogleGenAI | undefined;
