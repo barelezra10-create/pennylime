@@ -25,11 +25,23 @@ export default async function AgreementPage() {
     "2026-05-17-receivables-purchase-agreement.md",
   );
   const md = await fs.readFile(mdPath, "utf8");
-  const html = await marked.parse(md);
+  let html = await marked.parse(md);
+  // This is the public template view (no applicant). Wrap each
+  // remaining [Placeholder] in a styled span so visitors see clearly
+  // that those fields are filled at acceptance, not unfilled bugs.
+  html = html.replace(
+    /\[([A-Z][^\]]+)\]/g,
+    '<span class="placeholder-token">[$1]</span>',
+  );
 
   return (
     <div className="min-h-screen bg-[#fafaf7] py-12">
       <article className="max-w-3xl mx-auto px-5 md:px-8 bg-white border border-[#e4e4e7] rounded-2xl p-8 md:p-12 shadow-sm">
+        <p className="text-[12px] text-[#71717a] bg-[#fafafa] border border-[#e4e4e7] rounded-lg p-3 mb-6">
+          This is the template version of the agreement. The bracketed
+          values (e.g. <span className="font-mono text-[#a16207]">[Disbursed Amount]</span>) are filled with your personal details automatically when you accept your offer.
+        </p>
+        <style>{`.placeholder-token{display:inline-block;padding:1px 6px;border-radius:4px;background:#fffbeb;color:#92400e;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace;font-size:0.9em;font-weight:600;}`}</style>
         <div
           className="prose prose-sm md:prose-base max-w-none text-[#1a1a1a]
             prose-headings:tracking-[-0.02em] prose-headings:text-[#0a0a0a]

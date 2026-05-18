@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
@@ -29,6 +29,8 @@ type InitialOffer = {
   preferredChargeDay: number | null;
   bankName: string | null;
   bankAccountMask: string | null;
+  accountSubtype: string | null;
+  fullAddress: string | null;
 };
 
 const fmt = (n: number) =>
@@ -111,6 +113,106 @@ export function OfferClient({
     : "your linked bank account";
 
   const authorizationText = `I authorize PennyLime (770 Technology LLC) to ACH debit ${bankLabel} for ${schedule.length} weekly payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
+
+  // Substitute the [Placeholder] tokens in the agreement HTML with the
+  // borrower's actual values so they see a real, completed agreement
+  // before signing — not a template. Recomputes when amount/term changes.
+  const filledAgreementHtml = useMemo(() => {
+    const term = initial.terms[selectedTerm];
+    const fullName = `${initial.firstName} ${initial.lastName}`.trim();
+    const todayLong = new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    const accountTypeLabel = (() => {
+      const s = initial.accountSubtype?.toLowerCase();
+      if (!s) return "Checking";
+      if (s.includes("saving")) return "Savings";
+      return "Checking";
+    })();
+    const accountMaskDisplay = initial.bankAccountMask
+      ? `xxxx${initial.bankAccountMask}`
+      : "xxxx";
+
+    const subs: Record<string, string> = {
+      "[Acceptance Date]": todayLong,
+      "[Merchant Legal Name]": fullName || "—",
+      "[Merchant Address]": initial.fullAddress ?? "—",
+      "[Owner Legal Name]": fullName || "—",
+      "[Account Holder Name]": fullName || "—",
+      "[Bank Name]": initial.bankName ?? "—",
+      "[Last 4]": initial.bankAccountMask ?? "xxxx",
+      "[Routing Number]": "On file with PennyLime",
+      "[Checking / Savings]": accountTypeLabel,
+      "[Disbursed Amount]": amount.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      "[Total Receivables]": totalDebit.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+      // Weekly debits hit 100% of the scheduled amount (no percentage
+      // split); the merchant remits the full weekly amount each cycle.
+      "[Specified Percentage]": "100",
+      "[Weekly Remittance]": term
+        ? term.weeklyRemittance.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        : "—",
+      "[Origination Fee]": term
+        ? term.processingFee.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        : "0.00",
+    };
+
+    let html = agreementHtml;
+    for (const [token, value] of Object.entries(subs)) {
+      // Escape regex metachars in the token before global replace.
+      const esc = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      html = html.replace(new RegExp(esc, "g"), value);
+    }
+
+    // Replace the placeholder schedule table (rows 1/2/…/N with
+    // [Date]/[Amount]) with the actual generated schedule rows.
+    const realRows = schedule
+      .map(
+        (p) =>
+          `<tr><td>${p.paymentNumber}</td><td>${p.date.toLocaleDateString(
+            "en-US",
+            { month: "short", day: "numeric", year: "numeric" },
+          )}</td><td>$${p.amount.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}</td></tr>`,
+      )
+      .join("");
+    // The placeholder table has exactly three rows with [Date]/$[Amount]
+    // tokens plus an ellipsis row. Substitute that whole tbody block.
+    html = html.replace(
+      /<tbody>(?:\s*<tr>\s*<td>(?:1|2|…|N)<\/td>[\s\S]*?<\/tr>\s*)+<\/tbody>/,
+      `<tbody>${realRows}</tbody>`,
+    );
+
+    return html;
+  }, [
+    agreementHtml,
+    amount,
+    selectedTerm,
+    initial.terms,
+    initial.firstName,
+    initial.lastName,
+    initial.fullAddress,
+    initial.bankName,
+    initial.bankAccountMask,
+    initial.accountSubtype,
+    schedule,
+    totalDebit,
+  ]);
 
   const trimmedSignedName = signedName.trim();
   const nameLooksValid =
@@ -279,7 +381,7 @@ export function OfferClient({
                 prose-table:text-[12px]
                 prose-strong:text-[#0a0a0a]
                 prose-a:text-[#15803d]"
-              dangerouslySetInnerHTML={{ __html: agreementHtml }}
+              dangerouslySetInnerHTML={{ __html: filledAgreementHtml }}
             />
             <div ref={sentinelRef} aria-hidden className="h-1" />
           </div>

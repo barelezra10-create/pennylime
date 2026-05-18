@@ -145,8 +145,13 @@ export async function getOfferForApplicant(input: {
       preferredChargeDay: true,
       plaidAccountMask: true,
       plaidInstitutionName: true,
+      plaidAccountSubtype: true,
       bankName: true,
       bankAccountNumberManual: true,
+      addressStreet: true,
+      addressCity: true,
+      addressState: true,
+      addressZip: true,
     },
   });
   if (!app) return { ok: false as const, error: "Offer not found" };
@@ -172,6 +177,13 @@ export async function getOfferForApplicant(input: {
   // or the other.
   const bankAccountMask = app.plaidAccountMask ?? null;
 
+  const addressParts = [
+    app.addressStreet,
+    [app.addressCity, app.addressState].filter(Boolean).join(", "),
+    app.addressZip,
+  ].filter(Boolean);
+  const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : null;
+
   return {
     ok: true as const,
     firstName: app.firstName,
@@ -186,6 +198,8 @@ export async function getOfferForApplicant(input: {
     preferredChargeDay: app.preferredChargeDay ?? null,
     bankName,
     bankAccountMask,
+    accountSubtype: app.plaidAccountSubtype ?? null,
+    fullAddress,
   };
 }
 
