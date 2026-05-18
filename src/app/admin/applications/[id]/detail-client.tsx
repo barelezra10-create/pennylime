@@ -31,7 +31,7 @@ function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, offerStatus }: { status: string; offerStatus?: string | null }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
     APPROVED:    { bg: "bg-[#f0f5f0]",  text: "text-[#15803d]", label: "Approved" },
     PAID_OFF:    { bg: "bg-[#f0f5f0]",  text: "text-[#15803d]", label: "Paid Off" },
@@ -43,7 +43,12 @@ function StatusBadge({ status }: { status: string }) {
     DEFAULTED:   { bg: "bg-[#fff1f2]",  text: "text-[#dc2626]", label: "Defaulted" },
     FUNDED:      { bg: "bg-[#eef4ff]",  text: "text-[#2563eb]", label: "Funded" },
   };
-  const s = map[status] ?? map.PENDING;
+  let s = map[status] ?? map.PENDING;
+  if (status === "APPROVED") {
+    if (offerStatus === "OFFERED")  s = { bg: "bg-[#eef4ff]", text: "text-[#2563eb]", label: "Offer Sent" };
+    if (offerStatus === "ACCEPTED") s = { bg: "bg-[#f0f5f0]", text: "text-[#15803d]", label: "Offer Accepted" };
+    if (offerStatus === "DECLINED") s = { bg: "bg-[#fff1f2]", text: "text-[#dc2626]", label: "Offer Declined" };
+  }
   return (
     <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${s.bg} ${s.text}`}>
       {s.label}
@@ -330,7 +335,7 @@ export function DetailClient({
               <p className="text-sm text-[#a1a1aa] mt-0.5">Review and analyze advance application</p>
             </div>
           </div>
-          <StatusBadge status={application.status} />
+          <StatusBadge status={application.status} offerStatus={application.offerStatus} />
         </div>
 
         <div className="space-y-6">
