@@ -14,6 +14,8 @@ export type AchAuthorizationSnapshot = {
   totalDebitAmount: number;
   authorizationText: string;
   agreementVersion: string | null;
+  signedName: string | null;
+  scrolledToBottom: boolean;
   schedule: Array<{
     paymentNumber: number;
     date: string;
@@ -54,6 +56,8 @@ export async function getAchAuthorization(
     totalDebitAmount: Number(row.totalDebitAmount),
     authorizationText: row.authorizationText,
     agreementVersion: row.agreementVersion,
+    signedName: row.signedName,
+    scrolledToBottom: row.scrolledToBottom,
     schedule,
   };
 }

@@ -205,12 +205,26 @@ export async function acceptOffer(input: {
   userAgent?: string;
   agreedToAgreement?: boolean;
   agreedToAch?: boolean;
+  // Stronger consent evidence: required for new clients.
+  scrolledToBottom?: boolean;
+  signedName?: string;
 }) {
   // Refuse if the new consent gate wasn't satisfied. Old clients that
   // don't pass the booleans (e.g. browser cached the older page)
   // still work — backward-compatible — but new clients must pass true.
   if (input.agreedToAgreement === false || input.agreedToAch === false) {
     return { ok: false as const, error: "You must agree to both the agreement and the ACH authorization to accept." };
+  }
+  // Typed-name signature gate: only enforced when the client actually
+  // sends a signedName field. Old cached clients without it still work.
+  if (input.signedName !== undefined) {
+    const trimmed = input.signedName.trim();
+    if (trimmed.length < 4 || !/\s/.test(trimmed)) {
+      return { ok: false as const, error: "Please type your full legal name (first and last) to sign." };
+    }
+  }
+  if (input.scrolledToBottom === false) {
+    return { ok: false as const, error: "You must read the agreement to the end before accepting." };
   }
   const app = await prisma.application.findUnique({
     where: { applicationCode: input.applicationCode.toUpperCase() },
@@ -319,6 +333,8 @@ export async function acceptOffer(input: {
           input.authorizationText ??
           `I authorize PennyLime (770 Technology LLC) to ACH debit my linked bank account for ${schedule.length} weekly payments totaling $${totalDebit.toFixed(2)}, on the schedule above. This authorization remains in effect until the full amount has been delivered or I revoke in writing by emailing info@pennylime.com at least 3 business days before the next debit.`,
         agreementVersion: "v1-2026-05-17",
+        signedName: input.signedName?.trim() || null,
+        scrolledToBottom: input.scrolledToBottom === true,
       },
     });
   } catch (err) {

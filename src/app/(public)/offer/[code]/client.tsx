@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
@@ -38,10 +38,12 @@ export function OfferClient({
   applicationCode,
   token,
   initial,
+  agreementHtml,
 }: {
   applicationCode: string;
   token: string;
   initial: InitialOffer;
+  agreementHtml: string;
 }) {
   const [amount, setAmount] = useState<number>(initial.maxAmount);
   const [selectedTerm, setSelectedTerm] = useState<number>(
@@ -54,6 +56,30 @@ export function OfferClient({
   // Two required consents — both must be checked to enable Accept.
   const [agreedToAgreement, setAgreedToAgreement] = useState(false);
   const [agreedToAch, setAgreedToAch] = useState(false);
+  // Stronger consent: track that they actually scrolled the agreement,
+  // and capture a typed-name signature.
+  const [scrolledToBottom, setScrolledToBottom] = useState(false);
+  const [signedName, setSignedName] = useState("");
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Flip scrolledToBottom the moment the bottom sentinel intersects
+  // the agreement scroll viewport. Once true, stays true — closing
+  // and reopening the panel doesn't reset it.
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setScrolledToBottom(true);
+          }
+        }
+      },
+      { root: sentinelRef.current.parentElement, threshold: 0.9 },
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   // Compute the schedule we're about to show the borrower for ACH auth.
   // Mirrors the server-side generateWeeklySchedule snap-to-charge-day
@@ -86,7 +112,18 @@ export function OfferClient({
 
   const authorizationText = `I authorize PennyLime (770 Technology LLC) to ACH debit ${bankLabel} for ${schedule.length} weekly payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
 
-  const canAccept = agreedToAgreement && agreedToAch && !submitting;
+  const trimmedSignedName = signedName.trim();
+  const nameLooksValid =
+    trimmedSignedName.length >= 4 && /\s/.test(trimmedSignedName);
+  const expectedName = `${initial.firstName} ${initial.lastName}`.trim();
+  const nameMatchesApplicant =
+    trimmedSignedName.toLowerCase() === expectedName.toLowerCase();
+  const canAccept =
+    agreedToAgreement &&
+    agreedToAch &&
+    scrolledToBottom &&
+    nameLooksValid &&
+    !submitting;
 
   if (accepted || initial.status === "ACCEPTED") {
     return (
@@ -102,6 +139,14 @@ export function OfferClient({
       toast.error("Please check both boxes to accept.");
       return;
     }
+    if (!scrolledToBottom) {
+      toast.error("Please scroll through the agreement to the end first.");
+      return;
+    }
+    if (!nameLooksValid) {
+      toast.error("Please type your full legal name (first and last) to sign.");
+      return;
+    }
     setSubmitting(true);
     try {
       const r = await acceptOffer({
@@ -113,6 +158,8 @@ export function OfferClient({
         userAgent: typeof window !== "undefined" ? window.navigator.userAgent : undefined,
         agreedToAgreement,
         agreedToAch,
+        scrolledToBottom,
+        signedName: trimmedSignedName,
       });
       if (r.ok) {
         toast.success("Offer accepted! Funds are on the way.");
@@ -194,6 +241,55 @@ export function OfferClient({
           </div>
         </section>
 
+        {/* Inline agreement viewer — borrower must scroll to enable the
+            consent checkbox below. Same source as /agreement. */}
+        <section className="mt-6 rounded-xl bg-white border border-[#e4e4e7] p-5 md:p-6">
+          <div className="flex items-start justify-between mb-3 gap-3">
+            <div>
+              <h3 className="text-[15px] font-extrabold tracking-[-0.02em] text-[#0a0a0a]">
+                Receivables Purchase and Sale Agreement
+              </h3>
+              <p className="text-[12px] text-[#71717a] mt-0.5">
+                Please scroll through the full agreement before consenting.
+              </p>
+            </div>
+            <span
+              className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                scrolledToBottom
+                  ? "bg-[#f0f5f0] text-[#15803d]"
+                  : "bg-[#fef3c7] text-[#78350f]"
+              }`}
+            >
+              {scrolledToBottom ? "✓ Read to end" : "Scroll to end"}
+            </span>
+          </div>
+
+          <div
+            className="relative h-72 md:h-80 overflow-y-auto rounded-lg border border-[#e4e4e7] bg-[#fafaf7] p-4 md:p-5"
+            id="agreement-scroll"
+          >
+            <div
+              className="prose prose-sm max-w-none text-[#1a1a1a]
+                prose-headings:tracking-[-0.02em] prose-headings:text-[#0a0a0a]
+                prose-h1:text-[18px] prose-h1:font-extrabold
+                prose-h2:text-[14px] prose-h2:font-bold prose-h2:text-[#15803d] prose-h2:mt-5
+                prose-h3:text-[13px] prose-h3:font-bold prose-h3:mt-4
+                prose-p:text-[12.5px] prose-p:leading-relaxed
+                prose-li:text-[12.5px] prose-li:my-0.5
+                prose-table:text-[12px]
+                prose-strong:text-[#0a0a0a]
+                prose-a:text-[#15803d]"
+              dangerouslySetInnerHTML={{ __html: agreementHtml }}
+            />
+            <div ref={sentinelRef} aria-hidden className="h-1" />
+          </div>
+          {!scrolledToBottom && (
+            <p className="mt-2 text-[11px] text-[#a16207]">
+              Scroll all the way to the bottom of the agreement to enable the consent box below.
+            </p>
+          )}
+        </section>
+
         {/* ACH authorization & schedule */}
         <section className="mt-6 rounded-xl bg-white border border-[#e4e4e7] p-5 md:p-6">
           <h3 className="text-[15px] font-extrabold tracking-[-0.02em] text-[#0a0a0a] mb-1">
@@ -234,17 +330,22 @@ export function OfferClient({
             {authorizationText}
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer py-2 select-none">
+          <label
+            className={`flex items-start gap-3 py-2 select-none ${
+              scrolledToBottom ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+            }`}
+          >
             <input
               type="checkbox"
               checked={agreedToAgreement}
+              disabled={!scrolledToBottom}
               onChange={(e) => setAgreedToAgreement(e.target.checked)}
-              className="mt-0.5 w-5 h-5 rounded border-[#a1a1aa] accent-[#15803d] cursor-pointer flex-shrink-0"
+              className="mt-0.5 w-5 h-5 rounded border-[#a1a1aa] accent-[#15803d] cursor-pointer flex-shrink-0 disabled:cursor-not-allowed"
             />
             <span className="text-[13px] text-[#0a0a0a] leading-snug">
-              I have read and agree to the{" "}
+              I have read the{" "}
               <a href="/agreement" target="_blank" className="text-[#15803d] underline font-semibold">Receivables Purchase and Sale Agreement</a>
-              {" "}and the{" "}
+              {" "}above and agree to its terms, together with the{" "}
               <a href="/disclosures" target="_blank" className="text-[#15803d] underline font-semibold">Cash Advance Disclosures</a>.
             </span>
           </label>
@@ -260,6 +361,38 @@ export function OfferClient({
               I authorize PennyLime to ACH debit {bankLabel} according to the schedule above.
             </span>
           </label>
+
+          {/* Typed-name signature — full legal name, treated as the
+              borrower's electronic signature under E-SIGN + Florida UETA. */}
+          <div className="mt-5 pt-5 border-t border-[#f4f4f5]">
+            <label className="block">
+              <span className="text-[13px] font-bold text-[#0a0a0a] block">
+                Type your full legal name to sign
+              </span>
+              <span className="text-[11px] text-[#71717a] block mt-0.5">
+                This is your electronic signature. It must match the name on your application: <span className="font-semibold text-[#0a0a0a]">{expectedName}</span>
+              </span>
+              <input
+                type="text"
+                value={signedName}
+                onChange={(e) => setSignedName(e.target.value)}
+                placeholder={expectedName}
+                autoComplete="off"
+                className="mt-2.5 w-full rounded-lg border-2 border-[#e4e4e7] px-4 py-3 text-[16px] font-medium text-[#0a0a0a] placeholder:text-[#a1a1aa] focus:border-[#15803d] focus:outline-none transition-colors"
+                style={{ fontFamily: "var(--font-caveat), 'Caveat', 'Brush Script MT', cursive" }}
+              />
+            </label>
+            {trimmedSignedName.length > 0 && !nameLooksValid && (
+              <p className="mt-2 text-[11px] text-[#dc2626]">
+                Please enter your first and last name.
+              </p>
+            )}
+            {nameLooksValid && !nameMatchesApplicant && (
+              <p className="mt-2 text-[11px] text-[#a16207]">
+                Heads up: the name you typed doesn't match the application name. Make sure this is correct.
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Accept button */}
@@ -273,9 +406,15 @@ export function OfferClient({
           >
             {submitting ? "Processing…" : `Accept & Authorize ${fmt(amount)} advance`}
           </motion.button>
-          {!agreedToAgreement || !agreedToAch ? (
+          {!canAccept ? (
             <p className="mt-3 text-center text-[11px] text-[#a1a1aa]">
-              Check both boxes above to enable.
+              {!scrolledToBottom
+                ? "Scroll through the agreement to the end."
+                : !agreedToAgreement || !agreedToAch
+                ? "Check both consent boxes above."
+                : !nameLooksValid
+                ? "Type your full legal name to sign."
+                : "Almost there…"}
             </p>
           ) : (
             <p className="mt-3 text-center text-[11px] text-[#15803d] font-semibold">

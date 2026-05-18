@@ -1,7 +1,24 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { marked } from "marked";
 import { getOfferForApplicant } from "@/actions/offers";
 import { OfferClient } from "./client";
 
 export const dynamic = "force-dynamic";
+
+// Read the canonical agreement once per render so the borrower sees
+// the exact wording the legal team has signed off on. Same source the
+// /agreement page uses.
+async function loadAgreementHtml() {
+  const mdPath = path.join(
+    process.cwd(),
+    "docs",
+    "legal",
+    "2026-05-17-receivables-purchase-agreement.md",
+  );
+  const md = await fs.readFile(mdPath, "utf8");
+  return marked.parse(md) as Promise<string> | string;
+}
 
 export default async function OfferPage({
   params,
@@ -22,7 +39,10 @@ export default async function OfferPage({
     );
   }
 
-  const result = await getOfferForApplicant({ applicationCode: code, token: t });
+  const [result, agreementHtml] = await Promise.all([
+    getOfferForApplicant({ applicationCode: code, token: t }),
+    loadAgreementHtml(),
+  ]);
   if (!result.ok) {
     return (
       <CenteredMessage
@@ -32,7 +52,14 @@ export default async function OfferPage({
     );
   }
 
-  return <OfferClient applicationCode={code} token={t} initial={result} />;
+  return (
+    <OfferClient
+      applicationCode={code}
+      token={t}
+      initial={result}
+      agreementHtml={await agreementHtml}
+    />
+  );
 }
 
 function CenteredMessage({ title, body }: { title: string; body: string }) {

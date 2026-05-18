@@ -861,6 +861,10 @@ model AchAuthorization {
   authorizationText   String   // exact text shown on screen
   agreementHash       String?  // SHA-256 of the agreement template version
   agreementVersion    String?  @default("v1-2026-05-17")
+  // Stronger consent evidence — captured alongside the inline
+  // agreement viewer and typed-name signature on the offer page.
+  signedName          String?  // full legal name the borrower typed at acceptance
+  scrolledToBottom    Boolean  @default(false) // confirmed they read to end
 
   @@index([applicationId])
   @@index([contactId])

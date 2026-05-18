@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Inter, Geist_Mono, Caveat } from "next/font/google";
 import { Toaster } from "sonner";
 import { TrackingScripts } from "@/components/tracking/tracking-scripts";
 import { ClickIdCapture } from "@/components/tracking/click-id-capture";
@@ -14,6 +14,14 @@ const inter = Inter({
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
+});
+
+// Used as the borrower's typed-name "wet signature" on the offer page
+// and reflected in the admin authorization-proof card.
+const caveat = Caveat({
+  subsets: ["latin"],
+  variable: "--font-caveat",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -50,7 +58,7 @@ export default async function RootLayout({
         <TrackingScripts />
       </head>
       <body
-        className={`${inter.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${geistMono.variable} ${caveat.variable} antialiased`}
         style={{ fontFamily: "var(--font-sans), Inter, system-ui, -apple-system, sans-serif" }}
       >
         <ClickIdCapture />

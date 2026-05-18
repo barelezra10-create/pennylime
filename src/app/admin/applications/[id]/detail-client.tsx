@@ -77,6 +77,8 @@ type AchAuthSnapshot = {
   totalDebitAmount: number;
   authorizationText: string;
   agreementVersion: string | null;
+  signedName: string | null;
+  scrolledToBottom: boolean;
   schedule: Array<{
     paymentNumber: number;
     date: string;
@@ -592,6 +594,32 @@ export function DetailClient({
                   </div>
                 )}
               </div>
+
+              {/* Typed-name signature + scroll-to-end confirmation. */}
+              {(achAuth.signedName || achAuth.scrolledToBottom) && (
+                <div className="bg-[#f7fbf8] border border-[#bbf7d0] rounded-lg p-4 mb-4">
+                  <p className="text-[10px] uppercase tracking-wider text-[#15803d] mb-2 font-bold">
+                    Electronic signature
+                  </p>
+                  {achAuth.signedName && (
+                    <p
+                      className="text-[28px] leading-tight text-[#0a0a0a] mb-1"
+                      style={{ fontFamily: "var(--font-caveat), 'Caveat', 'Brush Script MT', cursive" }}
+                    >
+                      {achAuth.signedName}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 text-[11px] text-[#52525b]">
+                    {achAuth.scrolledToBottom ? (
+                      <span className="inline-flex items-center gap-1 text-[#15803d] font-semibold">
+                        ✓ Scrolled agreement to end
+                      </span>
+                    ) : (
+                      <span className="text-[#a16207]">Scroll-to-end not confirmed</span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="bg-[#fafafa] border border-[#e4e4e7] rounded-lg p-3 text-[12px] leading-relaxed text-[#52525b] mb-4">
                 <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa] mb-1.5">Exact text shown to customer</p>
