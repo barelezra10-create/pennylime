@@ -1,6 +1,7 @@
 import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import type { Platform } from "../types";
+import { withRetry } from "./retry";
 
 const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -42,10 +43,10 @@ Write the post now. Output ONLY the post body, no preamble, no quotes around it.
 
   let text: string | undefined;
   try {
-    const response = await client.models.generateContent({
-      model: GEMINI_MODEL,
-      contents: prompt,
-    });
+    const response = await withRetry(
+      () => client.models.generateContent({ model: GEMINI_MODEL, contents: prompt }),
+      { label: `gemini-text [${platform}]` },
+    );
     text = response.text;
   } catch (err) {
     throw new Error(`Gemini text generation failed [${platform}, "${topic}"]: ${err instanceof Error ? err.message : String(err)}`);

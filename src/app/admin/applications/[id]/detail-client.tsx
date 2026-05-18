@@ -180,26 +180,16 @@ export function DetailClient({
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
 
-  /* funding */
-  const [funding, setFunding] = useState(false);
-  const [fundAmount, setFundAmount] = useState(
-    String(
-      application.acceptedAmount
-        ? Number(application.acceptedAmount)
-        : application.offeredMaxAmount
-        ? Number(application.offeredMaxAmount)
-        : Number(application.loanAmount),
-    ),
-  );
-
   /* derived values */
   const requestedAmount = Number(application.loanAmount);
   const totalIncome = application.totalIncome ? Number(application.totalIncome) : null;
 
-  // Resolve the actual deal numbers from the offer state, not the
-  // applicant's request. Pedro asked for $4,100; Bar approved $2,500
-  // at 5% weekly — the admin headline should reflect what was
-  // approved/accepted, with the original request as a sub-line.
+  // Resolve the actual deal numbers from the offer state.
+  //   - The borrower picks an amount on the offer page slider (anywhere
+  //     within the min/max we approved). What they pick = acceptedAmount.
+  //   - The Fund input + admin headline use that exact number.
+  //   - Before acceptance: show the approved max (what's currently being
+  //     offered) since the borrower hasn't chosen yet.
   const offerTerms: Array<{
     weeklyRemittance: number;
     durationWeeks: number;
@@ -216,12 +206,13 @@ export function DetailClient({
   })();
   const recommendedTerm =
     offerTerms.find((t) => t.isRecommended) ?? offerTerms[0] ?? null;
-  const approvedAmount = application.acceptedAmount
-    ? Number(application.acceptedAmount)
-    : application.offeredMaxAmount
-    ? Number(application.offeredMaxAmount)
-    : null;
-  const displayAmount = approvedAmount ?? requestedAmount;
+  const acceptedAmount = application.acceptedAmount ? Number(application.acceptedAmount) : null;
+  const offeredMax = application.offeredMaxAmount ? Number(application.offeredMaxAmount) : null;
+  const effectiveAmount = acceptedAmount ?? offeredMax ?? requestedAmount;
+
+  /* funding */
+  const [funding, setFunding] = useState(false);
+  const [fundAmount, setFundAmount] = useState(String(effectiveAmount));
   const displayTermWeeks = recommendedTerm?.durationWeeks ?? null;
   // Back-derive the weekly compound rate from any saved plan so the
   // admin sees what rate the borrower is being offered. Uses the
@@ -401,14 +392,23 @@ export function DetailClient({
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">
-                  {approvedAmount ? "Approved Amount" : "Requested Amount"}
+                  {acceptedAmount
+                    ? "Accepted Amount"
+                    : offeredMax
+                    ? "Offered (up to)"
+                    : "Requested Amount"}
                 </p>
                 <p className="mt-1 text-2xl font-bold text-[#15803d]">
-                  ${fmt(displayAmount)}
+                  ${fmt(effectiveAmount)}
                 </p>
-                {approvedAmount && approvedAmount !== requestedAmount && (
+                {acceptedAmount && offeredMax && acceptedAmount !== offeredMax && (
                   <p className="mt-0.5 text-[11px] text-[#71717a]">
-                    Requested: ${fmt(requestedAmount)}
+                    Approved up to ${fmt(offeredMax)} · borrower chose ${fmt(acceptedAmount)}
+                  </p>
+                )}
+                {!acceptedAmount && offeredMax && offeredMax !== requestedAmount && (
+                  <p className="mt-0.5 text-[11px] text-[#71717a]">
+                    Originally requested ${fmt(requestedAmount)}
                   </p>
                 )}
                 {derivedWeeklyRate != null && (

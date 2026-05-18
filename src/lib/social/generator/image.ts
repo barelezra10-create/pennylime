@@ -2,6 +2,7 @@ import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import type { Platform } from "../types";
 import { saveImage } from "../storage";
+import { withRetry } from "./retry";
 
 const ASPECTS: Record<Platform, { width: number; height: number; aspectRatio: string }> = {
   instagram: { width: 1080, height: 1080, aspectRatio: "1:1" },
@@ -39,10 +40,10 @@ Describe ONE concrete visual scene that represents this topic. Constraints:
 
 Output ONLY the scene description. No preamble. No quotes.`;
 
-  const res = await client.models.generateContent({
-    model: SCENE_MODEL,
-    contents: prompt,
-  });
+  const res = await withRetry(
+    () => client.models.generateContent({ model: SCENE_MODEL, contents: prompt }),
+    { label: "scene-describer" },
+  );
   return (res.text ?? "").replace(/^["']|["']$/g, "").trim();
 }
 
