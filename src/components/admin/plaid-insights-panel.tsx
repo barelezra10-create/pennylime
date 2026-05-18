@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { fetchAndStoreIncome, getRecentTransactions, triggerPlaidAssetReport } from "@/actions/plaid";
+import { fetchAndStoreIncome, getRecentTransactions, triggerPlaidAssetReport, parsePlaidAssetReportWithAI } from "@/actions/plaid";
 
 type Tx = {
   id: string;
@@ -106,6 +106,29 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
     }
   }
 
+  const [parsingAi, setParsingAi] = useState(false);
+  async function handleParseWithAI() {
+    setParsingAi(true);
+    toast.message("Parsing Plaid Asset Report with AI…", {
+      description: "Gemini reads the PDF — usually 10-30s.",
+    });
+    try {
+      const result = await parsePlaidAssetReportWithAI(application.id);
+      if (result.success) {
+        toast.success(
+          `Parsed: monthly income $${result.monthlyIncome.toLocaleString()}, ${result.depositCount} deposits, ${result.confidence} confidence.`,
+        );
+        window.location.reload();
+      } else {
+        toast.error(result.error || "AI parse failed");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "AI parse failed");
+    } finally {
+      setParsingAi(false);
+    }
+  }
+
   async function handleLoadTransactions() {
     setShowTxs(true);
     if (txs) return; // already loaded
@@ -164,10 +187,10 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <button
             onClick={handlePullAssets}
-            disabled={pullingAssets || refreshing}
+            disabled={pullingAssets || refreshing || parsingAi}
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
               hasDepositData
                 ? "border border-gray-200 bg-white text-black hover:bg-gray-50"
@@ -184,8 +207,18 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
               : "Pull Asset Report"}
           </button>
           <button
+            onClick={handleParseWithAI}
+            disabled={parsingAi || pullingAssets || refreshing}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#15803d]/30 bg-[#f0fdf4] text-[#15803d] px-3 py-1.5 text-xs font-semibold hover:bg-[#dcfce7] disabled:opacity-50 transition-colors"
+          >
+            <svg className={`h-3.5 w-3.5 ${parsingAi ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.847.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+            </svg>
+            {parsingAi ? "Parsing…" : "Parse with AI"}
+          </button>
+          <button
             onClick={handleRefresh}
-            disabled={refreshing || pullingAssets}
+            disabled={refreshing || pullingAssets || parsingAi}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 disabled:opacity-50 transition-colors"
           >
             <svg className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>

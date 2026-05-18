@@ -491,6 +491,135 @@ export async function triggerPlaidAssetReport(applicationId: string) {
   };
 }
 
+/**
+ * Downloads the Plaid Asset Report as a PDF and pushes it through
+ * the same Gemini parser that bank-statement uploads use. Plaid's
+ * built-in assetReportGet analytics already populate the headline
+ * fields (monthlyIncome, depositCount90d, etc.), but the AI parser
+ * gives us richer outputs:
+ *   - deposit-level classification (income vs transfer vs refund)
+ *   - the account holder's legal name from the statement header
+ *   - a "confidence" signal we can show in the AI Risk Analysis
+ *
+ * Stores the PDF as a Document (documentType = PLAID_ASSET_REPORT_PDF)
+ * so admins can review the actual source doc later. Writes the same
+ * income fields the bank-statement parser writes — so downstream
+ * (rules engine, AI risk, offer page) doesn't care whether the data
+ * came from Plaid built-in, Plaid PDF + AI, or manual statement upload.
+ */
+export async function parsePlaidAssetReportWithAI(applicationId: string) {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { id: true, plaidAssetReportToken: true },
+  });
+  if (!application?.plaidAssetReportToken) {
+    return { success: false as const, error: "No asset report yet — click Pull Asset Report first." };
+  }
+
+  // 1. Fetch the PDF from Plaid.
+  let pdfBuffer: Buffer;
+  try {
+    const response = await plaidClient.assetReportPdfGet(
+      { asset_report_token: application.plaidAssetReportToken },
+      { responseType: "arraybuffer" },
+    );
+    pdfBuffer = Buffer.from(response.data as ArrayBuffer);
+    if (pdfBuffer.length === 0) {
+      return { success: false as const, error: "Plaid returned an empty PDF." };
+    }
+  } catch (err) {
+    console.error("assetReportPdfGet failed:", err);
+    const message = err instanceof Error ? err.message : "Plaid PDF fetch failed";
+    return { success: false as const, error: message };
+  }
+
+  // 2. Save the PDF as a Document for admin review.
+  let savedDocId: string | null = null;
+  try {
+    const { storage } = await import("@/lib/storage");
+    const filename = `plaid-asset-report-${applicationId.slice(0, 8)}-${Date.now()}.pdf`;
+    const storagePath = await storage.upload(pdfBuffer, filename);
+    const doc = await prisma.document.create({
+      data: {
+        applicationId,
+        fileName: filename,
+        mimeType: "application/pdf",
+        fileSize: pdfBuffer.length,
+        storagePath,
+        documentType: "PLAID_ASSET_REPORT_PDF",
+      },
+    });
+    savedDocId = doc.id;
+  } catch (err) {
+    console.error("Failed to save asset report PDF as Document:", err);
+    // Non-blocking — continue with the parse even if storage failed.
+  }
+
+  // 3. Parse with the same Gemini pipeline bank statements use.
+  const { parseStatementsWithAI } = await import("@/lib/bank-statement-parser");
+  let parsed;
+  try {
+    parsed = await parseStatementsWithAI([
+      { filename: "plaid-asset-report.pdf", buffer: pdfBuffer, mimeType: "application/pdf" },
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "AI parse failed";
+    console.error("AI parse of asset report failed:", message);
+    return { success: false as const, error: message };
+  }
+
+  // 4. Pick the best weekly debit day from the deposit pattern.
+  const { computeBestChargeDay } = await import("@/lib/payment-day");
+  const bestDay = computeBestChargeDay(parsed.deposits ?? []);
+
+  // 5. Write into the same fields Plaid built-in and the bank-statement
+  // parser write — keep downstream code source-agnostic.
+  await prisma.application.update({
+    where: { id: applicationId },
+    data: {
+      monthlyIncome: parsed.monthlyIncome,
+      totalIncome: parsed.monthlyIncome * 3,
+      avgWeeklyIncome: parsed.avgWeeklyIncome,
+      depositCount90d: parsed.depositCount,
+      largestDeposit: parsed.largestDeposit,
+      depositCadence: parsed.estimatedCadence === "irregular" ? "irregular" : parsed.estimatedCadence,
+      plaidIdentityName: parsed.accountHolderName ?? undefined,
+      plaidInstitutionName: parsed.bankName ?? undefined,
+      preferredChargeDay: bestDay?.dayOfWeek ?? null,
+      lastPlaidRefresh: new Date(),
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "AI_PARSE_PLAID_ASSET_REPORT",
+      entityType: "APPLICATION",
+      entityId: applicationId,
+      performedBy: "system:admin",
+      details: JSON.stringify({
+        savedDocId,
+        monthlyIncome: parsed.monthlyIncome,
+        depositCount: parsed.depositCount,
+        confidence: parsed.confidence,
+        accountHolderName: parsed.accountHolderName,
+        bankName: parsed.bankName,
+      }),
+    },
+  });
+
+  return {
+    success: true as const,
+    monthlyIncome: parsed.monthlyIncome,
+    avgWeeklyIncome: parsed.avgWeeklyIncome,
+    depositCount: parsed.depositCount,
+    largestDeposit: parsed.largestDeposit,
+    cadence: parsed.estimatedCadence,
+    accountHolderName: parsed.accountHolderName,
+    bankName: parsed.bankName,
+    confidence: parsed.confidence,
+  };
+}
+
 export async function createAssetReport(applicationId: string) {
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
