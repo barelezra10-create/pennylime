@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { setOfferTerms, type OfferTerm } from "@/actions/offers";
+import { setOfferTerms, resendOfferNotification, type OfferTerm } from "@/actions/offers";
 import { computeAdvanceTerms } from "@/lib/cash-advance";
 
 type ExistingOffer = {
@@ -370,18 +370,54 @@ export function SetOfferTermsForm({
             Applicant offer link
           </p>
           <p className="mt-1 text-xs text-[#0a0a0a] break-all font-mono">{offerUrl}</p>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(offerUrl);
-              toast.success("Link copied");
-            }}
-            className="mt-2 text-xs font-semibold text-[#15803d] hover:text-[#166534]"
-          >
-            Copy link
-          </button>
+          <div className="mt-2 flex items-center gap-4">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(offerUrl);
+                toast.success("Link copied");
+              }}
+              className="text-xs font-semibold text-[#15803d] hover:text-[#166534]"
+            >
+              Copy link
+            </button>
+            <ResendOfferButton applicationId={applicationId} />
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+function ResendOfferButton({ applicationId }: { applicationId: string }) {
+  const [sending, setSending] = useState(false);
+  async function handleClick() {
+    if (sending) return;
+    if (!confirm("Send the offer-ready email + SMS (with PDF) to this applicant now?")) {
+      return;
+    }
+    setSending(true);
+    try {
+      const r = await resendOfferNotification(applicationId);
+      if (r.ok) {
+        toast.success("Offer-ready email + SMS sent.");
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setSending(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={sending}
+      className="text-xs font-semibold text-[#15803d] hover:text-[#166534] disabled:opacity-50"
+    >
+      {sending ? "Sending…" : "Resend offer email + SMS"}
+    </button>
   );
 }
 

@@ -19,6 +19,8 @@ export async function sendEmail(params: {
   // (e.g. "offer-ready", "advance-funded"). Logged on the Activity
   // for filtering and reporting.
   templateId?: string;
+  // Binary attachments (PDFs, etc.). Resend accepts Buffer or base64.
+  attachments?: Array<{ filename: string; content: Buffer }>;
 }) {
   try {
     const result = await getResend().emails.send({
@@ -27,6 +29,10 @@ export async function sendEmail(params: {
       replyTo: REPLY_TO,
       subject: params.subject,
       html: wrapTransactionalEmail(params.html, params.preheader),
+      attachments: params.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+      })),
     });
     const messageId = result.data?.id ?? null;
 

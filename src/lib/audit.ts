@@ -19,7 +19,8 @@ export type AuditAction =
   | "PAYMENT_RECEIVED"
   | "INITIATE_ACH"
   | "OFFER_SET"
-  | "OFFER_ACCEPTED";
+  | "OFFER_ACCEPTED"
+  | "OFFER_NOTIFICATION_RESENT";
 
 export type AuditEntityType =
   | "APPLICATION"

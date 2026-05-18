@@ -151,6 +151,66 @@ export async function setOfferTerms(input: {
 }
 
 /**
+ * Admin-triggered resend of the offer-ready email + SMS for an
+ * existing OFFERED application. Used when the original automatic
+ * dispatch didn't fire (e.g. applicant approved before the
+ * notification trigger was wired up) or when the borrower says
+ * they never got the email.
+ */
+export async function resendOfferNotification(applicationId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      applicationCode: true,
+      offerToken: true,
+      offerStatus: true,
+      offeredMaxAmount: true,
+      offeredTermsJson: true,
+    },
+  });
+  if (!app) return { ok: false as const, error: "Application not found" };
+  if (!app.offerToken) return { ok: false as const, error: "No offer link to send" };
+  if (app.offerStatus !== "OFFERED") {
+    return { ok: false as const, error: "Offer is not in OFFERED state" };
+  }
+  let terms: OfferTerm[] = [];
+  try {
+    terms = app.offeredTermsJson ? JSON.parse(app.offeredTermsJson) : [];
+  } catch {
+    return { ok: false as const, error: "Saved offer terms are corrupted" };
+  }
+  if (terms.length === 0) return { ok: false as const, error: "Offer has no terms saved" };
+
+  await sendOfferReadyNotification({
+    applicationId: app.id,
+    email: app.email,
+    phone: app.phone,
+    firstName: app.firstName,
+    applicationCode: app.applicationCode,
+    offerToken: app.offerToken,
+    approvedAmount: Number(app.offeredMaxAmount ?? 0),
+    terms,
+  });
+
+  await logAudit({
+    action: "OFFER_NOTIFICATION_RESENT",
+    entityType: "APPLICATION",
+    entityId: app.id,
+    performedBy: session.user.email,
+  });
+
+  return { ok: true as const };
+}
+
+/**
  * Fires the offer-ready email + SMS for a freshly approved applicant.
  * Idempotent at the dispatch level — caller decides when to invoke.
  * Always passes contactId when there's a linked Contact so the CRM
@@ -189,6 +249,61 @@ export async function sendOfferReadyNotification(input: {
     select: { id: true },
   });
 
+  // Pull the applicant context the PDF generator needs. Falling back
+  // gracefully when fields are missing — the PDF will just show "—"
+  // for unknowns rather than failing.
+  const applicantContext = await prisma.application.findUnique({
+    where: { id: input.applicationId },
+    select: {
+      addressStreet: true,
+      addressCity: true,
+      addressState: true,
+      addressZip: true,
+      plaidInstitutionName: true,
+      plaidAccountMask: true,
+      plaidAccountSubtype: true,
+      bankName: true,
+      lastName: true,
+    },
+  });
+  const fullAddress = applicantContext
+    ? [
+        applicantContext.addressStreet,
+        [applicantContext.addressCity, applicantContext.addressState].filter(Boolean).join(", "),
+        applicantContext.addressZip,
+      ]
+        .filter(Boolean)
+        .join(", ") || null
+    : null;
+
+  // Build the filled agreement PDF. This is best-effort — if PDF
+  // generation fails (Chromium download flake, etc.) we still want
+  // the email to go out with the offer link, so we just skip the
+  // attachment and log the error.
+  let pdfAttachment: { filename: string; content: Buffer } | null = null;
+  try {
+    const { buildFilledAgreementHtml, renderHtmlToPdf } = await import(
+      "@/lib/pdf/agreement-pdf"
+    );
+    const filledHtml = await buildFilledAgreementHtml({
+      firstName: input.firstName,
+      lastName: applicantContext?.lastName ?? "",
+      fullAddress,
+      bankName: applicantContext?.plaidInstitutionName ?? applicantContext?.bankName ?? null,
+      bankAccountMask: applicantContext?.plaidAccountMask ?? null,
+      accountSubtype: applicantContext?.plaidAccountSubtype ?? null,
+      approvedAmount: input.approvedAmount,
+      recommendedTerm: recommended,
+    });
+    const pdfBuffer = await renderHtmlToPdf(filledHtml);
+    pdfAttachment = {
+      filename: `pennylime-offer-${input.applicationCode}.pdf`,
+      content: pdfBuffer,
+    };
+  } catch (pdfErr) {
+    console.error("[offer-ready] PDF generation failed (email will still send):", pdfErr);
+  }
+
   // Email
   const { offerReadyEmail } = await import("@/lib/emails/offer-ready");
   const { sendEmail } = await import("@/lib/emails/send");
@@ -208,6 +323,7 @@ export async function sendOfferReadyNotification(input: {
     html: emailContent.html,
     contactId: contact?.id,
     templateId: "offer-ready",
+    attachments: pdfAttachment ? [pdfAttachment] : undefined,
   });
 
   // SMS (only if we have a phone)
