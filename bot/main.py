@@ -148,15 +148,15 @@ async def _run_platform(platform: str) -> None:
         await jitter()
 
 
-async def main_loop() -> None:
-    """Top-level loop: sweep every 30 min, respect kill switch."""
+async def engagement_loop() -> None:
+    """Sweep engagement queue every 30 min, respect kill switch."""
     while True:
         if os.environ.get("SOCIAL_BOT_ENABLED", "true").lower() == "false":
-            print(f"[{datetime.now(timezone.utc).isoformat()}] disabled, sleeping 5min", flush=True)
+            print(f"[{datetime.now(timezone.utc).isoformat()}] engagement disabled, sleeping 5min", flush=True)
             await asyncio.sleep(300)
             continue
 
-        print(f"[{datetime.now(timezone.utc).isoformat()}] sweep start", flush=True)
+        print(f"[{datetime.now(timezone.utc).isoformat()}] engagement sweep start", flush=True)
         for platform in PLATFORMS:
             try:
                 await _run_platform(platform)
@@ -165,6 +165,22 @@ async def main_loop() -> None:
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
+async def cron_loop() -> None:
+    """Every 60s, fire any scheduled HTTP cron jobs whose pattern matches NOW.
+    Avoids needing 6 separate Railway cron services."""
+    from crons import fire_due_jobs
+    while True:
+        try:
+            fire_due_jobs()
+        except Exception:
+            traceback.print_exc()
+        await asyncio.sleep(60)
+
+
+async def main() -> None:
+    await asyncio.gather(engagement_loop(), cron_loop())
+
+
 if __name__ == "__main__":
     # Kill-switch at startup is handled before imports (top of file).
-    asyncio.run(main_loop())
+    asyncio.run(main())
