@@ -126,15 +126,18 @@ export function ArticleRowActions({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 mt-3">
-      {!contentGenerated && (
-        <button
-          onClick={handleGenerate}
-          disabled={busy !== null}
-          className="rounded-md bg-[#15803d] text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-[#166534] disabled:opacity-50"
-        >
-          {busy === "generate" ? "Generating…" : "Generate body"}
-        </button>
-      )}
+      <button
+        onClick={handleGenerate}
+        disabled={busy !== null}
+        className="rounded-md bg-[#15803d] text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-[#166534] disabled:opacity-50"
+        title={contentGenerated ? "Re-run AI for body + hero image (overwrites current)" : "Generate body + hero image"}
+      >
+        {busy === "generate"
+          ? "Generating…"
+          : contentGenerated
+          ? "Regenerate AI"
+          : "Generate body"}
+      </button>
       {contentGenerated && !published && (
         <button
           onClick={handlePublish}

@@ -989,6 +989,39 @@ model EngagementLog {
   @@index([accountId, createdAt])
 }
 
+// Comments on our published posts. The cron polls Meta's Graph API and
+// inserts new rows here. If the comment is a question, we generate a reply
+// via Gemini and post it back via the API. status tracks the lifecycle.
+model SocialComment {
+  id                String   @id @default(uuid())
+  platform          String   // "instagram" | "facebook"
+  // The published SocialPost this comment is on (FK so we can join in admin)
+  socialPostId      String?
+  // Meta IDs so we can reply via /comment-id/replies
+  platformPostId    String
+  platformCommentId String   @unique
+  fromUsername      String?
+  fromUserId        String?
+  text              String   @db.Text
+  isQuestion        Boolean  @default(false)
+  status            String   @default("new")
+  // "new" → freshly fetched, not yet decided
+  // "skipped" → not a question, or our own comment, or too old
+  // "drafted" → AI generated a reply, waiting to post
+  // "replied" → reply posted successfully
+  // "failed" → reply attempt failed
+  // "blocked" → reply failed blocklist
+  replyText         String?  @db.Text
+  replyCommentId    String?  // Meta's ID for the reply we posted
+  replyError        String?  @db.Text
+  commentedAt       DateTime
+  fetchedAt         DateTime @default(now())
+  repliedAt         DateTime?
+
+  @@index([platform, status])
+  @@index([platformPostId, status])
+}
+
 // ─── AI Support Agent ────────────────────────────────────────
 
 model AgentSession {

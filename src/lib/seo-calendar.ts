@@ -222,36 +222,72 @@ export async function planSeoMonth(input: {
 
 const CONTENT_SYSTEM_PROMPT = `You are a senior SEO content writer for PennyLime, a cash-advance product for US gig workers.
 
-Write a complete blog article in MARKDOWN. Requirements:
+Write a complete blog article in **HTML** (not markdown). The blog renderer parses HTML directly via dangerouslySetInnerHTML, so markdown will display as raw text and look terrible. Use real HTML tags: <h2>, <h3>, <p>, <ul>, <ol>, <li>, <strong>, <em>, <a>, <table>, <tr>, <th>, <td>.
 
-- 1,500 to 2,200 words.
-- Opens with a hook + brief overview of what the reader will learn.
-- Uses H2 and H3 subheadings to break up content (good for skim + featured snippets).
-- Includes at least one TABLE comparing options/numbers where it fits.
-- Includes a numbered LIST or bullet list for at least one section.
-- Concrete, useful information. No fluff. Cite typical earnings, real timelines, real numbers.
-- Tone: direct, practical, helpful. NOT corporate. NOT salesy.
-- NEVER use em dashes (—). Use commas, parentheses, or sentence breaks instead.
-- Naturally weave 2-3 internal links to PennyLime cash-advance pages where relevant:
-    [link text](/cash-advance) (hub)
-    [link text](/cash-advance/uber-drivers)
-    [link text](/cash-advance/doordash-dashers)
-    [link text](/cash-advance/amazon-flex-drivers)
-    [link text](/cash-advance/instacart-shoppers)
-    [link text](/cash-advance/grubhub-drivers)
-    [link text](/cash-advance/lyft-drivers)
-    [link text](/cash-advance/onlyfans-creators)
-    [link text](/cash-advance/etsy-sellers)
-    [link text](/cash-advance/twitch-streamers)
-  Use only the slugs above; don't invent new ones.
-- Ends with a FAQ section: 4-5 questions, H3 for each question, short answer paragraphs.
-- Ends with a brief CTA paragraph encouraging the reader to apply at /apply.
+REQUIREMENTS:
 
-Output: markdown only, no preamble or "Here is the article:" text. Start with the first paragraph of body (the H1 / title is set elsewhere — don't include it).`;
+- 900 to 1,400 words. TIGHT and useful, not bloated. The best gig-economy blog posts are read in 5 minutes and answer the question concretely.
+- Open with ONE H2 introducing the topic + a short <p> setting up what the reader will learn. No "in this article" filler.
+- 4-6 main sections, each with an H2. Use H3 sparingly inside sections only when truly needed.
+- At least one section uses a <ul> or <ol> bullet list with 3-6 items.
+- If the topic naturally calls for comparison (X vs Y, before/after, by-platform numbers), include ONE <table> with thead+tbody and clean rows.
+- Concrete numbers, real timelines, specific platform names. NO fluff sentences like "in today's gig economy" or "as you might know".
+- Tone: direct, practical, helpful. Not corporate, not salesy, not preachy.
+- NEVER use em dashes. Use commas, parentheses, or sentence breaks instead.
+- Naturally weave 2-3 internal links into the prose where it fits, using ONLY these slugs:
+    <a href="/cash-advance">cash advance hub</a>
+    <a href="/cash-advance/uber-drivers">Uber driver cash advance</a>
+    <a href="/cash-advance/doordash-dashers">DoorDash cash advance</a>
+    <a href="/cash-advance/amazon-flex-drivers">Amazon Flex cash advance</a>
+    <a href="/cash-advance/instacart-shoppers">Instacart cash advance</a>
+    <a href="/cash-advance/grubhub-drivers">Grubhub cash advance</a>
+    <a href="/cash-advance/lyft-drivers">Lyft cash advance</a>
+    <a href="/cash-advance/onlyfans-creators">OnlyFans creator advance</a>
+    <a href="/cash-advance/etsy-sellers">Etsy seller advance</a>
+    <a href="/cash-advance/twitch-streamers">Twitch streamer advance</a>
+- End with a "Common questions" <h2> section: 3-4 <h3> question + <p> answer pairs (short, direct).
+- End with ONE final <p> CTA encouraging the reader to apply, with a link to /apply.
+
+OUTPUT FORMAT:
+- Pure HTML body. No <html>, <head>, <body> wrapper. No <h1> (the title is rendered elsewhere).
+- Start with <h2>. No preamble like "Here is the article:" — just HTML.
+- No code fences around the HTML. No \`\`\`html.`;
+
+/**
+ * Generates a 1200x630 editorial illustration for a blog post and
+ * saves it to /public/blog-images/{slug}.png. Uses the same Imagen
+ * pipeline + brand-styled prompt that the social-post generator uses
+ * (forest-green + lime palette, editorial flat illustration look,
+ * no people/text/logos). Returns the public path on success.
+ */
+async function generateBlogHeroImage(slug: string, title: string): Promise<string | null> {
+  try {
+    const { generatePostImage } = await import("@/lib/social/generator/image");
+    // Reuse the social generator but request the linkedin shape (1200x627),
+    // which matches the blog hero aspect.
+    const storagePath = await generatePostImage(title, "linkedin");
+    // generatePostImage returns a public storage path under /uploads
+    // (or similar — depends on the saveImage implementation). We move
+    // it into /public/blog-images so the blog page's existing image
+    // path convention picks it up.
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const sourcePath = path.join(process.cwd(), storagePath.replace(/^\//, ""));
+    const targetDir = path.join(process.cwd(), "public", "blog-images");
+    await fs.mkdir(targetDir, { recursive: true });
+    const targetPath = path.join(targetDir, `${slug}.png`);
+    await fs.copyFile(sourcePath, targetPath);
+    return `/blog-images/${slug}.png`;
+  } catch (err) {
+    console.error("[seo-calendar] hero image generation failed:", err);
+    return null;
+  }
+}
 
 /**
  * Fills in the body for one already-planned Article via Gemini.
- * Marks contentGenerated=true on success.
+ * Marks contentGenerated=true on success. Also generates and attaches
+ * a hero illustration via the social image pipeline.
  */
 export async function generateArticleBody(articleId: string): Promise<{ ok: true; wordCount: number } | { ok: false; error: string }> {
   const article = await prisma.article.findUnique({
@@ -277,13 +313,26 @@ export async function generateArticleBody(articleId: string): Promise<{ ok: true
       ],
       config: { temperature: 0.7 },
     });
-    const body = (r.text ?? "").trim();
+    let body = (r.text ?? "").trim();
+    // Strip code fences if Gemini wrapped the HTML in them despite the
+    // explicit instruction not to.
+    body = body.replace(/^```(?:html)?\s*/i, "").replace(/```\s*$/i, "").trim();
     if (!body || body.length < 800) {
       return { ok: false, error: "Generated body is too short — try again" };
     }
+
+    // Generate hero image in parallel-friendly fashion. Best-effort —
+    // article still publishes if image gen flakes (Imagen quota,
+    // Cloudflare blocking, etc.).
+    const heroImagePath = await generateBlogHeroImage(article.slug, article.title);
+
     await prisma.article.update({
       where: { id: articleId },
-      data: { body, contentGenerated: true },
+      data: {
+        body,
+        contentGenerated: true,
+        ...(heroImagePath && { featuredImage: heroImagePath, ogImage: heroImagePath }),
+      },
     });
     return { ok: true, wordCount: body.split(/\s+/).length };
   } catch (err) {
