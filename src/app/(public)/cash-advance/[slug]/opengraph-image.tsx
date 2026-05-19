@@ -4,7 +4,13 @@ import { getPlatformBrandColor } from "@/lib/platform-logos";
 
 // Next picks this file up automatically and injects the generated URL
 // into the page's <meta property="og:image"> + Twitter card.
+//
+// dynamic="force-dynamic" keeps OG image generation OFF the build
+// path — without this, Next pre-bakes all 26+ platform OG images
+// during next build, which adds several minutes per deploy. Now
+// they're generated on-demand at first request and edge-cached.
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const alt = "PennyLime cash advance for gig workers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";

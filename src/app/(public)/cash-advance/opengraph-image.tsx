@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 import { getPublishedPlatformPages } from "@/actions/content";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 export const alt = "Cash advances for every gig platform — PennyLime";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
