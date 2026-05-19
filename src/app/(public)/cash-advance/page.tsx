@@ -3,6 +3,7 @@ export const revalidate = 3600;
 import { getPublishedPlatformPages } from "@/actions/content";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { generateMeta } from "@/lib/seo";
+import { PlatformLogo } from "@/components/platform-logo";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -55,14 +56,17 @@ export default async function CashAdvanceHubPage() {
             <Link
               key={p.slug}
               href={`/cash-advance/${p.slug}`}
-              className="group bg-white rounded-2xl border border-[#e4e4e7] p-5 hover:border-[#15803d] hover:shadow-[0_4px_16px_-8px_rgba(21,128,61,0.3)] transition-all"
+              className="group bg-white rounded-2xl border border-[#e4e4e7] p-5 hover:border-[#15803d] hover:shadow-[0_4px_16px_-8px_rgba(21,128,61,0.3)] transition-all flex items-center gap-3"
             >
-              <p className="text-[15px] font-bold text-[#0a0a0a] group-hover:text-[#15803d] transition-colors">
-                {p.platformName}
-              </p>
-              <p className="mt-1 text-[12px] text-[#71717a]">
-                Cash advance →
-              </p>
+              <PlatformLogo platformName={p.platformName} size={48} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-bold text-[#0a0a0a] group-hover:text-[#15803d] transition-colors truncate">
+                  {p.platformName}
+                </p>
+                <p className="mt-0.5 text-[12px] text-[#71717a] truncate">
+                  Cash advance →
+                </p>
+              </div>
             </Link>
           ))}
         </div>

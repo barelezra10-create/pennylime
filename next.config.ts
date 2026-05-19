@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow brand logos served by Simple Icons CDN. Used on the
+  // /cash-advance hub + leaf pages to show each platform's logo
+  // next to its name. SVG is unoptimized by next/image; we use
+  // <img> tags or unoptimized={true} when displaying these.
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "cdn.simpleicons.org" },
+    ],
+  },
+
   // Permanent redirects from the old "loan" URLs to "advance" URLs.
   // PennyLime is a cash advance product, not a loan — the URL space was
   // renamed to match the product framing.

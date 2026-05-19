@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { JsonLd, cashAdvanceProductSchema, faqSchema } from "@/components/seo/json-ld";
 import { FaqAccordion } from "@/components/content/faq-accordion";
 import { ContentCta } from "@/components/content/content-cta";
+import { PlatformLogo } from "@/components/platform-logo";
 import { generateMeta } from "@/lib/seo";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -50,9 +51,12 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
             ]}
           />
           <div className="mt-6 max-w-3xl">
-            <span className="inline-block bg-[#15803d] text-white text-[11px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full">
-              Built for {platform.platformName} workers
-            </span>
+            <div className="flex items-center gap-4 mb-4">
+              <PlatformLogo platformName={platform.platformName} size={64} />
+              <span className="inline-block bg-[#15803d] text-white text-[11px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full">
+                Built for {platform.platformName} workers
+              </span>
+            </div>
             <h1 className="mt-4 text-[36px] md:text-[48px] font-extrabold tracking-[-0.03em] text-[#0a0a0a] leading-[1.05]">
               {platform.heroHeadline}
             </h1>
