@@ -4,9 +4,11 @@ import type { Platform } from "./types";
 import { pickNextTopic } from "./topics/picker";
 import { generatePostText } from "./generator/text";
 import { generatePostImage } from "./generator/image";
+import { generatePostVideo } from "./generator/video";
 import { checkBlocklist } from "./blocklist";
 
 type Status = "planned" | "blocked" | "failed";
+export type MediaType = "image" | "reel";
 
 interface GenerateResult {
   postId: string;
@@ -19,9 +21,13 @@ interface GenerateResult {
 }
 
 /**
- * Pick a topic, generate text + image in parallel, blocklist-check,
+ * Pick a topic, generate text + media in parallel, blocklist-check,
  * persist a SocialPost row tagged with the target scheduledFor.
  * Does NOT publish — that's the cron's job at publish time.
+ *
+ * mediaType "image" generates an Imagen still (.png).
+ * mediaType "reel" generates a Veo 8s clip (.mp4) — only IG supports reel
+ * publishing today, but planning is platform-agnostic.
  *
  * Used by:
  *   - month planner (pre-populates a calendar of planned posts)
@@ -31,6 +37,7 @@ export async function generateAndStorePlanned(
   platform: Platform,
   accountId: string,
   scheduledFor: Date,
+  mediaType: MediaType = "image",
 ): Promise<GenerateResult> {
   const topic = await pickNextTopic();
   if (!topic) {

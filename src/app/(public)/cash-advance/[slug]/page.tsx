@@ -1,5 +1,8 @@
-export const dynamic = "force-static";
 export const revalidate = 3600;
+// Allow on-demand generation for any newly-published slug that
+// wasn't in generateStaticParams at build time (e.g. a platform Bar
+// adds via the admin editor after deploy).
+export const dynamicParams = true;
 
 import { getPlatformPageBySlug, getPublishedPlatformPages } from "@/actions/content";
 import { notFound } from "next/navigation";
