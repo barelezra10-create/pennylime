@@ -79,6 +79,7 @@ const TABS: TopTab[] = [
       { href: "/admin/content", label: "Overview" },
       { href: "/admin/content/landing-pages", label: "Landing pages" },
       { href: "/admin/content/articles", label: "Articles" },
+      { href: "/admin/content/seo-calendar", label: "SEO Calendar" },
       { href: "/admin/content/platforms", label: "Platforms" },
       { href: "/admin/content/states", label: "States" },
       { href: "/admin/content/tools", label: "Tools" },

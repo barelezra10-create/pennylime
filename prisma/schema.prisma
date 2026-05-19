@@ -298,6 +298,13 @@ model Article {
   noIndex         Boolean      @default(false)
   published       Boolean      @default(false)
   publishedAt     DateTime?
+  // SEO-calendar fields. When the planner schedules an article, we
+  // create a draft Article with scheduledFor set + minimal body (just
+  // the outline). The daily cron publishes any draft with
+  // scheduledFor <= now AND body filled. contentGenerated tracks
+  // whether the AI has filled the body or it's still a stub.
+  scheduledFor       DateTime?
+  contentGenerated   Boolean   @default(false)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   category        Category?    @relation(fields: [categoryId], references: [id])
@@ -306,6 +313,7 @@ model Article {
   @@index([slug])
   @@index([published])
   @@index([categoryId])
+  @@index([scheduledFor])
 }
 
 model PlatformPage {
