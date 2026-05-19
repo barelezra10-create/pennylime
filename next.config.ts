@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "cdn.simpleicons.org" },
+      // Google Favicons fallback for platforms not on Simple Icons
+      // (Shipt, Rover, TaskRabbit, GoPuff, Veho, Roadie, etc.)
+      { protocol: "https", hostname: "www.google.com", pathname: "/s2/favicons" },
     ],
   },
 
