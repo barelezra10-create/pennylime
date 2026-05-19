@@ -47,9 +47,12 @@ export async function generateAndStorePlanned(
   let body: string;
   let imageUrl: string;
   try {
+    const generateMedia = mediaType === "reel"
+      ? () => generatePostVideo(topic.topic, platform)
+      : () => generatePostImage(topic.topic, platform);
     [body, imageUrl] = await Promise.all([
       generatePostText(topic.topic, platform),
-      generatePostImage(topic.topic, platform),
+      generateMedia(),
     ]);
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
@@ -60,7 +63,7 @@ export async function generateAndStorePlanned(
         body: "",
         scheduledFor,
         status: "failed",
-        publishError: `generation: ${errMsg}`,
+        publishError: `${mediaType}-generation: ${errMsg}`,
       },
     });
     return { postId: post.id, status: "failed", topic: topic.topic, error: errMsg };

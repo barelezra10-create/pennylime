@@ -1,7 +1,10 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import type { Platform } from "./types";
-import { generateAndStorePlanned } from "./generate-and-store";
+import { generateAndStorePlanned, type MediaType } from "./generate-and-store";
+
+// Reels post Mon/Wed/Fri only (UTC dayOfWeek 1, 3, 5).
+const REEL_DAYS = new Set([1, 3, 5]);
 
 // Sleep between Imagen generations to stay under per-minute quota.
 // Imagen 4.0 limit is ~60 requests/min — at 4s per iteration we cap
@@ -38,40 +41,50 @@ export async function planMonth(
   year: number,
   month: number,
   maxDays?: number,
+  mediaType: MediaType = "image",
 ): Promise<PlanResult> {
   const account = await prisma.socialAccount.findUnique({
     where: { platform_handle: { platform, handle: "@pennylime" } },
   });
   if (!account) throw new Error(`No SocialAccount for ${platform}`);
-  // We don't gate on accessToken here — the planner generates content
-  // regardless of whether the account is ready to publish. That way Bar
-  // can review/regenerate in the calendar before tokens are even pasted.
 
   const monthIdx = month - 1; // JS Date months are 0-indexed
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-  // Find existing posts for this account in this month so we skip duplicates
+  // Find existing posts for this account+month+mediaType so we skip duplicates.
+  // We detect mediaType by file extension on imageUrl (.mp4/.mov = reel).
   const monthStart = new Date(Date.UTC(year, monthIdx, 1));
   const monthEnd = new Date(Date.UTC(year, monthIdx + 1, 1));
-  // Only count NON-failed posts as "filled." Failed rows are noise from
-  // earlier quota/503s; we should be free to retry their slots.
   const existing = await prisma.socialPost.findMany({
     where: {
       accountId: account.id,
       scheduledFor: { gte: monthStart, lt: monthEnd },
       status: { in: ["planned", "published", "blocked", "pending"] },
     },
-    select: { id: true, scheduledFor: true },
+    select: { id: true, scheduledFor: true, imageUrl: true },
   });
-  const existingDays = new Set(existing.map((p) => p.scheduledFor.getUTCDate()));
+  const isReelUrl = (u: string | null | undefined): boolean =>
+    !!u && /\.(mp4|mov)$/i.test(u);
+  const existingDays = new Set(
+    existing
+      .filter((p) => isReelUrl(p.imageUrl) === (mediaType === "reel"))
+      .map((p) => p.scheduledFor.getUTCDate()),
+  );
 
-  // Auto-clean failed posts for this account/month so we don't accumulate
-  // junk and so the retry-from-fresh path doesn't write a 2nd row per day.
+  // Auto-clean failed posts for this account+month+mediaType so we don't
+  // accumulate junk. (Failed posts have no imageUrl so we filter by the
+  // publishError tag we stamp in generateAndStorePlanned.)
+  const failedTagPrefix = mediaType === "reel" ? "reel-generation:" : "image-generation:";
   await prisma.socialPost.deleteMany({
     where: {
       accountId: account.id,
       scheduledFor: { gte: monthStart, lt: monthEnd },
       status: "failed",
+      OR: [
+        { publishError: { startsWith: failedTagPrefix } },
+        // backward compat: pre-mediaType failures used "generation:" prefix
+        { publishError: { startsWith: "generation:" } },
+      ],
     },
   });
 
@@ -82,6 +95,13 @@ export async function planMonth(
   for (let day = 1; day <= daysInMonth; day++) {
     const scheduledFor = publishTimeForDay(year, monthIdx, day);
     const dateStr = scheduledFor.toISOString().slice(0, 10);
+
+    // For reels: only schedule on Mon/Wed/Fri (UTC dayOfWeek 1, 3, 5).
+    // Other days simply have no reel slot — that's expected, not "skipped."
+    if (mediaType === "reel") {
+      const dow = scheduledFor.getUTCDay();
+      if (!REEL_DAYS.has(dow)) continue;
+    }
 
     if (existingDays.has(day)) {
       result.skipped++;
@@ -102,7 +122,7 @@ export async function planMonth(
     first = false;
 
     try {
-      const r = await generateAndStorePlanned(platform, account.id, scheduledFor);
+      const r = await generateAndStorePlanned(platform, account.id, scheduledFor, mediaType);
       generatedCount++;
       if (r.status === "planned") {
         result.planned++;

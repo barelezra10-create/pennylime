@@ -50,9 +50,27 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
       })
     : [];
 
-  // Map day-of-month → post (last write wins if multiple)
-  const postByDay = new Map<number, (typeof posts)[number]>();
-  for (const p of posts) postByDay.set(p.scheduledFor.getUTCDate(), p);
+  // Detect media type by extension on imageUrl (.mp4/.mov = reel)
+  const isReel = (p: (typeof posts)[number]): boolean =>
+    !!p.imageUrl && /\.(mp4|mov)$/i.test(p.imageUrl);
+
+  // Map day-of-month → { image, reel } posts (last write wins per slot)
+  const cellsByDay = new Map<
+    number,
+    { image: (typeof posts)[number] | null; reel: (typeof posts)[number] | null }
+  >();
+  for (const p of posts) {
+    const d = p.scheduledFor.getUTCDate();
+    const slot = cellsByDay.get(d) ?? { image: null, reel: null };
+    if (isReel(p)) slot.reel = p;
+    else slot.image = p;
+    cellsByDay.set(d, slot);
+  }
+
+  // Reels only happen on Mon/Wed/Fri (UTC dayOfWeek 1, 3, 5)
+  const REEL_DOW = new Set([1, 3, 5]);
+  const isReelDay = (year: number, monthIdx: number, day: number): boolean =>
+    REEL_DOW.has(new Date(Date.UTC(year, monthIdx, day, 15)).getUTCDay());
 
   const monthName = new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-US", {
     month: "long",
@@ -74,9 +92,11 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
       : -1;
 
   const platformLabel = platformT.charAt(0).toUpperCase() + platformT.slice(1);
-  const unplannedCount = Array.from({ length: daysInMonth }, (_, i) => i + 1).filter(
-    (d) => !postByDay.has(d),
-  ).length;
+  const allDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const unplannedImageCount = allDays.filter((d) => !cellsByDay.get(d)?.image).length;
+  // Reels only count missing on Mon/Wed/Fri days
+  const reelDays = allDays.filter((d) => isReelDay(year, month - 1, d));
+  const unplannedReelCount = reelDays.filter((d) => !cellsByDay.get(d)?.reel).length;
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
