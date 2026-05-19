@@ -254,30 +254,68 @@ OUTPUT FORMAT:
 - No code fences around the HTML. No \`\`\`html.`;
 
 /**
- * Generates a 1200x630 editorial illustration for a blog post and
- * saves it to /public/blog-images/{slug}.png. Uses the same Imagen
- * pipeline + brand-styled prompt that the social-post generator uses
- * (forest-green + lime palette, editorial flat illustration look,
- * no people/text/logos). Returns the public path on success.
+ * Generates an editorial hero illustration for a blog post via
+ * Imagen, then saves it to the persistent /app/uploads Railway
+ * Volume. Returns a /api/files/... URL that the blog renderer can
+ * use as featuredImage.
+ *
+ * Why not /public/blog-images/{slug}.png: Railway's deployed bundle
+ * is read-only at runtime, so we can't write into public/. The
+ * existing hand-written blog posts that reference /blog-images are
+ * static assets baked at build time. For AI-generated images we
+ * use the /api/files dynamic-serving route + Railway Volume so
+ * images survive deploys.
  */
 async function generateBlogHeroImage(slug: string, title: string): Promise<string | null> {
   try {
-    const { generatePostImage } = await import("@/lib/social/generator/image");
-    // Reuse the social generator but request the linkedin shape (1200x627),
-    // which matches the blog hero aspect.
-    const storagePath = await generatePostImage(title, "linkedin");
-    // generatePostImage returns a public storage path under /uploads
-    // (or similar — depends on the saveImage implementation). We move
-    // it into /public/blog-images so the blog page's existing image
-    // path convention picks it up.
-    const fs = await import("node:fs/promises");
-    const path = await import("node:path");
-    const sourcePath = path.join(process.cwd(), storagePath.replace(/^\//, ""));
-    const targetDir = path.join(process.cwd(), "public", "blog-images");
-    await fs.mkdir(targetDir, { recursive: true });
-    const targetPath = path.join(targetDir, `${slug}.png`);
-    await fs.copyFile(sourcePath, targetPath);
-    return `/blog-images/${slug}.png`;
+    const ai = getClient();
+    // Step 1: ask Gemini for a wordless visual scene that represents
+    // the article topic. Same prompt the social image pipeline uses.
+    const sceneRes = await ai.models.generateContent({
+      model: TOPIC_MODEL,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `Given this blog post topic for a gig-economy finance brand:\n\n"${title}"\n\nDescribe ONE concrete visual scene that represents this topic. Constraints:\n- 1-2 sentences, ~25 words\n- Specific physical objects only (phone showing app UI, car dashboard, gas pump nozzle, paper receipt, delivery bag on doorstep, packing tape on cardboard box, etc.)\n- NO people, NO faces, NO signs with readable words, NO logos, NO numbers\n- Concrete time-of-day + lighting cue\n\nOutput ONLY the scene description. No preamble. No quotes.`,
+            },
+          ],
+        },
+      ],
+      config: { temperature: 0.7 },
+    });
+    const scene = (sceneRes.text ?? "").replace(/^["']|["']$/g, "").trim();
+    if (!scene) throw new Error("Empty scene from Gemini");
+
+    // Step 2: render via Imagen with the brand-styled illustration prompt.
+    const imagenPrompt = `Editorial flat illustration with subtle dimension and grain.
+
+Scene: ${scene}
+
+Visual style:
+A two-color palette only. Deep emerald forest green for primary shapes, vivid citrus lime green for highlights and accents. Background and neutrals in either warm cream paper or deep charcoal ink. No other hues. Soft drop shadows. Hand-drawn line quality.
+
+Composition:
+Documentary observational angle. Tight on the object. The objects fill the frame; they are the subject. The scene is wordless and silent.
+
+Render quality:
+Editorial, modern, calm, confident. Like a New York Times opinion-page illustration. Not 3D rendered. Not cartoonish. Not stock photo. 16:9 aspect ratio.`;
+
+    const imagenRes = await ai.models.generateImages({
+      model: "imagen-4.0-fast-generate-001",
+      prompt: imagenPrompt,
+      config: { numberOfImages: 1, aspectRatio: "16:9" },
+    });
+    const imgB64 = imagenRes.generatedImages?.[0]?.image?.imageBytes;
+    if (!imgB64) throw new Error("Imagen returned no image bytes");
+    const buffer = Buffer.from(imgB64, "base64");
+
+    // Step 3: save to Railway Volume via the persistent storage layer.
+    const { storage } = await import("@/lib/storage");
+    const storagePath = await storage.upload(buffer, `blog-hero-${slug}.png`);
+    // /api/files/[path] serves these dynamically.
+    return `/api/files/${encodeURIComponent(storagePath)}`;
   } catch (err) {
     console.error("[seo-calendar] hero image generation failed:", err);
     return null;
