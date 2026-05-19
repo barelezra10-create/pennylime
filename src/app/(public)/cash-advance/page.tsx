@@ -3,14 +3,21 @@ export const revalidate = 3600;
 import { getPublishedPlatformPages } from "@/actions/content";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { generateMeta } from "@/lib/seo";
+import {
+  JsonLd,
+  breadcrumbSchema,
+  platformItemListSchema,
+  cashAdvanceProductSchema,
+} from "@/components/seo/json-ld";
 import { PlatformLogo } from "@/components/platform-logo";
 import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = generateMeta({
-  title: "Cash Advances for Gig Workers — PennyLime",
+  title: "Cash Advances for Gig Workers — Uber, DoorDash, Lyft, Amazon Flex & More",
   description:
-    "Fast cash advances for Uber, Lyft, DoorDash, Amazon Flex, Instacart, and every other gig platform. No credit check. Funded in as fast as 24 hours.",
+    "Fast cash advances for Uber, Lyft, DoorDash, Amazon Flex, Instacart, OnlyFans, Twitch and 19 other gig platforms. No credit check. $500 to $10,000. Funded in as fast as 24 hours.",
+  canonicalUrl: "https://pennylime.com/cash-advance",
 }) as Metadata;
 
 export default async function CashAdvanceHubPage() {
@@ -20,6 +27,15 @@ export default async function CashAdvanceHubPage() {
 
   return (
     <div className="min-h-screen bg-[#fafaf7]">
+      <JsonLd data={cashAdvanceProductSchema({ pageUrl: "https://pennylime.com/cash-advance" })} />
+      <JsonLd data={platformItemListSchema(platforms.map((p) => ({ platformName: p.platformName, slug: p.slug })))} />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: "https://pennylime.com/" },
+          { name: "Cash Advance", url: "https://pennylime.com/cash-advance" },
+        ])}
+      />
+
       <header className="bg-gradient-to-b from-[#f0fdf4] to-[#fafaf7] border-b border-[#e4e4e7]">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-20">
           <Breadcrumbs

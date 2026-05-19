@@ -7,7 +7,7 @@ export const dynamicParams = true;
 import { getPlatformPageBySlug, getPublishedPlatformPages } from "@/actions/content";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
-import { JsonLd, cashAdvanceProductSchema, faqSchema } from "@/components/seo/json-ld";
+import { JsonLd, cashAdvanceProductSchema, faqSchema, breadcrumbSchema } from "@/components/seo/json-ld";
 import { FaqAccordion } from "@/components/content/faq-accordion";
 import { ContentCta } from "@/components/content/content-cta";
 import { PlatformLogo } from "@/components/platform-logo";
@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return generateMeta({
     title: platform.metaTitle || `Cash Advances for ${platform.platformName} Workers`,
     description: platform.metaDescription || platform.heroSubtext,
+    canonicalUrl: `https://pennylime.com/cash-advance/${slug}`,
   }) as Metadata;
 }
 
@@ -37,6 +38,15 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
   if (!platform || !platform.published) notFound();
 
   const faqs: FaqEntry[] = JSON.parse(platform.faqEntries);
+  // Pull a few sibling platforms for the "related platforms" section
+  // at the bottom — internal linking is huge for crawl + equity flow.
+  const allPlatforms = await getPublishedPlatformPages();
+  const related = allPlatforms
+    .filter((p) => p.slug !== slug)
+    .sort(() => Math.random() - 0.5) // randomize so each render shows a different sample, helping crawl coverage over time
+    .slice(0, 6);
+
+  const pageUrl = `https://pennylime.com/cash-advance/${slug}`;
 
   return (
     <div className="min-h-screen bg-[#fafaf7]">
@@ -77,8 +87,15 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
         </div>
       </header>
 
-      <JsonLd data={cashAdvanceProductSchema()} />
+      <JsonLd data={cashAdvanceProductSchema({ platformName: platform.platformName, pageUrl })} />
       <JsonLd data={faqSchema(faqs)} />
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Home", url: "https://pennylime.com/" },
+          { name: "Cash Advance", url: "https://pennylime.com/cash-advance" },
+          { name: platform.platformName, url: pageUrl },
+        ])}
+      />
 
       <main className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">
         {/* Stats strip */}
@@ -163,6 +180,39 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
         )}
 
         <ContentCta text={platform.ctaText || undefined} subtext={platform.ctaSubtext || undefined} />
+
+        {/* Related platforms — internal linking for SEO + UX. Links sibling
+            leaf pages so crawl can flow between them and visitors who landed
+            on the "wrong" platform page can pivot. */}
+        {related.length > 0 && (
+          <section className="mt-14">
+            <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#0a0a0a] mb-4">
+              Cash advances for other gig platforms
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {related.map((r) => (
+                <Link
+                  key={r.slug}
+                  href={`/cash-advance/${r.slug}`}
+                  className="group bg-white rounded-2xl border border-[#e4e4e7] p-4 hover:border-[#15803d] hover:shadow-[0_4px_16px_-8px_rgba(21,128,61,0.3)] transition-all flex items-center gap-3"
+                >
+                  <PlatformLogo platformName={r.platformName} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[14px] font-bold text-[#0a0a0a] group-hover:text-[#15803d] transition-colors truncate">
+                      {r.platformName}
+                    </p>
+                    <p className="text-[11px] text-[#71717a]">Cash advance →</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <p className="mt-4 text-[13px]">
+              <Link href="/cash-advance" className="text-[#15803d] font-semibold hover:underline">
+                See all {allPlatforms.length} supported platforms →
+              </Link>
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );
