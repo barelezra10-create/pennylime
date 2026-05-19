@@ -32,6 +32,57 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "no_account" });
     }
 
+    // Prefer a pre-planned reel for today (from the calendar). If found,
+    // skip generation and just publish.
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+    const plannedReel = await prisma.socialPost.findFirst({
+      where: {
+        accountId: account.id,
+        status: "planned",
+        scheduledFor: { gte: todayStart, lt: todayEnd },
+        imageUrl: { endsWith: ".mp4" },
+      },
+      orderBy: { scheduledFor: "asc" },
+    });
+    if (plannedReel && plannedReel.body && plannedReel.imageUrl) {
+      try {
+        const { platformPostId } = await publishToInstagramReels(
+          account.accessToken,
+          account.platformAccountId ?? "",
+          plannedReel.imageUrl,
+          plannedReel.body,
+        );
+        await prisma.socialPost.update({
+          where: { id: plannedReel.id },
+          data: { status: "published", platformPostId, publishedAt: new Date() },
+        });
+        console.log("[social-reel] published planned", platformPostId);
+        return NextResponse.json({
+          status: "published",
+          source: "planned",
+          postId: plannedReel.id,
+          platformPostId,
+          topic: plannedReel.topic,
+        });
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        await prisma.socialPost.update({
+          where: { id: plannedReel.id },
+          data: { status: "failed", publishError: errMsg },
+        });
+        return NextResponse.json({
+          status: "failed",
+          source: "planned",
+          postId: plannedReel.id,
+          error: errMsg,
+        });
+      }
+    }
+
+    // Fallback: no planned reel today, generate fresh
     const topic = await pickNextTopic();
     if (!topic) return NextResponse.json({ status: "no_topic" });
 

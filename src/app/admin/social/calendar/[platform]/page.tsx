@@ -137,21 +137,38 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
             {new Date(Date.UTC(nextY, nextM - 1, 1)).toLocaleString("en-US", { month: "short", year: "numeric" })} →
           </Link>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm text-gray-600">
-            {posts.length} planned · {unplannedCount} empty
+            {posts.length} posts · {unplannedImageCount} image slots empty
+            {platformT === "instagram" && ` · ${unplannedReelCount} reel slots empty`}
           </span>
-          {unplannedCount > 0 && (
+          {unplannedImageCount > 0 && (
             <form action={planMonthAction}>
               <input type="hidden" name="platform" value={platformT} />
               <input type="hidden" name="year" value={year} />
               <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="mediaType" value="image" />
               <button
                 type="submit"
                 className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 disabled:opacity-60"
-                title={`Plans up to 3 days per click. Click ${Math.ceil(unplannedCount / 3)}x to fill all ${unplannedCount} empty days.`}
+                title={`Plans up to 3 image days per click. Click ${Math.ceil(unplannedImageCount / 3)}x to fill all ${unplannedImageCount} empty image days.`}
               >
-                Plan next {Math.min(3, unplannedCount)} of {unplannedCount} empty
+                Plan next {Math.min(3, unplannedImageCount)} image of {unplannedImageCount}
+              </button>
+            </form>
+          )}
+          {platformT === "instagram" && unplannedReelCount > 0 && (
+            <form action={planMonthAction}>
+              <input type="hidden" name="platform" value={platformT} />
+              <input type="hidden" name="year" value={year} />
+              <input type="hidden" name="month" value={month} />
+              <input type="hidden" name="mediaType" value="reel" />
+              <button
+                type="submit"
+                className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm hover:bg-purple-700 disabled:opacity-60"
+                title={`Reels schedule on Mon/Wed/Fri only. Plans up to 2 reels per click (~60-120s each via Veo).`}
+              >
+                Plan next 2 reel of {unplannedReelCount}
               </button>
             </form>
           )}
@@ -166,8 +183,12 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
         </div>
         <div className="grid grid-cols-7">
           {cells.map((cell, i) => {
-            const post = cell.day ? postByDay.get(cell.day) : null;
+            const slot = cell.day ? cellsByDay.get(cell.day) : null;
+            const image = slot?.image;
+            const reel = slot?.reel;
             const isToday = cell.day === todayDay;
+            const cellIsReelDay =
+              cell.day && cell.inMonth && isReelDay(year, month - 1, cell.day);
             return (
               <div
                 key={i}
@@ -175,58 +196,76 @@ export default async function PlatformCalendar({ params, searchParams }: PagePro
               >
                 {cell.day && (
                   <>
-                    <div className="text-xs text-gray-500 mb-1">{cell.day}</div>
-                    {post ? (
-                      <div className="space-y-1">
-                        <Link href={`/admin/social/posts/${post.id}`} className="block group">
-                          {post.imageUrl && (post.imageUrl.match(/\.(mp4|mov)$/i) ? (
-                            <video
-                              src={post.imageUrl}
-                              muted
-                              playsInline
-                              preload="metadata"
-                              className="w-full h-20 object-cover rounded group-hover:opacity-80 transition"
-                            />
-                          ) : (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={post.imageUrl}
-                              alt=""
-                              className="w-full h-20 object-cover rounded group-hover:opacity-80 transition"
-                            />
-                          ))}
-                          <div className="text-[10px] line-clamp-3 font-medium mt-1 group-hover:text-blue-700">{post.topic}</div>
-                        </Link>
-                        <div className="flex items-center justify-between mt-1">
-                          <span
-                            className={`text-[9px] uppercase font-semibold px-1.5 py-0.5 rounded ${
-                              post.status === "published" ? "bg-green-100 text-green-800"
-                              : post.status === "failed" ? "bg-red-100 text-red-800"
-                              : post.status === "blocked" ? "bg-gray-200 text-gray-700"
-                              : post.status === "planned" ? "bg-blue-100 text-blue-800"
-                              : "bg-amber-100 text-amber-800"
-                            }`}
-                          >
-                            {post.status}
-                          </span>
-                          {post.status !== "published" && (
-                            <form action={regeneratePostAction}>
-                              <input type="hidden" name="postId" value={post.id} />
-                              <input type="hidden" name="platform" value={platformT} />
-                              <button
-                                type="submit"
-                                className="text-[10px] text-blue-600 hover:underline"
-                                title="Pick a new topic and regenerate text+image"
+                    <div className="text-xs text-gray-500 mb-1 flex items-center justify-between">
+                      <span>{cell.day}</span>
+                      {cellIsReelDay && platformT === "instagram" && (
+                        <span className="text-[8px] uppercase text-purple-600 font-semibold">reel day</span>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {[
+                        { post: image, type: "image" as const },
+                        { post: reel, type: "reel" as const, slotExpected: cellIsReelDay && platformT === "instagram" },
+                      ].map(({ post, type, slotExpected }) => {
+                        if (!post) {
+                          if (type === "reel" && !slotExpected) return null;
+                          return (
+                            <div key={type} className="text-[10px] text-gray-400 italic">
+                              {type === "reel" ? "no reel" : "empty"}
+                            </div>
+                          );
+                        }
+                        const isVid = !!post.imageUrl && /\.(mp4|mov)$/i.test(post.imageUrl);
+                        return (
+                          <div key={post.id} className={type === "reel" ? "border-l-2 border-purple-300 pl-1" : ""}>
+                            <Link href={`/admin/social/posts/${post.id}`} className="block group">
+                              {post.imageUrl && (isVid ? (
+                                <video
+                                  src={post.imageUrl}
+                                  muted
+                                  playsInline
+                                  preload="metadata"
+                                  className="w-full h-16 object-cover rounded group-hover:opacity-80 transition"
+                                />
+                              ) : (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={post.imageUrl}
+                                  alt=""
+                                  className="w-full h-16 object-cover rounded group-hover:opacity-80 transition"
+                                />
+                              ))}
+                              <div className="text-[10px] line-clamp-2 font-medium mt-1 group-hover:text-blue-700">{post.topic}</div>
+                            </Link>
+                            <div className="flex items-center justify-between mt-0.5 gap-1">
+                              <span
+                                className={`text-[8px] uppercase font-semibold px-1 py-0.5 rounded ${
+                                  post.status === "published" ? "bg-green-100 text-green-800"
+                                  : post.status === "failed" ? "bg-red-100 text-red-800"
+                                  : post.status === "blocked" ? "bg-gray-200 text-gray-700"
+                                  : post.status === "planned" ? "bg-blue-100 text-blue-800"
+                                  : "bg-amber-100 text-amber-800"
+                                }`}
                               >
-                                ↻ regen
-                              </button>
-                            </form>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-[10px] text-gray-400 italic">empty</div>
-                    )}
+                                {type === "reel" ? "REEL " : ""}{post.status}
+                              </span>
+                              {post.status !== "published" && (
+                                <form action={regeneratePostAction}>
+                                  <input type="hidden" name="postId" value={post.id} />
+                                  <input type="hidden" name="platform" value={platformT} />
+                                  <button
+                                    type="submit"
+                                    className="text-[9px] text-blue-600 hover:underline"
+                                  >
+                                    ↻ regen
+                                  </button>
+                                </form>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </>
                 )}
               </div>

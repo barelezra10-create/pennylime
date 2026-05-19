@@ -121,6 +121,10 @@ export async function regeneratePlanned(postId: string): Promise<GenerateResult>
   }
 
   const platform = existing.account.platform as Platform;
+  // Preserve the original media type when regenerating: reels stay reels,
+  // images stay images.
+  const originalMediaType: MediaType =
+    existing.imageUrl && /\.(mp4|mov)$/i.test(existing.imageUrl) ? "reel" : "image";
 
   // Re-pick a fresh topic rather than reusing the old one — Bar's
   // intent is "I don't like this one, give me something else"
@@ -130,9 +134,12 @@ export async function regeneratePlanned(postId: string): Promise<GenerateResult>
   let body: string;
   let imageUrl: string;
   try {
+    const generateMedia = originalMediaType === "reel"
+      ? () => generatePostVideo(topic.topic, platform)
+      : () => generatePostImage(topic.topic, platform);
     [body, imageUrl] = await Promise.all([
       generatePostText(topic.topic, platform),
-      generatePostImage(topic.topic, platform),
+      generateMedia(),
     ]);
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
