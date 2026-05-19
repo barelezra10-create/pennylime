@@ -1,12 +1,7 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
-import {
-  planSeoMonthAction,
-  generateArticleAction,
-  publishNowAction,
-  deletePlannedArticleAction,
-} from "./actions";
+import { PlanMonthButton, ArticleRowActions } from "./row-actions";
 import { getEveryOtherDayDates } from "@/lib/seo-calendar";
 
 export const dynamic = "force-dynamic";
@@ -91,17 +86,7 @@ export default async function SeoCalendarPage({
         <span className="mx-1 h-5 w-px bg-[#e4e4e7]" />
 
         {remainingCount > 0 && (
-          <form action={planSeoMonthAction}>
-            <input type="hidden" name="year" value={year} />
-            <input type="hidden" name="month" value={month} />
-            <button
-              type="submit"
-              className="bg-[#15803d] text-white px-4 py-2 rounded-lg text-[13px] font-semibold hover:bg-[#166534]"
-              title={`Plans 3 topics per click. ${Math.ceil(remainingCount / 3)}x to fill all ${remainingCount} open slots.`}
-            >
-              Plan next {Math.min(3, remainingCount)} of {remainingCount} open
-            </button>
-          </form>
+          <PlanMonthButton year={year} month={month} remainingCount={remainingCount} />
         )}
 
         <div className="ml-auto flex items-center gap-3 text-[12px] text-[#71717a]">
@@ -187,56 +172,12 @@ export default async function SeoCalendarPage({
                 <p className="text-[12px] text-[#71717a] leading-snug line-clamp-2 mb-3">{a.excerpt}</p>
               )}
 
-              <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {!a.contentGenerated && (
-                  <form action={generateArticleAction}>
-                    <input type="hidden" name="articleId" value={a.id} />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-[#15803d] text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-[#166534]"
-                    >
-                      Generate body
-                    </button>
-                  </form>
-                )}
-                {a.contentGenerated && !a.published && (
-                  <form action={publishNowAction}>
-                    <input type="hidden" name="articleId" value={a.id} />
-                    <button
-                      type="submit"
-                      className="rounded-md bg-[#15803d] text-white px-2.5 py-1 text-[11px] font-semibold hover:bg-[#166534]"
-                    >
-                      Publish now
-                    </button>
-                  </form>
-                )}
-                <Link
-                  href={`/admin/content/articles/${a.id}`}
-                  className="rounded-md border border-[#e4e4e7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#52525b] hover:bg-gray-50"
-                >
-                  Edit
-                </Link>
-                {a.published && (
-                  <Link
-                    href={`/blog/${a.slug}`}
-                    target="_blank"
-                    className="rounded-md border border-[#dcfce7] bg-[#f7fbf8] px-2.5 py-1 text-[11px] font-semibold text-[#15803d] hover:bg-[#dcfce7]"
-                  >
-                    View live →
-                  </Link>
-                )}
-                {!a.published && (
-                  <form action={deletePlannedArticleAction} className="ml-auto">
-                    <input type="hidden" name="articleId" value={a.id} />
-                    <button
-                      type="submit"
-                      className="rounded-md text-[11px] font-semibold text-[#dc2626] hover:bg-[#fef2f2] px-2 py-1"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                )}
-              </div>
+              <ArticleRowActions
+                articleId={a.id}
+                slug={a.slug}
+                contentGenerated={a.contentGenerated}
+                published={a.published}
+              />
             </article>
           );
         })}

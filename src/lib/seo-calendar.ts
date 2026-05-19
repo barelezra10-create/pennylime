@@ -20,8 +20,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { prisma } from "@/lib/db";
 
-const TOPIC_MODEL = process.env.GEMINI_SEO_MODEL || "gemini-2.5-flash";
-const CONTENT_MODEL = process.env.GEMINI_SEO_CONTENT_MODEL || "gemini-2.5-flash";
+// gemini-2.5-flash-lite is the model Bar's key has full access to —
+// gemini-2.5-flash 403s on his account. Match the model already used
+// by the bank-statement parser (proven working).
+const TOPIC_MODEL = process.env.GEMINI_SEO_MODEL || "gemini-2.5-flash-lite";
+const CONTENT_MODEL = process.env.GEMINI_SEO_CONTENT_MODEL || "gemini-2.5-flash-lite";
 
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
