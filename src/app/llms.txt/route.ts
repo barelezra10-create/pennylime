@@ -53,7 +53,7 @@ export async function GET() {
       platforms
         .map(
           (p) =>
-            `- [${p.platformName} cash advances](${BASE}/advances/${p.slug}): ${trim(p.heroSubtext) || trim(p.platformDescription)}`
+            `- [${p.platformName} cash advances](${BASE}/cash-advance/${p.slug}): ${trim(p.heroSubtext) || trim(p.platformDescription)}`
         )
         .join("\n")
     );

@@ -69,7 +69,7 @@ export function PlatformsClient({ platforms }: { platforms: PlatformPageItem[] }
                   <Link href={`/admin/content/platforms/${p.id}`} className="text-[13px] font-medium text-black hover:text-[#15803d]">
                     {p.platformName}
                   </Link>
-                  <p className="text-[11px] text-[#a1a1aa]">/advances/{p.slug}</p>
+                  <p className="text-[11px] text-[#a1a1aa]">/cash-advance/{p.slug}</p>
                 </td>
                 <td className="px-4 py-3">
                   <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${p.published ? "bg-[#f0f5f0] text-[#15803d]" : "bg-[#f4f4f5] text-[#71717a]"}`}>

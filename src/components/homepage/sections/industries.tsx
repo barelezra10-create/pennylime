@@ -17,7 +17,7 @@ const INDUSTRIES = [
     description: "Drive passengers, earn on your schedule. Whether full-time or side hustle, Uber and Lyft drivers get funded in 48 hours, sized to verified weekly deposits.",
     stats: { avgEarnings: "$45K/yr", drivers: "1.5M+" },
     color: "bg-[#dcfce7]",
-    href: "/advances/uber",
+    href: "/cash-advance/uber-drivers",
   },
   {
     name: "Food Delivery",
@@ -28,7 +28,7 @@ const INDUSTRIES = [
     description: "Deliver meals across your city on DoorDash, Grubhub, or Uber Eats. When your bike needs replacing or your car needs brakes, we fund the repair in hours.",
     stats: { avgEarnings: "$38K/yr", drivers: "2M+" },
     color: "bg-[#fefce8]",
-    href: "/advances/doordash",
+    href: "/cash-advance/doordash-dashers",
   },
   {
     name: "Grocery and Shopping",
@@ -39,7 +39,7 @@ const INDUSTRIES = [
     description: "Shop and deliver on Instacart and Shipt. Steady earnings, real tips. We fund personal shoppers based on the deposits the platforms already prove.",
     stats: { avgEarnings: "$32K/yr", drivers: "600K+" },
     color: "bg-[#f0fdf4]",
-    href: "/advances/instacart",
+    href: "/cash-advance/instacart-shoppers",
   },
   {
     name: "Freelance and Creative",
@@ -50,7 +50,7 @@ const INDUSTRIES = [
     description: "Designers, developers, writers, marketers on Fiverr and Upwork. Invoices clear in 30+ days, bills don't wait. We fund based on platform earnings, not credit.",
     stats: { avgEarnings: "$52K/yr", drivers: "3M+" },
     color: "bg-[#dcfce7]",
-    href: "/advances/fiverr",
+    href: "/cash-advance/fiverr-freelancers",
   },
   {
     name: "Home Services",
@@ -61,7 +61,7 @@ const INDUSTRIES = [
     description: "Handymen, movers, cleaners, assemblers on TaskRabbit and Thumbtack. Physical work, variable demand. When the van needs work, we fund it the same week.",
     stats: { avgEarnings: "$42K/yr", drivers: "800K+" },
     color: "bg-[#fefce8]",
-    href: "/advances/taskrabbit",
+    href: "/cash-advance/taskrabbit-taskers",
   },
   {
     name: "Last-mile and Hosting",
@@ -72,7 +72,7 @@ const INDUSTRIES = [
     description: "Run Amazon Flex blocks or host a Turo car. When maintenance costs spike, we size the advance to your real weekly deposits, not your credit.",
     stats: { avgEarnings: "$35K/yr", drivers: "500K+" },
     color: "bg-[#f0fdf4]",
-    href: "/advances/amazon-flex",
+    href: "/cash-advance/amazon-flex-drivers",
   },
 ];
 

@@ -187,7 +187,7 @@ export function PlatformEditorClient({ platform }: { platform?: PlatformFormData
           <div className="bg-white rounded-[10px] p-4 space-y-2">
             <label className={labelClass}>Slug</label>
             <input value={form.slug} onChange={(e) => updateField("slug", e.target.value)} className={inputClass} />
-            <p className="text-[11px] text-[#a1a1aa]">URL: /advances/{form.slug}</p>
+            <p className="text-[11px] text-[#a1a1aa]">URL: /cash-advance/{form.slug}</p>
           </div>
           <div className="bg-white rounded-[10px] p-4 space-y-3">
             <h3 className="text-[13px] font-bold text-black">SEO</h3>

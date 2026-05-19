@@ -38,6 +38,24 @@ const nextConfig: NextConfig = {
       { source: "/blog/1099-loans-complete-guide-gig-workers", destination: "/blog/1099-advances-complete-guide-gig-workers", permanent: true },
       { source: "/blog/cosigner-gig-worker-loan-pros-cons-risks", destination: "/blog/cosigner-gig-worker-advance-pros-cons-risks", permanent: true },
       { source: "/blog/gig-workers-business-loans-complete-guide", destination: "/blog/gig-workers-business-advances-complete-guide", permanent: true },
+
+      // Platform landing pages — slug migration from /advances/[short] to
+      // /cash-advance/[descriptive] for stronger keyword targeting.
+      { source: "/advances", destination: "/cash-advance", permanent: true },
+      { source: "/advances/uber", destination: "/cash-advance/uber-drivers", permanent: true },
+      { source: "/advances/doordash", destination: "/cash-advance/doordash-dashers", permanent: true },
+      { source: "/advances/lyft", destination: "/cash-advance/lyft-drivers", permanent: true },
+      { source: "/advances/amazon-flex", destination: "/cash-advance/amazon-flex-drivers", permanent: true },
+      { source: "/advances/instacart", destination: "/cash-advance/instacart-shoppers", permanent: true },
+      { source: "/advances/grubhub", destination: "/cash-advance/grubhub-drivers", permanent: true },
+      { source: "/advances/postmates", destination: "/cash-advance/postmates-couriers", permanent: true },
+      { source: "/advances/shipt", destination: "/cash-advance/shipt-shoppers", permanent: true },
+      { source: "/advances/turo", destination: "/cash-advance/turo-hosts", permanent: true },
+      { source: "/advances/rover", destination: "/cash-advance/rover-sitters", permanent: true },
+      { source: "/advances/taskrabbit", destination: "/cash-advance/taskrabbit-taskers", permanent: true },
+      { source: "/advances/thumbtack", destination: "/cash-advance/thumbtack-pros", permanent: true },
+      { source: "/advances/fiverr", destination: "/cash-advance/fiverr-freelancers", permanent: true },
+      { source: "/advances/upwork", destination: "/cash-advance/upwork-freelancers", permanent: true },
     ];
   },
 };

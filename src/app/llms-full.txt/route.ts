@@ -109,7 +109,7 @@ export async function GET() {
     out.push(`\n---\n\n# Cash advances by gig platform`);
     for (const p of platforms) {
       out.push(`## ${p.platformName}`);
-      out.push(`URL: ${BASE}/advances/${p.slug}`);
+      out.push(`URL: ${BASE}/cash-advance/${p.slug}`);
       if (p.heroHeadline) out.push(`### ${p.heroHeadline}`);
       if (p.heroSubtext) out.push(stripHtml(p.heroSubtext));
       if (p.platformDescription) out.push(stripHtml(p.platformDescription));
