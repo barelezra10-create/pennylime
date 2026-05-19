@@ -133,15 +133,23 @@ async function generateOneTopic(existingSlugs: string[]): Promise<PlannedTopic> 
 }
 
 /**
- * Plans up to `chunk` articles in the given month. Idempotent: skips
- * dates that already have a scheduled Article. Returns the list of
- * Articles newly created.
+ * Plans up to `chunk` articles in the given month AND writes the
+ * body for each in the same call, so what comes back is fully
+ * publish-ready. Idempotent: skips dates that already have a
+ * scheduled Article.
+ *
+ * Why combined: planning a topic alone is fast (~5s) but doesn't
+ * give the admin anything useful — they'd still need a second click
+ * to write the body. We make each click do one complete article so
+ * the workflow is "click → 35s → ready-to-publish article on the
+ * calendar". Chunk should be 1 to stay under serverless timeouts;
+ * if you need to fill multiple slots, click multiple times.
  */
 export async function planSeoMonth(input: {
   year: number;
   month: number; // 1-12
   chunk: number;
-}): Promise<{ created: number; skipped: number }> {
+}): Promise<{ created: number; skipped: number; bodiesGenerated: number }> {
   const allDates = getEveryOtherDayDates(input.year, input.month);
 
   // Which of those dates already have an article scheduled?
@@ -171,6 +179,7 @@ export async function planSeoMonth(input: {
   const toPlan = openDates.slice(0, input.chunk);
   let created = 0;
   let skipped = 0;
+  let bodiesGenerated = 0;
   for (const date of toPlan) {
     try {
       const topic = await generateOneTopic([...allSlugs]);
@@ -178,14 +187,15 @@ export async function planSeoMonth(input: {
       if (allSlugs.includes(topic.slug)) {
         topic.slug = `${topic.slug}-${date.toISOString().slice(0, 10)}`;
       }
-      await prisma.article.create({
+      const created_article = await prisma.article.create({
         data: {
           title: topic.title,
           slug: topic.slug,
           metaTitle: topic.metaTitle,
           metaDescription: topic.metaDescription,
           excerpt: topic.excerpt,
-          body: `<!-- ${topic.angle} -->\n\nDraft to be generated. Topic angle: ${topic.angle}.\n`,
+          // Initial placeholder — overwritten by generateArticleBody below.
+          body: `<!-- ${topic.angle} -->\n\nGenerating…`,
           scheduledFor: date,
           published: false,
           contentGenerated: false,
@@ -193,12 +203,21 @@ export async function planSeoMonth(input: {
       });
       allSlugs.push(topic.slug);
       created++;
+      // Same-call body generation. If Gemini fails on the body the
+      // topic still survives as a planned draft and the admin can
+      // hit "Generate body" or the daily cron will retry.
+      const bodyResult = await generateArticleBody(created_article.id);
+      if (bodyResult.ok) {
+        bodiesGenerated++;
+      } else {
+        console.error("[seo-calendar] body gen failed for", created_article.id, bodyResult.error);
+      }
     } catch (err) {
       console.error("[seo-calendar] topic generation failed:", err);
       skipped++;
     }
   }
-  return { created, skipped };
+  return { created, skipped, bodiesGenerated };
 }
 
 const CONTENT_SYSTEM_PROMPT = `You are a senior SEO content writer for PennyLime, a cash-advance product for US gig workers.

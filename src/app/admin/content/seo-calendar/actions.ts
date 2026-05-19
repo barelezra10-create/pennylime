@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { planSeoMonth, generateArticleBody } from "@/lib/seo-calendar";
 import { prisma } from "@/lib/db";
 
-const PLAN_CHUNK = 3;
+// One article per click since each click now ALSO generates the body
+// (~30s), not just the topic. Click multiple times to fill more slots.
+const PLAN_CHUNK = 1;
 
 export async function planSeoMonthAction(year: number, month: number) {
   try {

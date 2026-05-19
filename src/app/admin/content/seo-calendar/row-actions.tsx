@@ -22,25 +22,27 @@ export function PlanMonthButton({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  const chunkSize = Math.min(3, remainingCount);
 
   async function handleClick() {
     if (busy) return;
     setBusy(true);
-    const t = toast.loading(`Planning ${chunkSize} topic${chunkSize > 1 ? "s" : ""} via Gemini…`);
+    const t = toast.loading("Writing next article via Gemini… ~30s");
     try {
       const r = await planSeoMonthAction(year, month);
       if (r.ok) {
+        const bodyNote = r.bodiesGenerated === r.created
+          ? "full body"
+          : `${r.bodiesGenerated}/${r.created} bodies`;
         toast.success(
-          `Planned ${r.created} new topic${r.created !== 1 ? "s" : ""}${r.skipped ? ` (${r.skipped} skipped)` : ""}.`,
+          `Wrote ${r.created} article${r.created !== 1 ? "s" : ""} (${bodyNote}).`,
           { id: t },
         );
         router.refresh();
       } else {
-        toast.error(`Planning failed: ${r.error}`, { id: t });
+        toast.error(`Failed: ${r.error}`, { id: t });
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Planning failed", { id: t });
+      toast.error(err instanceof Error ? err.message : "Failed", { id: t });
     } finally {
       setBusy(false);
     }
@@ -50,9 +52,9 @@ export function PlanMonthButton({
       onClick={handleClick}
       disabled={busy}
       className="bg-[#15803d] text-white px-4 py-2 rounded-lg text-[13px] font-semibold hover:bg-[#166534] disabled:opacity-50"
-      title={`Plans 3 topics per click. ${Math.ceil(remainingCount / 3)}x to fill all ${remainingCount} open slots.`}
+      title={`Each click writes 1 complete article (topic + body) in ~30s. Click ${remainingCount}x to fill the month.`}
     >
-      {busy ? "Planning…" : `Plan next ${chunkSize} of ${remainingCount} open`}
+      {busy ? "Writing…" : `Write next article (${remainingCount} open)`}
     </button>
   );
 }
