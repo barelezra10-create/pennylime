@@ -31,7 +31,7 @@ export const PLATFORM_LOGOS: Record<string, PlatformLogo> = {
   Uber: { simpleIconsSlug: "uber", domain: "uber.com", brandColor: "000000" },
   Lyft: { simpleIconsSlug: "lyft", domain: "lyft.com", brandColor: "FF00BF" },
   DoorDash: { simpleIconsSlug: "doordash", domain: "doordash.com", brandColor: "EF3340" },
-  "Uber Eats": { simpleIconsSlug: "ubereats", domain: "ubereats.com", brandColor: "06C167" },
+  "Uber Eats": { simpleIconsSlug: null, domain: "ubereats.com", brandColor: "06C167" },
   Grubhub: { simpleIconsSlug: "grubhub", domain: "grubhub.com", brandColor: "F63440" },
   Instacart: { simpleIconsSlug: "instacart", domain: "instacart.com", brandColor: "43B02A" },
   "Amazon Flex": { simpleIconsSlug: "amazon", domain: "flex.amazon.com", brandColor: "FF9900" },
