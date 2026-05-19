@@ -292,36 +292,39 @@ export async function generateArticleBody(articleId: string): Promise<{ ok: true
 }
 
 /**
- * Publishes any article whose scheduledFor <= now AND contentGenerated.
- * Called from a daily cron. Returns the count published.
+ * Publishes any article whose scheduledFor <= now AND already has its
+ * body generated. Designed to be fast (~1s for typical loads) so a
+ * cron-job.org daily call never times out.
+ *
+ * Articles that are past their date but DON'T have a body are surfaced
+ * in `missingBodies` — admin should fix those manually via the
+ * calendar's "Generate body" button. We don't generate bodies in the
+ * cron path because Gemini takes ~30s each and stacks past cron
+ * timeouts when there's a backlog.
  */
-export async function publishScheduledArticles(): Promise<{ published: number; pendingGeneration: number }> {
+export async function publishScheduledArticles(): Promise<{ published: number; missingBodies: number }> {
   const now = new Date();
-  // Find articles past their scheduledFor.
-  const due = await prisma.article.findMany({
+
+  // Fast bulk update: any due article that has a body, publish it.
+  // Single SQL statement. No N+1.
+  const updateResult = await prisma.article.updateMany({
     where: {
       scheduledFor: { lte: now },
       published: false,
+      contentGenerated: true,
     },
-    select: { id: true, contentGenerated: true },
+    data: { published: true, publishedAt: new Date() },
   });
 
-  let published = 0;
-  let pendingGeneration = 0;
-  for (const article of due) {
-    if (!article.contentGenerated) {
-      // Auto-generate body now so the publish can succeed.
-      const r = await generateArticleBody(article.id);
-      if (!r.ok) {
-        pendingGeneration++;
-        continue;
-      }
-    }
-    await prisma.article.update({
-      where: { id: article.id },
-      data: { published: true, publishedAt: new Date() },
-    });
-    published++;
-  }
-  return { published, pendingGeneration };
+  // Count any due articles that DON'T have a body so admin can see
+  // them in the cron response and react.
+  const missingBodies = await prisma.article.count({
+    where: {
+      scheduledFor: { lte: now },
+      published: false,
+      contentGenerated: false,
+    },
+  });
+
+  return { published: updateResult.count, missingBodies };
 }
