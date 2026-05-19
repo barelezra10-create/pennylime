@@ -168,7 +168,7 @@ export async function planSeoMonth(input: {
   const openDates = allDates.filter(
     (d) => !filledDays.has(d.toISOString().slice(0, 10)),
   );
-  if (openDates.length === 0) return { created: 0, skipped: 0 };
+  if (openDates.length === 0) return { created: 0, skipped: 0, bodiesGenerated: 0 };
 
   // Get all existing slugs (across the whole DB, not just this month)
   // so the topic generator can avoid duplicates.
