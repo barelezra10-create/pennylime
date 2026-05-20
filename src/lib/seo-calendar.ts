@@ -336,7 +336,7 @@ Do NOT include: people, faces, hands, photographs, gradient backgrounds, vignett
     // Step 3: save into the persistent Railway Volume at /app/uploads
     // (same volume bank statements + ACH PDFs use). Subdirectory keeps
     // public blog heroes separate from private documents. Served via
-    // the public /api/blog-images/{slug}.png route (no auth).
+    // the public /api/og-blog/{slug}.png route (no auth).
     //
     // IMPORTANT: must NOT use /app/blog-images — that path is part of
     // the ephemeral container filesystem and gets wiped on every
@@ -350,7 +350,7 @@ Do NOT include: people, faces, hands, photographs, gradient backgrounds, vignett
     const fileName = `${slug}.png`;
     const filePath = path.join(dir, fileName);
     await fs.writeFile(filePath, buffer);
-    return `/api/blog-images/${fileName}`;
+    return `/api/og-blog/${fileName}`;
   } catch (err) {
     console.error("[seo-calendar] hero image generation failed:", err);
     return null;
