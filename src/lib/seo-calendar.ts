@@ -269,8 +269,9 @@ OUTPUT FORMAT:
 async function generateBlogHeroImage(slug: string, title: string): Promise<string | null> {
   try {
     const ai = getClient();
-    // Step 1: ask Gemini for a wordless visual scene that represents
-    // the article topic. Same prompt the social image pipeline uses.
+    // Step 1: ask Gemini to pick 2-3 small physical objects that
+    // together represent the article topic. We want a multi-object
+    // floating-still-life composition, not a single hero object.
     const sceneRes = await ai.models.generateContent({
       model: TOPIC_MODEL,
       contents: [
@@ -278,7 +279,7 @@ async function generateBlogHeroImage(slug: string, title: string): Promise<strin
           role: "user",
           parts: [
             {
-              text: `Given this blog post topic for a gig-economy finance brand:\n\n"${title}"\n\nDescribe ONE concrete visual scene that represents this topic. Constraints:\n- 1-2 sentences, ~25 words\n- Specific physical objects only (phone showing app UI, car dashboard, gas pump nozzle, paper receipt, delivery bag on doorstep, packing tape on cardboard box, etc.)\n- NO people, NO faces, NO signs with readable words, NO logos, NO numbers\n- Concrete time-of-day + lighting cue\n\nOutput ONLY the scene description. No preamble. No quotes.`,
+              text: `Given this blog post topic for a gig-economy finance brand:\n\n"${title}"\n\nList 2 or 3 small physical objects that together visually represent this topic. Keep each object specific and concrete (open laptop, paper form titled "1099", stack of poker chips or coins, a credit card, a phone showing a delivery app, a folded receipt, a calendar page, a gas pump nozzle, a piggy bank, a wallet, etc.).\n\nNO people, NO faces, NO logos, NO readable text apart from short labels like "1099" or "TAX" that fit naturally on a form.\n\nOutput one short line: just the objects separated by commas. No preamble, no quotes, no explanation.`,
             },
           ],
         },
@@ -288,19 +289,34 @@ async function generateBlogHeroImage(slug: string, title: string): Promise<strin
     const scene = (sceneRes.text ?? "").replace(/^["']|["']$/g, "").trim();
     if (!scene) throw new Error("Empty scene from Gemini");
 
-    // Step 2: render via Imagen with the brand-styled illustration prompt.
-    const imagenPrompt = `Editorial flat illustration with subtle dimension and grain.
+    // Step 2: render via Imagen with the soft-3D brand style.
+    // Matches PennyLime's existing hand-crafted blog heroes: floating
+    // 3D objects, pastel cream background, forest green + lime palette,
+    // soft drop shadows beneath each object.
+    const imagenPrompt = `Soft 3D-rendered isometric still life. Floating, weightless composition.
 
-Scene: ${scene}
+Objects in the scene: ${scene}
 
-Visual style:
-A two-color palette only. Deep emerald forest green for primary shapes, vivid citrus lime green for highlights and accents. Background and neutrals in either warm cream paper or deep charcoal ink. No other hues. Soft drop shadows. Hand-drawn line quality.
+Color palette (strict, no other hues):
+- Background: very soft pastel cream, almost white, with subtle warm tint (think gentle off-white paper). Smooth gradient lighter at top.
+- Primary accent: deep forest green (rich emerald, not too dark).
+- Secondary accent: bright spring lime green (vibrant, fresh).
+- Neutrals: warm cream / bone white for form panels and surfaces.
+- Light gray for laptop bezel-style elements and subtle shadows.
 
-Composition:
-Documentary observational angle. Tight on the object. The objects fill the frame; they are the subject. The scene is wordless and silent.
+Style:
+- Soft 3D rendering with gentle dimensional shading. Rounded corners on every shape. Toy-like, calm, modern.
+- Each object floats with a soft, blurred drop shadow on the cream surface below it. Shadows are gray-green, soft-edged, not harsh.
+- Smooth subtle ambient lighting from above and slightly left. No harsh highlights or rim lighting.
+- Clean, minimal, premium fintech aesthetic. Like Stripe Press or modern finance app marketing.
+- 2 to 3 objects arranged in loose composition with empty negative space around them. Centered or slightly off-center.
 
-Render quality:
-Editorial, modern, calm, confident. Like a New York Times opinion-page illustration. Not 3D rendered. Not cartoonish. Not stock photo. 16:9 aspect ratio.`;
+Quality:
+- Photorealistic 3D render quality with matte surfaces.
+- 16:9 aspect ratio.
+- High detail, premium finish.
+
+Do NOT include: people, faces, hands, photographs, gradient skies, neon, dark backgrounds, harsh shadows, stock-photo look, hand-drawn marks, flat 2D illustration style.`;
 
     const imagenRes = await ai.models.generateImages({
       model: "imagen-4.0-fast-generate-001",
