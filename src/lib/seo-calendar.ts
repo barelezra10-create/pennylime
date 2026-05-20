@@ -297,26 +297,30 @@ async function generateBlogHeroImage(slug: string, title: string): Promise<strin
 
 Objects in the scene: ${scene}
 
-Color palette (strict, no other hues):
-- Background: very soft pastel cream, almost white, with subtle warm tint (think gentle off-white paper). Smooth gradient lighter at top.
+Background (CRITICAL — must match exactly):
+- Solid flat soft cream color throughout, hex roughly #f4f1ea. Like warm off-white paper.
+- COMPLETELY FLAT — no gradient, no vignette, no banding, no color variation anywhere. Same uniform cream pixel from edge to edge behind the objects.
+- The only contrast against the background comes from the objects themselves and their drop shadows.
+
+Color palette for objects (strict, no other hues):
 - Primary accent: deep forest green (rich emerald, not too dark).
 - Secondary accent: bright spring lime green (vibrant, fresh).
-- Neutrals: warm cream / bone white for form panels and surfaces.
-- Light gray for laptop bezel-style elements and subtle shadows.
+- Neutrals: warm bone white / cream for form panels and surfaces.
+- Light gray for laptop bezel-style elements and structural neutrals.
 
 Style:
-- Soft 3D rendering with gentle dimensional shading. Rounded corners on every shape. Toy-like, calm, modern.
-- Each object floats with a soft, blurred drop shadow on the cream surface below it. Shadows are gray-green, soft-edged, not harsh.
-- Smooth subtle ambient lighting from above and slightly left. No harsh highlights or rim lighting.
+- Soft 3D rendering with gentle dimensional shading on the OBJECTS only. Rounded corners on every shape. Toy-like, calm, modern.
+- Each object floats with a soft, blurred gray drop shadow directly beneath it on the flat cream background. Shadows are soft-edged, low opacity, low contrast.
+- Smooth ambient lighting from above-left, but lighting affects only the objects — not the background.
 - Clean, minimal, premium fintech aesthetic. Like Stripe Press or modern finance app marketing.
 - 2 to 3 objects arranged in loose composition with empty negative space around them. Centered or slightly off-center.
 
 Quality:
-- Photorealistic 3D render quality with matte surfaces.
+- Photorealistic 3D render quality with matte surfaces on the objects.
 - 16:9 aspect ratio.
 - High detail, premium finish.
 
-Do NOT include: people, faces, hands, photographs, gradient skies, neon, dark backgrounds, harsh shadows, stock-photo look, hand-drawn marks, flat 2D illustration style.`;
+Do NOT include: people, faces, hands, photographs, gradient backgrounds, vignettes, sky-like backgrounds, neon, dark backgrounds, harsh shadows, stock-photo look, hand-drawn marks, flat 2D illustration style, multiple background colors, banding.`;
 
     const imagenRes = await ai.models.generateImages({
       model: "imagen-4.0-fast-generate-001",
