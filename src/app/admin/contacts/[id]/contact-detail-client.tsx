@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
 import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archive";
 import { logActivity } from "@/actions/activities";
-import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, type CrmEmailTemplate } from "@/actions/crm-email";
+import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, polishReplyWithAI, type CrmEmailTemplate } from "@/actions/crm-email";
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
 import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 import { toast } from "sonner";
@@ -534,6 +534,33 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [aiNotes, setAiNotes] = useState("");
+  const [polishing, setPolishing] = useState(false);
+
+  async function handlePolishWithAI() {
+    if (!aiNotes.trim()) {
+      toast.error("Write a few words first, then I can polish them.");
+      return;
+    }
+    setPolishing(true);
+    const t = toast.loading("Polishing reply with Gemini…");
+    try {
+      const r = await polishReplyWithAI({ contactId, draftNotes: aiNotes });
+      if (r.ok) {
+        setSubject(r.subject);
+        setBody(r.body);
+        toast.success("Polished. Review before sending.", { id: t });
+        // Clear the rough notes so the next polish round is fresh.
+        setAiNotes("");
+      } else {
+        toast.error(r.error, { id: t });
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Polish failed", { id: t });
+    } finally {
+      setPolishing(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -615,6 +642,38 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
             {selectedTemplate && (
               <p className="text-[11px] text-[#71717a] mt-1">{selectedTemplate.description}</p>
             )}
+          </div>
+
+          {/* AI polish — type rough notes, Gemini rewrites into a polished
+              email body + subject. Pulls the customer's last inbound
+              message for grounding so the reply matches the conversation. */}
+          <div className="mb-4 rounded-xl border border-[#15803d]/30 bg-[#f0fdf4] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#15803d]">
+                ✦ Quick reply with AI
+              </label>
+              <span className="text-[10px] text-[#71717a]">Type a few words, Gemini polishes</span>
+            </div>
+            <textarea
+              value={aiNotes}
+              onChange={(e) => setAiNotes(e.target.value)}
+              rows={2}
+              placeholder='e.g. "yes approved 1500, send the offer link" or "ask him to upload bank statements"'
+              className="w-full text-[13px] px-3.5 py-2.5 bg-white rounded-lg border border-[#15803d]/20 focus:outline-none focus:ring-2 focus:ring-[#15803d]/30 mb-2"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handlePolishWithAI}
+                disabled={polishing || !aiNotes.trim()}
+                className="rounded-lg bg-[#15803d] text-white text-[12px] font-semibold px-3.5 py-2 hover:bg-[#166534] disabled:opacity-50 transition-colors"
+              >
+                {polishing ? "Polishing…" : "✨ Polish with AI"}
+              </button>
+              <span className="text-[11px] text-[#71717a]">
+                Reads the customer's last message + your notes, writes a clean reply.
+              </span>
+            </div>
           </div>
 
           <div className="mb-4">

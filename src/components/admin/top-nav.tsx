@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getInboxBadges, type InboxBadges } from "@/actions/inbox-badges";
 
 type SubItem = { href: string; label: string };
@@ -156,14 +156,48 @@ export function AdminTopNav({ userName }: { userName: string }) {
 
   // Poll for inbox badges (pending chats + recent inbound emails) every
   // 30s. Triggers a tab title prefix + favicon badge when there's
-  // something needing attention.
+  // something needing attention. Also fires a browser desktop
+  // notification when the inbound email count goes UP (not on initial
+  // load — only when something arrives while admin is logged in).
   const [badges, setBadges] = useState<InboxBadges>({ pendingChats: 0, recentInboundEmails: 0 });
+  const prevEmailCount = useRef<number | null>(null);
   useEffect(() => {
     let cancelled = false;
+    // Ask for desktop-notification permission once. Browser remembers
+    // the choice (granted/denied) so this is essentially a no-op on
+    // subsequent sessions.
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().catch(() => {});
+    }
     async function poll() {
       try {
         const result = await getInboxBadges();
-        if (!cancelled) setBadges(result);
+        if (cancelled) return;
+        // Detect a fresh inbound email by comparing to the previous count.
+        // First poll: just record the baseline; don't notify.
+        const prev = prevEmailCount.current;
+        if (
+          prev !== null &&
+          result.recentInboundEmails > prev &&
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted"
+        ) {
+          const newOnes = result.recentInboundEmails - prev;
+          try {
+            new Notification(
+              `${newOnes} new customer email${newOnes > 1 ? "s" : ""}`,
+              {
+                body: "Open CRM to read and reply.",
+                icon: "/lime-mark-256.png",
+                tag: "pennylime-inbox", // dedupes — replaces an older one
+              },
+            );
+          } catch {
+            /* swallow — some browsers throw if backgrounded */
+          }
+        }
+        prevEmailCount.current = result.recentInboundEmails;
+        setBadges(result);
       } catch {
         /* swallow */
       }

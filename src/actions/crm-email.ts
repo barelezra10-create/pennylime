@@ -189,3 +189,147 @@ export async function getRecentEmailsForContact(contactId: string) {
     select: { id: true, subject: true, type: true, createdAt: true, campaignId: true, sequenceId: true },
   });
 }
+
+/**
+ * Takes a rough admin draft + the customer's most recent inbound
+ * message, asks Gemini to rewrite into a polished HTML reply +
+ * suggested subject. Bar's use case: type "yes approved 1500, send
+ * link" → get back "Hi Pedro, thanks for the message. Good news,
+ * we've approved you for $1,500. Here's the link to accept…"
+ */
+export async function polishReplyWithAI(input: {
+  contactId: string;
+  draftNotes: string;
+}): Promise<
+  | { ok: true; subject: string; body: string }
+  | { ok: false; error: string }
+> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  if (!input.draftNotes.trim()) {
+    return { ok: false as const, error: "Write a few words first, then I can polish them." };
+  }
+
+  const contact = await prisma.contact.findUnique({
+    where: { id: input.contactId },
+    select: {
+      firstName: true,
+      lastName: true,
+      email: true,
+      applicationId: true,
+      application: {
+        select: {
+          applicationCode: true,
+          acceptedAmount: true,
+          offeredMaxAmount: true,
+          status: true,
+          offerStatus: true,
+          loanAmount: true,
+        },
+      },
+    },
+  });
+  if (!contact) return { ok: false as const, error: "Contact not found" };
+
+  // Most recent inbound activity gives the AI real grounding so it
+  // doesn't invent context. Without this it'll write a generic reply.
+  const lastInbound = await prisma.activity.findFirst({
+    where: { contactId: input.contactId, type: "email_received" },
+    orderBy: { createdAt: "desc" },
+    select: { title: true, details: true, createdAt: true },
+  });
+
+  const fmtMoney = (n: number | null) =>
+    n == null ? "—" : `$${Number(n).toLocaleString()}`;
+
+  const contextSummary = [
+    `Contact: ${contact.firstName ?? ""} ${contact.lastName ?? ""} <${contact.email}>`,
+    contact.application ? `Application code: ${contact.application.applicationCode}` : null,
+    contact.application
+      ? `Application status: ${contact.application.status} / offer ${contact.application.offerStatus}`
+      : null,
+    contact.application?.loanAmount
+      ? `Requested: ${fmtMoney(Number(contact.application.loanAmount))}`
+      : null,
+    contact.application?.offeredMaxAmount
+      ? `Offered max: ${fmtMoney(Number(contact.application.offeredMaxAmount))}`
+      : null,
+    contact.application?.acceptedAmount
+      ? `Accepted: ${fmtMoney(Number(contact.application.acceptedAmount))}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const lastInboundText = lastInbound
+    ? `Subject: ${lastInbound.title?.replace(/^Email: /, "") ?? "(no subject)"}\nReceived: ${lastInbound.createdAt.toISOString()}\n\n${lastInbound.details ?? "(no body captured)"}`
+    : "(no inbound email on file yet — admin may be initiating contact)";
+
+  const SYSTEM_PROMPT = `You are a customer support specialist for PennyLime, a cash-advance product for US gig workers (Uber, DoorDash, Lyft, OnlyFans, etc.).
+
+The admin will give you:
+1. The contact's profile + application context
+2. The customer's most recent inbound message
+3. The admin's rough draft notes for the reply (could be very short — "yes approved 1500", "tell him to upload statements", "schedule for tomorrow")
+
+Your job: rewrite the rough draft into a polished, professional, friendly HTML email reply.
+
+VOICE
+- Warm but direct. No corporate jargon. No "Dear Sir/Madam".
+- Address the customer by first name in the first line if known.
+- Sign off as "The PennyLime Team".
+- NEVER use em dashes. Use commas, parentheses, or sentence breaks instead.
+
+FORMAT
+- HTML body only. Use <p> for paragraphs, <ul>/<li> for lists, <strong> for emphasis when warranted.
+- 3-5 short paragraphs max. Concise.
+- No <html>, <head>, <body> wrappers.
+- No subject line inside the body.
+
+OUTPUT
+Return STRICT JSON, no code fences:
+{
+  "subject": "...",
+  "body": "<p>Hi {firstName},</p>..."
+}
+Subject: short and specific (not "Re: Your application"). Describes what the email is actually about.`;
+
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return { ok: false as const, error: "GEMINI_API_KEY not configured" };
+    const ai = new GoogleGenAI({ apiKey });
+    const model = process.env.GEMINI_REPLY_MODEL || "gemini-2.5-flash-lite";
+
+    const userMessage = `CONTEXT
+${contextSummary}
+
+CUSTOMER'S LAST INBOUND MESSAGE
+${lastInboundText}
+
+ADMIN'S ROUGH DRAFT
+${input.draftNotes.trim()}
+
+Now write the polished reply.`;
+
+    const r = await ai.models.generateContent({
+      model,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: SYSTEM_PROMPT }, { text: userMessage }],
+        },
+      ],
+      config: { temperature: 0.7, responseMimeType: "application/json" },
+    });
+    let raw = (r.text ?? "").trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    const parsed = JSON.parse(raw) as { subject?: string; body?: string };
+    if (!parsed.subject || !parsed.body) {
+      return { ok: false as const, error: "Gemini returned an empty subject or body" };
+    }
+    return { ok: true as const, subject: parsed.subject, body: parsed.body };
+  } catch (err) {
+    return { ok: false as const, error: err instanceof Error ? err.message : "Polish failed" };
+  }
+}
