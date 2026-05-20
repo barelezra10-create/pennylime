@@ -220,31 +220,36 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
 }
 
 /**
- * Renders a complete HTML document to a PDF buffer using a headless
- * Chromium provided by @sparticuz/chromium-min. Designed for Railway /
- * other Linux containers — no system Chromium needed.
+ * Renders a complete HTML document to a PDF buffer.
+ *
+ * Uses full `puppeteer` (downloads Chrome for Testing at install time)
+ * instead of `puppeteer-core` + `@sparticuz/chromium-min`. The
+ * sparticuz binary kept failing on Railway with missing system libs
+ * (libnss3.so etc.) because Nixpacks' default image doesn't include
+ * them. Full puppeteer ships a more self-contained Chromium that
+ * works out of the box.
+ *
+ * Trade-off: ~280MB Chromium binary in the build. Worth it for a
+ * "just works" PDF pipeline on Railway.
  */
 export async function renderHtmlToPdf(html: string): Promise<Buffer> {
-  const puppeteer = (await import("puppeteer-core")).default;
-  const chromiumMod = await import("@sparticuz/chromium-min");
-  const chromium = chromiumMod.default;
-
-  // Sparticuz hosts the matching Chromium binary on GitHub releases.
-  // pinning to a known-good release URL avoids surprises if their
-  // default mirror flakes.
-  const REMOTE_CHROMIUM =
-    process.env.CHROMIUM_BINARY_URL ||
-    "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
+  // Dynamic import so client-side bundles don't drag puppeteer.
+  const puppeteer = (await import("puppeteer")).default;
 
   const browser = await puppeteer.launch({
-    args: [...chromium.args, "--no-sandbox", "--disable-setuid-sandbox"],
-    defaultViewport: chromium.defaultViewport,
-    executablePath: await chromium.executablePath(REMOTE_CHROMIUM),
     headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // puppeteer v24 narrowed setContent's waitUntil typings — "load"
+    // is fine for our static HTML (no external resources to wait for).
+    await page.setContent(html, { waitUntil: "load" });
     const pdf = await page.pdf({
       format: "Letter",
       printBackground: true,

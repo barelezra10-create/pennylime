@@ -1,20 +1,30 @@
 # Railway / Nixpacks build configuration.
 #
-# Adds the system libraries that headless Chromium needs.
-# We use @sparticuz/chromium-min (lean Chromium binary) for
-# generating signed-agreement PDFs and other server-side rendering;
-# without these libs, Chromium fails to launch with:
+# Installs system libraries that headless Chromium (used by puppeteer
+# for generating signed-agreement PDFs) needs at runtime. Without these,
+# Chromium fails to launch with:
 #   "/tmp/chromium: error while loading shared libraries:
 #    libnss3.so: cannot open shared object file"
+#
+# IMPORTANT: After updating this file, trigger a Railway redeploy
+# WITH CLEARED CACHE so the apt-installed libs land in the new image.
+# (Railway dashboard → Deployments → ⋯ → Redeploy with Cleared Cache)
+
+providers = ["node"]
 
 [phases.setup]
+nixPkgs = ["nodejs_20", "npm-10"]
 aptPkgs = [
+  # NSS / crypto
   "libnss3",
   "libnspr4",
+  # ATK accessibility
   "libatk-bridge2.0-0",
   "libatk1.0-0",
+  # Print / display / DRM
   "libcups2",
   "libdrm2",
+  # X11 / Wayland / GBM
   "libxkbcommon0",
   "libxcomposite1",
   "libxdamage1",
@@ -23,11 +33,27 @@ aptPkgs = [
   "libgbm1",
   "libxshmfence1",
   "libxss1",
+  "libx11-xcb1",
+  "libxcb-dri3-0",
+  # Audio
   "libasound2",
-  "libpangocairo-1.0-0",
+  # Font / text rendering
   "libpango-1.0-0",
+  "libpangocairo-1.0-0",
   "libcairo2",
   "libgtk-3-0",
   "fonts-liberation",
   "fonts-dejavu-core",
+  "fonts-noto-color-emoji",
+  # General glibc + glib
+  "libglib2.0-0",
+  # Cert store
+  "ca-certificates",
+  # Wget for puppeteer Chrome install in some setups
+  "wget",
 ]
+
+# Set puppeteer env vars so it downloads Chrome at install (default
+# behavior with full puppeteer) and finds it at runtime.
+[variables]
+PUPPETEER_CACHE_DIR = "/app/.cache/puppeteer"
