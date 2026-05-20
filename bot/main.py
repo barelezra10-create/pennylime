@@ -26,12 +26,13 @@ from db import (
     log_engagement,
     set_bot_status,
 )
-from safety import jitter, in_waking_hours, daily_count, under_cap
+from safety import (
+    jitter, micro_jitter, in_waking_hours, daily_count, under_cap,
+    should_skip_this_sweep, next_sweep_delay_seconds, actions_this_cycle,
+)
 from crypto import decrypt_token
 
 PLATFORMS = ["instagram", "facebook", "linkedin", "tiktok"]
-POLL_INTERVAL_SECONDS = 30 * 60     # 30 min between sweeps
-ACTIONS_PER_CYCLE = (1, 3)          # random N actions per platform per cycle
 RATE_LIMIT_BACKOFF_SECONDS = 10 * 60  # 10 min on rate hit
 
 
@@ -127,9 +128,14 @@ async def _run_platform(platform: str) -> None:
     if not account or not account["botCookies"] or account["botStatus"] != "healthy":
         return
 
+    # 50% of sweeps do absolutely nothing — break the predictable cadence
+    if should_skip_this_sweep():
+        print(f"  [{platform}] lurk-only this sweep", flush=True)
+        return
+
     cookies = decrypt_token(account["botCookies"])
     p = await pool()
-    n_actions = random.randint(*ACTIONS_PER_CYCLE)
+    n_actions = actions_this_cycle()
 
     for _ in range(n_actions):
         target = await fetch_queued_target(platform)
@@ -141,10 +147,13 @@ async def _run_platform(platform: str) -> None:
             await mark_target(target["id"], "skipped")
             continue
 
+        # Small "browsing" pause before the action (human reads/scrolls first)
+        await micro_jitter()
         try:
             await _process_target(platform, target, account, cookies)
         except Exception:
             traceback.print_exc()
+        # Long inter-action delay (5-30 min) — biggest human-likeness lever
         await jitter()
 
 
@@ -162,7 +171,10 @@ async def engagement_loop() -> None:
                 await _run_platform(platform)
             except Exception:
                 traceback.print_exc()
-        await asyncio.sleep(POLL_INTERVAL_SECONDS)
+        # Variable inter-sweep delay (25-95 min) — not exact 30 min ticks
+        sleep_for = next_sweep_delay_seconds()
+        print(f"  next sweep in {sleep_for // 60} min", flush=True)
+        await asyncio.sleep(sleep_for)
 
 
 async def cron_loop() -> None:
