@@ -298,8 +298,10 @@ async function generateBlogHeroImage(slug: string, title: string): Promise<strin
 Objects in the scene: ${scene}
 
 Background (CRITICAL — must match exactly):
-- Solid flat soft cream color throughout, hex roughly #f4f1ea. Like warm off-white paper.
-- COMPLETELY FLAT — no gradient, no vignette, no banding, no color variation anywhere. Same uniform cream pixel from edge to edge behind the objects.
+- Solid flat off-white background, hex #f6f5f1. Very pale, very neutral. Slight warm undertone but NOT cream, NOT tan, NOT aqua, NOT gray-blue, NOT green-tinted.
+- Think a clean sheet of premium printer paper photographed in soft daylight.
+- COMPLETELY FLAT — no gradient, no vignette, no banding, no color variation anywhere. Same uniform pixel from edge to edge behind the objects.
+- The background must NOT have any aqua, teal, sage, mint, blue, or cool tint. It must NOT have any saturated color. Only a pure neutral near-white.
 - The only contrast against the background comes from the objects themselves and their drop shadows.
 
 Color palette for objects (strict, no other hues):
