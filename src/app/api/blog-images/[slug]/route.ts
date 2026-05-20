@@ -24,7 +24,12 @@ export async function GET(
     return NextResponse.json({ error: "Invalid filename" }, { status: 400 });
   }
 
-  const dir = process.env.BLOG_IMAGE_DIR || "/app/blog-images";
+  // Must match the path the generator writes to — under the
+  // persistent /app/uploads Railway Volume (NOT /app/blog-images,
+  // which is ephemeral and gets wiped on every Railway redeploy).
+  const dir =
+    process.env.BLOG_IMAGE_DIR ||
+    path.join(process.env.UPLOAD_DIR || "/app/uploads", "blog-images");
   const filePath = path.join(dir, slug);
   const resolved = path.resolve(filePath);
   const root = path.resolve(dir);

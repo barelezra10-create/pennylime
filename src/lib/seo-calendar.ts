@@ -333,12 +333,19 @@ Do NOT include: people, faces, hands, photographs, gradient backgrounds, vignett
     if (!imgB64) throw new Error("Imagen returned no image bytes");
     const buffer = Buffer.from(imgB64, "base64");
 
-    // Step 3: save to /app/blog-images (Railway Volume, mounted as
-    // BLOG_IMAGE_DIR). Served PUBLICLY via /api/blog-images/{slug}.png
-    // since the main /api/files route requires admin auth.
+    // Step 3: save into the persistent Railway Volume at /app/uploads
+    // (same volume bank statements + ACH PDFs use). Subdirectory keeps
+    // public blog heroes separate from private documents. Served via
+    // the public /api/blog-images/{slug}.png route (no auth).
+    //
+    // IMPORTANT: must NOT use /app/blog-images — that path is part of
+    // the ephemeral container filesystem and gets wiped on every
+    // Railway redeploy.
     const fs = await import("node:fs/promises");
     const path = await import("node:path");
-    const dir = process.env.BLOG_IMAGE_DIR || "/app/blog-images";
+    const dir =
+      process.env.BLOG_IMAGE_DIR ||
+      path.join(process.env.UPLOAD_DIR || "/app/uploads", "blog-images");
     await fs.mkdir(dir, { recursive: true });
     const fileName = `${slug}.png`;
     const filePath = path.join(dir, fileName);
