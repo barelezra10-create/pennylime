@@ -1,0 +1,33 @@
+# Railway / Nixpacks build configuration.
+#
+# Adds the system libraries that headless Chromium needs.
+# We use @sparticuz/chromium-min (lean Chromium binary) for
+# generating signed-agreement PDFs and other server-side rendering;
+# without these libs, Chromium fails to launch with:
+#   "/tmp/chromium: error while loading shared libraries:
+#    libnss3.so: cannot open shared object file"
+
+[phases.setup]
+aptPkgs = [
+  "libnss3",
+  "libnspr4",
+  "libatk-bridge2.0-0",
+  "libatk1.0-0",
+  "libcups2",
+  "libdrm2",
+  "libxkbcommon0",
+  "libxcomposite1",
+  "libxdamage1",
+  "libxfixes3",
+  "libxrandr2",
+  "libgbm1",
+  "libxshmfence1",
+  "libxss1",
+  "libasound2",
+  "libpangocairo-1.0-0",
+  "libpango-1.0-0",
+  "libcairo2",
+  "libgtk-3-0",
+  "fonts-liberation",
+  "fonts-dejavu-core",
+]
