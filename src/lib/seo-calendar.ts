@@ -311,11 +311,17 @@ Editorial, modern, calm, confident. Like a New York Times opinion-page illustrat
     if (!imgB64) throw new Error("Imagen returned no image bytes");
     const buffer = Buffer.from(imgB64, "base64");
 
-    // Step 3: save to Railway Volume via the persistent storage layer.
-    const { storage } = await import("@/lib/storage");
-    const storagePath = await storage.upload(buffer, `blog-hero-${slug}.png`);
-    // /api/files/[path] serves these dynamically.
-    return `/api/files/${encodeURIComponent(storagePath)}`;
+    // Step 3: save to /app/blog-images (Railway Volume, mounted as
+    // BLOG_IMAGE_DIR). Served PUBLICLY via /api/blog-images/{slug}.png
+    // since the main /api/files route requires admin auth.
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const dir = process.env.BLOG_IMAGE_DIR || "/app/blog-images";
+    await fs.mkdir(dir, { recursive: true });
+    const fileName = `${slug}.png`;
+    const filePath = path.join(dir, fileName);
+    await fs.writeFile(filePath, buffer);
+    return `/api/blog-images/${fileName}`;
   } catch (err) {
     console.error("[seo-calendar] hero image generation failed:", err);
     return null;
