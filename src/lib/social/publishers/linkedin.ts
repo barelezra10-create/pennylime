@@ -12,7 +12,11 @@ export async function publishToLinkedIn(
   text: string,
 ): Promise<PublishResult> {
   const token = decryptToken(encryptedAccessToken);
-  const author = `urn:li:organization:${organizationId}`;
+  // Accept either a full URN (urn:li:person:abc or urn:li:organization:123)
+  // or just the digits (legacy: assumes organization).
+  const author = organizationId.startsWith("urn:li:")
+    ? organizationId
+    : `urn:li:organization:${organizationId}`;
 
   // Step 1: register upload
   const regRes = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
