@@ -27,18 +27,26 @@ export async function POST(request: NextRequest) {
   }
   const limit = Math.max(1, Math.min(3, body.limit ?? 1));
 
-  // Pull AI-generated articles ordered by oldest updatedAt first.
-  // "Stale" means hasn't been regenerated since this endpoint last
-  // touched it. We don't track that explicitly — using updatedAt
-  // means re-running the endpoint naturally picks the next-stalest
-  // article each call.
+  // Target articles that need regeneration. Two cases:
+  //   (a) contentGenerated=true — articles previously generated with
+  //       an older prompt/style that should be refreshed.
+  //   (b) published=true AND featuredImage IS NULL — articles whose
+  //       last generation failed mid-way (body saved but image
+  //       upload errored), leaving them visible-but-incomplete.
+  // Both cases get the full body + hero regenerated.
+  const needsRegen = {
+    OR: [
+      { contentGenerated: true },
+      { AND: [{ published: true }, { featuredImage: null }] },
+    ],
+  };
   const articles = await prisma.article.findMany({
-    where: { contentGenerated: true },
+    where: needsRegen,
     orderBy: { updatedAt: "asc" },
     take: limit,
     select: { id: true, slug: true },
   });
-  const total = await prisma.article.count({ where: { contentGenerated: true } });
+  const total = await prisma.article.count({ where: needsRegen });
 
   const results: Array<{ slug: string; ok: boolean; error?: string; wordCount?: number }> = [];
   for (const a of articles) {
