@@ -23,6 +23,55 @@ import type { EvaluationResult } from "@/types";
 
 /* ── helpers ── */
 
+/**
+ * Pre-canned rejection reasons. The `label` is what the admin sees in
+ * the dropdown; the `reason` is what gets sent to the applicant in
+ * the rejection email + saved on the audit log. "Other" lets the
+ * admin write a custom reason in the free-text fallback.
+ */
+const REJECT_REASONS: Array<{ value: string; label: string; reason: string }> = [
+  {
+    value: "income-consistency",
+    label: "Income too irregular",
+    reason: "After reviewing your application, we're unable to approve the cash advance at this time. Our underwriting requires a track record of consistent weekly income, and the deposits on file are too irregular for us to confidently project repayment. We'd encourage you to reapply in 3 to 6 months once you have a steadier deposit pattern.",
+  },
+  {
+    value: "insufficient-income",
+    label: "Income too low for amount requested",
+    reason: "We're unable to approve the amount you requested at this time. The advance works out to a weekly remittance that's outside our affordability range based on your verified weekly income. We'd be happy to reconsider a smaller advance.",
+  },
+  {
+    value: "account-balance",
+    label: "Account balance too low / NSF risk",
+    reason: "Thank you for applying. After reviewing your bank activity, we're unable to approve the advance at this time. Our underwriting looks for a consistent weekly income pattern and stable bank balances, and the current account activity doesn't meet that threshold. You're welcome to reapply in 60 to 90 days.",
+  },
+  {
+    value: "time-on-platform",
+    label: "Not enough history (new gig worker)",
+    reason: "We need at least 60 to 90 days of consistent platform earnings to underwrite an advance. Your account shows promising activity but doesn't yet have enough history for us to verify. Please reapply once you have a longer track record.",
+  },
+  {
+    value: "concurrent-debt",
+    label: "Existing MCA / lender debits detected",
+    reason: "After reviewing your bank statements, we noticed regular debits to other lenders. Our policy is to wait until those obligations are paid down before extending additional advances. You're welcome to reapply once they're settled.",
+  },
+  {
+    value: "identity",
+    label: "Identity verification mismatch",
+    reason: "We weren't able to verify your identity against the bank account you linked. If you'd like to reapply, please make sure the name on your application matches the name on the bank account.",
+  },
+  {
+    value: "general",
+    label: "General (no specific reason)",
+    reason: "After reviewing your application and bank activity, we're unable to approve the advance at this time. Our underwriting decision was based on income consistency and account balance trends over the last 90 days. You're welcome to reapply in 60 days.",
+  },
+  {
+    value: "other",
+    label: "Other (write custom)",
+    reason: "",
+  },
+];
+
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -179,6 +228,8 @@ export function DetailClient({
   /* decision — rejection path only; approval is via "Set offer terms" */
   const [rejecting, setRejecting] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectReasonKey, setRejectReasonKey] = useState<string>("");
+  const [customRejectionReason, setCustomRejectionReason] = useState("");
   const [showRejectForm, setShowRejectForm] = useState(false);
 
   /* derived values */
@@ -959,28 +1010,79 @@ export function DetailClient({
                   <h2 className="text-[14px] font-bold tracking-[-0.02em] text-[#dc2626] mb-3">
                     Reject application
                   </h2>
-                  <label htmlFor="reason" className="block text-sm font-medium text-[#dc2626] mb-1.5">
-                    Rejection reason (shown to applicant)
+                  <label htmlFor="reject-reason-select" className="block text-sm font-medium text-[#dc2626] mb-1.5">
+                    Reason
                   </label>
-                  <textarea
-                    id="reason"
-                    placeholder="Enter rejection reason..."
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={3}
-                    className="w-full rounded-lg border border-[#dc2626]/30 bg-white px-4 py-2.5 text-sm text-black placeholder:text-[#a1a1aa] focus:border-[#dc2626] focus:outline-none focus:ring-2 focus:ring-[#dc2626]/20 mb-3"
-                  />
+                  <select
+                    id="reject-reason-select"
+                    value={rejectReasonKey}
+                    onChange={(e) => {
+                      const key = e.target.value;
+                      setRejectReasonKey(key);
+                      const preset = REJECT_REASONS.find((r) => r.value === key);
+                      if (preset && preset.value !== "other") {
+                        setRejectionReason(preset.reason);
+                      } else if (preset?.value === "other") {
+                        setRejectionReason(customRejectionReason);
+                      } else {
+                        setRejectionReason("");
+                      }
+                    }}
+                    className="w-full rounded-lg border border-[#dc2626]/30 bg-white px-4 py-2.5 text-sm text-black focus:border-[#dc2626] focus:outline-none focus:ring-2 focus:ring-[#dc2626]/20 mb-3"
+                  >
+                    <option value="">Choose a reason…</option>
+                    {REJECT_REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Free-text fallback only when "Other" is picked */}
+                  {rejectReasonKey === "other" && (
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-[#dc2626] mb-1.5">
+                        Custom rejection text (shown to applicant)
+                      </label>
+                      <textarea
+                        placeholder="Write a clear, professional reason…"
+                        value={customRejectionReason}
+                        onChange={(e) => {
+                          setCustomRejectionReason(e.target.value);
+                          setRejectionReason(e.target.value);
+                        }}
+                        rows={3}
+                        className="w-full rounded-lg border border-[#dc2626]/30 bg-white px-4 py-2.5 text-sm text-black placeholder:text-[#a1a1aa] focus:border-[#dc2626] focus:outline-none focus:ring-2 focus:ring-[#dc2626]/20"
+                      />
+                    </div>
+                  )}
+
+                  {/* Preview the message the applicant will see */}
+                  {rejectionReason && (
+                    <div className="mb-4 rounded-lg bg-[#fafafa] border border-[#e4e4e7] p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-[#a1a1aa] font-bold mb-1.5">
+                        Preview — applicant will see this
+                      </p>
+                      <p className="text-[12px] text-[#52525b] leading-relaxed">{rejectionReason}</p>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-3">
                     <button
                       onClick={handleReject}
-                      disabled={rejecting}
+                      disabled={rejecting || !rejectionReason.trim()}
                       className="border border-[#dc2626] text-[#dc2626] bg-transparent rounded-lg px-6 py-2.5 font-semibold text-sm disabled:opacity-50 disabled:pointer-events-none transition-colors hover:bg-[#fff1f2]"
                     >
                       {rejecting ? "Rejecting..." : "Confirm Reject"}
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowRejectForm(false)}
+                      onClick={() => {
+                        setShowRejectForm(false);
+                        setRejectReasonKey("");
+                        setRejectionReason("");
+                        setCustomRejectionReason("");
+                      }}
                       className="text-sm text-[#71717a] hover:text-black"
                     >
                       Cancel
