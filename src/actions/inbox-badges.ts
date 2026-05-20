@@ -9,12 +9,16 @@ export type InboxBadges = {
    *  (awaiting an admin reply). Capped to recent activity to avoid
    *  counting stale dead conversations forever. */
   pendingChats: number;
-  /** Inbound emails received in the last 24h. */
-  recentInboundEmails: number;
+  /** Number of customer contacts whose most recent email activity is
+   *  an INBOUND email (i.e. we haven't replied yet). Decrements as
+   *  soon as admin sends a reply through the CRM Email tab. */
+  unrepliedEmails: number;
 };
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const PENDING_CHAT_WINDOW_MS = 48 * 60 * 60 * 1000;
+// Look back 14 days for unreplied emails — older than that and the
+// thread is functionally dead even if we never replied.
+const UNREPLIED_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 /**
  * Counts of items needing admin attention right now. Polled by the
@@ -24,20 +28,17 @@ const PENDING_CHAT_WINDOW_MS = 48 * 60 * 60 * 1000;
 export async function getInboxBadges(): Promise<InboxBadges> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
-    return { pendingChats: 0, recentInboundEmails: 0 };
+    return { pendingChats: 0, unrepliedEmails: 0 };
   }
 
-  const dayAgo = new Date(Date.now() - DAY_MS);
   const chatCutoff = new Date(Date.now() - PENDING_CHAT_WINDOW_MS);
+  const emailCutoff = new Date(Date.now() - UNREPLIED_WINDOW_MS);
 
-  const [recentChatSessions, recentInboundEmails] = await Promise.all([
+  const [recentChatSessions, latestEmailPerContact] = await Promise.all([
     prisma.agentSession.findMany({
       where: {
         channel: "chat",
         endedAt: null,
-        // Either the session itself or its latest message has to be
-        // within the window — we use startedAt as a coarse filter; the
-        // per-session message lookup below confirms recency.
         startedAt: { gte: chatCutoff },
       },
       select: {
@@ -49,13 +50,21 @@ export async function getInboxBadges(): Promise<InboxBadges> {
         },
       },
     }),
-    prisma.emailEvent.count({
-      where: { type: "received", createdAt: { gte: dayAgo } },
+    // For each contact with recent email activity, get the latest event.
+    // `distinct: ["contactId"]` paired with `orderBy: createdAt desc`
+    // returns the most recent event per contact. Any contact whose
+    // latest event is type="received" needs a reply.
+    prisma.emailEvent.findMany({
+      where: {
+        createdAt: { gte: emailCutoff },
+        type: { in: ["sent", "received"] },
+      },
+      orderBy: { createdAt: "desc" },
+      distinct: ["contactId"],
+      select: { contactId: true, type: true },
     }),
   ]);
 
-  // A chat session is "pending" when its newest message is from the user
-  // (role === "user") AND that message is within the activity window.
   const pendingChats = recentChatSessions.filter((s) => {
     const last = s.messages[0];
     if (!last) return false;
@@ -63,5 +72,9 @@ export async function getInboxBadges(): Promise<InboxBadges> {
     return last.createdAt >= chatCutoff;
   }).length;
 
-  return { pendingChats, recentInboundEmails };
+  const unrepliedEmails = latestEmailPerContact.filter(
+    (e) => e.type === "received",
+  ).length;
+
+  return { pendingChats, unrepliedEmails };
 }

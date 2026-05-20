@@ -159,7 +159,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
   // something needing attention. Also fires a browser desktop
   // notification when the inbound email count goes UP (not on initial
   // load — only when something arrives while admin is logged in).
-  const [badges, setBadges] = useState<InboxBadges>({ pendingChats: 0, recentInboundEmails: 0 });
+  const [badges, setBadges] = useState<InboxBadges>({ pendingChats: 0, unrepliedEmails: 0 });
   const prevEmailCount = useRef<number | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -178,11 +178,11 @@ export function AdminTopNav({ userName }: { userName: string }) {
         const prev = prevEmailCount.current;
         if (
           prev !== null &&
-          result.recentInboundEmails > prev &&
+          result.unrepliedEmails > prev &&
           typeof Notification !== "undefined" &&
           Notification.permission === "granted"
         ) {
-          const newOnes = result.recentInboundEmails - prev;
+          const newOnes = result.unrepliedEmails - prev;
           try {
             new Notification(
               `${newOnes} new customer email${newOnes > 1 ? "s" : ""}`,
@@ -196,7 +196,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
             /* swallow — some browsers throw if backgrounded */
           }
         }
-        prevEmailCount.current = result.recentInboundEmails;
+        prevEmailCount.current = result.unrepliedEmails;
         setBadges(result);
       } catch {
         /* swallow */
@@ -218,14 +218,14 @@ export function AdminTopNav({ userName }: { userName: string }) {
   // Set the document title prefix with the total so the unread state
   // is visible even when the admin is on another browser tab.
   useEffect(() => {
-    const total = badges.pendingChats + badges.recentInboundEmails;
+    const total = badges.pendingChats + badges.unrepliedEmails;
     const baseTitle = document.title.replace(/^\(\d+\)\s*/, "");
     document.title = total > 0 ? `(${total}) ${baseTitle}` : baseTitle;
   }, [badges]);
 
   // Map tab id → badge count so we can render the right number per tab.
   const tabBadges: Record<string, number> = {
-    crm: badges.recentInboundEmails,
+    crm: badges.unrepliedEmails,
     support: badges.pendingChats,
   };
 
