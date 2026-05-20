@@ -8,7 +8,16 @@ import { PageHeader } from "@/components/admin/page-header";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
 import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archive";
 import { logActivity } from "@/actions/activities";
-import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, polishReplyWithAI, type CrmEmailTemplate } from "@/actions/crm-email";
+import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, polishReplyWithAI, getEmailThread, type CrmEmailTemplate } from "@/actions/crm-email";
+
+type EmailThreadItem = {
+  id: string;
+  direction: "inbound" | "outbound";
+  subject: string;
+  body: string;
+  performedBy: string | null;
+  createdAt: string;
+};
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
 import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 import { toast } from "sonner";
@@ -536,6 +545,22 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
   const [showPreview, setShowPreview] = useState(false);
   const [aiNotes, setAiNotes] = useState("");
   const [polishing, setPolishing] = useState(false);
+  const [thread, setThread] = useState<EmailThreadItem[]>([]);
+  const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+
+  async function refreshThread() {
+    try {
+      const t = await getEmailThread(contactId);
+      setThread(t);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  useEffect(() => {
+    refreshThread();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactId]);
 
   async function handlePolishWithAI() {
     if (!aiNotes.trim()) {
@@ -599,6 +624,7 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
         setBody("");
         const recents = await getRecentEmailsForContact(contactId);
         setRecentEmails(recents);
+        await refreshThread();
         router.refresh();
       } else {
         toast.error(r.error);
@@ -733,31 +759,97 @@ function EmailTab({ contactId, contactEmail }: { contactId: string; contactEmail
       </div>
 
       <div className="space-y-4">
-        <div className="bg-white rounded-xl p-6 border border-[#e4e4e7]">
-          <h3 className="text-[13px] font-bold text-black mb-3 uppercase tracking-[0.05em]">
-            Recent emails
-          </h3>
-          {recentEmails.length === 0 ? (
-            <p className="text-[12px] text-[#a1a1aa]">No emails sent yet.</p>
+        {/* Email conversation — click any row to expand and read the
+            full body. Inbound emails carry the customer's message
+            (from Activity.details via the inbound-email webhook);
+            outbound emails show what we sent. */}
+        <div className="bg-white rounded-xl p-5 border border-[#e4e4e7]">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">
+              Email conversation
+            </h3>
+            <button
+              type="button"
+              onClick={refreshThread}
+              className="text-[11px] font-semibold text-[#15803d] hover:underline"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {thread.length === 0 ? (
+            <p className="text-[12px] text-[#a1a1aa]">No emails yet. Send one below to start the conversation.</p>
           ) : (
-            <ul className="space-y-3">
-              {recentEmails.map((e) => {
-                const isReceived = e.type === "received";
+            <ul className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
+              {thread.map((msg) => {
+                const isInbound = msg.direction === "inbound";
+                const isExpanded = expandedThreadId === msg.id;
                 return (
-                  <li key={e.id} className="border-b border-[#f4f4f5] last:border-0 pb-2 last:pb-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                        isReceived ? "bg-[#dcfce7] text-[#15803d]" : "bg-[#f4f4f5] text-[#71717a]"
-                      }`}>
-                        {isReceived ? "↓ in" : "↑ out"}
-                      </span>
-                      <p className="text-[12px] font-semibold text-black truncate flex-1" title={e.subject ?? ""}>
-                        {e.subject || "(no subject)"}
+                  <li
+                    key={msg.id}
+                    className={`rounded-lg border ${isInbound ? "bg-[#f7fbf8] border-[#dcfce7]" : "bg-[#fafafa] border-[#e4e4e7]"}`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setExpandedThreadId(isExpanded ? null : msg.id)}
+                      className="w-full text-left p-3"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span
+                          className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                            isInbound
+                              ? "bg-[#15803d] text-white"
+                              : "bg-[#71717a] text-white"
+                          }`}
+                        >
+                          {isInbound ? "↓ FROM CUSTOMER" : "↑ FROM YOU"}
+                        </span>
+                        <span className="text-[10px] text-[#a1a1aa] ml-auto">
+                          {new Date(msg.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-[12.5px] font-semibold text-[#0a0a0a] truncate" title={msg.subject}>
+                        {msg.subject}
                       </p>
-                    </div>
-                    <p className="text-[10px] text-[#a1a1aa]">
-                      {new Date(e.createdAt).toLocaleString()}
-                    </p>
+                      {!isExpanded && msg.body && (
+                        <p className="text-[11.5px] text-[#71717a] mt-0.5 line-clamp-1">
+                          {msg.body.replace(/<[^>]+>/g, " ").trim().slice(0, 90)}
+                          {msg.body.length > 90 ? "…" : ""}
+                        </p>
+                      )}
+                    </button>
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pt-1 border-t border-[#f4f4f5]">
+                        {msg.body ? (
+                          /<[a-z][\s\S]*>/i.test(msg.body) ? (
+                            <div
+                              className="text-[12.5px] text-[#1a1a1a] leading-relaxed prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: msg.body }}
+                            />
+                          ) : (
+                            <div className="text-[12.5px] text-[#1a1a1a] leading-relaxed whitespace-pre-wrap font-mono">
+                              {msg.body}
+                            </div>
+                          )
+                        ) : (
+                          <p className="text-[11px] text-[#a1a1aa] italic">No body captured.</p>
+                        )}
+                        {isInbound && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Pre-fill subject as "Re: …" + scroll to top
+                              setSubject(`Re: ${msg.subject.replace(/^Re:\s*/i, "")}`);
+                              setExpandedThreadId(null);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[#15803d] hover:underline"
+                          >
+                            ↑ Reply
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </li>
                 );
               })}

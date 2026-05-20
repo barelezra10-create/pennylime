@@ -191,6 +191,55 @@ export async function getRecentEmailsForContact(contactId: string) {
 }
 
 /**
+ * Full email conversation thread for a contact — both inbound and
+ * outbound, with the actual body text so Bar can read what was said
+ * without leaving the CRM.
+ *
+ * Sources:
+ *   - Inbound bodies come from Activity (type=email_received) which
+ *     the inbound-email webhook populates with body text in `details`.
+ *   - Outbound bodies come from Activity (type=email_sent) which
+ *     sendCrmEmail populates with the body stripped of HTML.
+ *
+ * Returns newest-first so the latest message is at the top of the UI.
+ */
+export async function getEmailThread(contactId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return [];
+
+  const activities = await prisma.activity.findMany({
+    where: {
+      contactId,
+      type: { in: ["email_received", "email_sent"] },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 30,
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      details: true,
+      performedBy: true,
+      createdAt: true,
+    },
+  });
+
+  return activities.map((a) => ({
+    id: a.id,
+    direction: a.type === "email_received" ? ("inbound" as const) : ("outbound" as const),
+    // Title comes in as "Email: Re: …" or "Email sent: Subject" —
+    // strip the prefix so the UI shows just the subject.
+    subject: a.title
+      ?.replace(/^Email(?:\s+sent)?:\s*/i, "")
+      // Some inbound messages tack on " (1 attachment: foo.pdf)"; keep that.
+      .trim() ?? "(no subject)",
+    body: a.details ?? "",
+    performedBy: a.performedBy,
+    createdAt: a.createdAt.toISOString(),
+  }));
+}
+
+/**
  * Takes a rough admin draft + the customer's most recent inbound
  * message, asks Gemini to rewrite into a polished HTML reply +
  * suggested subject. Bar's use case: type "yes approved 1500, send
