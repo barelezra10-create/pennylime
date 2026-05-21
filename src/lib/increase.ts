@@ -138,3 +138,31 @@ export async function createAchDebit(input: {
 export async function getAchTransfer(id: string) {
   return call<AchTransfer>("GET", `/ach_transfers/${id}`);
 }
+
+/* ─── Accounts (balance) ──────────────────────────────────────── */
+
+export type IncreaseAccount = {
+  id: string;
+  name: string;
+  status: string;
+  currency: string;
+  balances: {
+    current_balance: number;
+    available_balance: number;
+  };
+};
+
+export async function getAccount() {
+  const id = process.env.INCREASE_ACCOUNT_ID;
+  if (!id) return { ok: false as const, error: "INCREASE_ACCOUNT_ID not configured" };
+  return call<IncreaseAccount>("GET", `/accounts/${id}`);
+}
+
+export async function listAchTransfers(limit = 20) {
+  const id = process.env.INCREASE_ACCOUNT_ID;
+  if (!id) return { ok: false as const, error: "INCREASE_ACCOUNT_ID not configured" };
+  return call<{ data: AchTransfer[] }>(
+    "GET",
+    `/ach_transfers?account_id=${id}&limit=${limit}`,
+  );
+}
