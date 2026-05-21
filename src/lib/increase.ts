@@ -146,10 +146,12 @@ export type IncreaseAccount = {
   name: string;
   status: string;
   currency: string;
+  // Some Increase environments (sandbox or pre-funded accounts) return
+  // balances as null until the first credit posts. Treat as optional.
   balances: {
     current_balance: number;
     available_balance: number;
-  };
+  } | null;
 };
 
 export async function getAccount() {

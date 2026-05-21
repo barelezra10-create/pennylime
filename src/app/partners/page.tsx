@@ -124,8 +124,8 @@ async function renderDashboard() {
 
   const balanceData =
     balanceRes.ok && balanceRes.data.ok ? balanceRes.data.data : null;
-  const balanceUsd = balanceData ? balanceData.balances.current_balance / 100 : null;
-  const availableUsd = balanceData ? balanceData.balances.available_balance / 100 : null;
+  const balanceUsd = balanceData?.balances ? balanceData.balances.current_balance / 100 : null;
+  const availableUsd = balanceData?.balances ? balanceData.balances.available_balance / 100 : null;
   const balanceError = balanceRes.ok && !balanceRes.data.ok ? balanceRes.data.error : null;
 
   const transfers: AchTransfer[] =
