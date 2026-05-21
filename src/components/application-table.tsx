@@ -91,6 +91,12 @@ function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+function toNum(v: number | string | { toString(): string } | null | undefined): number {
+  if (v == null) return 0;
+  if (typeof v === "number") return v;
+  return Number(v.toString());
+}
+
 export function ApplicationTable({
   applications,
 }: {
@@ -143,6 +149,12 @@ export function ApplicationTable({
               Amount
             </th>
             <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+              Repay
+            </th>
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+              Profit
+            </th>
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
               Platform
             </th>
             <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
@@ -157,7 +169,12 @@ export function ApplicationTable({
           </tr>
         </thead>
         <tbody>
-          {applications.map((app) => (
+          {applications.map((app) => {
+            const requested = toNum(app.loanAmount);
+            const funded = toNum(app.fundedAmount);
+            const totalRepay = (app.payments || []).reduce((s, p) => s + toNum(p.amount), 0);
+            const profit = funded > 0 && totalRepay > 0 ? totalRepay - funded : 0;
+            return (
             <tr
               key={app.id}
               onClick={() => router.push(`/admin/applications/${app.id}`)}
@@ -177,8 +194,29 @@ export function ApplicationTable({
                   {app.applicationCode}
                 </span>
               </td>
-              <td className="px-6 py-4 text-sm font-medium text-stone-900 whitespace-nowrap">
-                {formatCurrency(Number(app.loanAmount))}
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="text-sm font-medium text-stone-900">
+                  {formatCurrency(requested)}
+                </div>
+                {funded > 0 ? (
+                  <div className="text-xs text-[#15803d] mt-0.5">
+                    Funded {formatCurrency(funded)}
+                  </div>
+                ) : null}
+              </td>
+              <td className="px-6 py-4 text-sm whitespace-nowrap">
+                {totalRepay > 0 ? (
+                  <span className="font-medium text-stone-900">{formatCurrency(totalRepay)}</span>
+                ) : (
+                  <span className="text-stone-300">,</span>
+                )}
+              </td>
+              <td className="px-6 py-4 text-sm whitespace-nowrap">
+                {profit > 0 ? (
+                  <span className="font-medium text-[#15803d]">{formatCurrency(profit)}</span>
+                ) : (
+                  <span className="text-stone-300">,</span>
+                )}
               </td>
               <td className="px-6 py-4 text-sm text-stone-500 whitespace-nowrap">
                 {app.platform || ","}
@@ -209,7 +247,8 @@ export function ApplicationTable({
                 <StatusBadge status={app.status} offerStatus={app.offerStatus} />
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

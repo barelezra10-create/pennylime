@@ -241,7 +241,10 @@ export async function getApplications(status?: string) {
   const where = status && status !== "ALL" ? { status } : {};
   return prisma.application.findMany({
     where,
-    include: { documents: true },
+    include: {
+      documents: true,
+      payments: { select: { amount: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }

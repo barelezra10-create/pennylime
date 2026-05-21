@@ -27,6 +27,7 @@ type FinancialSummary = {
     revenueLifetime: number;
     revenuePeriod: number;
     defaultLossesLifetime: number;
+    expectedRevenueOutstanding: number;
   };
   adSpend: {
     totalSpend: number;
@@ -163,8 +164,8 @@ function LoanPortalTab({ f, pendingApps }: { f: FinancialSummary; pendingApps: P
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <BigCard label="Money out" value={fmtMoney(f.moneyFlow.outstandingPrincipal)} sub={`${fmtMoney(f.moneyFlow.totalDisbursed)} lifetime disbursed`} />
+        <BigCard label="Expected profit" value={fmtMoney(f.moneyFlow.expectedRevenueOutstanding)} sub="interest booked on active loans" accent="text-[#15803d]" />
         <BigCard label="Revenue (30d)" value={fmtMoney(f.moneyFlow.revenuePeriod)} sub={`${fmtMoney(f.moneyFlow.revenueLifetime)} lifetime`} />
-        <BigCard label="Net profit (30d)" value={fmtMoney(f.netProfitPeriod)} sub={`Revenue − ad spend`} accent={f.netProfitPeriod >= 0 ? "text-[#15803d]" : "text-[#dc2626]"} />
         <BigCard label="Default losses" value={fmtMoney(f.moneyFlow.defaultLossesLifetime)} sub="principal in collections" accent={f.moneyFlow.defaultLossesLifetime > 0 ? "text-[#dc2626]" : ""} />
       </div>
 

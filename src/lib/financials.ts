@@ -40,6 +40,7 @@ export type MoneyFlow = {
   revenueLifetime: number; // interest + late fees collected lifetime
   revenuePeriod: number; // interest + late fees collected in period
   defaultLossesLifetime: number; // principal stuck in COLLECTIONS
+  expectedRevenueOutstanding: number; // interest scheduled but not yet collected on active loans
 };
 
 export type AdSpendBreakdown = {
@@ -87,14 +88,14 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
     prisma.application.count({ where: { status: "PENDING" } }),
     prisma.application.count({ where: { status: "APPROVED" } }),
     prisma.application.count({ where: { status: "REJECTED" } }),
-    prisma.application.count({ where: { status: "ACTIVE" } }),
+    prisma.application.count({ where: { status: { in: ["ACTIVE", "FUNDED", "REPAYING"] } } }),
     prisma.application.count({ where: { status: "LATE" } }),
     prisma.application.count({ where: { status: "PAID_OFF" } }),
     prisma.application.count({ where: { status: "COLLECTIONS" } }),
     prisma.application.count(),
     prisma.application.findMany({
-      where: { status: { in: ["ACTIVE", "LATE"] } },
-      select: { fundedAmount: true, loanAmount: true, payments: { select: { principal: true, paidAt: true, status: true } } },
+      where: { status: { in: ["ACTIVE", "FUNDED", "REPAYING", "LATE"] } },
+      select: { fundedAmount: true, loanAmount: true, payments: { select: { principal: true, interest: true, paidAt: true, status: true } } },
     }),
     prisma.payment.findMany({
       where: { paidAt: { gte: period.startDate } },
@@ -138,6 +139,16 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
     return sum + Math.max(funded - recovered, 0);
   }, 0);
 
+  // Expected revenue from outstanding loans = interest on payments that
+  // haven't been collected yet. This is the "booked profit" sitting on
+  // the books before any repayments actually land.
+  const expectedRevenueOutstanding = fundedNotPaidOff.reduce((sum, app) => {
+    const unpaidInterest = app.payments
+      .filter((p) => p.status !== "PAID" && !p.paidAt)
+      .reduce((s, p) => s + num(p.interest), 0);
+    return sum + unpaidInterest;
+  }, 0);
+
   const principalRecovered = paymentsLifetime.reduce((s, p) => s + num(p.principal), 0);
   const revenueLifetime = paymentsLifetime.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
   const revenuePeriod = paymentsPeriod.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
@@ -172,6 +183,7 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
       revenueLifetime,
       revenuePeriod,
       defaultLossesLifetime,
+      expectedRevenueOutstanding,
     },
     adSpend: {
       totalSpend: totalAdSpendPeriod,

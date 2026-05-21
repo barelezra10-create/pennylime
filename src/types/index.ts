@@ -1,6 +1,9 @@
 import type { Application, Document, LoanRule } from "@/generated/prisma/client";
 
-export type ApplicationWithDocuments = Application & { documents: Document[] };
+export type ApplicationWithDocuments = Application & {
+  documents: Document[];
+  payments?: { amount: number | string | { toString(): string } }[];
+};
 
 export interface EvaluationResult {
   recommendation: "APPROVE" | "REJECT" | "MANUAL_REVIEW";
