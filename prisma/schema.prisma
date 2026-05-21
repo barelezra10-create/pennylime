@@ -752,6 +752,7 @@ model PennyClick {
   firstReferrer    String?
   firstUserAgent   String?
   firstIpAddress   String?
+  firstCountry     String?
   // last-touch attribution
   lastUtmSource    String?
   lastUtmMedium    String?
@@ -779,6 +780,7 @@ model PageView {
   utmSource    String?
   utmMedium    String?
   utmCampaign  String?
+  country      String?
   createdAt    DateTime  @default(now())
   pennyClick   PennyClick @relation(fields: [pennyClickId], references: [id], onDelete: Cascade)
 

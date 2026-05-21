@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
   const a: AttributionData = body.attribution || {};
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || null;
   const userAgent = req.headers.get("user-agent");
+  // Cloudflare sets cf-ipcountry; pennylime.com sits behind CF so this is
+  // populated for every public hit. Falls back to null otherwise.
+  const country = req.headers.get("cf-ipcountry") || null;
 
   const existing = await prisma.pennyClick.findUnique({ where: { id: pennyClickId } });
 
@@ -56,6 +59,7 @@ export async function POST(req: NextRequest) {
         firstReferrer: a.referrer,
         firstUserAgent: userAgent,
         firstIpAddress: ip,
+        firstCountry: country,
         lastUtmSource: a.utm_source,
         lastUtmMedium: a.utm_medium,
         lastUtmCampaign: a.utm_campaign,
@@ -77,6 +81,7 @@ export async function POST(req: NextRequest) {
         referrer: a.referrer || null,
         userAgent,
         ipAddress: ip,
+        country,
         utmSource: a.utm_source || null,
         utmMedium: a.utm_medium || null,
         utmCampaign: a.utm_campaign || null,
