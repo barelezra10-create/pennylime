@@ -50,6 +50,27 @@ export default async function PartnerDashboard() {
     redirect("/partners/login");
   }
 
+  try {
+    return await renderDashboard();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack || "" : "";
+    console.error("[/partners] fatal render error:", msg, stack);
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-20">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6">
+          <h1 className="text-lg font-semibold text-red-900">Partner dashboard failed to render</h1>
+          <p className="mt-2 text-sm text-red-800">{msg}</p>
+          {stack ? (
+            <pre className="mt-4 text-[11px] text-red-700 overflow-auto bg-white border border-red-200 rounded p-3 max-h-80">{stack}</pre>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+}
+
+async function renderDashboard() {
   const [financialsRes, totalAppsRes, fundedAppsRes, balanceRes, transfersRes] = await Promise.all([
     safe("financials", () => getFinancialSummary(30)),
     safe("totalApps", () => prisma.application.count()),
