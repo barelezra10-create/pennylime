@@ -21,7 +21,8 @@ export type AuditAction =
   | "OFFER_SET"
   | "OFFER_ACCEPTED"
   | "OFFER_NOTIFICATION_RESENT"
-  | "AI_RISK_ANALYSIS";
+  | "AI_RISK_ANALYSIS"
+  | "CONTRACT_CANCELED";
 
 export type AuditEntityType =
   | "APPLICATION"

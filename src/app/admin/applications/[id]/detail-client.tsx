@@ -18,6 +18,7 @@ import { uploadBankStatements, setVerifiedMonthlyIncome, parseBankStatementsWith
 import { runAiRiskAnalysis, getAiRiskAnalysis } from "@/actions/risk";
 import type { AiRiskAnalysis } from "@/lib/risk/ai-risk";
 import { generateSignedAgreementPdf } from "@/actions/signed-agreement";
+import { cancelSignedAgreement } from "@/actions/cancel-contract";
 import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 
@@ -675,6 +676,11 @@ export function DetailClient({
                 </div>
                 <div className="flex items-center gap-2">
                   <SignedAgreementPdfButton applicationId={application.id} />
+                  <CancelSignedAgreementButton
+                    applicationId={application.id}
+                    wasFunded={!!application.fundedAt}
+                    canceledAmount={Number(application.acceptedAmount ?? 0)}
+                  />
                   <span className="text-[10px] font-mono text-[#a1a1aa]">ID: {achAuth.id.slice(0, 8)}</span>
                 </div>
               </div>
@@ -1652,5 +1658,143 @@ function SignedAgreementPdfButton({ applicationId }: { applicationId: string }) 
       </svg>
       {generating ? "Generating…" : "Save PDF to CRM"}
     </button>
+  );
+}
+
+/**
+ * Admin button to cancel a signed cash-advance contract. Opens a
+ * dialog asking for a reason (required for audit trail) and a choice
+ * about whether to also clear the offer terms. Loud warning when the
+ * application was already funded — the cash has already moved.
+ */
+function CancelSignedAgreementButton({
+  applicationId,
+  wasFunded,
+  canceledAmount,
+}: {
+  applicationId: string;
+  wasFunded: boolean;
+  canceledAmount: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [clearOffer, setClearOffer] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleConfirm() {
+    if (!reason.trim()) {
+      toast.error("Cancellation reason is required for the audit log");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const r = await cancelSignedAgreement({
+        applicationId,
+        reason: reason.trim(),
+        clearOffer,
+      });
+      if (r.ok) {
+        toast.success(
+          `Canceled $${r.canceledAmount.toLocaleString()} contract. ${r.nextStep}`,
+        );
+        setOpen(false);
+        setReason("");
+        setClearOffer(false);
+        router.refresh();
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cancel failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1 rounded-lg border border-[#dc2626]/30 bg-white text-[#dc2626] px-3 py-1.5 text-xs font-semibold hover:bg-[#fef2f2] transition-colors"
+        title="Delete this signed contract + its payments. Use when admin or customer needs to cancel and redo."
+      >
+        Cancel contract
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl">
+        <h2 className="text-[18px] font-bold text-[#dc2626] mb-2">
+          Cancel signed contract?
+        </h2>
+        <p className="text-[13px] text-[#52525b] mb-4">
+          This deletes the signed agreement, every payment row, and the signed-PDF document.
+          The customer's offer is reset so they (or you) can redo it.
+        </p>
+
+        {wasFunded && (
+          <div className="rounded-lg border-2 border-[#fbbf24] bg-[#fffbeb] p-3 mb-4">
+            <p className="text-[12px] font-bold text-[#92400e] mb-1">
+              ⚠ This customer was already funded ${canceledAmount.toLocaleString()}
+            </p>
+            <p className="text-[11px] text-[#92400e] leading-relaxed">
+              The ACH credit has already been sent via Increase. Canceling here removes the database records but does NOT pull the money back. You'll need to handle the refund separately (have the customer return the funds via ACH or write off the loss).
+            </p>
+          </div>
+        )}
+
+        <label className="block mb-3">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#dc2626] block mb-1">
+            Reason (required, saved to audit log)
+          </span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="e.g. Customer wanted $1,500 not $2,500; redoing offer"
+            className="w-full text-[13px] px-3 py-2 border border-[#e4e4e7] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#dc2626]/30"
+          />
+        </label>
+
+        <label className="flex items-start gap-2 cursor-pointer mb-5 select-none">
+          <input
+            type="checkbox"
+            checked={clearOffer}
+            onChange={(e) => setClearOffer(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-[#dc2626] cursor-pointer flex-shrink-0"
+          />
+          <span className="text-[12px] text-[#52525b] leading-snug">
+            Also clear the offer terms (resets to PENDING). Use when you want to set completely different terms next time. Leave unchecked to let the customer re-accept the same offer.
+          </span>
+        </label>
+
+        <div className="flex items-center gap-3 justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setReason("");
+              setClearOffer(false);
+            }}
+            disabled={submitting}
+            className="text-sm text-[#71717a] hover:text-black px-3 py-2"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={submitting || !reason.trim()}
+            className="bg-[#dc2626] text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 hover:bg-[#b91c1c]"
+          >
+            {submitting ? "Canceling…" : "Confirm cancel contract"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
