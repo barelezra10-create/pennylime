@@ -68,5 +68,21 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Log the individual page view for visitor-journey replay
+  if (a.landingPage) {
+    await prisma.pageView.create({
+      data: {
+        pennyClickId,
+        path: a.landingPage,
+        referrer: a.referrer || null,
+        userAgent,
+        ipAddress: ip,
+        utmSource: a.utm_source || null,
+        utmMedium: a.utm_medium || null,
+        utmCampaign: a.utm_campaign || null,
+      },
+    }).catch(() => null);
+  }
+
   return Response.json({ ok: true, pennyClickId });
 }

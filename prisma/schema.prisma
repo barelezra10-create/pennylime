@@ -763,9 +763,28 @@ model PennyClick {
   lastLandingPage  String?
   firstSeen        DateTime @default(now())
   lastSeen         DateTime @default(now())
+  pageViews        PageView[]
 
   @@index([contactId])
   @@index([firstSeen])
+}
+
+model PageView {
+  id           String    @id @default(uuid())
+  pennyClickId String
+  path         String
+  referrer     String?
+  userAgent    String?
+  ipAddress    String?
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  createdAt    DateTime  @default(now())
+  pennyClick   PennyClick @relation(fields: [pennyClickId], references: [id], onDelete: Cascade)
+
+  @@index([pennyClickId])
+  @@index([createdAt])
+  @@index([path])
 }
 
 model AdSpend {
