@@ -159,8 +159,13 @@ export function AdminTopNav({ userName }: { userName: string }) {
   // something needing attention. Also fires a browser desktop
   // notification when the inbound email count goes UP (not on initial
   // load — only when something arrives while admin is logged in).
-  const [badges, setBadges] = useState<InboxBadges>({ pendingChats: 0, unrepliedEmails: 0 });
-  const prevEmailCount = useRef<number | null>(null);
+  const [badges, setBadges] = useState<InboxBadges>({
+    pendingChats: 0,
+    unrepliedEmails: 0,
+    unrepliedSenders: [],
+  });
+  const seenContactIds = useRef<Set<string>>(new Set());
+  const initialPollDone = useRef<boolean>(false);
   useEffect(() => {
     let cancelled = false;
     // Ask for desktop-notification permission once. Browser remembers
@@ -173,30 +178,30 @@ export function AdminTopNav({ userName }: { userName: string }) {
       try {
         const result = await getInboxBadges();
         if (cancelled) return;
-        // Detect a fresh inbound email by comparing to the previous count.
-        // First poll: just record the baseline; don't notify.
-        const prev = prevEmailCount.current;
-        if (
-          prev !== null &&
-          result.unrepliedEmails > prev &&
-          typeof Notification !== "undefined" &&
-          Notification.permission === "granted"
-        ) {
-          const newOnes = result.unrepliedEmails - prev;
-          try {
-            new Notification(
-              `${newOnes} new customer email${newOnes > 1 ? "s" : ""}`,
-              {
-                body: "Open CRM to read and reply.",
-                icon: "/lime-mark-256.png",
-                tag: "pennylime-inbox", // dedupes — replaces an older one
-              },
-            );
-          } catch {
-            /* swallow — some browsers throw if backgrounded */
+        // Identify NEW senders since the last poll. First poll just
+        // records baseline so we don't spam notifications on initial
+        // page load with the existing backlog.
+        if (initialPollDone.current && typeof Notification !== "undefined" && Notification.permission === "granted") {
+          for (const sender of result.unrepliedSenders) {
+            if (!seenContactIds.current.has(sender.contactId)) {
+              try {
+                new Notification(
+                  `New email from ${sender.name}`,
+                  {
+                    body: sender.latestSubject + (sender.preview ? `\n${sender.preview}` : ""),
+                    icon: "/lime-mark-256.png",
+                    tag: `pennylime-inbox-${sender.contactId}`, // dedupes per-contact
+                  },
+                );
+              } catch {
+                /* swallow */
+              }
+            }
           }
         }
-        prevEmailCount.current = result.unrepliedEmails;
+        // Update the seen set to the current set of unreplied senders.
+        seenContactIds.current = new Set(result.unrepliedSenders.map((s) => s.contactId));
+        initialPollDone.current = true;
         setBadges(result);
       } catch {
         /* swallow */
@@ -204,8 +209,6 @@ export function AdminTopNav({ userName }: { userName: string }) {
     }
     poll();
     const id = setInterval(poll, 30_000);
-    // Re-poll whenever the tab regains focus so admin sees fresh state
-    // when they switch back to a stale tab.
     const focusHandler = () => poll();
     window.addEventListener("focus", focusHandler);
     return () => {
@@ -214,6 +217,20 @@ export function AdminTopNav({ userName }: { userName: string }) {
       window.removeEventListener("focus", focusHandler);
     };
   }, []);
+
+  // Inbox dropdown — opens when admin clicks the CRM tab badge.
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const inboxRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!inboxOpen) return;
+    function onClick(e: MouseEvent) {
+      if (inboxRef.current && !inboxRef.current.contains(e.target as Node)) {
+        setInboxOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [inboxOpen]);
 
   // Set the document title prefix with the total so the unread state
   // is visible even when the admin is on another browser tab.
@@ -240,6 +257,75 @@ export function AdminTopNav({ userName }: { userName: string }) {
             </Link>
           </div>
           <div className="flex items-center gap-3 text-[12px] text-[#71717a]">
+            {/* Inbox bell — shows who has pending emails by name. Click to
+                open a dropdown listing senders + subject + preview. */}
+            <div ref={inboxRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setInboxOpen((v) => !v)}
+                className="relative inline-flex items-center justify-center h-8 w-8 rounded-lg hover:bg-[#fafafa] text-[#52525b]"
+                title={`${badges.unrepliedEmails} unreplied email${badges.unrepliedEmails === 1 ? "" : "s"}`}
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                </svg>
+                {badges.unrepliedEmails > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-[#dc2626] text-white text-[9px] font-bold leading-none">
+                    {badges.unrepliedEmails > 9 ? "9+" : badges.unrepliedEmails}
+                  </span>
+                )}
+              </button>
+              {inboxOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-96 bg-white rounded-xl border border-[#e4e4e7] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.12)] overflow-hidden z-40">
+                  <div className="px-4 py-3 border-b border-[#f4f4f5] flex items-center justify-between">
+                    <p className="text-[12px] font-bold text-[#0a0a0a] uppercase tracking-[0.05em]">
+                      Unreplied emails
+                    </p>
+                    <span className="text-[11px] text-[#71717a]">
+                      {badges.unrepliedEmails === 0 ? "All caught up" : `${badges.unrepliedEmails} pending`}
+                    </span>
+                  </div>
+                  {badges.unrepliedSenders.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-[12px] text-[#a1a1aa]">
+                      No unreplied emails. Good work.
+                    </div>
+                  ) : (
+                    <ul className="max-h-[420px] overflow-y-auto">
+                      {badges.unrepliedSenders.map((s) => (
+                        <li key={s.contactId} className="border-b border-[#f4f4f5] last:border-0">
+                          <Link
+                            href={`/admin/contacts/${s.contactId}?tab=email`}
+                            onClick={() => setInboxOpen(false)}
+                            className="block px-4 py-3 hover:bg-[#fafafa] transition-colors"
+                          >
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="text-[13px] font-bold text-[#0a0a0a] truncate flex-1">
+                                {s.name}
+                              </p>
+                              <span className="text-[10px] text-[#a1a1aa]">
+                                {new Date(s.receivedAt).toLocaleString(undefined, {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#71717a] truncate mb-1">{s.email}</p>
+                            <p className="text-[12px] font-semibold text-[#1a1a1a] truncate" title={s.latestSubject}>
+                              {s.latestSubject}
+                            </p>
+                            {s.preview && (
+                              <p className="text-[11px] text-[#52525b] line-clamp-1 mt-0.5">{s.preview}</p>
+                            )}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
             <span className="hidden sm:inline">{userName}</span>
             <button
               onClick={() => signOut({ callbackUrl: "/admin/login" })}
