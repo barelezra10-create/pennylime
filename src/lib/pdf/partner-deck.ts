@@ -50,15 +50,19 @@ type MonthRow = {
   profit: number;
 };
 
+// Unit economics (5%/week × 8 weeks = 40% factor rate, 25% default, $100 CAC):
+//   capital per loan = $2,500
+//   expected revenue per loan (fees after default) = 0.75 × $1,000 = $750
+//   net contribution per loan (after default loss + CAC) = $25
 const RAMP: MonthRow[] = [
-  { month: "May 2026", funded: 5, capital: 12_500, revenue: 23_438, profit: 9_938 },
-  { month: "Jun 2026", funded: 15, capital: 37_500, revenue: 70_313, profit: 29_813 },
-  { month: "Jul 2026", funded: 30, capital: 75_000, revenue: 140_625, profit: 59_625 },
-  { month: "Aug 2026", funded: 60, capital: 150_000, revenue: 281_250, profit: 119_250 },
-  { month: "Sep 2026", funded: 100, capital: 250_000, revenue: 468_750, profit: 198_750 },
-  { month: "Oct 2026", funded: 150, capital: 375_000, revenue: 703_125, profit: 298_125 },
-  { month: "Nov 2026", funded: 200, capital: 500_000, revenue: 937_500, profit: 397_500 },
-  { month: "Dec 2026", funded: 250, capital: 625_000, revenue: 1_171_875, profit: 497_125 },
+  { month: "May 2026", funded: 5, capital: 12_500, revenue: 3_750, profit: 125 },
+  { month: "Jun 2026", funded: 15, capital: 37_500, revenue: 11_250, profit: 375 },
+  { month: "Jul 2026", funded: 30, capital: 75_000, revenue: 22_500, profit: 750 },
+  { month: "Aug 2026", funded: 60, capital: 150_000, revenue: 45_000, profit: 1_500 },
+  { month: "Sep 2026", funded: 100, capital: 250_000, revenue: 75_000, profit: 2_500 },
+  { month: "Oct 2026", funded: 150, capital: 375_000, revenue: 112_500, profit: 3_750 },
+  { month: "Nov 2026", funded: 200, capital: 500_000, revenue: 150_000, profit: 5_000 },
+  { month: "Dec 2026", funded: 250, capital: 625_000, revenue: 187_500, profit: 6_250 },
 ];
 
 const TOTAL = RAMP.reduce(
@@ -234,7 +238,8 @@ function buildDeckHtml(logoDataUri: string): string {
     </div>
 
     <ul class="bullets">
-      <li><span><strong>$100 — $10,000 cash advances.</strong> Average loan $2,500. Repaid in 12 weekly installments.</span></li>
+      <li><span><strong>$100 — $10,000 cash advances.</strong> Average loan $2,500. Repaid in 8 weekly installments.</span></li>
+      <li><span><strong>5% weekly factor fee.</strong> $2,500 advance is repaid at $3,500 across 8 weeks ($437.50 / week). 40% gross factor.</span></li>
       <li><span><strong>Instant bank connect.</strong> Plaid Auth + Identity + Asset Report parsed by AI to validate income, balance trend, and recurring deposit cadence.</span></li>
       <li><span><strong>AI risk analysis on Gemini.</strong> Scores each applicant on 14 features. Approves, declines, or routes to manual review with full reasoning.</span></li>
       <li><span><strong>Same-day ACH disbursement.</strong> Increase API pushes funds directly to the borrower's verified account.</span></li>
@@ -248,35 +253,72 @@ function buildDeckHtml(logoDataUri: string): string {
   <section class="page">
     <div class="section-head">
       <div class="eyebrow">03 · Unit Economics</div>
-      <h2>Every $2,500 loan returns $2,088 net.</h2>
+      <h2>5% weekly fee · 8-week term · 40% factor rate.</h2>
     </div>
 
-    <p class="lead">Pricing model: 150% return on capital deployed. A $2,500 advance is repaid at $6,250 across 12 weeks. After a conservative 25% default assumption, each funded loan nets the business <strong style="color:${COLORS.greenDeep}">$2,087.50</strong>.</p>
+    <p class="lead">Pricing model: 5% factor fee charged weekly across 8 weeks. A $2,500 advance is repaid at <strong style="color:${COLORS.greenDeep}">$3,500</strong> (eight weekly debits of $437.50). After a conservative 25% default assumption and $100 blended CAC, base-case net contribution is <strong style="color:${COLORS.greenDeep}">$25 per loan</strong>. Default rate is the dominant lever, sized in the next section.</p>
 
     <div class="kpi-grid" style="margin-top: 24px;">
       <div class="kpi"><div class="label">Avg loan</div><div class="value">$2,500</div><div class="sub">disbursed</div></div>
-      <div class="kpi"><div class="label">Avg repayment</div><div class="value">$6,250</div><div class="sub">2.5× over 12 weeks</div></div>
-      <div class="kpi cream"><div class="label">Net per loan</div><div class="value">$2,088</div><div class="sub">after default + CAC</div></div>
-      <div class="kpi dark"><div class="label">Margin on capital</div><div class="value">83.5%</div><div class="sub">net contribution</div></div>
+      <div class="kpi"><div class="label">Avg repayment</div><div class="value">$3,500</div><div class="sub">1.40× over 8 weeks</div></div>
+      <div class="kpi cream"><div class="label">Gross fee per loan</div><div class="value">$1,000</div><div class="sub">5% × 8 weeks of principal</div></div>
+      <div class="kpi dark"><div class="label">Cycle ROI on capital</div><div class="value">~6.5%</div><div class="sub">annualized, before CAC</div></div>
     </div>
 
-    <h3 style="margin-top: 36px; text-transform: none; letter-spacing: 0; color: ${COLORS.ink}; font-size: 13pt;">Loan-level P&L</h3>
+    <h3 style="margin-top: 36px; text-transform: none; letter-spacing: 0; color: ${COLORS.ink}; font-size: 13pt;">Loan-level P&L (25% default base case)</h3>
     <table class="pl-table">
       <tbody>
-        <tr><td class="label">Capital disbursed</td><td class="amount">$(2,500)</td></tr>
-        <tr><td class="label">Expected repayment <span class="pill" style="margin-left:6px;">75% × $6,250</span></td><td class="amount">+ $4,687.50</td></tr>
-        <tr><td class="label">Expected default loss <span class="pill" style="margin-left:6px; background:#fee2e2; color:#991b1b;">25% × $2,500</span></td><td class="amount neg">$(625.00)</td></tr>
+        <tr><td class="label">Capital disbursed</td><td class="amount">$(2,500.00)</td></tr>
+        <tr><td class="label">Expected fees collected <span class="pill" style="margin-left:6px;">75% × $1,000</span></td><td class="amount">+ $750.00</td></tr>
+        <tr><td class="label">Expected default principal loss <span class="pill" style="margin-left:6px; background:#fee2e2; color:#991b1b;">25% × $2,500</span></td><td class="amount neg">$(625.00)</td></tr>
         <tr><td class="label">Customer acquisition cost</td><td class="amount neg">$(100.00)</td></tr>
-        <tr class="total"><td>Net contribution per loan</td><td class="num">$2,087.50</td></tr>
+        <tr class="total"><td>Net contribution per loan</td><td class="num">$25.00</td></tr>
       </tbody>
     </table>
+    ${footer}
+  </section>
+
+  <!-- ========== DEFAULT SENSITIVITY ========== -->
+  <section class="page">
+    <div class="section-head">
+      <div class="eyebrow">04 · Default Sensitivity</div>
+      <h2>Default rate is the entire game.</h2>
+    </div>
+
+    <p class="lead">At 25% default, each loan nets only $25. Drop default to industry-typical ranges and the picture flips. AI risk scoring on bank-transaction data targets <strong style="color:${COLORS.greenDeep}">sub-15% default</strong>; first-pay default tightened through tuned approval thresholds and snapped-debit timing.</p>
+
+    <table style="margin-top: 24px;">
+      <thead>
+        <tr>
+          <th>Default rate</th>
+          <th class="num">Expected fees</th>
+          <th class="num">Principal loss</th>
+          <th class="num">Net per loan (after CAC)</th>
+          <th class="num">2026 net (810 loans)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>30% (stress)</td><td class="num">$700</td><td class="num">$(750)</td><td class="num" style="color:#b91c1c;">$(150)</td><td class="num" style="color:#b91c1c;">$(121,500)</td></tr>
+        <tr><td>25% (base case)</td><td class="num">$750</td><td class="num">$(625)</td><td class="num">$25</td><td class="num">$20,250</td></tr>
+        <tr><td>20%</td><td class="num">$800</td><td class="num">$(500)</td><td class="num">$200</td><td class="num">$162,000</td></tr>
+        <tr><td>15% (industry typical)</td><td class="num">$850</td><td class="num">$(375)</td><td class="num">$375</td><td class="num">$303,750</td></tr>
+        <tr class="total"><td>12% (target)</td><td class="num">$880</td><td class="num">$(300)</td><td class="num">$480</td><td class="num">$388,800</td></tr>
+        <tr><td>10% (upside)</td><td class="num">$900</td><td class="num">$(250)</td><td class="num">$550</td><td class="num">$445,500</td></tr>
+      </tbody>
+    </table>
+
+    <div class="kpi-grid cols-3" style="margin-top: 32px;">
+      <div class="kpi"><div class="label">Break-even default</div><div class="value">~22%</div><div class="sub">where net per loan = $0</div></div>
+      <div class="kpi cream"><div class="label">2026 target default</div><div class="value">12%</div><div class="sub">$389K net contribution</div></div>
+      <div class="kpi dark"><div class="label">AI risk model</div><div class="value">Live</div><div class="sub">14 features, Gemini-powered</div></div>
+    </div>
     ${footer}
   </section>
 
   <!-- ========== ACQUISITION ========== -->
   <section class="page">
     <div class="section-head">
-      <div class="eyebrow">04 · Acquisition Strategy</div>
+      <div class="eyebrow">05 · Acquisition Strategy</div>
       <h2>$100 blended CAC, weighted toward organic.</h2>
     </div>
 
@@ -304,12 +346,12 @@ function buildDeckHtml(logoDataUri: string): string {
   <!-- ========== MONTHLY RAMP ========== -->
   <section class="page">
     <div class="section-head">
-      <div class="eyebrow">05 · 2026 Monthly Ramp</div>
-      <h2>810 funded loans. $2.0M deployed. $1.6M net.</h2>
+      <div class="eyebrow">06 · 2026 Monthly Ramp</div>
+      <h2>810 funded loans. $2.0M deployed. $608K fee revenue.</h2>
     </div>
 
     <div class="bar-chart">${bars}</div>
-    <p style="text-align: center; margin-top: 8px; font-size: 9pt; color: ${COLORS.faint};">Monthly net profit, May - Dec 2026</p>
+    <p style="text-align: center; margin-top: 8px; font-size: 9pt; color: ${COLORS.faint};">Monthly contribution after default + CAC, base case 25% default · May - Dec 2026</p>
 
     <table style="margin-top: 24px;">
       <thead>
@@ -346,25 +388,43 @@ function buildDeckHtml(logoDataUri: string): string {
   <!-- ========== YEAR P&L ========== -->
   <section class="page">
     <div class="section-head">
-      <div class="eyebrow">06 · 2026 P&L Snapshot</div>
-      <h2>Net profit ≈ $1.49M on $2.0M deployed.</h2>
+      <div class="eyebrow">07 · 2026 P&L Snapshot</div>
+      <h2>Two scenarios. Default rate decides which one we live in.</h2>
     </div>
 
-    <table class="pl-table" style="margin-top: 18px;">
-      <tbody>
-        <tr><td class="label">Capital deployed (810 loans × $2,500)</td><td class="amount">$(2,025,000)</td></tr>
-        <tr><td class="label">Gross collected (after 25% default)</td><td class="amount">+ $3,800,000</td></tr>
-        <tr><td class="label">Default principal loss (203 loans × $2,500)</td><td class="amount neg">$(506,250)</td></tr>
-        <tr><td class="label">Marketing / CAC (810 × $100)</td><td class="amount neg">$(81,000)</td></tr>
-        <tr><td class="label">OpEx (hosting, Plaid, Twilio, Resend, Increase, ops)</td><td class="amount neg">$(120,000)</td></tr>
-        <tr class="total"><td>Net profit, 2026</td><td class="num">$1,490,000</td></tr>
-      </tbody>
-    </table>
+    <p class="lead">810 funded loans, $2.0M deployed, $607.5K in expected fees collected after default. Working capital recycles ~6.5× per year on 8-week loan cycles. Net result hinges almost entirely on default rate.</p>
 
-    <div class="kpi-grid cols-3" style="margin-top: 36px;">
-      <div class="kpi cream"><div class="label">Net margin on revenue</div><div class="value">39%</div><div class="sub">$1.49M / $3.80M collected</div></div>
-      <div class="kpi cream"><div class="label">Return on capital</div><div class="value">74%</div><div class="sub">$1.49M / $2.03M deployed</div></div>
-      <div class="kpi dark"><div class="label">Peak capital need</div><div class="value">~$700K</div><div class="sub">Q4 working capital</div></div>
+    <div class="two-col" style="margin-top: 24px;">
+      <div class="col">
+        <h3 style="color: ${COLORS.mute}; text-transform: uppercase; font-size: 10pt; letter-spacing: 0.06em;">Base case · 25% default</h3>
+        <table class="pl-table" style="margin-top: 8px;">
+          <tbody>
+            <tr><td class="label">Fee revenue collected</td><td class="amount">+ $607,500</td></tr>
+            <tr><td class="label">Default principal loss</td><td class="amount neg">$(506,250)</td></tr>
+            <tr><td class="label">CAC (810 × $100)</td><td class="amount neg">$(81,000)</td></tr>
+            <tr><td class="label">OpEx</td><td class="amount neg">$(120,000)</td></tr>
+            <tr class="total"><td>Net</td><td class="num" style="color:#b91c1c; background:#fef2f2; border-top-color:#b91c1c;">$(99,750)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col">
+        <h3 style="color: ${COLORS.greenDeep}; text-transform: uppercase; font-size: 10pt; letter-spacing: 0.06em;">Target · 12% default</h3>
+        <table class="pl-table" style="margin-top: 8px;">
+          <tbody>
+            <tr><td class="label">Fee revenue collected</td><td class="amount">+ $712,800</td></tr>
+            <tr><td class="label">Default principal loss</td><td class="amount neg">$(243,000)</td></tr>
+            <tr><td class="label">CAC (810 × $100)</td><td class="amount neg">$(81,000)</td></tr>
+            <tr><td class="label">OpEx</td><td class="amount neg">$(120,000)</td></tr>
+            <tr class="total"><td>Net</td><td class="num">$268,800</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="kpi-grid cols-3" style="margin-top: 32px;">
+      <div class="kpi"><div class="label">Capital deployed 2026</div><div class="value">$2.0M</div><div class="sub">810 loans × $2,500</div></div>
+      <div class="kpi cream"><div class="label">Cycle recycle rate</div><div class="value">6.5×</div><div class="sub">52 weeks ÷ 8-week loan</div></div>
+      <div class="kpi dark"><div class="label">Peak working capital</div><div class="value">~$500K</div><div class="sub">Q4 2026</div></div>
     </div>
     ${footer}
   </section>
@@ -372,31 +432,31 @@ function buildDeckHtml(logoDataUri: string): string {
   <!-- ========== RISK / WORKING CAPITAL ========== -->
   <section class="page">
     <div class="section-head">
-      <div class="eyebrow">07 · Risk &amp; Working Capital</div>
+      <div class="eyebrow">08 · Risk &amp; Working Capital</div>
       <h2>What we watch. What can go wrong.</h2>
     </div>
 
     <div class="two-col">
       <div class="col">
         <h3>Working capital</h3>
-        <p>Loans run roughly 12 weeks. To fund 250 advances in December, ~$500K of capital must be revolving in the Increase account by November. Peak capital requirement across Q4 lands at <strong style="color:${COLORS.greenDeep}">$600K-$750K</strong> before December collections cycle back.</p>
+        <p>Loans run 8 weeks. Capital recycles ~6.5× per year. To fund 250 advances in December, roughly <strong style="color:${COLORS.greenDeep}">$500K</strong> of capital must be revolving in the Increase account by mid-November. Peak Q4 working capital requirement: $500K-$600K before December collections cycle back.</p>
 
-        <h3 style="margin-top:18px;">Default sensitivity</h3>
-        <p>Base case: 25% default. Each 1 point of default = ~$20K of net profit. Hitting 30% default drops net to ~$1.05M. Holding under 22% pushes net above $1.7M. AI risk score + auto-decline thresholds tuned monthly.</p>
+        <h3 style="margin-top:18px;">Default is the lever</h3>
+        <p>Base case: 25% default. Each 3-point reduction in default = ~$120K of additional net profit. Holding default under 18% turns the year profitable. AI risk score + tuned approval thresholds + snapped weekly debit timing all target <strong style="color:${COLORS.greenDeep}">12% default by year-end</strong>.</p>
       </div>
       <div class="col">
         <h3>Regulatory posture</h3>
-        <p>Operated as merchant-cash-advance product (receivables purchase) rather than consumer loan. Florida-domiciled. Reviewed by counsel before each new state launch. No interest-rate-bearing instruments.</p>
+        <p>Operated as merchant-cash-advance product (receivables purchase) rather than consumer loan. Florida-domiciled under 770 Technology Way LLC. Reviewed by counsel before each new state launch. No interest-rate-bearing instruments.</p>
 
         <h3 style="margin-top:18px;">Repeat customer upside</h3>
-        <p>Not modeled above. Industry benchmark: 30% of paid-off borrowers take a second advance within 90 days. If achieved, blended CAC drops ~18% in H2 2026 and adds roughly $200K to net profit. Pure upside.</p>
+        <p>Not modeled above. Industry benchmark: 30% of paid-off borrowers take a second advance within 60 days. Repeat loans carry effectively zero CAC. If achieved, blended CAC drops ~18% in H2 2026, adding roughly <strong style="color:${COLORS.greenDeep}">$15K-$25K</strong> to net contribution. Pure upside on the target scenario.</p>
       </div>
     </div>
 
     <div class="kpi-grid cols-3" style="margin-top: 32px;">
-      <div class="kpi"><div class="label">Default · Base case</div><div class="value" style="color:${COLORS.greenDeep};">25%</div><div class="sub">Net $1.49M</div></div>
-      <div class="kpi"><div class="label">Default · Stress</div><div class="value" style="color:#b91c1c;">30%</div><div class="sub">Net ~$1.05M</div></div>
-      <div class="kpi cream"><div class="label">Default · Upside</div><div class="value">22%</div><div class="sub">Net ~$1.72M</div></div>
+      <div class="kpi"><div class="label">Default · Stress (30%)</div><div class="value" style="color:#b91c1c;">$(122K)</div><div class="sub">2026 net contribution</div></div>
+      <div class="kpi"><div class="label">Default · Base (25%)</div><div class="value" style="color:#b45309;">$(100K)</div><div class="sub">2026 net contribution</div></div>
+      <div class="kpi cream"><div class="label">Default · Target (12%)</div><div class="value">$269K</div><div class="sub">2026 net contribution</div></div>
     </div>
     ${footer}
   </section>
@@ -407,7 +467,7 @@ function buildDeckHtml(logoDataUri: string): string {
     <div class="title">
       <div class="eyebrow">Let's talk</div>
       <h1>Looking for capital partners to <em>fund the ramp</em>.</h1>
-      <p class="tagline">Peak working capital need in Q4 2026 is $700K. The product is live, the disbursement infrastructure is built, the SEO surface is in market. The remaining variable is loan-book capital.</p>
+      <p class="tagline">Peak working capital need in Q4 2026 is $500K-$600K on 8-week loan cycles. The product is live, the disbursement infrastructure is built, the SEO surface is in market. The remaining variable is loan-book capital and tightening default to the 12% target.</p>
     </div>
     <div class="meta">
       <div>
