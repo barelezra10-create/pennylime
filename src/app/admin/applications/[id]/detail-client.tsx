@@ -192,7 +192,11 @@ export function DetailClient({
   const [paymentSummary, setPaymentSummary] = useState<Awaited<ReturnType<typeof getPaymentsSummary>> | null>(null);
 
   useEffect(() => {
-    if (["ACTIVE", "LATE", "COLLECTIONS", "DEFAULTED", "PAID_OFF"].includes(application.status)) {
+    // FUNDED = ACH credit went out but no repayments yet (the moment after
+    // disbursement). REPAYING = at least one weekly debit posted. Both
+    // should show the schedule so admins can hit "Charge now" on the first
+    // pending payment without waiting for the daily cron.
+    if (["FUNDED", "ACTIVE", "REPAYING", "LATE", "COLLECTIONS", "DEFAULTED", "PAID_OFF"].includes(application.status)) {
       getPaymentsSummary(application.id).then(setPaymentSummary);
     }
   }, [application.id, application.status]);
