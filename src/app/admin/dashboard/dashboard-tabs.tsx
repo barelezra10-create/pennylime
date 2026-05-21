@@ -155,22 +155,42 @@ export function DashboardTabs(props: {
 function LoanPortalTab({ f, pendingApps }: { f: FinancialSummary; pendingApps: PendingApp[] }) {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-[12px] text-[#71717a]">Loan operations · last {f.period.days} days</p>
-        <a
-          href="/api/admin/partner-deck"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-[12px] font-semibold px-3.5 py-2 transition-colors"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Download 2026 Partner Deck
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="/partners"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-white border border-[#15803d] hover:bg-[#f0fdf4] text-[#15803d] text-[12px] font-semibold px-3.5 py-2 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
+              <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z" />
+              <line x1="6" y1="1" x2="6" y2="4" />
+              <line x1="10" y1="1" x2="10" y2="4" />
+              <line x1="14" y1="1" x2="14" y2="4" />
+            </svg>
+            Open partner view
+          </a>
+          <a
+            href="/api/admin/partner-deck"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-[12px] font-semibold px-3.5 py-2 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download 2026 Partner Deck
+          </a>
+        </div>
       </div>
+
+      <PartnerShareCard />
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi label="Pending review" value={f.loanOps.pendingReview.toString()} sub="awaiting decision" accent="bg-[#f59e0b]" href="/admin/applications?status=PENDING" />
         <Kpi label="Rejected" value={f.loanOps.rejected.toString()} sub="all-time" accent="bg-[#71717a]" href="/admin/applications?status=REJECTED" />
@@ -754,5 +774,49 @@ function Field({
         />
       )}
     </label>
+  );
+}
+
+function PartnerShareCard() {
+  const partnerUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/partners`
+      : "https://your-domain.com/partners";
+  const password = "Penny2026!";
+
+  return (
+    <div className="rounded-xl border border-[#dcfce7] bg-[#f0fdf4] p-4 flex items-center gap-4">
+      <div className="w-10 h-10 rounded-lg bg-[#15803d] text-white flex items-center justify-center flex-shrink-0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="8.5" cy="7" r="4" />
+          <path d="M20 8v6" />
+          <path d="M23 11h-6" />
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[12px] font-semibold text-[#15803d] uppercase tracking-[0.06em]">Partner share link</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px]">
+          <div>
+            <span className="text-[#71717a]">URL: </span>
+            <code className="font-mono text-[#0a0a0a] bg-white border border-[#dcfce7] rounded px-2 py-0.5 text-[12px]">{partnerUrl}</code>
+          </div>
+          <div>
+            <span className="text-[#71717a]">Password: </span>
+            <code className="font-mono text-[#0a0a0a] bg-white border border-[#dcfce7] rounded px-2 py-0.5 text-[12px]">{password}</code>
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard.writeText(`Partner dashboard: ${partnerUrl}\nPassword: ${password}`);
+          toast.success("Copied URL + password");
+        }}
+        className="text-[12px] font-semibold text-[#15803d] hover:underline whitespace-nowrap"
+      >
+        Copy
+      </button>
+    </div>
   );
 }

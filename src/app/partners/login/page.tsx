@@ -1,21 +1,10 @@
 import { redirect } from "next/navigation";
-import { isPartnerAuthed, isPartnerEnabled } from "@/lib/partner-auth";
+import { isPartnerAuthed } from "@/lib/partner-auth";
 import { LoginForm } from "./login-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function PartnerLoginPage() {
-  if (!isPartnerEnabled()) {
-    return (
-      <div className="max-w-md mx-auto px-6 py-32 text-center">
-        <h1 className="text-xl font-semibold">Partner view not configured.</h1>
-        <p className="mt-3 text-sm text-[#71717a]">
-          Set <code className="rounded bg-stone-100 px-1.5 py-0.5 font-mono text-xs">PARTNER_VIEW_PASSWORD</code> in your environment to enable.
-        </p>
-      </div>
-    );
-  }
-
   if (await isPartnerAuthed()) {
     redirect("/partners");
   }
