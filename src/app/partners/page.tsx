@@ -1,12 +1,22 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { isPartnerAuthed } from "@/lib/partner-auth";
-import { getFinancialSummary } from "@/lib/financials";
-import { getAccount, listAchTransfers } from "@/lib/increase";
+import { getFinancialSummary, type FinancialSummary } from "@/lib/financials";
+import { getAccount, listAchTransfers, type AchTransfer } from "@/lib/increase";
 import { PartnerLogoutButton } from "./logout-button";
 
 export const dynamic = "force-dynamic";
+
+type FundedApp = {
+  id: string;
+  applicationCode: string;
+  firstName: string;
+  lastName: string;
+  loanAmount: unknown;
+  fundedAmount: unknown;
+  status: string;
+  fundedAt: Date | null;
+};
 
 function fmtMoney(n: number): string {
   return n.toLocaleString("en-US", {
@@ -25,42 +35,82 @@ function fmtDate(iso: string): string {
   });
 }
 
+async function safe<T>(label: string, fn: () => Promise<T>): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
+  try {
+    return { ok: true, data: await fn() };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[/partners] ${label} failed:`, msg);
+    return { ok: false, error: `${label}: ${msg}` };
+  }
+}
+
 export default async function PartnerDashboard() {
   if (!(await isPartnerAuthed())) {
     redirect("/partners/login");
   }
 
-  const [financials, totalApps, fundedApps, balanceRes, transfersRes] = await Promise.all([
-    getFinancialSummary(30),
-    prisma.application.count(),
-    prisma.application.findMany({
-      where: { fundedAt: { not: null } },
-      orderBy: { fundedAt: "desc" },
-      take: 10,
-      select: {
-        id: true,
-        applicationCode: true,
-        firstName: true,
-        lastName: true,
-        loanAmount: true,
-        fundedAmount: true,
-        status: true,
-        fundedAt: true,
-      },
-    }),
-    getAccount(),
-    listAchTransfers(15),
+  const [financialsRes, totalAppsRes, fundedAppsRes, balanceRes, transfersRes] = await Promise.all([
+    safe("financials", () => getFinancialSummary(30)),
+    safe("totalApps", () => prisma.application.count()),
+    safe<FundedApp[]>("fundedApps", () =>
+      prisma.application.findMany({
+        where: { fundedAt: { not: null } },
+        orderBy: { fundedAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          applicationCode: true,
+          firstName: true,
+          lastName: true,
+          loanAmount: true,
+          fundedAmount: true,
+          status: true,
+          fundedAt: true,
+        },
+      }),
+    ),
+    safe("increaseAccount", () => getAccount()),
+    safe("increaseTransfers", () => listAchTransfers(15)),
   ]);
+
+  const errors: string[] = [];
+  for (const r of [financialsRes, totalAppsRes, fundedAppsRes, balanceRes, transfersRes]) {
+    if (!r.ok) errors.push(r.error);
+  }
+
+  // Fallbacks so the page still renders if a query fails.
+  const financials: FinancialSummary = financialsRes.ok
+    ? financialsRes.data
+    : {
+        period: { startDate: new Date(), endDate: new Date(), days: 30 },
+        loanOps: { pendingReview: 0, approvedNotFunded: 0, rejected: 0, active: 0, late: 0, paidOff: 0, defaulted: 0, totalApplications: 0 },
+        moneyFlow: { totalDisbursed: 0, outstandingPrincipal: 0, principalRecovered: 0, revenueLifetime: 0, revenuePeriod: 0, defaultLossesLifetime: 0, expectedRevenueOutstanding: 0 },
+        adSpend: { totalSpend: 0, byPlatform: [] },
+        newContacts: 0,
+        fundedThisPeriod: 0,
+        cac: 0,
+        cacFunded: 0,
+        roas: 0,
+        netProfitPeriod: 0,
+        netProfitLifetime: 0,
+      };
+  const totalApps = totalAppsRes.ok ? totalAppsRes.data : 0;
+  const fundedApps: FundedApp[] = fundedAppsRes.ok ? fundedAppsRes.data : [];
 
   const fundedCount = financials.loanOps.active + financials.loanOps.late + financials.loanOps.paidOff;
   const expectedProfit = financials.moneyFlow.expectedRevenueOutstanding;
 
-  const balanceCents = balanceRes.ok ? balanceRes.data.balances.current_balance : null;
-  const balanceUsd = balanceCents == null ? null : balanceCents / 100;
-  const availableCents = balanceRes.ok ? balanceRes.data.balances.available_balance : null;
-  const availableUsd = availableCents == null ? null : availableCents / 100;
+  const balanceData =
+    balanceRes.ok && balanceRes.data.ok ? balanceRes.data.data : null;
+  const balanceUsd = balanceData ? balanceData.balances.current_balance / 100 : null;
+  const availableUsd = balanceData ? balanceData.balances.available_balance / 100 : null;
+  const balanceError = balanceRes.ok && !balanceRes.data.ok ? balanceRes.data.error : null;
 
-  const transfers = transfersRes.ok ? transfersRes.data.data : [];
+  const transfers: AchTransfer[] =
+    transfersRes.ok && transfersRes.data.ok ? transfersRes.data.data.data : [];
+  const transfersError =
+    transfersRes.ok && !transfersRes.data.ok ? transfersRes.data.error : null;
 
   return (
     <div className="max-w-6xl mx-auto px-6 lg:px-10 py-10">
@@ -94,6 +144,15 @@ export default async function PartnerDashboard() {
         </p>
       </div>
 
+      {errors.length > 0 ? (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-[12px] text-amber-900">
+          <strong className="font-semibold">Some data unavailable:</strong>
+          <ul className="mt-1.5 list-disc pl-5 space-y-0.5">
+            {errors.map((e, i) => <li key={i}>{e}</li>)}
+          </ul>
+        </div>
+      ) : null}
+
       {/* Big KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard label="Applications" value={totalApps.toString()} sub={`${financials.loanOps.pendingReview} pending`} />
@@ -108,8 +167,8 @@ export default async function PartnerDashboard() {
         <KpiCard label="Default losses" value={fmtMoney(financials.moneyFlow.defaultLossesLifetime)} sub="principal in collections" />
         <KpiCard
           label="Increase balance"
-          value={balanceUsd == null ? ", , ," : fmtMoney(balanceUsd)}
-          sub={availableUsd == null ? "balance unavailable" : `${fmtMoney(availableUsd)} available`}
+          value={balanceUsd == null ? "—" : fmtMoney(balanceUsd)}
+          sub={availableUsd == null ? (balanceError || "balance unavailable") : `${fmtMoney(availableUsd)} available`}
           accent
         />
       </div>
@@ -160,7 +219,7 @@ export default async function PartnerDashboard() {
       <Section title="Increase transactions" sub="Most recent ACH credits (disbursements) and debits (repayments)">
         {transfers.length === 0 ? (
           <Empty>
-            {transfersRes.ok ? "No transfers yet." : `Increase API unavailable: ${transfersRes.error}`}
+            {transfersError ? `Increase API unavailable: ${transfersError}` : "No transfers yet."}
           </Empty>
         ) : (
           <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
