@@ -520,12 +520,15 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
   await prisma.application.update({
     where: { id: applicationId },
     data: {
-      status: "ACTIVE",
+      // FUNDED matches the auto-fund path inside acceptOffer.
+      // Both paths now produce the same status right after disbursement.
+      // A later cron transitions FUNDED → ACTIVE when the first
+      // weekly debit posts successfully.
+      status: "FUNDED",
       fundedAt: new Date(),
       fundedAmount,
       increaseTransferId: transferId,
       increaseTransferStatus: transferStatus,
-      // Clear any stale error from a prior failed attempt.
       increaseDisburseError: null,
     },
   });
