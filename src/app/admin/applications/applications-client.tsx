@@ -5,12 +5,13 @@ import { ApplicationTable } from "@/components/application-table";
 import { PageHeader } from "@/components/admin/page-header";
 import type { ApplicationWithDocuments } from "@/types";
 
-type FilterTab = "All" | "Pending" | "Approved" | "Active" | "Late" | "Collections" | "Defaulted" | "Paid Off";
+type FilterTab = "All" | "Pending" | "Approved" | "Funded" | "Active" | "Late" | "Collections" | "Defaulted" | "Paid Off";
 
 const STATUS_MAP: Record<FilterTab, string | null> = {
   All: null,
   Pending: "PENDING",
   Approved: "APPROVED",
+  Funded: "FUNDED",
   Active: "ACTIVE",
   Late: "LATE",
   Collections: "COLLECTIONS",
@@ -18,7 +19,7 @@ const STATUS_MAP: Record<FilterTab, string | null> = {
   "Paid Off": "PAID_OFF",
 };
 
-const TABS: FilterTab[] = ["All", "Pending", "Approved", "Active", "Late", "Collections", "Defaulted", "Paid Off"];
+const TABS: FilterTab[] = ["All", "Pending", "Approved", "Funded", "Active", "Late", "Collections", "Defaulted", "Paid Off"];
 
 export function ApplicationsClient({
   applications,

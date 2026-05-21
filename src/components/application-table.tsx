@@ -48,12 +48,19 @@ function StatusBadge({ status, offerStatus }: { status: string; offerStatus?: st
       REJECTED: { ...RED, label: "Rejected" },
       PENDING: { ...AMBER, label: "Pending" },
       ACTIVE: { ...BLUE, label: "Active" },
+      // status="FUNDED" means the Increase ACH credit was sent to
+      // the borrower. Distinct from ACTIVE which means the loan is
+      // being repaid; both are post-funding but FUNDED is the moment
+      // the money goes out. acceptOffer flips status to FUNDED right
+      // after Increase succeeds.
+      FUNDED: { ...GREEN, label: "Funded" },
+      REPAYING: { ...BLUE, label: "Repaying" },
       LATE: { ...RED, label: "Late" },
       COLLECTIONS: { ...RED, label: "Collections" },
       DEFAULTED: { ...RED, label: "Defaulted" },
       PAID_OFF: { ...GREEN, label: "Paid Off" },
     };
-    c = config[status] ?? { ...AMBER, label: "Pending" };
+    c = config[status] ?? { ...AMBER, label: status || "Pending" };
   }
 
   return (
