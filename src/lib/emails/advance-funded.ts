@@ -5,17 +5,24 @@ export function advanceFundedEmail(params: {
   firstName: string;
   applicationCode: string;
   fundedAmount: number;
-  interestRate: number;
-  loanTermMonths: number;
-  monthlyPayment: number;
+  // interestRate + loanTermMonths are kept for backwards compatibility
+  // with older callers, but we ignore them. The schedule is the source
+  // of truth - it reflects the actual plan the borrower accepted, after
+  // any scaling applied in acceptOffer.
+  interestRate?: number;
+  loanTermMonths?: number;
+  monthlyPayment?: number;
   firstDueDate: Date;
   schedule: ScheduleEntry[];
 }) {
   const statusUrl = `${APP_URL}/status/${params.applicationCode}`;
-  const factorRate = 1 + params.interestRate / 100;
-  const totalRepayment = params.fundedAmount * factorRate;
-  const weeks = Math.max(1, Math.round((params.loanTermMonths * 52) / 12));
-  const weeklyRemittance = totalRepayment / weeks;
+  const weeks = params.schedule.length;
+  const totalRepayment = params.schedule.reduce((s, p) => s + p.amount, 0);
+  const factorRate = params.fundedAmount > 0 ? totalRepayment / params.fundedAmount : 1;
+  // Weekly remittance == first payment amount. Schedule entries are uniform
+  // in the standard plan; using schedule[0] keeps the displayed weekly in
+  // lockstep with what the borrower will actually be debited.
+  const weeklyRemittance = params.schedule[0]?.amount ?? totalRepayment / Math.max(weeks, 1);
   const scheduleRows = params.schedule
     .map(
       (p) =>
