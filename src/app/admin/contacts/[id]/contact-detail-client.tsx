@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TabBar } from "@/components/admin/tab-bar";
 import { StageBadge } from "@/components/admin/stage-badge";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { PageHeader } from "@/components/admin/page-header";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
 import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archive";
@@ -58,6 +59,7 @@ interface Application {
   id: string;
   applicationCode: string;
   status: string;
+  offerStatus?: string | null;
   loanAmount: number;
   createdAt: string;
   payments: PaymentRow[];
@@ -446,7 +448,11 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                 </div>
                 <div>
                   <span className={labelClass}>Status</span>
-                  <span className="inline-block text-[11px] font-semibold bg-[#f0fdf4] text-[#15803d] px-2.5 py-1 rounded-lg">{contact.application.status}</span>
+                  <StatusBadge
+                    status={contact.application.status}
+                    offerStatus={contact.application.offerStatus}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <span className={labelClass}>Advance Amount</span>

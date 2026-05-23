@@ -19,6 +19,7 @@ import { runAiRiskAnalysis, getAiRiskAnalysis } from "@/actions/risk";
 import type { AiRiskAnalysis } from "@/lib/risk/ai-risk";
 import { generateSignedAgreementPdf } from "@/actions/signed-agreement";
 import { cancelSignedAgreement } from "@/actions/cancel-contract";
+import { StatusBadge } from "@/components/admin/status-badge";
 import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 
@@ -83,30 +84,9 @@ function fmt(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function StatusBadge({ status, offerStatus }: { status: string; offerStatus?: string | null }) {
-  const map: Record<string, { bg: string; text: string; label: string }> = {
-    APPROVED:    { bg: "bg-[#f0f5f0]",  text: "text-[#15803d]", label: "Approved" },
-    PAID_OFF:    { bg: "bg-[#f0f5f0]",  text: "text-[#15803d]", label: "Paid Off" },
-    ACTIVE:      { bg: "bg-[#eef4ff]",  text: "text-[#2563eb]", label: "Active" },
-    PENDING:     { bg: "bg-[#fef9ec]",  text: "text-[#b45309]", label: "Pending" },
-    REJECTED:    { bg: "bg-[#fff1f2]",  text: "text-[#dc2626]", label: "Rejected" },
-    LATE:        { bg: "bg-[#fff1f2]",  text: "text-[#dc2626]", label: "Late" },
-    COLLECTIONS: { bg: "bg-[#fff1f2]",  text: "text-[#dc2626]", label: "Collections" },
-    DEFAULTED:   { bg: "bg-[#fff1f2]",  text: "text-[#dc2626]", label: "Defaulted" },
-    FUNDED:      { bg: "bg-[#eef4ff]",  text: "text-[#2563eb]", label: "Funded" },
-  };
-  let s = map[status] ?? map.PENDING;
-  if (status === "APPROVED") {
-    if (offerStatus === "OFFERED")  s = { bg: "bg-[#eef4ff]", text: "text-[#2563eb]", label: "Offer Sent" };
-    if (offerStatus === "ACCEPTED") s = { bg: "bg-[#f0f5f0]", text: "text-[#15803d]", label: "Offer Accepted" };
-    if (offerStatus === "DECLINED") s = { bg: "bg-[#fff1f2]", text: "text-[#dc2626]", label: "Offer Declined" };
-  }
-  return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${s.bg} ${s.text}`}>
-      {s.label}
-    </span>
-  );
-}
+// StatusBadge moved to @/components/admin/status-badge so every place
+// in the admin (table, detail header, contacts, dashboard) shows the
+// same colors + labels and stays in lockstep when statuses are added.
 
 function RecommendationBadge({ recommendation }: { recommendation: string }) {
   const map: Record<string, { bg: string; text: string }> = {

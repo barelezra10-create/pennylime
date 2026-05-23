@@ -28,6 +28,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               id: contact.application.id,
               applicationCode: contact.application.applicationCode,
               status: contact.application.status,
+              offerStatus: contact.application.offerStatus,
               loanAmount: Number(contact.application.loanAmount),
               createdAt: contact.application.createdAt.toISOString(),
               payments: contact.application.payments.map((p) => ({

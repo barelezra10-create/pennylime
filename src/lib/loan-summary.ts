@@ -16,6 +16,7 @@ export type ApplicationLite = {
   fundedAmount?: number | string | null;
   fundedAt?: Date | string | null;
   status: string;
+  offerStatus?: string | null;
   payments?: PaymentLite[];
 };
 
@@ -34,6 +35,10 @@ export type LoanSummary = {
   isLate: boolean;
   isComplete: boolean;
   progressPct: number;
+  // Application + offer status so contact/dashboard surfaces can render
+  // the shared StatusBadge without re-fetching the application row.
+  applicationStatus: string;
+  offerStatus: string | null;
 };
 
 const num = (v: number | string | null | undefined) => (v == null ? 0 : typeof v === "number" ? v : Number(v));
@@ -56,6 +61,8 @@ export function computeLoanSummary(app: ApplicationLite | null | undefined): Loa
       isLate: false,
       isComplete: false,
       progressPct: 0,
+      applicationStatus: "",
+      offerStatus: null,
     };
   }
 
@@ -108,6 +115,8 @@ export function computeLoanSummary(app: ApplicationLite | null | undefined): Loa
     isLate,
     isComplete: paidCount === total && total > 0,
     progressPct,
+    applicationStatus: app.status,
+    offerStatus: app.offerStatus ?? null,
   };
 }
 

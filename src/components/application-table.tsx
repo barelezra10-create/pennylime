@@ -1,77 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { StatusBadge } from "@/components/admin/status-badge";
 import type { ApplicationWithDocuments } from "@/types";
-
-type BadgeStyle = { bg: string; text: string; dot: string; label: string };
-
-const GREEN: Omit<BadgeStyle, "label"> = {
-  bg: "bg-[#f0f5f0]",
-  text: "text-[#15803d]",
-  dot: "bg-[#15803d]",
-};
-const RED: Omit<BadgeStyle, "label"> = {
-  bg: "bg-[#fff1f2]",
-  text: "text-[#dc2626]",
-  dot: "bg-[#dc2626]",
-};
-const AMBER: Omit<BadgeStyle, "label"> = {
-  bg: "bg-[#fef9ec]",
-  text: "text-[#b45309]",
-  dot: "bg-[#b45309]",
-};
-const BLUE: Omit<BadgeStyle, "label"> = {
-  bg: "bg-[#eef4ff]",
-  text: "text-[#2563eb]",
-  dot: "bg-[#2563eb]",
-};
-
-function StatusBadge({ status, offerStatus }: { status: string; offerStatus?: string | null }) {
-  let c: BadgeStyle;
-
-  if (status === "APPROVED") {
-    switch (offerStatus) {
-      case "OFFERED":
-        c = { ...BLUE, label: "Offer Sent" };
-        break;
-      case "ACCEPTED":
-        c = { ...GREEN, label: "Offer Accepted" };
-        break;
-      case "DECLINED":
-        c = { ...RED, label: "Offer Declined" };
-        break;
-      default:
-        c = { ...GREEN, label: "Approved" };
-    }
-  } else {
-    const config: Record<string, BadgeStyle> = {
-      REJECTED: { ...RED, label: "Rejected" },
-      PENDING: { ...AMBER, label: "Pending" },
-      ACTIVE: { ...BLUE, label: "Active" },
-      // status="FUNDED" means the Increase ACH credit was sent to
-      // the borrower. Distinct from ACTIVE which means the loan is
-      // being repaid; both are post-funding but FUNDED is the moment
-      // the money goes out. acceptOffer flips status to FUNDED right
-      // after Increase succeeds.
-      FUNDED: { ...GREEN, label: "Funded" },
-      REPAYING: { ...BLUE, label: "Repaying" },
-      LATE: { ...RED, label: "Late" },
-      COLLECTIONS: { ...RED, label: "Collections" },
-      DEFAULTED: { ...RED, label: "Defaulted" },
-      PAID_OFF: { ...GREEN, label: "Paid Off" },
-    };
-    c = config[status] ?? { ...AMBER, label: status || "Pending" };
-  }
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${c.bg} ${c.text}`}
-    >
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
-      {c.label}
-    </span>
-  );
-}
 
 function formatDate(date: Date) {
   const d = new Date(date);
@@ -132,38 +63,38 @@ export function ApplicationTable({
   }
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden">
-      <table className="w-full">
+    <div className="bg-white rounded-2xl overflow-x-auto">
+      <table className="w-full min-w-[1100px]">
         <thead>
           <tr>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Date
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Applicant
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Code
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Amount
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Repay
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Profit
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Platform
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Income
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Docs
             </th>
-            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-6 py-4">
+            <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
               Status
             </th>
           </tr>
@@ -180,21 +111,21 @@ export function ApplicationTable({
               onClick={() => router.push(`/admin/applications/${app.id}`)}
               className="cursor-pointer hover:bg-[#f0f5f0] transition-colors duration-100"
             >
-              <td className="px-6 py-4 text-sm text-stone-500 whitespace-nowrap">
+              <td className="px-4 py-3.5 text-sm text-stone-500 whitespace-nowrap">
                 {formatDate(app.createdAt)}
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-3.5">
                 <div className="text-sm font-medium text-stone-900">
                   {app.firstName} {app.lastName}
                 </div>
                 <div className="text-xs text-stone-400 mt-0.5">{app.email}</div>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-3.5">
                 <span className="text-xs font-mono text-stone-500 bg-stone-50 px-2 py-1 rounded-md">
                   {app.applicationCode}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-3.5 whitespace-nowrap">
                 <div className="text-sm font-medium text-stone-900">
                   {formatCurrency(requested)}
                 </div>
@@ -204,27 +135,27 @@ export function ApplicationTable({
                   </div>
                 ) : null}
               </td>
-              <td className="px-6 py-4 text-sm whitespace-nowrap">
+              <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                 {totalRepay > 0 ? (
                   <span className="font-medium text-stone-900">{formatCurrency(totalRepay)}</span>
                 ) : (
                   <span className="text-stone-300">,</span>
                 )}
               </td>
-              <td className="px-6 py-4 text-sm whitespace-nowrap">
+              <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                 {profit > 0 ? (
                   <span className="font-medium text-[#15803d]">{formatCurrency(profit)}</span>
                 ) : (
                   <span className="text-stone-300">,</span>
                 )}
               </td>
-              <td className="px-6 py-4 text-sm text-stone-500 whitespace-nowrap">
+              <td className="px-4 py-3.5 text-sm text-stone-500 whitespace-nowrap">
                 {app.platform || ","}
               </td>
-              <td className="px-6 py-4 text-sm text-stone-500 whitespace-nowrap">
+              <td className="px-4 py-3.5 text-sm text-stone-500 whitespace-nowrap">
                 {app.monthlyIncome ? `$${Number(app.monthlyIncome).toLocaleString()}/mo` : ","}
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-3.5">
                 <span className="inline-flex items-center gap-1 text-xs text-stone-500">
                   <svg
                     width="14"
@@ -243,7 +174,7 @@ export function ApplicationTable({
                   {app.documents.length}
                 </span>
               </td>
-              <td className="px-6 py-4">
+              <td className="px-4 py-3.5">
                 <StatusBadge status={app.status} offerStatus={app.offerStatus} />
               </td>
             </tr>

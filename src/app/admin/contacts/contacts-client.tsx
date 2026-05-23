@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
 import { StageBadge } from "@/components/admin/stage-badge";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
 import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 
@@ -168,7 +169,8 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
               <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">
                 <Th>Contact</Th>
                 <Th>Stage</Th>
-                <Th align="right">Loan</Th>
+                <Th align="right">Advance</Th>
+                <Th>Status</Th>
                 <Th>Source</Th>
                 <Th>Progress</Th>
                 <Th align="right">Payment</Th>
@@ -179,7 +181,7 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-[13px] text-[#a1a1aa]">
+                  <td colSpan={9} className="px-4 py-12 text-center text-[13px] text-[#a1a1aa]">
                     No contacts found
                   </td>
                 </tr>
@@ -209,6 +211,17 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
                           {fmtMoney(contact.loanAmountIntent)}
                           <span className="ml-1 text-[10px] uppercase tracking-wide text-[#a1a1aa] font-medium">req</span>
                         </span>
+                      ) : (
+                        <span className="text-[12px] text-[#a1a1aa]">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      {contact.loan.applicationStatus ? (
+                        <StatusBadge
+                          status={contact.loan.applicationStatus}
+                          offerStatus={contact.loan.offerStatus}
+                          size="sm"
+                        />
                       ) : (
                         <span className="text-[12px] text-[#a1a1aa]">—</span>
                       )}
