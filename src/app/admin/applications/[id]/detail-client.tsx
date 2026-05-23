@@ -577,71 +577,19 @@ export function DetailClient({
           />
 
           {/* ── Documents ── */}
-          <div className="bg-white rounded-[10px] p-6">
-            <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-4 flex items-center gap-2">
-              <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-              </svg>
-              Documents ({application.documents.length})
-            </h2>
-
-            {application.documents.length === 0 ? (
-              <p className="text-sm text-[#a1a1aa]">No documents uploaded.</p>
-            ) : (
-              <div className="space-y-2">
-                {application.documents.map((doc) => (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between rounded-lg bg-[#f8faf8] p-3.5 hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#f0f5f0]">
-                        <svg className="h-5 w-5 text-[#15803d]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-black">{doc.fileName}</p>
-                        <p className="text-xs text-[#a1a1aa]">
-                          {doc.documentType} &middot; {formatFileSize(doc.fileSize)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={`/api/files/${doc.storagePath}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 transition-colors"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                        </svg>
-                        View
-                      </a>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!confirm(`Delete ${doc.fileName}?`)) return;
-                          const r = await deleteApplicationDocument(doc.id);
-                          if (r.ok) { toast.success("Deleted"); router.refresh(); }
-                          else toast.error(r.error);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg border border-red-100 bg-white px-2.5 py-1.5 text-xs font-medium text-[#dc2626] hover:bg-red-50"
-                        aria-label="Delete"
-                        title="Delete"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <DocumentsPanel
+            documents={application.documents}
+            onDelete={async (id, name) => {
+              if (!confirm(`Delete ${name}?`)) return;
+              const r = await deleteApplicationDocument(id);
+              if (r.ok) {
+                toast.success("Deleted");
+                router.refresh();
+              } else {
+                toast.error(r.error);
+              }
+            }}
+          />
 
           {/* ── ACH Authorization Proof (when customer has accepted) ── */}
           {achAuth && (
@@ -1438,7 +1386,7 @@ function BankStatementsPanel({
               </div>
               <div className="flex items-center gap-2">
                 <a
-                  href={`/api/files/${d.storagePath}`}
+                  href={`/api/files/${encodeURIComponent(d.storagePath)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50"
@@ -1778,6 +1726,200 @@ function CancelSignedAgreementButton({
             {submitting ? "Canceling…" : "Confirm cancel contract"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * DocumentsPanel
+ * Groups uploaded docs by type so the things admins actually need to
+ * eyeball — the signed contract first, then bank statements, then
+ * everything else — are obvious at a glance. Each row expands inline
+ * to preview the PDF/image without leaving the page.
+ * ───────────────────────────────────────────────────────────────── */
+
+const DOC_GROUPS: Array<{
+  key: string;
+  label: string;
+  types: string[];
+  accent: { wrapper: string; iconBg: string; iconText: string };
+}> = [
+  {
+    key: "contracts",
+    label: "Signed contracts",
+    types: ["SIGNED_AGREEMENT_PDF", "AGREEMENT"],
+    accent: { wrapper: "border-[#15803d] bg-[#f0fdf4]", iconBg: "bg-[#15803d]", iconText: "text-white" },
+  },
+  {
+    key: "bank",
+    label: "Bank statements",
+    types: ["BANK_STATEMENT_90D", "BANK_STATEMENT"],
+    accent: { wrapper: "border-[#dbeafe] bg-[#f5f9ff]", iconBg: "bg-[#2563eb]", iconText: "text-white" },
+  },
+  {
+    key: "identity",
+    label: "Identity & income",
+    types: ["IDENTIFICATION", "PAY_STUB", "DRIVER_LICENSE", "ID_FRONT", "ID_BACK"],
+    accent: { wrapper: "border-[#e4e4e7] bg-white", iconBg: "bg-[#f4f4f5]", iconText: "text-[#15803d]" },
+  },
+];
+
+function DocumentsPanel({
+  documents,
+  onDelete,
+}: {
+  documents: DocLite[];
+  onDelete: (id: string, name: string) => Promise<void>;
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const buckets = DOC_GROUPS.map((g) => ({
+    ...g,
+    docs: documents.filter((d) => g.types.includes(d.documentType)),
+  }));
+  const otherDocs = documents.filter(
+    (d) => !DOC_GROUPS.some((g) => g.types.includes(d.documentType)),
+  );
+
+  return (
+    <div className="bg-white rounded-[10px] p-6">
+      <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-4 flex items-center gap-2">
+        <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+        </svg>
+        Documents ({documents.length})
+      </h2>
+
+      {documents.length === 0 ? (
+        <p className="text-sm text-[#a1a1aa]">No documents uploaded.</p>
+      ) : (
+        <div className="space-y-5">
+          {buckets.map((b) =>
+            b.docs.length === 0 ? null : (
+              <DocGroup
+                key={b.key}
+                label={b.label}
+                accent={b.accent}
+                docs={b.docs}
+                openId={openId}
+                setOpenId={setOpenId}
+                onDelete={onDelete}
+              />
+            ),
+          )}
+          {otherDocs.length > 0 && (
+            <DocGroup
+              label="Other"
+              accent={{ wrapper: "border-[#e4e4e7] bg-white", iconBg: "bg-[#f4f4f5]", iconText: "text-[#52525b]" }}
+              docs={otherDocs}
+              openId={openId}
+              setOpenId={setOpenId}
+              onDelete={onDelete}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DocGroup({
+  label,
+  accent,
+  docs,
+  openId,
+  setOpenId,
+  onDelete,
+}: {
+  label: string;
+  accent: { wrapper: string; iconBg: string; iconText: string };
+  docs: DocLite[];
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+  onDelete: (id: string, name: string) => Promise<void>;
+}) {
+  return (
+    <div>
+      <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">
+        {label} <span className="text-[#a1a1aa]">({docs.length})</span>
+      </h3>
+      <div className="space-y-2">
+        {docs.map((doc) => {
+          const isOpen = openId === doc.id;
+          const url = `/api/files/${encodeURIComponent(doc.storagePath)}`;
+          const ext = doc.fileName.split(".").pop()?.toLowerCase() || "";
+          const isPdf = ext === "pdf";
+          const isImage = ["png", "jpg", "jpeg", "gif", "webp"].includes(ext);
+          const canPreview = isPdf || isImage;
+
+          return (
+            <div key={doc.id} className={`rounded-lg border ${accent.wrapper} overflow-hidden`}>
+              <div className="flex items-center justify-between p-3.5">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg flex-shrink-0 ${accent.iconBg}`}>
+                    <svg className={`h-5 w-5 ${accent.iconText}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-black truncate">{doc.fileName}</p>
+                    <p className="text-xs text-[#71717a]">
+                      <span className="font-mono">{doc.documentType}</span> &middot; {formatFileSize(doc.fileSize)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {canPreview && (
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(isOpen ? null : doc.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#15803d] bg-white px-3 py-1.5 text-xs font-semibold text-[#15803d] hover:bg-[#f0fdf4] transition-colors"
+                    >
+                      {isOpen ? "Hide" : "Preview"}
+                    </button>
+                  )}
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 transition-colors"
+                  >
+                    Open
+                  </a>
+                  <a
+                    href={url}
+                    download={doc.fileName}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-black hover:bg-gray-50 transition-colors"
+                  >
+                    Download
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(doc.id, doc.fileName)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-red-100 bg-white px-2.5 py-1.5 text-xs font-medium text-[#dc2626] hover:bg-red-50"
+                    aria-label="Delete"
+                    title="Delete"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              {isOpen && canPreview && (
+                <div className="border-t border-[#e4e4e7] bg-white p-2">
+                  {isPdf ? (
+                    <iframe src={url} className="w-full h-[720px] rounded" title={doc.fileName} />
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={url} alt={doc.fileName} className="max-w-full max-h-[720px] mx-auto" />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
