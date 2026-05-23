@@ -34,6 +34,24 @@ export default async function StatePageRoute({ params }: { params: Promise<{ slu
   const faqs: FaqEntry[] = JSON.parse(state.faqEntries);
   const stats: LocalStat[] = JSON.parse(state.localStats);
 
+  // Sibling-state links — kills the orphan problem. Pick 11 other states
+  // by alphabetical proximity around this slug, wrapping if needed.
+  const allStates = await getPublishedStatePages();
+  const sorted = [...allStates].sort((a, b) => a.stateName.localeCompare(b.stateName));
+  const idx = sorted.findIndex((s) => s.slug === slug);
+  const siblingPool = sorted.filter((s) => s.slug !== slug);
+  const nearby: typeof sorted = [];
+  if (siblingPool.length > 0) {
+    const want = Math.min(11, siblingPool.length);
+    for (let offset = 1; nearby.length < want && offset <= sorted.length; offset++) {
+      const before = sorted[(idx - offset + sorted.length) % sorted.length];
+      const after = sorted[(idx + offset) % sorted.length];
+      if (before && before.slug !== slug && !nearby.find((n) => n.slug === before.slug)) nearby.push(before);
+      if (nearby.length >= want) break;
+      if (after && after.slug !== slug && !nearby.find((n) => n.slug === after.slug)) nearby.push(after);
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <JsonLd data={cashAdvanceProductSchema()} />
@@ -73,6 +91,37 @@ export default async function StatePageRoute({ params }: { params: Promise<{ slu
       )}
 
       <FaqAccordion entries={faqs} />
+
+      {nearby.length > 0 && (
+        <section className="mt-12 pt-8 border-t border-[#e4e4e7]">
+          <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-black mb-1">
+            Cash advances in other states
+          </h2>
+          <p className="text-[13px] text-[#71717a] mb-4">
+            Out of state? PennyLime serves all 50 states.{" "}
+            <Link href="/states" className="text-[#15803d] font-semibold hover:underline">
+              See all states →
+            </Link>
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+            {nearby.map((s) => (
+              <Link
+                key={s.id}
+                href={`/states/${s.slug}`}
+                className="group flex items-center justify-between rounded-lg border border-[#e4e4e7] bg-white px-3 py-2 hover:border-[#15803d] hover:bg-[#f0fdf4] transition-colors"
+              >
+                <span className="text-[13px] font-medium text-[#0a0a0a] group-hover:text-[#15803d]">
+                  {s.stateName}
+                </span>
+                <span className="text-[10px] font-mono text-[#a1a1aa] group-hover:text-[#15803d]">
+                  {s.stateCode}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <ContentCta />
     </div>
   );
