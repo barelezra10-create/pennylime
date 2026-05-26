@@ -12,9 +12,21 @@ export function organizationSchema() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "PennyLime",
+    legalName: "770 Technology LLC",
     url: "https://pennylime.com",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://pennylime.com/lime-mark-512.png",
+      width: 512,
+      height: 512,
+    },
+    image: "https://pennylime.com/lime-mark-512.png",
     description: "Fast cash advances for gig workers. $500 to $10,000.",
-    contactPoint: { "@type": "ContactPoint", email: "info@pennylime.com" },
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: "info@pennylime.com",
+      contactType: "customer support",
+    },
   };
 }
 
@@ -24,16 +36,36 @@ export function articleSchema(article: {
   excerpt?: string | null;
   publishedAt?: Date | null;
   updatedAt: Date;
+  featuredImage?: string | null;
+  authorName?: string | null;
 }) {
+  const url = `https://pennylime.com/blog/${article.slug}`;
+  const image = article.featuredImage || "https://pennylime.com/hero-rider.jpg";
   return {
     "@context": "https://schema.org",
     "@type": "Article",
     headline: article.title,
-    url: `https://pennylime.com/blog/${article.slug}`,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    image,
     ...(article.excerpt && { description: article.excerpt }),
     ...(article.publishedAt && { datePublished: article.publishedAt.toISOString() }),
     dateModified: article.updatedAt.toISOString(),
-    publisher: { "@type": "Organization", name: "PennyLime" },
+    author: {
+      "@type": "Organization",
+      name: article.authorName || "PennyLime",
+      url: "https://pennylime.com",
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "PennyLime",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://pennylime.com/lime-mark-512.png",
+        width: 512,
+        height: 512,
+      },
+    },
   };
 }
 
@@ -61,7 +93,8 @@ export function cashAdvanceProductSchema(options?: { platformName?: string; page
     description: options?.platformName
       ? `Cash advance for ${options.platformName} workers. ${baseDescription}`
       : baseDescription,
-    url: options?.pageUrl,
+    ...(options?.pageUrl && { url: options.pageUrl }),
+    image: "https://pennylime.com/lime-mark-512.png",
     amount: { "@type": "MonetaryAmount", currency: "USD", minValue: 500, maxValue: 10000 },
     feesAndCommissionsSpecification:
       "Weekly compound rate of 3% to 7% based on risk assessment. No origination fees, no prepayment penalty.",
@@ -73,8 +106,13 @@ export function cashAdvanceProductSchema(options?: { platformName?: string; page
       "@type": "Organization",
       name: "PennyLime",
       url: "https://pennylime.com",
-      logo: "https://pennylime.com/lime-mark-512.png",
       legalName: "770 Technology LLC",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://pennylime.com/lime-mark-512.png",
+        width: 512,
+        height: 512,
+      },
     },
   };
 }
