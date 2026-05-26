@@ -546,7 +546,10 @@ export async function acceptOffer(input: {
           interest: p.interest,
           lateFee: 0,
           dueDate: p.dueDate,
-          status: "SCHEDULED",
+          // PENDING so the daily payment-processor cron picks it up. We
+          // used to write SCHEDULED but the cron filters on PENDING - any
+          // SCHEDULED payment was orphaned and never debited.
+          status: "PENDING",
         })),
       });
     }
