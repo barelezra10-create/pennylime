@@ -293,10 +293,18 @@ export function AdminTopNav({ userName }: { userName: string }) {
                     </div>
                   ) : (
                     <ul className="max-h-[420px] overflow-y-auto">
-                      {badges.unrepliedSenders.map((s) => (
+                      {badges.unrepliedSenders.map((s) => {
+                        // Stranger emails come back with `inbox:<id>` as the
+                        // contactId sentinel - route those to /admin/inbox
+                        // instead of /admin/contacts/[id].
+                        const isInboxLink = s.contactId.startsWith("inbox:");
+                        const href = isInboxLink
+                          ? `/admin/inbox`
+                          : `/admin/contacts/${s.contactId}?tab=email`;
+                        return (
                         <li key={s.contactId} className="border-b border-[#f4f4f5] last:border-0">
                           <Link
-                            href={`/admin/contacts/${s.contactId}?tab=email`}
+                            href={href}
                             onClick={() => setInboxOpen(false)}
                             className="block px-4 py-3 hover:bg-[#fafafa] transition-colors"
                           >
@@ -322,7 +330,8 @@ export function AdminTopNav({ userName }: { userName: string }) {
                             )}
                           </Link>
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

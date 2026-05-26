@@ -207,6 +207,14 @@ export async function getEmailThread(contactId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return [];
 
+  // Mark any UNREAD inbound emails for this contact as READ. Opening the
+  // contact's Email tab is equivalent to opening them in /admin/inbox -
+  // either path clears the CRM badge.
+  await prisma.inboundEmail.updateMany({
+    where: { contactId, status: "UNREAD" },
+    data: { status: "READ" },
+  }).catch(() => null);
+
   const activities = await prisma.activity.findMany({
     where: {
       contactId,

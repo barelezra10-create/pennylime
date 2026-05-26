@@ -10,37 +10,39 @@ export type UnrepliedSender = {
   email: string;
   latestSubject: string;
   preview: string;
-  receivedAt: string; // ISO
+  receivedAt: string;
 };
 
 export type InboxBadges = {
   pendingChats: number;
   unrepliedEmails: number;
-  /** Up to 10 contacts whose latest email is inbound + we haven't replied.
-   *  Includes name/email + subject + preview so the admin can tell at a
-   *  glance WHO is waiting without clicking into each one. */
+  /** Up to 10 most recent inbound senders we haven't opened in /admin/inbox
+   *  yet. Each row has name/email + subject + preview so the admin can tell
+   *  at a glance WHO is waiting without clicking into each one.
+   *  For unmatched (stranger) senders, contactId is `inbox:<inboundEmailId>`
+   *  - the top-nav dropdown routes those to /admin/inbox?focus=<id>. */
   unrepliedSenders: UnrepliedSender[];
 };
 
+const PENDING_CHAT_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 /**
- * Lighter-weight server action used by list views (contacts table, pipeline)
- * that just need to mark rows that have unread inbound — no payload bodies
- * needed. Returns ALL pending contactIds (no 10-row cap), covering both
- * unreplied emails AND open chat sessions whose last message is from the user.
+ * Returns the contact IDs that should show an "unread" indicator on the
+ * /admin/contacts list. Source of truth = InboundEmail.status === UNREAD
+ * (for matched contacts) plus open chat sessions whose last message is
+ * from the user. Reading the email in /admin/inbox or in the contact's
+ * Email tab clears the dot.
  */
 export async function getUnreadContactIds(): Promise<{ contactIds: string[] }> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { contactIds: [] };
 
   const chatCutoff = new Date(Date.now() - PENDING_CHAT_WINDOW_MS);
-  const emailCutoff = new Date(Date.now() - UNREPLIED_WINDOW_MS);
 
-  const [latestEmailPerContact, openChatSessions] = await Promise.all([
-    prisma.emailEvent.findMany({
-      where: { createdAt: { gte: emailCutoff }, type: { in: ["sent", "received"] } },
-      orderBy: { createdAt: "desc" },
-      distinct: ["contactId"],
-      select: { contactId: true, type: true },
+  const [unreadInbound, openChatSessions] = await Promise.all([
+    prisma.inboundEmail.findMany({
+      where: { status: "UNREAD", contactId: { not: null } },
+      select: { contactId: true },
     }),
     prisma.agentSession.findMany({
       where: { channel: "chat", endedAt: null, startedAt: { gte: chatCutoff } },
@@ -56,8 +58,8 @@ export async function getUnreadContactIds(): Promise<{ contactIds: string[] }> {
   ]);
 
   const ids = new Set<string>();
-  for (const e of latestEmailPerContact) {
-    if (e.type === "received") ids.add(e.contactId);
+  for (const e of unreadInbound) {
+    if (e.contactId) ids.add(e.contactId);
   }
   for (const s of openChatSessions) {
     if (s.contactId && s.messages[0]?.role === "user") ids.add(s.contactId);
@@ -66,9 +68,13 @@ export async function getUnreadContactIds(): Promise<{ contactIds: string[] }> {
   return { contactIds: Array.from(ids) };
 }
 
-const PENDING_CHAT_WINDOW_MS = 48 * 60 * 60 * 1000;
-const UNREPLIED_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
-
+/**
+ * Powers the CRM nav-bar badge + dropdown. Counts UNREAD InboundEmail rows
+ * (matched + unmatched) plus open chat sessions awaiting an admin reply.
+ *
+ * Reading an email in /admin/inbox flips its status from UNREAD -> READ,
+ * which immediately drops the badge count by 1 on the next poll cycle.
+ */
 export async function getInboxBadges(): Promise<InboxBadges> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
@@ -76,9 +82,8 @@ export async function getInboxBadges(): Promise<InboxBadges> {
   }
 
   const chatCutoff = new Date(Date.now() - PENDING_CHAT_WINDOW_MS);
-  const emailCutoff = new Date(Date.now() - UNREPLIED_WINDOW_MS);
 
-  const [recentChatSessions, latestEmailPerContact] = await Promise.all([
+  const [recentChatSessions, unreadInbound] = await Promise.all([
     prisma.agentSession.findMany({
       where: { channel: "chat", endedAt: null, startedAt: { gte: chatCutoff } },
       select: {
@@ -90,11 +95,19 @@ export async function getInboxBadges(): Promise<InboxBadges> {
         },
       },
     }),
-    prisma.emailEvent.findMany({
-      where: { createdAt: { gte: emailCutoff }, type: { in: ["sent", "received"] } },
-      orderBy: { createdAt: "desc" },
-      distinct: ["contactId"],
-      select: { contactId: true, type: true, createdAt: true },
+    prisma.inboundEmail.findMany({
+      where: { status: "UNREAD" },
+      orderBy: { receivedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        contactId: true,
+        fromEmail: true,
+        fromName: true,
+        subject: true,
+        bodyText: true,
+        receivedAt: true,
+      },
     }),
   ]);
 
@@ -105,66 +118,35 @@ export async function getInboxBadges(): Promise<InboxBadges> {
     return last.createdAt >= chatCutoff;
   }).length;
 
-  // Contacts whose latest email activity is inbound = unreplied.
-  const unrepliedContactIds = latestEmailPerContact
-    .filter((e) => e.type === "received")
-    .map((e) => ({ contactId: e.contactId, receivedAt: e.createdAt }));
+  const matchedIds = unreadInbound
+    .map((e) => e.contactId)
+    .filter((id): id is string => !!id);
+  const contacts =
+    matchedIds.length > 0
+      ? await prisma.contact.findMany({
+          where: { id: { in: matchedIds } },
+          select: { id: true, firstName: true, lastName: true, email: true },
+        })
+      : [];
+  const contactById = new Map(contacts.map((c) => [c.id, c]));
 
-  // Pull full sender info + the actual inbound message details.
-  let unrepliedSenders: UnrepliedSender[] = [];
-  if (unrepliedContactIds.length > 0) {
-    const ids = unrepliedContactIds.map((u) => u.contactId);
-    // Fetch contacts + their most recent email_received activity in
-    // two queries, then join client-side. Two queries is faster than
-    // an N+1 per-contact lookup.
-    const [contacts, latestInboundActivities] = await Promise.all([
-      prisma.contact.findMany({
-        where: { id: { in: ids } },
-        select: { id: true, firstName: true, lastName: true, email: true },
-      }),
-      prisma.activity.findMany({
-        where: {
-          contactId: { in: ids },
-          type: "email_received",
-        },
-        orderBy: { createdAt: "desc" },
-        distinct: ["contactId"],
-        select: {
-          contactId: true,
-          title: true,
-          details: true,
-          createdAt: true,
-        },
-      }),
-    ]);
-    const contactById = new Map(contacts.map((c) => [c.id, c]));
-    const activityById = new Map(
-      latestInboundActivities.map((a) => [a.contactId, a]),
-    );
-
-    unrepliedSenders = unrepliedContactIds
-      .map(({ contactId, receivedAt }) => {
-        const c = contactById.get(contactId);
-        const a = activityById.get(contactId);
-        if (!c) return null;
-        const name =
-          [c.firstName, c.lastName].filter(Boolean).join(" ").trim() ||
-          c.email.split("@")[0];
-        const subject = a?.title?.replace(/^Email(?:\s+sent)?:\s*/i, "").trim() ?? "(no subject)";
-        const preview = (a?.details ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
-        return {
-          contactId,
-          name,
-          email: c.email,
-          latestSubject: subject,
-          preview,
-          receivedAt: receivedAt.toISOString(),
-        };
-      })
-      .filter((x): x is UnrepliedSender => x !== null)
-      .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
-      .slice(0, 10);
-  }
+  const unrepliedSenders: UnrepliedSender[] = unreadInbound.slice(0, 10).map((e) => {
+    const c = e.contactId ? contactById.get(e.contactId) : null;
+    const name = c
+      ? [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || c.email.split("@")[0]
+      : e.fromName?.trim() || e.fromEmail.split("@")[0];
+    return {
+      // Match-contact rows use the contactId directly so the dropdown's
+      // existing /admin/contacts/[id] href keeps working. Stranger rows use
+      // an "inbox:<id>" sentinel so top-nav can route to /admin/inbox.
+      contactId: c ? c.id : `inbox:${e.id}`,
+      name,
+      email: c?.email || e.fromEmail,
+      latestSubject: e.subject || "(no subject)",
+      preview: (e.bodyText || "").replace(/\s+/g, " ").trim().slice(0, 120),
+      receivedAt: e.receivedAt.toISOString(),
+    };
+  });
 
   return {
     pendingChats,
