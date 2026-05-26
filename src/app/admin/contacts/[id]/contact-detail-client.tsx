@@ -12,6 +12,7 @@ import { logActivity } from "@/actions/activities";
 import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, polishReplyWithAI, getEmailThread, type CrmEmailTemplate } from "@/actions/crm-email";
 import { syncIncreaseForApplication, type IncreaseTransferRow } from "@/actions/sync-increase-status";
 import { previewPortalAs } from "@/actions/portal-preview";
+import { getTopUpRequestsForApplication, setTopUpRequestStatus, type AdminTopUpRow } from "@/actions/topup-admin";
 
 type EmailThreadItem = {
   id: string;
@@ -478,6 +479,7 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
               </div>
             </div>
             <IncreaseTransfersPanel applicationId={contact.application.id} />
+            <TopUpRequestsPanel applicationId={contact.application.id} />
             </>
           ) : (
             <div className="bg-white rounded-xl p-6 border border-[#e4e4e7]">
@@ -1196,5 +1198,114 @@ function PortalPreviewButton({ applicationId }: { applicationId: string }) {
       </svg>
       View as customer
     </button>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * TopUpRequestsPanel
+ * Lists pending + historical "request more advance" submissions from
+ * the customer portal. Admin can Approve / Decline each PENDING one
+ * with an optional note. Approval here is a soft confirmation — the
+ * admin still has to clone the application data and run the new
+ * advance through the offer flow manually.
+ * ───────────────────────────────────────────────────────────────── */
+
+function TopUpRequestsPanel({ applicationId }: { applicationId: string }) {
+  const router = useRouter();
+  const [rows, setRows] = useState<AdminTopUpRow[] | null>(null);
+
+  useEffect(() => {
+    getTopUpRequestsForApplication(applicationId).then(setRows);
+  }, [applicationId]);
+
+  if (!rows) {
+    return null;
+  }
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-[#e4e4e7] p-6">
+      <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em] mb-4">Top-up requests</h2>
+      <div className="space-y-3">
+        {rows.map((r) => {
+          const created = new Date(r.createdAt);
+          const isPending = r.status === "PENDING";
+          const statusColor =
+            r.status === "APPROVED" ? "bg-[#f0fdf4] text-[#15803d]" :
+            r.status === "DECLINED" ? "bg-red-50 text-red-700" :
+            r.status === "FUNDED" ? "bg-[#f0fdf4] text-[#15803d]" :
+            "bg-amber-50 text-amber-800";
+          return (
+            <div key={r.id} className="rounded-lg border border-[#e4e4e7] p-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="text-[18px] font-bold text-black tabular-nums">
+                    ${r.requestedAmount.toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-[#71717a] mt-0.5">
+                    requested {created.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </div>
+                </div>
+                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusColor}`}>
+                  {r.status}
+                </span>
+              </div>
+              {r.adminNote && (
+                <p className="mt-3 text-[12px] text-[#52525b] border-l-2 border-[#e4e4e7] pl-3">
+                  {r.adminNote}
+                </p>
+              )}
+              {r.reviewedBy && r.reviewedAt && (
+                <p className="mt-2 text-[11px] text-[#a1a1aa]">
+                  Reviewed by {r.reviewedBy} on {new Date(r.reviewedAt).toLocaleDateString()}
+                </p>
+              )}
+              {isPending && (
+                <div className="mt-4 flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const note = window.prompt("Optional note for the customer (leave blank to skip):") || undefined;
+                      const res = await setTopUpRequestStatus({ requestId: r.id, status: "APPROVED", adminNote: note });
+                      if (res.ok) {
+                        toast.success("Approved");
+                        const fresh = await getTopUpRequestsForApplication(applicationId);
+                        setRows(fresh);
+                        router.refresh();
+                      } else {
+                        toast.error(res.error);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white text-[12px] font-semibold px-3 py-1.5"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const note = window.prompt("Reason for declining (shown to customer):") || undefined;
+                      const res = await setTopUpRequestStatus({ requestId: r.id, status: "DECLINED", adminNote: note });
+                      if (res.ok) {
+                        toast.success("Declined");
+                        const fresh = await getTopUpRequestsForApplication(applicationId);
+                        setRows(fresh);
+                        router.refresh();
+                      } else {
+                        toast.error(res.error);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white text-red-700 hover:bg-red-50 text-[12px] font-semibold px-3 py-1.5"
+                  >
+                    Decline
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

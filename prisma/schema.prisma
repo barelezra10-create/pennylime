@@ -793,6 +793,27 @@ model PageView {
   @@index([path])
 }
 
+model AdvanceTopUpRequest {
+  id              String   @id @default(uuid())
+  applicationId   String
+  contactId       String?
+  requestedAmount Decimal
+  // PENDING -> admin reviews; APPROVED -> ready to fund; DECLINED -> denied;
+  // FUNDED -> the new advance has been wired. Status transitions are admin
+  // actions, the customer only ever creates a PENDING row from /portal.
+  status          String   @default("PENDING")
+  adminNote       String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([applicationId])
+  @@index([contactId])
+  @@index([status])
+  @@index([createdAt])
+}
+
 model AdSpend {
   id          String   @id @default(uuid())
   date        DateTime

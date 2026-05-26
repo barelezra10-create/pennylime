@@ -7,6 +7,8 @@ import { getPayoffQuote } from "@/actions/portal-payoff";
 import { PayoffCard } from "./payoff-card";
 import { getSkipQuote } from "@/actions/portal-skip";
 import { SkipCard } from "./skip-card";
+import { getTopUpEligibility } from "@/actions/portal-topup";
+import { TopUpCard } from "./topup-card";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +54,11 @@ export default async function PortalDashboard() {
   const nextDue = app.payments.find((p) => p.status !== "PAID" && !p.paidAt);
   const progressPct = app.payments.length > 0 ? Math.round((paidPayments.length / app.payments.length) * 100) : 0;
   const signedAgreement = app.documents[0] || null;
-  const [payoffQuote, skipQuote] = await Promise.all([getPayoffQuote(), getSkipQuote()]);
+  const [payoffQuote, skipQuote, topUpEligibility] = await Promise.all([
+    getPayoffQuote(),
+    getSkipQuote(),
+    getTopUpEligibility(),
+  ]);
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-8 lg:px-8 lg:py-12">
@@ -118,6 +124,9 @@ export default async function PortalDashboard() {
 
       {/* Skip-a-payment card — only when eligible (has a pending payment + hasn't used skip yet) */}
       {skipQuote.ok ? <SkipCard quote={skipQuote} /> : null}
+
+      {/* Top-up request card — shows progress when not yet eligible, request form once 50%+ paid */}
+      {topUpEligibility.ok ? <TopUpCard eligibility={topUpEligibility} /> : null}
 
       {/* Actions strip */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
