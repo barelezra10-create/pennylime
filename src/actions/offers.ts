@@ -493,21 +493,6 @@ export async function acceptOffer(input: {
   const term = terms[input.selectedTermIndex];
   if (!term) return { ok: false as const, error: "Invalid plan selection" };
 
-  // Persist the acceptance.
-  await prisma.application.update({
-    where: { id: app.id },
-    data: {
-      offerStatus: "ACCEPTED",
-      acceptedAmount: input.selectedAmount,
-      acceptedTermIndex: input.selectedTermIndex,
-      acceptedAt: new Date(),
-      // Mark the application as APPROVED so admin sees it move forward.
-      status: "APPROVED",
-      approvedAt: new Date(),
-      fundedAmount: input.selectedAmount,
-    },
-  });
-
   // Build payment schedule from the selected term. The plan rows in
   // offeredTermsJson are priced for a specific disbursedAmount (the
   // base the admin used in "Generate plans"). When the borrower slides
@@ -533,20 +518,39 @@ export async function acceptOffer(input: {
     startDate: new Date(),
     preferredChargeDay: app.preferredChargeDay,
   });
-  if (schedule.length > 0) {
-    await prisma.payment.createMany({
-      data: schedule.map((p) => ({
-        applicationId: app.id,
-        paymentNumber: p.paymentNumber,
-        amount: p.amount,
-        principal: p.principal,
-        interest: p.interest,
-        lateFee: 0,
-        dueDate: p.dueDate,
-        status: "SCHEDULED",
-      })),
+
+  // Transactionally update Application + insert the schedule. Avoids the
+  // bad state where the app is marked APPROVED/ACCEPTED but the payment
+  // schedule never landed (e.g. Postgres ran out of connections during
+  // the createMany). Either both succeed or neither.
+  await prisma.$transaction(async (tx) => {
+    await tx.application.update({
+      where: { id: app.id },
+      data: {
+        offerStatus: "ACCEPTED",
+        acceptedAmount: input.selectedAmount,
+        acceptedTermIndex: input.selectedTermIndex,
+        acceptedAt: new Date(),
+        status: "APPROVED",
+        approvedAt: new Date(),
+        fundedAmount: input.selectedAmount,
+      },
     });
-  }
+    if (schedule.length > 0) {
+      await tx.payment.createMany({
+        data: schedule.map((p) => ({
+          applicationId: app.id,
+          paymentNumber: p.paymentNumber,
+          amount: p.amount,
+          principal: p.principal,
+          interest: p.interest,
+          lateFee: 0,
+          dueDate: p.dueDate,
+          status: "SCHEDULED",
+        })),
+      });
+    }
+  });
 
   // Immutable ACH authorization record — captures IP, UA, exact text
   // shown, and the schedule snapshot. Legal evidence for any future

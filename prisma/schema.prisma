@@ -801,7 +801,11 @@ model InboundEmail {
   subject      String   @default("(no subject)")
   bodyText     String   @default("")
   bodyHtml     String?
-  messageId    String?
+  // Postmark/Mailgun providers retry delivery on transient errors; we
+  // dedupe on messageId so the same inbound email doesn't show up twice
+  // in /admin/inbox. NULLs are allowed (some providers don't include
+  // messageId in the JSON payload).
+  messageId    String?  @unique
   inReplyTo    String?
   // Matched contact, if any. NULL = "stranger" email; admin can view in
   // the inbox and decide to create a contact + reply.

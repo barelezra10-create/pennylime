@@ -18,6 +18,29 @@ export async function runAiRiskAnalysis(applicationId: string) {
     return { ok: false as const, error: "Unauthorized" };
   }
 
+  // Rate-limit: if the analysis just ran (< 60s ago), return the cached
+  // result instead of firing another Gemini call. Stops double-charging
+  // when an admin rage-clicks the button.
+  const recent = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { aiRiskAnalysisAt: true, aiRiskAnalysisJson: true },
+  });
+  if (
+    recent?.aiRiskAnalysisAt &&
+    recent.aiRiskAnalysisJson &&
+    Date.now() - new Date(recent.aiRiskAnalysisAt).getTime() < 60_000
+  ) {
+    try {
+      return {
+        ok: true as const,
+        analysis: JSON.parse(recent.aiRiskAnalysisJson) as AiRiskAnalysis,
+        cached: true,
+      };
+    } catch {
+      // fall through and re-run if the cached JSON is corrupted
+    }
+  }
+
   try {
     const analysis = await analyzeRiskWithAi(applicationId);
 

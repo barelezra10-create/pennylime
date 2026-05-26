@@ -25,32 +25,35 @@ function generateApplicationCode(): string {
   return uuidv4().replace(/-/g, "").substring(0, 8).toUpperCase();
 }
 
+// Max lengths chosen to be generous for legitimate inputs but tight
+// enough to refuse junk payloads (10MB strings, etc) that would bloat
+// the DB or DoS the form endpoint.
 const submitSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  loanAmount: z.number().positive("Loan amount must be positive"),
+  firstName: z.string().min(1, "First name is required").max(80),
+  lastName: z.string().min(1, "Last name is required").max(80),
+  email: z.string().email("Invalid email").max(254),
+  phone: z.string().min(10, "Phone number must be at least 10 digits").max(20),
+  loanAmount: z.number().positive("Loan amount must be positive").max(50_000),
   loanTermMonths: z.number().int().min(3).max(18),
-  platform: z.string().optional(),
-  ssnRaw: z.string().optional(),
-  plaidAccessToken: z.string().min(1, "Bank link is required"),
-  plaidItemId: z.string().min(1, "Bank link is required"),
-  plaidAccountId: z.string().optional(),
-  plaidUserToken: z.string().optional(),
+  platform: z.string().max(60).optional(),
+  ssnRaw: z.string().max(20).optional(),
+  plaidAccessToken: z.string().min(1, "Bank link is required").max(500),
+  plaidItemId: z.string().min(1, "Bank link is required").max(200),
+  plaidAccountId: z.string().max(200).optional(),
+  plaidUserToken: z.string().max(500).optional(),
   identityNeedsReview: z.boolean().optional(),
-  plaidIdentityName: z.string().optional(),
-  workerType: z.string().optional(),
+  plaidIdentityName: z.string().max(200).optional(),
+  workerType: z.string().max(80).optional(),
   workStartMonth: z.number().int().min(1).max(12).optional(),
   workStartYear: z.number().int().min(1900).max(2100).optional(),
-  addressStreet: z.string().optional(),
-  addressCity: z.string().optional(),
-  addressState: z.string().optional(),
-  addressZip: z.string().optional(),
-  dateOfBirth: z.string().optional(),
-  bankName: z.string().optional(),
-  bankRoutingNumberManual: z.string().optional(),
-  bankAccountNumberManual: z.string().optional(),
+  addressStreet: z.string().max(200).optional(),
+  addressCity: z.string().max(100).optional(),
+  addressState: z.string().max(40).optional(),
+  addressZip: z.string().max(15).optional(),
+  dateOfBirth: z.string().max(20).optional(),
+  bankName: z.string().max(120).optional(),
+  bankRoutingNumberManual: z.string().max(20).optional(),
+  bankAccountNumberManual: z.string().max(40).optional(),
 });
 
 export async function submitApplication(input: z.infer<typeof submitSchema>) {

@@ -189,8 +189,26 @@ export async function fetchAndStoreIncome(applicationId: string) {
 
     return { success: true, monthlyIncome };
   } catch (error) {
-    console.error("Plaid income fetch error:", error);
-    return { success: false, error: "Could not verify income" };
+    // Distinguish decryption failures (token corrupted in storage) from
+    // Plaid API failures (token expired / item removed). Both manifest as
+    // "no income data" but the admin needs different remediation: re-link
+    // bank for decrypt errors, contact Plaid for API errors.
+    const msg = error instanceof Error ? error.message : String(error);
+    const isDecryptFailure = /decrypt|invalid token|cannot read/i.test(msg);
+    console.error(
+      `[plaid income] ${isDecryptFailure ? "DECRYPT" : "API"} failure for app ${applicationId}:`,
+      msg,
+    );
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { lastPlaidRefresh: new Date() },
+    }).catch(() => null);
+    return {
+      success: false,
+      error: isDecryptFailure
+        ? "Stored bank token is corrupted — borrower needs to re-link their bank."
+        : "Could not verify income",
+    };
   }
 }
 

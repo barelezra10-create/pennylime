@@ -112,6 +112,14 @@ async function computeQuote(applicationId: string): Promise<PayoffQuote> {
   }
 
   const now = Date.now();
+  // Sanity: a payment timestamp in the future (clock skew, manual DB
+  // edit) would silently underquote the payoff because Math.max(0,...)
+  // would zero out the accrued interest. Refuse to quote when we detect
+  // this so the admin can investigate, rather than letting the borrower
+  // pay off cheaper than they should.
+  if (lastPaidAt.getTime() > now + 60 * 60 * 1000) {
+    return { ok: false, error: "Payment timestamp is in the future. Please contact support." };
+  }
   const msSinceAnchor = Math.max(0, now - lastPaidAt.getTime());
   const weeksSinceAnchor = msSinceAnchor / (7 * 24 * 60 * 60 * 1000);
 

@@ -91,7 +91,22 @@ export async function POST(req: NextRequest) {
   // email appears at /admin/inbox. This is the single source of truth
   // for "what showed up in info@". The downstream Contact / Activity
   // writes below are for the per-contact CRM timeline.
-  const inboundEmailRow = await prisma.inboundEmail.create({
+  //
+  // Providers (Postmark/Mailgun/etc) retry delivery on 5xx; we dedupe
+  // on messageId so the same email doesn't appear twice. If the messageId
+  // is already present we treat the second delivery as a no-op and
+  // short-circuit (avoid double-firing notifications too).
+  let inboundEmailRow: { id: string } | null = null;
+  if (payload.messageId) {
+    const existing = await prisma.inboundEmail.findUnique({
+      where: { messageId: payload.messageId },
+      select: { id: true },
+    });
+    if (existing) {
+      return Response.json({ ok: true, deduped: true, inboundEmailId: existing.id });
+    }
+  }
+  inboundEmailRow = await prisma.inboundEmail.create({
     data: {
       fromEmail,
       fromName,
