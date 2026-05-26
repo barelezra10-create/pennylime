@@ -44,19 +44,37 @@ export async function POST(req: NextRequest) {
   const eventType = body.type;
 
   if (objectType === "ach_transfer" && objectId) {
-    // Update Application or Payment by Increase transfer ID
+    const status = eventType?.replace("ach_transfer.", "") || "";
+    // Increase ACH statuses we care about:
+    //   "submitted" -> NACHA file delivered to the Fed, not yet posted at
+    //   the receiving bank. Treat as in-flight, NOT settled.
+    //   "settled"   -> money has posted at the destination.
+    //   "returned"  -> ACH return (NSF / R-code).
+    const isReturn = status === "returned";
+    const isSettled = status === "settled";
+    const isInflight = status === "submitted" || status === "pending_submission";
+
+    // Disbursement leg: webhook fires when our credit to the borrower
+    // posts. Flip APPROVED -> FUNDED so the UI + financial summaries
+    // reflect reality even if the original fundApplication() retry path
+    // never got back to us.
     const app = await prisma.application.findFirst({ where: { increaseTransferId: objectId } });
     if (app) {
+      const nextAppStatus =
+        app.status === "APPROVED" && (isSettled || isInflight) ? "FUNDED" : app.status;
       await prisma.application.update({
         where: { id: app.id },
-        data: { increaseTransferStatus: eventType?.replace("ach_transfer.", "") || null },
+        data: {
+          increaseTransferStatus: status || null,
+          status: nextAppStatus,
+          fundedAt: app.fundedAt ?? ((isSettled || isInflight) ? new Date() : null),
+        },
       });
     }
+    // Repayment leg: webhook fires when a borrower's weekly debit either
+    // posts (settle -> PAID) or returns (NSF -> RETURNED).
     const payment = await prisma.payment.findFirst({ where: { increaseTransferId: objectId } });
     if (payment) {
-      const status = eventType?.replace("ach_transfer.", "") || "";
-      const isReturn = status.includes("returned") || status === "returned";
-      const isSettled = status === "settled" || status === "submitted";
       await prisma.payment.update({
         where: { id: payment.id },
         data: {

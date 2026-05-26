@@ -113,6 +113,16 @@ export async function executeSkip(): Promise<
   const applicationId = await getPortalApplicationId();
   if (!applicationId) return { ok: false, error: "Not signed in" };
 
+  // Guard against concurrent payoff + skip (or double-click). If any
+  // Payment row is already PROCESSING we have an in-flight ACH debit.
+  const inflight = await prisma.payment.findFirst({
+    where: { applicationId, status: "PROCESSING" },
+    select: { id: true },
+  });
+  if (inflight) {
+    return { ok: false, error: "Another payment is already processing. Try again in a few minutes." };
+  }
+
   const quote = await computeSkipQuote(applicationId);
   if (!quote.ok) return { ok: false, error: quote.error };
 

@@ -153,6 +153,17 @@ export async function executePayoff(): Promise<
   const applicationId = await getPortalApplicationId();
   if (!applicationId) return { ok: false, error: "Not signed in" };
 
+  // Guard against concurrent skip + payoff (or double-clicks). If any
+  // Payment row for this application is already PROCESSING we have an
+  // in-flight ACH debit and a second one would double-charge.
+  const inflight = await prisma.payment.findFirst({
+    where: { applicationId, status: "PROCESSING" },
+    select: { id: true },
+  });
+  if (inflight) {
+    return { ok: false, error: "Another payment is already processing. Try again in a few minutes." };
+  }
+
   const quote = await computeQuote(applicationId);
   if (!quote.ok) return { ok: false, error: quote.error };
 

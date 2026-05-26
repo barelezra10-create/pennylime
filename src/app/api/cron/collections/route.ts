@@ -26,10 +26,13 @@ export async function POST(request: NextRequest) {
   let warnings14 = 0;
   let escalated = 0;
 
-  // Find all active/late applications with failed payments
+  // Find all in-repayment applications with failed payments. Includes
+  // FUNDED + REPAYING so we don't lose loans that haven't transitioned
+  // to ACTIVE yet (failed first-pay attempts on freshly-funded loans
+  // would otherwise go unrescued).
   const applications = await prisma.application.findMany({
     where: {
-      status: { in: ["ACTIVE", "LATE", "COLLECTIONS"] },
+      status: { in: ["FUNDED", "ACTIVE", "REPAYING", "LATE", "COLLECTIONS"] },
     },
     include: {
       payments: {

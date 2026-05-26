@@ -102,11 +102,17 @@ export async function POST(request: NextRequest) {
           await checkAndTriggerRetrain();
         }
       } else {
-        // If loan was LATE and all overdue payments caught up, revert to ACTIVE
+        // If loan was LATE/FUNDED and all overdue payments caught up,
+        // transition to ACTIVE. FUNDED loans can have a first-pay
+        // failure that later recovers via cron retry — without this
+        // they'd stay FUNDED forever instead of moving into ACTIVE.
         const overduePayments = allPayments.filter(
           (p) => p.status === "FAILED" || p.status === "LATE"
         );
-        if (overduePayments.length === 0 && payment.application.status === "LATE") {
+        const currentStatus = payment.application.status;
+        const canTransitionToActive =
+          overduePayments.length === 0 && (currentStatus === "LATE" || currentStatus === "FUNDED");
+        if (canTransitionToActive) {
           await prisma.application.update({
             where: { id: payment.applicationId },
             data: { status: "ACTIVE" },
