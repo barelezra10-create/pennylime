@@ -793,6 +793,33 @@ model PageView {
   @@index([path])
 }
 
+model InboundEmail {
+  id           String   @id @default(uuid())
+  fromEmail    String
+  fromName     String?
+  toEmail      String?
+  subject      String   @default("(no subject)")
+  bodyText     String   @default("")
+  bodyHtml     String?
+  messageId    String?
+  inReplyTo    String?
+  // Matched contact, if any. NULL = "stranger" email; admin can view in
+  // the inbox and decide to create a contact + reply.
+  contactId    String?
+  // Whether an admin has marked this as read / handled. We track read
+  // separately from replied so junk can be archived without sending a
+  // reply.
+  status       String   @default("UNREAD")    // UNREAD | READ | REPLIED | ARCHIVED
+  receivedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status])
+  @@index([receivedAt])
+  @@index([contactId])
+  @@index([fromEmail])
+}
+
 model AdvanceTopUpRequest {
   id              String   @id @default(uuid())
   applicationId   String

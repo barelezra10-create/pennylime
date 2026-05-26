@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
   }
 
   const fromEmail = extractEmail(payload.from ?? "");
+  const fromName = extractDisplayName(payload.from ?? "");
   const subject = (payload.subject ?? "").slice(0, 998);
   const bodyText = (payload.text ?? stripHtml(payload.html ?? "")).slice(0, 50_000);
 
@@ -86,18 +87,41 @@ export async function POST(req: NextRequest) {
     select: { id: true, firstName: true, lastName: true, email: true, applicationId: true },
   });
 
+  // Write to the unified inbox first (matched or not) so EVERY inbound
+  // email appears at /admin/inbox. This is the single source of truth
+  // for "what showed up in info@". The downstream Contact / Activity
+  // writes below are for the per-contact CRM timeline.
+  const inboundEmailRow = await prisma.inboundEmail.create({
+    data: {
+      fromEmail,
+      fromName,
+      toEmail: extractEmail(payload.to ?? "") || payload.to || null,
+      subject: subject || "(no subject)",
+      bodyText,
+      bodyHtml: payload.html?.slice(0, 200_000) ?? null,
+      messageId: payload.messageId ?? null,
+      inReplyTo: payload.inReplyTo ?? null,
+      contactId: contact?.id ?? null,
+      receivedAt: payload.receivedAt ? new Date(payload.receivedAt) : new Date(),
+    },
+  }).catch((err) => {
+    console.error("[inbound-email] InboundEmail insert failed:", err);
+    return null;
+  });
+
   if (!contact) {
-    // Log it to audit so it isn't silently dropped — admin can decide.
+    // Still log to audit for historical compat; main inbox view is the
+    // InboundEmail row created above.
     await prisma.auditLog.create({
       data: {
         action: "INBOUND_EMAIL_UNMATCHED",
         entityType: "EMAIL",
-        entityId: payload.messageId ?? "unknown",
+        entityId: payload.messageId ?? inboundEmailRow?.id ?? "unknown",
         performedBy: fromEmail,
         details: JSON.stringify({ from: fromEmail, subject, preview: bodyText.slice(0, 200) }),
       },
     });
-    return Response.json({ ok: true, matched: false });
+    return Response.json({ ok: true, matched: false, inboundEmailId: inboundEmailRow?.id });
   }
 
   // Save attachments as Documents on the linked Application (if any).
@@ -256,6 +280,14 @@ function extractEmail(raw: string): string | null {
   const candidate = (angleMatch ? angleMatch[1] : raw).trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(candidate)) return null;
   return candidate;
+}
+
+function extractDisplayName(raw: string): string | null {
+  if (!raw) return null;
+  // "Alice Foo <alice@example.com>" -> "Alice Foo"
+  const angleMatch = raw.match(/^([^<]+)<[^>]+>/);
+  if (!angleMatch) return null;
+  return angleMatch[1].replace(/^"|"$/g, "").trim() || null;
 }
 
 function stripHtml(html: string): string {
