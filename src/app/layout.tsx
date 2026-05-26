@@ -34,7 +34,9 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: "PennyLime",
     type: "website",
-    url: "https://pennylime.com",
+    // Intentionally omit `url` here: it would apply to every page, causing
+    // og:url to disagree with each page's canonical. Pages emit og:url
+    // themselves via generateMeta() (which sets it = canonical).
     images: [
       {
         url: "https://pennylime.com/hero-rider.jpg",
