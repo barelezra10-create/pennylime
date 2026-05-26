@@ -1,8 +1,13 @@
 import { Homepage } from "@/components/homepage/homepage";
 import { getPublishedArticles, getPublishedPlatformPages } from "@/actions/content";
 import { JsonLd, organizationSchema, cashAdvanceProductSchema } from "@/components/seo/json-ld";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "https://pennylime.com/" },
+};
 
 export default async function Home() {
   const [{ articles }, platforms] = await Promise.all([

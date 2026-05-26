@@ -22,7 +22,8 @@ export type AuditAction =
   | "OFFER_ACCEPTED"
   | "OFFER_NOTIFICATION_RESENT"
   | "AI_RISK_ANALYSIS"
-  | "CONTRACT_CANCELED";
+  | "CONTRACT_CANCELED"
+  | "PORTAL_PREVIEW_AS_CUSTOMER";
 
 export type AuditEntityType =
   | "APPLICATION"

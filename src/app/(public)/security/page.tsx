@@ -1,6 +1,7 @@
 export const metadata = {
   title: "Information Security Policy | PennyLime",
   description: "PennyLime's Information Security Policy — how we protect customer data, manage access, encrypt information, and respond to incidents.",
+  alternates: { canonical: "https://pennylime.com/security" },
 };
 
 export default function SecurityPage() {

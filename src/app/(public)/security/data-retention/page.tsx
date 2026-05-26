@@ -1,6 +1,7 @@
 export const metadata = {
   title: "Data Retention and Disposal Policy | PennyLime",
   description: "PennyLime's Data Retention and Disposal Policy — retention windows, secure deletion methods, customer rights, and legal holds.",
+  alternates: { canonical: "https://pennylime.com/security/data-retention" },
 };
 
 const SCHEDULE = [

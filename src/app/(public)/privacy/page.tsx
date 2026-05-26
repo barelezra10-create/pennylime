@@ -1,5 +1,6 @@
 export const metadata = {
   title: "Privacy Policy | PennyLime",
+  alternates: { canonical: "https://pennylime.com/privacy" },
 };
 
 export default function PrivacyPage() {

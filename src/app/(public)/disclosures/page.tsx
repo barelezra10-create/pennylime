@@ -1,5 +1,6 @@
 export const metadata = {
   title: "Disclosures | PennyLime",
+  alternates: { canonical: "https://pennylime.com/disclosures" },
 };
 
 export default function DisclosuresPage() {

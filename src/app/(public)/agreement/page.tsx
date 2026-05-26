@@ -9,6 +9,7 @@ export const metadata = {
   title: "Receivables Purchase and Sale Agreement — PennyLime",
   description:
     "The Receivables Purchase and Sale Agreement that governs every PennyLime cash advance.",
+  alternates: { canonical: "https://pennylime.com/agreement" },
 };
 
 /**

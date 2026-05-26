@@ -1,6 +1,7 @@
 export const metadata = {
   title: "Access Controls Policy | PennyLime",
   description: "PennyLime's Access Controls Policy — provisioning, authentication, RBAC, access reviews, and de-provisioning.",
+  alternates: { canonical: "https://pennylime.com/security/access-controls" },
 };
 
 export default function AccessControlsPage() {

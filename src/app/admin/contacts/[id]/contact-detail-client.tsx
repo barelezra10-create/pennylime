@@ -11,6 +11,7 @@ import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archi
 import { logActivity } from "@/actions/activities";
 import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, polishReplyWithAI, getEmailThread, type CrmEmailTemplate } from "@/actions/crm-email";
 import { syncIncreaseForApplication, type IncreaseTransferRow } from "@/actions/sync-increase-status";
+import { previewPortalAs } from "@/actions/portal-preview";
 
 type EmailThreadItem = {
   id: string;
@@ -465,13 +466,16 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                   <p className="text-[13px] text-black">{new Date(contact.application.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</p>
                 </div>
               </div>
-              <Link
-                href={`/admin/applications/${contact.application.id}`}
-                className="inline-flex items-center gap-1.5 text-[13px] text-[#15803d] font-medium hover:underline"
-              >
-                View Full Application
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-              </Link>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Link
+                  href={`/admin/applications/${contact.application.id}`}
+                  className="inline-flex items-center gap-1.5 text-[13px] text-[#15803d] font-medium hover:underline"
+                >
+                  View Full Application
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                </Link>
+                <PortalPreviewButton applicationId={contact.application.id} />
+              </div>
             </div>
             <IncreaseTransfersPanel applicationId={contact.application.id} />
             </>
@@ -1156,5 +1160,41 @@ function IncreaseStatusPill({ status, fresh }: { status: string; fresh: boolean 
       {fresh && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />}
       {c.label}
     </span>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * PortalPreviewButton
+ * Drops the admin into the customer portal as if they were the
+ * applicant. Useful for QA — see the portal exactly as the customer
+ * sees it without spinning up a test phone or fishing a Twilio code
+ * out of the logs. Audit-logged server-side. Cookie persists 30 days
+ * (same as a real customer sign-in) — sign out from /portal to clear.
+ * ───────────────────────────────────────────────────────────────── */
+
+function PortalPreviewButton({ applicationId }: { applicationId: string }) {
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        toast.loading("Signing into portal...", { id: "portal-preview" });
+        const r = await previewPortalAs(applicationId);
+        toast.dismiss("portal-preview");
+        if (r.ok) {
+          toast.success(`Previewing as ${r.firstName} ${r.lastName || ""}`);
+          window.open("/portal", "_blank", "noopener,noreferrer");
+        } else {
+          toast.error(r.error || "Failed to start preview");
+        }
+      }}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-[#15803d] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#15803d] hover:bg-[#f0fdf4] transition-colors"
+      title="Sign into the customer portal as this applicant - opens in a new tab"
+    >
+      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      </svg>
+      View as customer
+    </button>
   );
 }
