@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
   // renamed to match the product framing.
   async redirects() {
     return [
+      // www → apex. Ahrefs flagged www.pennylime.com as a 404; this catches it
+      // at the Next.js layer in case DNS / CDN ever forwards www traffic here.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.pennylime.com" }],
+        destination: "https://pennylime.com/:path*",
+        permanent: true,
+      },
       {
         source: "/loans/:slug*",
         destination: "/advances/:slug*",

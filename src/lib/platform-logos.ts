@@ -32,10 +32,12 @@ export const PLATFORM_LOGOS: Record<string, PlatformLogo> = {
   Lyft: { simpleIconsSlug: "lyft", domain: "lyft.com", brandColor: "FF00BF" },
   DoorDash: { simpleIconsSlug: "doordash", domain: "doordash.com", brandColor: "EF3340" },
   "Uber Eats": { simpleIconsSlug: null, domain: "ubereats.com", brandColor: "06C167" },
-  Grubhub: { simpleIconsSlug: "grubhub", domain: "grubhub.com", brandColor: "F63440" },
+  // Grubhub, Turo, Walmart, Amazon slugs were removed from cdn.simpleicons.org —
+  // fall back to Google Favicons so we don't ship broken images.
+  Grubhub: { simpleIconsSlug: null, domain: "grubhub.com", brandColor: "F63440" },
   Instacart: { simpleIconsSlug: "instacart", domain: "instacart.com", brandColor: "43B02A" },
-  "Amazon Flex": { simpleIconsSlug: "amazon", domain: "flex.amazon.com", brandColor: "FF9900" },
-  "Walmart Spark": { simpleIconsSlug: "walmart", domain: "drive4spark.walmart.com", brandColor: "0071CE" },
+  "Amazon Flex": { simpleIconsSlug: null, domain: "flex.amazon.com", brandColor: "FF9900" },
+  "Walmart Spark": { simpleIconsSlug: null, domain: "drive4spark.walmart.com", brandColor: "0071CE" },
   Postmates: { simpleIconsSlug: "postmates", domain: "postmates.com", brandColor: "000000" },
 
   // Marketplaces / freelance
@@ -45,7 +47,7 @@ export const PLATFORM_LOGOS: Record<string, PlatformLogo> = {
   eBay: { simpleIconsSlug: "ebay", domain: "ebay.com", brandColor: "E53238" },
 
   // Hosting / specialty
-  Turo: { simpleIconsSlug: "turo", domain: "turo.com", brandColor: "593CFB" },
+  Turo: { simpleIconsSlug: null, domain: "turo.com", brandColor: "593CFB" },
 
   // Creator platforms
   OnlyFans: { simpleIconsSlug: "onlyfans", domain: "onlyfans.com", brandColor: "00AFF0" },
