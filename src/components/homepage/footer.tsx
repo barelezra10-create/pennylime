@@ -29,7 +29,7 @@ export function Footer() {
               <Link href="/blog/category/guides" className="block text-[13px] text-[#d4d4d8] hover:text-white">Guides</Link>
               <Link href="/cash-advance" className="block text-[13px] text-[#d4d4d8] hover:text-white">By Platform</Link>
               <Link href="/states" className="block text-[13px] text-[#d4d4d8] hover:text-white">By State</Link>
-              <Link href="/compare/pennylime-vs-fundo" className="block text-[13px] text-[#d4d4d8] hover:text-white">Comparisons</Link>
+              <Link href="/compare" className="block text-[13px] text-[#d4d4d8] hover:text-white">Comparisons</Link>
             </div>
           </div>
           <div>
