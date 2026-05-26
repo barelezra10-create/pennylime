@@ -181,5 +181,77 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ processed: processingPayments.length, settled, failed, pending });
+  // ──────────────────────────────────────────────────────────────
+  // Refresh disbursement statuses too. Without this, an application's
+  // Increase transfer stays frozen at "submitted" forever because the
+  // webhook may not be wired up. Polls every still-in-flight credit
+  // and updates Application.increaseTransferStatus.
+  //
+  // Pulls Applications where the stored Increase status hasn't already
+  // posted ("settled"/"complete") or returned ("returned"/"rejected") -
+  // those are terminal so no need to re-poll. Capped at 100 per run.
+  // ──────────────────────────────────────────────────────────────
+  let disbursementsRefreshed = 0;
+  const TERMINAL = ["settled", "complete", "returned", "rejected", "canceled"];
+  const pendingDisbursements = await prisma.application.findMany({
+    where: {
+      increaseTransferId: { not: null },
+      OR: [
+        { increaseTransferStatus: null },
+        { increaseTransferStatus: { notIn: TERMINAL } },
+      ],
+    },
+    select: {
+      id: true,
+      status: true,
+      increaseTransferId: true,
+      increaseTransferStatus: true,
+      fundedAt: true,
+    },
+    take: 100,
+  });
+  for (const app of pendingDisbursements) {
+    if (!app.increaseTransferId) continue;
+    const isRtp = app.increaseTransferId.startsWith("real_time_payments_transfer_");
+    const url = `https://api.increase.com${
+      isRtp
+        ? `/real_time_payments_transfers/${app.increaseTransferId}`
+        : `/ach_transfers/${app.increaseTransferId}`
+    }`;
+    try {
+      const r = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${process.env.INCREASE_API_KEY}`,
+          "Increase-Version": "2024-04-15",
+        },
+      });
+      if (!r.ok) continue;
+      const data = (await r.json()) as { status?: string };
+      const newStatus = data.status;
+      if (!newStatus || newStatus === app.increaseTransferStatus) continue;
+      const justSettled =
+        (newStatus === "settled" || newStatus === "complete") &&
+        app.status === "APPROVED";
+      await prisma.application.update({
+        where: { id: app.id },
+        data: {
+          increaseTransferStatus: newStatus,
+          // Backstop FUNDED transition if webhook didn't run.
+          status: justSettled ? "FUNDED" : app.status,
+          fundedAt: justSettled && !app.fundedAt ? new Date() : app.fundedAt,
+        },
+      });
+      disbursementsRefreshed++;
+    } catch (err) {
+      console.error(`[payment-status] disburse poll failed for ${app.id}:`, err);
+    }
+  }
+
+  return NextResponse.json({
+    processed: processingPayments.length,
+    settled,
+    failed,
+    pending,
+    disbursementsRefreshed,
+  });
 }

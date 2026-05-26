@@ -37,15 +37,16 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const mimeTypes: Record<string, string> = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+  };
+
   try {
     const file = await fs.readFile(resolved);
     const ext = path.extname(resolved).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".webp": "image/webp",
-    };
     const contentType = mimeTypes[ext] || "image/png";
 
     return new NextResponse(file, {
@@ -56,6 +57,22 @@ export async function GET(
       },
     });
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    // Image not generated yet — serve the brand hero image so crawlers and
+    // social-share previews don't see a 404 (which Ahrefs flags as a broken
+    // image on the parent page). 200 + short cache so a regenerated file
+    // takes over quickly.
+    try {
+      const fallback = await fs.readFile(
+        path.join(process.cwd(), "public", "hero-rider.jpg"),
+      );
+      return new NextResponse(fallback, {
+        headers: {
+          "Content-Type": "image/jpeg",
+          "Cache-Control": "public, max-age=300, s-maxage=300",
+        },
+      });
+    } catch {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
   }
 }
