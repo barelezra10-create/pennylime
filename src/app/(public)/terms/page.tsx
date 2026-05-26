@@ -1,5 +1,6 @@
 export const metadata = {
   title: "Terms of Service | PennyLime",
+  alternates: { canonical: "https://pennylime.com/terms" },
 };
 
 export default function TermsPage() {

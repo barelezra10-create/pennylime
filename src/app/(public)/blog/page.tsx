@@ -7,7 +7,7 @@ import { generateMeta } from "@/lib/seo";
 import Link from "next/link";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = generateMeta({ title: "Blog", description: "Guides, tips, and resources for drivers, sellers, and operators seeking funding." }) as Metadata;
+export const metadata: Metadata = generateMeta({ title: "Blog", description: "Guides, tips, and resources for drivers, sellers, and operators seeking funding.", path: "/blog" }) as Metadata;
 
 export default async function BlogPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const { page } = await searchParams;

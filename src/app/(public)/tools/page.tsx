@@ -9,6 +9,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = generateMeta({
   title: "Free Tools for Drivers, Sellers & Operators",
   description: "Free calculators built for Uber, Lyft, DoorDash drivers, Amazon sellers, and freelancers. Advance calculator, earnings estimator, expense tracker, and more.",
+  path: "/tools",
 }) as Metadata;
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {

@@ -18,6 +18,7 @@ export function Footer() {
             <div className="space-y-2">
               <Link href="/blog" className="block text-[13px] text-[#d4d4d8] hover:text-white">Blog</Link>
               <Link href="/apply" className="block text-[13px] text-[#d4d4d8] hover:text-white">Apply</Link>
+              <Link href="/portal/login" className="block text-[13px] text-[#d4d4d8] hover:text-white">My Account</Link>
               <Link href="/status" className="block text-[13px] text-[#d4d4d8] hover:text-white">Check Status</Link>
             </div>
           </div>

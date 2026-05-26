@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const tool = await getToolPageBySlug(slug);
   if (!tool) return {};
-  return generateMeta({ title: tool.metaTitle || tool.title, description: tool.metaDescription || tool.description }) as Metadata;
+  return generateMeta({ title: tool.metaTitle || tool.title, description: tool.metaDescription || tool.description, path: `/tools/${slug}` }) as Metadata;
 }
 
 export default async function ToolPageRoute({ params }: { params: Promise<{ slug: string }> }) {

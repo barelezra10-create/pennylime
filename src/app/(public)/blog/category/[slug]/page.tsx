@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const categories = await getCategories();
   const category = categories.find((c) => c.slug === slug);
   if (!category) return {};
-  return generateMeta({ title: category.name, description: category.description || `Articles about ${category.name}` }) as Metadata;
+  return generateMeta({ title: category.name, description: category.description || `Articles about ${category.name}`, path: `/blog/category/${slug}` }) as Metadata;
 }
 
 export default async function CategoryPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }) {

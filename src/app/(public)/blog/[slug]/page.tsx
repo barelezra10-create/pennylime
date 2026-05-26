@@ -27,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: article.metaDescription || article.excerpt || "",
     ogImage: article.ogImage || article.featuredImage,
     type: "article",
+    path: `/blog/${slug}`,
   }) as Metadata;
 }
 

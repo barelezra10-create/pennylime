@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const comp = await getComparisonPageBySlug(slug);
   if (!comp) return {};
-  return generateMeta({ title: comp.metaTitle || comp.title, description: comp.metaDescription || `Compare ${comp.entityA} vs ${comp.entityB}` }) as Metadata;
+  return generateMeta({ title: comp.metaTitle || comp.title, description: comp.metaDescription || `Compare ${comp.entityA} vs ${comp.entityB}`, path: `/compare/${slug}` }) as Metadata;
 }
 
 export default async function ComparisonPageRoute({ params }: { params: Promise<{ slug: string }> }) {

@@ -44,6 +44,7 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-6">
           <Link href="/blog" className="text-[13px] text-[#52525b] hover:text-[#1a1a1a]">Blog</Link>
           <Link href="/tools" className="text-[13px] text-[#52525b] hover:text-[#1a1a1a]">Tools</Link>
+          <Link href="/portal/login" className="text-[13px] text-[#52525b] hover:text-[#1a1a1a]">Sign in</Link>
           <Link href="/apply" className="bg-[#15803d] text-white text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#166534]">Apply Now</Link>
         </div>
         <button
@@ -78,6 +79,13 @@ export function Navbar() {
             className="flex items-center text-[15px] font-medium text-[#1a1a1a] min-h-[48px] px-3 rounded-lg hover:bg-[#fafaf7]"
           >
             Tools
+          </Link>
+          <Link
+            href="/portal/login"
+            onClick={() => setOpen(false)}
+            className="flex items-center text-[15px] font-medium text-[#1a1a1a] min-h-[48px] px-3 rounded-lg hover:bg-[#fafaf7]"
+          >
+            Sign in
           </Link>
           <Link
             href="/apply"

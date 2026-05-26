@@ -23,6 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return generateMeta({
     title: state.metaTitle || `1099 Cash Advances in ${state.stateName}`,
     description: state.metaDescription || state.heroSubtext,
+    path: `/states/${slug}`,
   }) as Metadata;
 }
 
