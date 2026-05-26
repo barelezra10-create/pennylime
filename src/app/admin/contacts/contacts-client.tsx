@@ -25,6 +25,9 @@ interface Contact {
   tags: string[];
   assignedRep: { id: string; name: string } | null;
   loan: LoanSummary;
+  // True when the contact has an inbound email or chat message that
+  // hasn't been replied to. Drives the green pulsing dot on the row.
+  hasUnread?: boolean;
 }
 
 interface Metrics {
@@ -47,7 +50,13 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("ALL");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
+
+  const unreadCount = useMemo(
+    () => contacts.filter((c) => c.hasUnread).length,
+    [contacts],
+  );
 
   const filtered = useMemo(() => {
     let result = contacts;
@@ -67,8 +76,19 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
       result = result.filter((c) => c.stage === stageFilter);
     }
 
-    return result;
-  }, [contacts, search, stageFilter]);
+    if (unreadOnly) {
+      result = result.filter((c) => c.hasUnread);
+    }
+
+    // Pin contacts with unread messages to the top so the admin sees them
+    // first even when sorting by other criteria.
+    return [...result].sort((a, b) => {
+      if ((a.hasUnread ? 1 : 0) !== (b.hasUnread ? 1 : 0)) {
+        return a.hasUnread ? -1 : 1;
+      }
+      return 0;
+    });
+  }, [contacts, search, stageFilter, unreadOnly]);
 
   // Top KPIs from filtered set: total active loan principal, total remaining, # late
   const kpis = useMemo(() => {
@@ -136,6 +156,23 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {unreadCount > 0 ? (
+            <button
+              onClick={() => {
+                setUnreadOnly((v) => !v);
+                setPage(1);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors ${
+                unreadOnly ? "bg-[#15803d] text-white" : "bg-[#f0fdf4] text-[#15803d] hover:bg-[#dcfce7]"
+              }`}
+            >
+              <span className="relative inline-flex w-1.5 h-1.5">
+                <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${unreadOnly ? "bg-white" : "bg-[#15803d]"} animate-ping`} />
+                <span className={`relative inline-flex w-1.5 h-1.5 rounded-full ${unreadOnly ? "bg-white" : "bg-[#15803d]"}`} />
+              </span>
+              Unread ({unreadCount})
+            </button>
+          ) : null}
           <button
             onClick={() => handleStageFilter("ALL")}
             className={`px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors ${
@@ -190,11 +227,22 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
                   <tr
                     key={contact.id}
                     onClick={() => router.push(`/admin/contacts/${contact.id}`)}
-                    className="border-b border-[#f4f4f5] hover:bg-[#f8f8f6] cursor-pointer transition-colors last:border-0"
+                    className={`border-b border-[#f4f4f5] hover:bg-[#f8f8f6] cursor-pointer transition-colors last:border-0 ${contact.hasUnread ? "bg-[#f0fdf4]/40" : ""}`}
                   >
                     <td className="px-4 py-3 align-top">
-                      <div className="text-[13px] font-semibold text-black">
-                        {contact.firstName} {contact.lastName || ""}
+                      <div className="flex items-center gap-2">
+                        {contact.hasUnread ? (
+                          <span
+                            className="relative inline-flex w-2 h-2 flex-shrink-0"
+                            title="Unread message from this contact"
+                          >
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-[#15803d] opacity-60 animate-ping" />
+                            <span className="relative inline-flex w-2 h-2 rounded-full bg-[#15803d]" />
+                          </span>
+                        ) : null}
+                        <div className={`text-[13px] font-semibold ${contact.hasUnread ? "text-[#15803d]" : "text-black"}`}>
+                          {contact.firstName} {contact.lastName || ""}
+                        </div>
                       </div>
                       <div className="text-[11px] text-[#71717a] truncate max-w-[200px]">{contact.email}</div>
                     </td>
