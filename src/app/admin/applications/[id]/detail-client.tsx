@@ -578,6 +578,7 @@ export function DetailClient({
 
           {/* ── Documents ── */}
           <DocumentsPanel
+            applicationId={application.id}
             documents={application.documents}
             onDelete={async (id, name) => {
               if (!confirm(`Delete ${name}?`)) return;
@@ -587,6 +588,17 @@ export function DetailClient({
                 router.refresh();
               } else {
                 toast.error(r.error);
+              }
+            }}
+            onRegenerateSignedAgreement={async () => {
+              toast.loading("Regenerating contract PDF...", { id: "regen-agreement" });
+              const r = await generateSignedAgreementPdf(application.id);
+              toast.dismiss("regen-agreement");
+              if (r.ok) {
+                toast.success("Contract PDF regenerated");
+                router.refresh();
+              } else {
+                toast.error(r.error || "Failed to regenerate");
               }
             }}
           />
@@ -1766,13 +1778,23 @@ const DOC_GROUPS: Array<{
 ];
 
 function DocumentsPanel({
+  applicationId,
   documents,
   onDelete,
+  onRegenerateSignedAgreement,
 }: {
+  applicationId: string;
   documents: DocLite[];
   onDelete: (id: string, name: string) => Promise<void>;
+  onRegenerateSignedAgreement?: () => Promise<void>;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  // Track which docs have failed to load (HEAD/preview check) so we can
+  // suggest Regenerate prominently when the file is missing on disk.
+  const [missingIds, setMissingIds] = useState<Set<string>>(new Set());
+
+  const markMissing = (id: string) =>
+    setMissingIds((prev) => new Set(prev).add(id));
 
   const buckets = DOC_GROUPS.map((g) => ({
     ...g,
@@ -1781,6 +1803,8 @@ function DocumentsPanel({
   const otherDocs = documents.filter(
     (d) => !DOC_GROUPS.some((g) => g.types.includes(d.documentType)),
   );
+
+  void applicationId; // referenced by callers for regenerate
 
   return (
     <div className="bg-white rounded-[10px] p-6">
@@ -1805,6 +1829,9 @@ function DocumentsPanel({
                 openId={openId}
                 setOpenId={setOpenId}
                 onDelete={onDelete}
+                missingIds={missingIds}
+                onMissing={markMissing}
+                onRegenerateSignedAgreement={b.key === "contracts" ? onRegenerateSignedAgreement : undefined}
               />
             ),
           )}
@@ -1816,6 +1843,8 @@ function DocumentsPanel({
               openId={openId}
               setOpenId={setOpenId}
               onDelete={onDelete}
+              missingIds={missingIds}
+              onMissing={markMissing}
             />
           )}
         </div>
@@ -1831,6 +1860,9 @@ function DocGroup({
   openId,
   setOpenId,
   onDelete,
+  missingIds,
+  onMissing,
+  onRegenerateSignedAgreement,
 }: {
   label: string;
   accent: { wrapper: string; iconBg: string; iconText: string };
@@ -1838,6 +1870,9 @@ function DocGroup({
   openId: string | null;
   setOpenId: (id: string | null) => void;
   onDelete: (id: string, name: string) => Promise<void>;
+  missingIds: Set<string>;
+  onMissing: (id: string) => void;
+  onRegenerateSignedAgreement?: () => Promise<void>;
 }) {
   return (
     <div>
@@ -1870,6 +1905,15 @@ function DocGroup({
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  {missingIds.has(doc.id) && onRegenerateSignedAgreement && doc.documentType === "SIGNED_AGREEMENT_PDF" && (
+                    <button
+                      type="button"
+                      onClick={onRegenerateSignedAgreement}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] hover:bg-[#166534] px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                    >
+                      Regenerate
+                    </button>
+                  )}
                   {canPreview && (
                     <button
                       type="button"
@@ -1910,10 +1954,55 @@ function DocGroup({
               {isOpen && canPreview && (
                 <div className="border-t border-[#e4e4e7] bg-white p-2">
                   {isPdf ? (
-                    <iframe src={url} className="w-full h-[720px] rounded" title={doc.fileName} />
+                    <iframe
+                      src={url}
+                      className="w-full h-[720px] rounded"
+                      title={doc.fileName}
+                      onLoad={(e) => {
+                        // When the API returns 404 JSON, the iframe still
+                        // loads but renders an error - probe with a HEAD
+                        // request to detect "file missing on disk" and
+                        // surface the Regenerate button.
+                        const iframe = e.currentTarget;
+                        fetch(url, { method: "HEAD" })
+                          .then((res) => {
+                            if (!res.ok) {
+                              onMissing(doc.id);
+                              iframe.style.display = "none";
+                            }
+                          })
+                          .catch(() => {
+                            onMissing(doc.id);
+                            iframe.style.display = "none";
+                          });
+                      }}
+                    />
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={url} alt={doc.fileName} className="max-w-full max-h-[720px] mx-auto" />
+                    <img
+                      src={url}
+                      alt={doc.fileName}
+                      className="max-w-full max-h-[720px] mx-auto"
+                      onError={() => onMissing(doc.id)}
+                    />
+                  )}
+                  {missingIds.has(doc.id) && (
+                    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900">
+                      <strong>File not on disk.</strong> The DB record exists but the underlying PDF/image is missing (likely orphaned from an earlier deploy).
+                      {onRegenerateSignedAgreement && doc.documentType === "SIGNED_AGREEMENT_PDF" && (
+                        <>
+                          {" "}
+                          <button
+                            type="button"
+                            onClick={onRegenerateSignedAgreement}
+                            className="ml-1 underline font-semibold text-amber-900 hover:text-amber-700"
+                          >
+                            Regenerate the signed agreement
+                          </button>
+                          .
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
