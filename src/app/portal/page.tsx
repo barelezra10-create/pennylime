@@ -6,7 +6,7 @@ import { PortalLogoutButton } from "./logout-button";
 import { getPayoffQuote } from "@/actions/portal-payoff";
 import { PayoffCard } from "./payoff-card";
 import { getSkipQuote } from "@/actions/portal-skip";
-import { SkipCard } from "./skip-card";
+import { SkipCard, SkipLockedCard } from "./skip-card";
 import { getTopUpEligibility } from "@/actions/portal-topup";
 import { TopUpCard } from "./topup-card";
 
@@ -122,8 +122,14 @@ export default async function PortalDashboard() {
       {/* Early payoff card — only if there is something left to pay off */}
       {payoffQuote.ok ? <PayoffCard quote={payoffQuote} /> : null}
 
-      {/* Skip-a-payment card — only when eligible (has a pending payment + hasn't used skip yet) */}
-      {skipQuote.ok ? <SkipCard quote={skipQuote} /> : null}
+      {/* Skip-a-payment card — eligible state shows the active card,
+          locked state (paid < 50%) shows the "unlocks at 50%" teaser
+          with progress so the customer sees what they're working toward */}
+      {skipQuote.ok ? (
+        <SkipCard quote={skipQuote} />
+      ) : skipQuote.paidRatio !== undefined && skipQuote.thresholdRatio !== undefined ? (
+        <SkipLockedCard paidRatio={skipQuote.paidRatio} thresholdRatio={skipQuote.thresholdRatio} />
+      ) : null}
 
       {/* Top-up request card — shows progress when not yet eligible, request form once 50%+ paid */}
       {topUpEligibility.ok ? <TopUpCard eligibility={topUpEligibility} /> : null}

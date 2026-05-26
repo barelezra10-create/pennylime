@@ -1,4 +1,9 @@
-export const dynamic = "force-dynamic";
+// ISR: cache rendered pages for an hour. Ahrefs hit 502s on 6 article slugs
+// during a deploy because dynamic-render had to cold-render each one under
+// concurrent crawl load. With revalidate, normal visitors and crawlers hit
+// the cached HTML; new articles still appear because of dynamicParams.
+export const revalidate = 3600;
+export const dynamicParams = true;
 
 import { getArticleBySlug, getPublishedArticles } from "@/actions/content";
 import { notFound } from "next/navigation";

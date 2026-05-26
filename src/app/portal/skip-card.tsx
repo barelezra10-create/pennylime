@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { executeSkip } from "@/actions/portal-skip";
+import { executeSkip, type SkipQuote } from "@/actions/portal-skip";
 
 type Quote = {
   ok: true;
@@ -153,3 +153,39 @@ function Stat({ label, value, sub, amber }: { label: string; value: string; sub?
     </div>
   );
 }
+
+/**
+ * Teaser shown when the customer hasn't yet earned the skip feature
+ * (paid < 50%). Mirrors the "Want more cash?" not-yet card for top-up
+ * requests so the two earned benefits look consistent on the portal.
+ */
+export function SkipLockedCard({ paidRatio, thresholdRatio }: { paidRatio: number; thresholdRatio: number }) {
+  const pctPaid = Math.round(paidRatio * 100);
+  const pctNeeded = Math.round(thresholdRatio * 100);
+  return (
+    <div className="rounded-2xl border border-dashed border-[#e4e4e7] bg-white p-6 mb-6">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-full bg-[#fafaf7] border border-[#e4e4e7] flex items-center justify-center flex-shrink-0">
+          <svg className="w-5 h-5 text-[#52525b]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+          </svg>
+        </div>
+        <div className="flex-1">
+          <h2 className="text-[15px] font-bold text-[#0a0a0a]">Need a break this week?</h2>
+          <p className="text-[13px] text-[#52525b] mt-0.5">
+            The skip-a-payment option unlocks once you've paid <strong>{pctNeeded}%</strong> of your advance. You're at <strong>{pctPaid}%</strong> right now. One skip per advance.
+          </p>
+          <div className="mt-3 h-1.5 bg-[#f4f4f5] rounded-full overflow-hidden max-w-xs">
+            <div
+              className="h-full bg-[#15803d]"
+              style={{ width: `${Math.min(pctPaid, 100)}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Re-export the rejection type so the portal page can narrow on it.
+export type { SkipQuote };

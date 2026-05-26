@@ -18,6 +18,10 @@ import { logAudit } from "@/lib/audit";
 
 const SKIP_FEE_RATE = 0.05;
 const MAX_SKIPS = 1;
+// Borrower must have paid this fraction of (principal + interest) before
+// the skip option unlocks. Mirrors the top-up eligibility threshold so
+// the two "earned" features have the same gating story for customers.
+const SKIP_ELIGIBILITY_PAID_RATIO = 0.5;
 
 type SkipQuoteOk = {
   ok: true;
@@ -30,7 +34,14 @@ type SkipQuoteOk = {
   skipsUsed: number;
   maxSkips: number;
 };
-type SkipQuoteErr = { ok: false; error: string };
+type SkipQuoteErr = {
+  ok: false;
+  error: string;
+  // Surface eligibility progress on "not yet" rejections so the UI can
+  // render a "you need X% more paid" hint rather than a flat error.
+  paidRatio?: number;
+  thresholdRatio?: number;
+};
 export type SkipQuote = SkipQuoteOk | SkipQuoteErr;
 
 export async function getSkipQuote(): Promise<SkipQuote> {
@@ -54,6 +65,7 @@ async function computeSkipQuote(applicationId: string): Promise<SkipQuote> {
           id: true,
           paymentNumber: true,
           amount: true,
+          lateFee: true,
           dueDate: true,
           paidAt: true,
           status: true,
@@ -72,6 +84,31 @@ async function computeSkipQuote(applicationId: string): Promise<SkipQuote> {
   );
   if (!nextPending) {
     return { ok: false, error: "Nothing left to skip." };
+  }
+
+  // 50%-paid gate. Skip is an "earned" benefit - we don't want a borrower
+  // to skip their FIRST payment, take the cash and disappear. WAIVED /
+  // CANCELED / RETURNED rows excluded from the denominator (same as
+  // top-up eligibility) so a prior skip doesn't lower this ratio.
+  const obligated = app.payments.filter(
+    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
+  );
+  const totalRepay = obligated.reduce(
+    (s, p) => s + Number(p.amount) + Number(p.lateFee),
+    0,
+  );
+  const paidAmount = app.payments
+    .filter((p) => p.status === "PAID" || p.paidAt)
+    .reduce((s, p) => s + Number(p.amount), 0);
+  const paidRatio = totalRepay > 0 ? paidAmount / totalRepay : 0;
+
+  if (paidRatio < SKIP_ELIGIBILITY_PAID_RATIO) {
+    return {
+      ok: false,
+      error: `Skip unlocks after you've paid 50% of your advance. You're at ${Math.round(paidRatio * 100)}%.`,
+      paidRatio: Math.round(paidRatio * 1000) / 1000,
+      thresholdRatio: SKIP_ELIGIBILITY_PAID_RATIO,
+    };
   }
 
   const principal = Number(app.fundedAmount ?? app.loanAmount);
