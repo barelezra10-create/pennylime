@@ -1,7 +1,7 @@
 import { StatusChecker } from "@/components/status-checker";
 
 export const metadata = {
-  title: "Check Application Status | PennyLime",
+  title: "Check Application Status",
   alternates: { canonical: "https://pennylime.com/status" },
 };
 

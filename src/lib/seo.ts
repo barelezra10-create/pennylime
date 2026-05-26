@@ -24,10 +24,14 @@ export function generateMeta({
   noIndex?: boolean;
   type?: string;
 }) {
-  const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+  // Strip trailing " | PennyLime" if the caller (or DB) included it, then
+  // append exactly once. Return as { absolute } so the root layout's
+  // `%s | PennyLime` template doesn't append a second time.
+  const cleanTitle = title.replace(/\s*[|—-]\s*PennyLime\s*$/i, "").trim();
+  const fullTitle = `${cleanTitle} | ${SITE_NAME}`;
   const canonical = canonicalUrl ?? (path ? absoluteUrl(path) : null);
   const meta: Record<string, unknown> = {
-    title: fullTitle,
+    title: { absolute: fullTitle },
     description,
     openGraph: {
       title: fullTitle,

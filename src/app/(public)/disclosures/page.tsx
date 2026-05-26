@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Disclosures | PennyLime",
+  title: "Disclosures",
   alternates: { canonical: "https://pennylime.com/disclosures" },
 };
 

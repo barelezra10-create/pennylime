@@ -22,6 +22,50 @@ export type InboxBadges = {
   unrepliedSenders: UnrepliedSender[];
 };
 
+/**
+ * Lighter-weight server action used by list views (contacts table, pipeline)
+ * that just need to mark rows that have unread inbound — no payload bodies
+ * needed. Returns ALL pending contactIds (no 10-row cap), covering both
+ * unreplied emails AND open chat sessions whose last message is from the user.
+ */
+export async function getUnreadContactIds(): Promise<{ contactIds: string[] }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { contactIds: [] };
+
+  const chatCutoff = new Date(Date.now() - PENDING_CHAT_WINDOW_MS);
+  const emailCutoff = new Date(Date.now() - UNREPLIED_WINDOW_MS);
+
+  const [latestEmailPerContact, openChatSessions] = await Promise.all([
+    prisma.emailEvent.findMany({
+      where: { createdAt: { gte: emailCutoff }, type: { in: ["sent", "received"] } },
+      orderBy: { createdAt: "desc" },
+      distinct: ["contactId"],
+      select: { contactId: true, type: true },
+    }),
+    prisma.agentSession.findMany({
+      where: { channel: "chat", endedAt: null, startedAt: { gte: chatCutoff } },
+      select: {
+        contactId: true,
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { role: true },
+        },
+      },
+    }),
+  ]);
+
+  const ids = new Set<string>();
+  for (const e of latestEmailPerContact) {
+    if (e.type === "received") ids.add(e.contactId);
+  }
+  for (const s of openChatSessions) {
+    if (s.contactId && s.messages[0]?.role === "user") ids.add(s.contactId);
+  }
+
+  return { contactIds: Array.from(ids) };
+}
+
 const PENDING_CHAT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const UNREPLIED_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 

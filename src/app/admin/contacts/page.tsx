@@ -1,14 +1,17 @@
 import { getContacts, getContactMetrics } from "@/actions/contacts";
 import { getTeamMembers } from "@/actions/team";
+import { getUnreadContactIds } from "@/actions/inbox-badges";
 import { ContactsClient } from "./contacts-client";
 import { computeLoanSummary } from "@/lib/loan-summary";
 
 export default async function ContactsPage() {
-  const [{ contacts, total }, metrics, team] = await Promise.all([
+  const [{ contacts, total }, metrics, team, unread] = await Promise.all([
     getContacts(),
     getContactMetrics(),
     getTeamMembers(),
+    getUnreadContactIds(),
   ]);
+  const unreadSet = new Set(unread.contactIds);
 
   return (
     <ContactsClient
@@ -29,6 +32,7 @@ export default async function ContactsPage() {
         tags: c.tags.map((t) => t.tag),
         assignedRep: c.assignedRep,
         loan: computeLoanSummary(c.application as Parameters<typeof computeLoanSummary>[0]),
+        hasUnread: unreadSet.has(c.id),
       }))}
       total={total}
       metrics={metrics}

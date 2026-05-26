@@ -6,7 +6,7 @@ export const dynamic = "force-static";
 export const revalidate = 3600;
 
 export const metadata = {
-  title: "Receivables Purchase and Sale Agreement — PennyLime",
+  title: "Receivables Purchase and Sale Agreement",
   description:
     "The Receivables Purchase and Sale Agreement that governs every PennyLime cash advance.",
   alternates: { canonical: "https://pennylime.com/agreement" },

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Terms of Service | PennyLime",
+  title: "Terms of Service",
   alternates: { canonical: "https://pennylime.com/terms" },
 };
 

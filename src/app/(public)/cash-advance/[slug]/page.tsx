@@ -25,9 +25,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const platform = await getPlatformPageBySlug(slug);
   if (!platform) return {};
+  // Ahrefs flags meta descriptions <70 chars as too short. Pad with a
+  // standard value-prop suffix so every platform page hits 140-160 chars.
+  const baseDesc = platform.metaDescription || platform.heroSubtext;
+  const padding = " Apply in 5 minutes, fund in as fast as 24-48 hours. Built for 1099 workers and gig earners — no traditional credit check.";
+  const description = baseDesc.length < 130 ? `${baseDesc}${padding}`.slice(0, 160) : baseDesc;
   return generateMeta({
     title: platform.metaTitle || `Cash Advances for ${platform.platformName} Workers`,
-    description: platform.metaDescription || platform.heroSubtext,
+    description,
     canonicalUrl: `https://pennylime.com/cash-advance/${slug}`,
   }) as Metadata;
 }
