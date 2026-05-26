@@ -10,6 +10,7 @@ import { updateContactStage, assignContactRep, addContactTag, removeContactTag }
 import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archive";
 import { logActivity } from "@/actions/activities";
 import { sendCrmEmail, getCrmEmailTemplates, getRecentEmailsForContact, polishReplyWithAI, getEmailThread, type CrmEmailTemplate } from "@/actions/crm-email";
+import { syncIncreaseForApplication, type IncreaseTransferRow } from "@/actions/sync-increase-status";
 
 type EmailThreadItem = {
   id: string;
@@ -437,8 +438,9 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
 
       {/* Application Tab */}
       {activeTab === "application" && (
-        <div className="max-w-xl">
+        <div className="max-w-3xl space-y-5">
           {contact.application ? (
+            <>
             <div className="bg-white rounded-xl p-6 border border-[#e4e4e7] space-y-4">
               <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">Application</h2>
               <div className="grid grid-cols-2 gap-4">
@@ -471,6 +473,8 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               </Link>
             </div>
+            <IncreaseTransfersPanel applicationId={contact.application.id} />
+            </>
           ) : (
             <div className="bg-white rounded-xl p-6 border border-[#e4e4e7]">
               <h2 className="text-[13px] font-bold text-black mb-4 uppercase tracking-[0.05em]">Application Status</h2>
@@ -1004,5 +1008,153 @@ function ContactArchiveActions({
         {busy === "delete" ? "…" : "Delete"}
       </button>
     </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * IncreaseTransfersPanel
+ * Pulls live ACH transfer statuses from Increase for an application:
+ * the funding credit (money out the door) + every weekly debit
+ * (repayments). Auto-fetches on mount; manual Refresh button forces
+ * a re-sync. Each row also persists the latest status back to the DB
+ * so subsequent loads start from a recent snapshot.
+ * ───────────────────────────────────────────────────────────────── */
+
+function IncreaseTransfersPanel({ applicationId }: { applicationId: string }) {
+  const [rows, setRows] = useState<IncreaseTransferRow[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+
+  async function refresh() {
+    setLoading(true);
+    setError(null);
+    const r = await syncIncreaseForApplication(applicationId);
+    if (r.ok) {
+      setRows(r.rows);
+      setLastSync(new Date());
+    } else {
+      setError(r.error);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    refresh();
+    // refresh on mount only; manual refresh covers updates
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applicationId]);
+
+  const disbursement = rows?.find((r) => r.kind === "disbursement");
+  const repayments = rows?.filter((r) => r.kind === "repayment") || [];
+
+  return (
+    <div className="bg-white rounded-xl border border-[#e4e4e7] p-6">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">Increase transfers</h2>
+        <button
+          type="button"
+          onClick={refresh}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#15803d] hover:bg-[#f0fdf4] disabled:opacity-50"
+        >
+          <svg className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          {loading ? "Syncing..." : "Refresh"}
+        </button>
+      </div>
+      <p className="text-[11px] text-[#71717a] mb-4">
+        Live status pulled from Increase. {lastSync ? `Last synced ${lastSync.toLocaleTimeString()}.` : ""}
+      </p>
+
+      {error ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-[12px] text-red-800">{error}</div>
+      ) : !rows ? (
+        <p className="text-[12px] text-[#a1a1aa]">Loading...</p>
+      ) : rows.length === 0 ? (
+        <p className="text-[12px] text-[#a1a1aa]">No Increase transfers yet for this application.</p>
+      ) : (
+        <div className="space-y-4">
+          {disbursement && (
+            <div>
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">Disbursement (money out)</h3>
+              <TransferRow row={disbursement} />
+            </div>
+          )}
+          {repayments.length > 0 && (
+            <div>
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">
+                Repayments (money in) <span className="text-[#a1a1aa] ml-1">{repayments.length} of {repayments.length}</span>
+              </h3>
+              <div className="space-y-1.5">
+                {repayments.map((r) => (
+                  <TransferRow key={`${r.transferId || r.paymentNumber}`} row={r} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TransferRow({ row }: { row: IncreaseTransferRow }) {
+  const fmt = (n: number) =>
+    n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-[#f4f4f5] bg-[#fafafa] px-3 py-2.5">
+      <div className="flex items-center gap-3 min-w-0">
+        {row.kind === "repayment" && (
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white border border-[#e4e4e7] text-[11px] font-bold text-[#52525b]">
+            {row.paymentNumber}
+          </span>
+        )}
+        <div className="min-w-0">
+          <div className="text-[13px] font-semibold text-black tabular-nums">{fmt(row.amount)}</div>
+          <div className="text-[11px] text-[#71717a] font-mono truncate max-w-[280px]">
+            {row.transferId || (row.kind === "repayment" ? "not yet attempted" : "no transfer id")}
+            {row.kind === "repayment" && row.dueDate ? ` · due ${fmtDate(row.dueDate)}` : ""}
+            {row.kind === "repayment" && row.paidAt ? ` · paid ${fmtDate(row.paidAt)}` : ""}
+          </div>
+          {row.error && (
+            <div className="text-[10px] text-red-600 mt-0.5">{row.error}</div>
+          )}
+        </div>
+      </div>
+      <IncreaseStatusPill status={row.status} fresh={row.fetchedFromIncrease} />
+    </div>
+  );
+}
+
+function IncreaseStatusPill({ status, fresh }: { status: string; fresh: boolean }) {
+  // Increase ACH transfer statuses, see https://increase.com/documentation/api
+  const map: Record<string, { bg: string; text: string; label: string }> = {
+    pending_approval:    { bg: "bg-amber-50",  text: "text-amber-700",  label: "Pending approval" },
+    pending_submission:  { bg: "bg-amber-50",  text: "text-amber-700",  label: "Pending submission" },
+    pending_reviewing:   { bg: "bg-amber-50",  text: "text-amber-700",  label: "Reviewing" },
+    submitted:           { bg: "bg-blue-50",   text: "text-blue-700",   label: "Submitted" },
+    submitting:          { bg: "bg-blue-50",   text: "text-blue-700",   label: "Submitting" },
+    pending_returning:   { bg: "bg-amber-50",  text: "text-amber-700",  label: "Pending return" },
+    returned:            { bg: "bg-red-50",    text: "text-red-700",    label: "Returned" },
+    canceled:            { bg: "bg-stone-100", text: "text-stone-600",  label: "Canceled" },
+    rejected:            { bg: "bg-red-50",    text: "text-red-700",    label: "Rejected" },
+    requires_attention:  { bg: "bg-red-50",    text: "text-red-700",    label: "Needs attention" },
+    posted:              { bg: "bg-green-50",  text: "text-green-700",  label: "Posted" },
+    PAID:                { bg: "bg-green-50",  text: "text-green-700",  label: "Paid" },
+    PENDING:             { bg: "bg-stone-100", text: "text-stone-600",  label: "Pending" },
+    PROCESSING:          { bg: "bg-blue-50",   text: "text-blue-700",   label: "Processing" },
+    FAILED:              { bg: "bg-red-50",    text: "text-red-700",    label: "Failed" },
+  };
+  const c = map[status] || { bg: "bg-stone-100", text: "text-stone-600", label: status || "unknown" };
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${c.bg} ${c.text} whitespace-nowrap`}>
+      {fresh && <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />}
+      {c.label}
+    </span>
   );
 }
