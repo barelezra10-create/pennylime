@@ -54,6 +54,10 @@ model Application {
   increaseTransferId       String?
   increaseTransferStatus   String?
   increaseDisburseError    String?
+  // Times the borrower used the "skip one payment" feature in /portal.
+  // Each skip charges a 5%-of-advance fee + shifts the next pending
+  // payment to the end of the schedule. Capped to 1 per advance for now.
+  skipsUsed                Int       @default(0)
   identityNeedsReview      Boolean   @default(false)
   plaidIdentityName        String?
   offerStatus              String    @default("PENDING")
