@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   } else if (action === "start") {
     reply = "You're back subscribed to PennyLime SMS. Reply STOP to opt out.";
   } else if (action === "help") {
-    reply = "PennyLime: msg & data rates may apply. Reply STOP to opt out, START to opt in. Support: support@pennylime.com";
+    reply = "PennyLime: msg & data rates may apply. Reply STOP to opt out, START to opt in. Support: info@pennylime.com";
   } else if (agentReply) {
     reply = agentReply;
   }

@@ -3,7 +3,7 @@
 // Gmail, Apple Mail, Outlook, etc.
 
 const APP_URL = process.env.APP_URL || "https://pennylime.com";
-const SUPPORT_EMAIL = "support@pennylime.com";
+const SUPPORT_EMAIL = "info@pennylime.com";
 
 export function wrapTransactionalEmail(innerHtml: string, preheader?: string): string {
   return `<!DOCTYPE html>

@@ -12,6 +12,78 @@ import type { AgentCtx, AuthLevel, ToolResult } from "./types";
 
 const MAX_TOOL_CALLS_PER_TURN = 5;
 const COST_HARD_CAP_CENTS = 200;
+const MAX_CONSECUTIVE_VERIFY_FAILS = 3;
+
+// Server-side escalation triggers — bypass the model when the user's intent
+// is unambiguous. The model's prompt also tells it to escalate, but production
+// transcripts show the model often retries verifyIdentity instead of obeying.
+const HUMAN_REQUEST_PATTERNS = [
+  /\b(human|agent|representative|rep)\b/i,
+  /\breal\s+person\b/i,
+  /\blive\s+person\b/i,
+  /\b(speak|talk)\s+(to|with)\s+(a|an|someone|a\s+person|a\s+human)\b/i,
+  /\bget\s+(a|an)\s+(human|agent|person)\b/i,
+  /\bcustomer\s+service\b/i,
+  /\bsupport\s+team\b/i,
+];
+
+function userAsksForHuman(text: string): boolean {
+  return HUMAN_REQUEST_PATTERNS.some((p) => p.test(text));
+}
+
+async function countConsecutiveVerifyFails(sessionId: string): Promise<number> {
+  const recent = await prisma.agentToolCall.findMany({
+    where: { sessionId, name: "verifyIdentity" },
+    orderBy: { createdAt: "desc" },
+    take: MAX_CONSECUTIVE_VERIFY_FAILS,
+    select: { resultStatus: true, resultSummary: true },
+  });
+  if (recent.length < MAX_CONSECUTIVE_VERIFY_FAILS) return recent.length;
+  // "identity verified" summaries mean a success; everything else counts as a fail.
+  let consecutive = 0;
+  for (const c of recent) {
+    if (c.resultStatus === "ok" && c.resultSummary === "identity verified") break;
+    consecutive++;
+  }
+  return consecutive;
+}
+
+async function forceEscalate(
+  ctx: AgentCtx,
+  reason: string,
+): Promise<{ reply: string }> {
+  const messages = await prisma.agentMessage.findMany({
+    where: { sessionId: ctx.sessionId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
+  const transcript = messages.reverse().map((m) => `[${m.role}] ${m.text}`).join("\n");
+  await prisma.supportTicket.create({
+    data: { sessionId: ctx.sessionId, contactId: ctx.contactId, reason, transcript },
+  });
+  if (ctx.channel === "chat") {
+    await prisma.agentSession
+      .update({ where: { id: ctx.sessionId }, data: { mode: "human" } })
+      .catch(() => {});
+  }
+  if (ctx.contactId) {
+    await prisma.activity
+      .create({
+        data: {
+          contactId: ctx.contactId,
+          type: "chat_escalated",
+          title: `AI auto-escalated: ${reason}`,
+          performedBy: "ai-agent",
+        },
+      })
+      .catch(() => {});
+  }
+  const reply = "Got it. I am connecting you with a specialist now. You can keep typing here and they will reply in this chat.";
+  await prisma.agentMessage.create({
+    data: { sessionId: ctx.sessionId, role: "assistant", text: reply },
+  });
+  return { reply };
+}
 
 async function loadHistory(sessionId: string): Promise<GeminiTurn[]> {
   const rows = await prisma.agentMessage.findMany({
@@ -61,6 +133,20 @@ export async function runTurn(
   await prisma.agentMessage.create({
     data: { sessionId: ctx.sessionId, role: "user", text: redactPII(userText) },
   });
+
+  // Hard-trigger escalation when the user explicitly asks for a human.
+  // Cheap regex check, runs before any Gemini call.
+  if (userAsksForHuman(userText)) {
+    const out = await forceEscalate(ctx, "user asked for a human");
+    return { reply: out.reply };
+  }
+
+  // Hard-trigger escalation after N consecutive failed verifyIdentity attempts
+  // in the session. Stops the AI from re-asking for DOB forever.
+  if ((await countConsecutiveVerifyFails(ctx.sessionId)) >= MAX_CONSECUTIVE_VERIFY_FAILS) {
+    const out = await forceEscalate(ctx, "verifyIdentity failed repeatedly");
+    return { reply: out.reply };
+  }
 
   const history = await loadHistory(ctx.sessionId);
   let currentAuth: AuthLevel = ctx.authLevel;
@@ -197,9 +283,13 @@ export async function runTurn(
       tokensOut: lastTokensOut || null,
     },
   });
+  // Use Math.ceil so a turn that cost 0.014 cents counts as 1 cent rather
+  // than being lost to rounding. Slightly over-charges the session but the
+  // cost cap is what actually matters, and small per-turn costs were
+  // silently zeroing out before.
   await prisma.agentSession.update({
     where: { id: ctx.sessionId },
-    data: { costCents: { increment: Math.round(totalCostCents) }, authLevel: currentAuth },
+    data: { costCents: { increment: Math.max(1, Math.ceil(totalCostCents)) }, authLevel: currentAuth },
   });
 
   return {

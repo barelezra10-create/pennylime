@@ -11,13 +11,70 @@ function constantTimeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-function normalizeDob(input: string): string {
-  // Accept YYYY-MM-DD, MM/DD/YYYY, M/D/YYYY → YYYY-MM-DD
-  const trimmed = input.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-  const m = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
-  return trimmed;
+const MONTHS: Record<string, number> = {
+  jan: 1, january: 1,
+  feb: 2, february: 2,
+  mar: 3, march: 3,
+  apr: 4, april: 4,
+  may: 5,
+  jun: 6, june: 6,
+  jul: 7, july: 7,
+  aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9,
+  oct: 10, october: 10,
+  nov: 11, november: 11,
+  dec: 12, december: 12,
+};
+
+function pad2(n: number | string): string {
+  return String(n).padStart(2, "0");
+}
+
+function expandYear(y: string): string {
+  // 4 digits: pass through. 2 digits: assume DOB, so 30..99 -> 19xx, 00..29 -> 20xx.
+  if (y.length === 4) return y;
+  if (y.length === 2) {
+    const n = parseInt(y, 10);
+    return n >= 30 ? `19${y}` : `20${y}`;
+  }
+  return y;
+}
+
+export function normalizeDob(input: string): string {
+  if (!input) return "";
+  // Strip ordinal suffixes (1st, 2nd, 22nd, 3rd, 4th) anywhere.
+  const cleaned = input.trim().toLowerCase().replace(/(\d+)(st|nd|rd|th)\b/g, "$1");
+
+  // ISO: 1990-04-12
+  let m = cleaned.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if (m) return `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+
+  // MM/DD/YYYY, M/D/YYYY, MM-DD-YYYY, also 2-digit year.
+  m = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    const year = expandYear(m[3]);
+    return `${year}-${pad2(m[1])}-${pad2(m[2])}`;
+  }
+
+  // "June 16, 1979" or "Jul/17/1986" or "Jun-16-1986" — split on any separator.
+  const tokens = cleaned.replace(/[,]+/g, " ").split(/[\s\/\-]+/).filter(Boolean);
+  let monthName: number | null = null;
+  let day: number | null = null;
+  let year: string | null = null;
+  for (const t of tokens) {
+    if (monthName === null && MONTHS[t] !== undefined) {
+      monthName = MONTHS[t];
+    } else if (/^\d{1,2}$/.test(t) && day === null) {
+      day = parseInt(t, 10);
+    } else if (/^\d{2,4}$/.test(t) && year === null) {
+      year = expandYear(t);
+    }
+  }
+  if (monthName !== null && day !== null && year !== null && day >= 1 && day <= 31) {
+    return `${year}-${pad2(monthName)}-${pad2(day)}`;
+  }
+
+  return cleaned;
 }
 
 export const verifyIdentity: ToolDefinition = {

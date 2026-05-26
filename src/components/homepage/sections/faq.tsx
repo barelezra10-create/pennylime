@@ -91,7 +91,7 @@ export function HomeFaq() {
           <p className="text-center text-[#52525b] text-[14px] mt-10">
             Still have questions?{" "}
             <a
-              href="mailto:support@pennylime.com"
+              href="mailto:info@pennylime.com"
               className="text-[#15803d] font-semibold hover:underline underline-offset-4"
             >
               Email our team

@@ -47,6 +47,10 @@ vi.mock("@/lib/db", () => ({
         toolCalls.push(data);
         return data;
       }),
+      findMany: vi.fn(async () => [] as unknown[]),
+    },
+    activity: {
+      create: vi.fn(async () => ({ id: "a1" })),
     },
     supportTicket: {
       create: vi.fn(async ({ data }: { data: unknown }) => ({ id: "t1", ...(data as object) })),
@@ -135,5 +139,28 @@ describe("runTurn", () => {
       metadata: {},
     });
     expect(out.reply).toMatch(/let me create a ticket|escalate|come back/i);
+  });
+
+  it("force-escalates when the user asks for a human", async () => {
+    const out = await runTurn("can I speak to a human", {
+      channel: "chat",
+      sessionId: "s-esc-1",
+      authLevel: "anon",
+      metadata: {},
+    });
+    expect(out.reply).toMatch(/specialist|connecting/i);
+    // Gemini should NOT have been called for this turn.
+    expect(callGemini).not.toHaveBeenCalled();
+  });
+
+  it("force-escalates on 'agent' keyword", async () => {
+    const out = await runTurn("Agent", {
+      channel: "chat",
+      sessionId: "s-esc-2",
+      authLevel: "anon",
+      metadata: {},
+    });
+    expect(out.reply).toMatch(/specialist|connecting/i);
+    expect(callGemini).not.toHaveBeenCalled();
   });
 });

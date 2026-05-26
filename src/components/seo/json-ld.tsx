@@ -14,7 +14,7 @@ export function organizationSchema() {
     name: "PennyLime",
     url: "https://pennylime.com",
     description: "Fast cash advances for gig workers. $500 to $10,000.",
-    contactPoint: { "@type": "ContactPoint", email: "support@pennylime.com" },
+    contactPoint: { "@type": "ContactPoint", email: "info@pennylime.com" },
   };
 }
 

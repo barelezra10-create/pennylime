@@ -85,3 +85,37 @@ describe("verifyIdentity", () => {
     expect((res.data as { verified: boolean }).verified).toBe(true);
   });
 });
+
+import { normalizeDob } from "./verifyIdentity";
+
+describe("normalizeDob", () => {
+  it("ISO YYYY-MM-DD passes through", () => {
+    expect(normalizeDob("1990-04-12")).toBe("1990-04-12");
+  });
+  it("zero-pads M/D/YYYY", () => {
+    expect(normalizeDob("4/12/1990")).toBe("1990-04-12");
+    expect(normalizeDob("4-12-1990")).toBe("1990-04-12");
+  });
+  it("expands 2-digit year as DOB (>=30 -> 19xx, <30 -> 20xx)", () => {
+    expect(normalizeDob("4/12/90")).toBe("1990-04-12");
+    expect(normalizeDob("4/12/05")).toBe("2005-04-12");
+  });
+  it("'June 16, 1979' -> 1979-06-16", () => {
+    expect(normalizeDob("June 16, 1979")).toBe("1979-06-16");
+  });
+  it("'June 16th 1979' (ordinal suffix) -> 1979-06-16", () => {
+    expect(normalizeDob("June 16th 1979")).toBe("1979-06-16");
+  });
+  it("'Jul/17/1986' -> 1986-07-17", () => {
+    expect(normalizeDob("Jul/17/1986")).toBe("1986-07-17");
+  });
+  it("'Jul 17 1986' -> 1986-07-17", () => {
+    expect(normalizeDob("Jul 17 1986")).toBe("1986-07-17");
+  });
+  it("case-insensitive month names", () => {
+    expect(normalizeDob("DECEMBER 1, 2000")).toBe("2000-12-01");
+  });
+  it("returns trimmed garbage unchanged when unparseable", () => {
+    expect(normalizeDob("garbage")).toBe("garbage");
+  });
+});

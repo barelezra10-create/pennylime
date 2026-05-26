@@ -98,8 +98,8 @@ export default function TermsPage() {
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
           For questions about these terms, contact us at{" "}
-          <a href="mailto:support@pennylime.com" className="text-[#15803d] hover:underline">
-            support@pennylime.com
+          <a href="mailto:info@pennylime.com" className="text-[#15803d] hover:underline">
+            info@pennylime.com
           </a>
           .
         </p>
