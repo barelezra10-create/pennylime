@@ -33,10 +33,15 @@ export async function POST(request: NextRequest) {
   let feesAdded = 0;
 
   for (const payment of overduePayments) {
-    await prisma.payment.update({
-      where: { id: payment.id },
+    // Atomic guard: only update if lateFee is still 0. If two crons race
+    // and both saw lateFee=0, only the first one's update succeeds; the
+    // second's updateMany returns count: 0 and we skip the rest of the
+    // loop (no duplicate fee, no duplicate email/SMS).
+    const updated = await prisma.payment.updateMany({
+      where: { id: payment.id, lateFee: 0 },
       data: { lateFee: lateFeeAmount },
     });
+    if (updated.count === 0) continue;
 
     await logAudit({
       action: "ADD_LATE_FEE",

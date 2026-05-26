@@ -27,9 +27,20 @@ export async function POST(request: NextRequest) {
   let retried = 0;
   let errors = 0;
 
+  // After this many failed retries, the cron stops re-charging and
+  // hands off to the collections flow. Persistent failures (closed
+  // account, blocked routing) should never just loop forever.
+  const MAX_AUTOMATED_RETRIES = 5;
+
   for (const payment of failedPayments) {
     // Skip if application is already in COLLECTIONS or DEFAULTED
     if (payment.application.status === "COLLECTIONS" || payment.application.status === "DEFAULTED") {
+      continue;
+    }
+    // Stop after MAX_AUTOMATED_RETRIES failed attempts on the same row.
+    // The collections cron picks these up separately for late fees +
+    // escalation; we don't need to keep pinging Increase forever.
+    if (payment.retryCount >= MAX_AUTOMATED_RETRIES) {
       continue;
     }
 

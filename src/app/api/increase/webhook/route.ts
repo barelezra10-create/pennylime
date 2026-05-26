@@ -10,7 +10,16 @@ import { prisma } from "@/lib/db";
 
 function verifySignature(rawBody: string, headerSig: string | null): boolean {
   const secret = process.env.INCREASE_WEBHOOK_SECRET;
-  if (!secret) return true; // no secret set yet; accept (dev only)
+  if (!secret) {
+    // Fail closed: missing secret in prod must NOT mean "accept everything".
+    // Better to drop legit webhooks until the env var is set than to allow
+    // anyone on the internet to forge transfer-status updates.
+    if (process.env.NODE_ENV === "production") {
+      console.error("[increase webhook] INCREASE_WEBHOOK_SECRET missing in production - rejecting");
+      return false;
+    }
+    return true; // dev / local only
+  }
   if (!headerSig) return false;
 
   // Increase signs with HMAC-SHA256, header format: t=<unix>,v1=<hexsig>

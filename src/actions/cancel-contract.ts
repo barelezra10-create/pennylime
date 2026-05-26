@@ -63,6 +63,20 @@ export async function cancelSignedAgreement(input: {
   const wasFunded = !!app.increaseTransferId;
   const canceledAmount = Number(app.acceptedAmount ?? 0);
 
+  // Refuse cancel while any ACH debit is in-flight. Deleting the Payment
+  // row wouldn't stop the debit from posting at the bank — we'd end up
+  // with money taken from the customer and no DB record to refund against.
+  const inflight = await prisma.payment.findFirst({
+    where: { applicationId: input.applicationId, status: "PROCESSING" },
+    select: { id: true, paymentNumber: true },
+  });
+  if (inflight) {
+    return {
+      ok: false as const,
+      error: `Can't cancel — payment #${inflight.paymentNumber} has an ACH debit in flight. Wait for it to settle or return before canceling.`,
+    };
+  }
+
   // Delete AchAuthorization rows (every one — usually there's only 1)
   const deletedAuths = await prisma.achAuthorization.deleteMany({
     where: { applicationId: input.applicationId },

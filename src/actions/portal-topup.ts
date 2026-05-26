@@ -56,7 +56,14 @@ export async function getTopUpEligibility(): Promise<TopUpEligibility> {
   if (!app) return { ok: false, error: "Application not found" };
 
   const originalAmount = Number(app.fundedAmount ?? app.loanAmount);
-  const totalRepay = app.payments.reduce(
+  // Exclude WAIVED/CANCELED/RETURNED from the denominator. After a
+  // skip we WAIVE a row and add the fee elsewhere; including waived rows
+  // would silently lower the paid ratio and trip the customer back out
+  // of eligibility. RETURNED debits also don't represent live debt.
+  const obligated = app.payments.filter(
+    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
+  );
+  const totalRepay = obligated.reduce(
     (s, p) => s + Number(p.amount) + Number(p.lateFee),
     0,
   );

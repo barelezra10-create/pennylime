@@ -16,11 +16,26 @@ export async function GET(
   const segments = (await params).path;
   const filePath = decodeURIComponent(segments.join("/"));
 
-  // Prevent path traversal
-  const resolved = path.resolve(filePath);
+  // Prevent path traversal. path.resolve normalises ../ but doesn't
+  // follow symlinks - if anyone manages to plant a symlink in uploadsDir
+  // pointing at /etc/passwd, the startsWith check would pass. We resolve
+  // realpath as well; if the realpath escapes uploadsDir, reject. We
+  // wrap in try/catch because realpath throws on non-existent paths and
+  // we want to keep the existing 404 fallback for those.
   const uploadsDir = path.resolve(process.env.UPLOAD_DIR || "./uploads");
+  const resolved = path.resolve(filePath);
   if (!resolved.startsWith(uploadsDir)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  try {
+    const fsModule = await import("fs/promises");
+    const realPath = await fsModule.realpath(resolved);
+    if (!realPath.startsWith(uploadsDir)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } catch {
+    // realpath fails if the file doesn't exist - fall through to the
+    // existing 404 path. Only blocks confirmed symlink escapes.
   }
 
   const ext = path.extname(resolved).toLowerCase();

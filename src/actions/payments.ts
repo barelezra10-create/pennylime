@@ -18,15 +18,21 @@ export async function getPaymentsSummary(applicationId: string) {
     orderBy: { paymentNumber: "asc" },
   });
 
-  const totalOwed = payments.reduce((s, p) => s + Number(p.amount), 0);
+  // WAIVED / CANCELED / RETURNED rows shouldn't count as "owed" — they
+  // represent payments that were collapsed into a payoff or returned to
+  // the customer. Otherwise post-payoff customers still see a balance.
+  const obligatedPayments = payments.filter(
+    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
+  );
+  const totalOwed = obligatedPayments.reduce((s, p) => s + Number(p.amount), 0);
   const totalPaid = payments
     .filter((p) => p.status === "PAID")
     .reduce((s, p) => s + Number(p.amount), 0);
-  const totalLateFees = payments.reduce((s, p) => s + Number(p.lateFee), 0);
+  const totalLateFees = obligatedPayments.reduce((s, p) => s + Number(p.lateFee), 0);
   const nextPayment = payments.find(
     (p) => p.status === "PENDING" || p.status === "FAILED"
   );
-  const remainingBalance = totalOwed - totalPaid;
+  const remainingBalance = Math.max(totalOwed - totalPaid, 0);
 
   return {
     payments,
