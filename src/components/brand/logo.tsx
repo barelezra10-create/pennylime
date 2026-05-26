@@ -16,8 +16,7 @@ export function LogoMark({ className = "", size = 32 }: { className?: string; si
       src="/lime-mark.svg"
       width={size}
       height={size}
-      alt=""
-      aria-hidden="true"
+      alt="PennyLime"
       className={className}
       style={{ display: "inline-block" }}
     />

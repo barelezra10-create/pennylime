@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getPortalApplicationId } from "@/lib/portal-auth";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { PortalLogoutButton } from "./logout-button";
+import { getPayoffQuote } from "@/actions/portal-payoff";
+import { PayoffCard } from "./payoff-card";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +50,7 @@ export default async function PortalDashboard() {
   const nextDue = app.payments.find((p) => p.status !== "PAID" && !p.paidAt);
   const progressPct = app.payments.length > 0 ? Math.round((paidPayments.length / app.payments.length) * 100) : 0;
   const signedAgreement = app.documents[0] || null;
+  const payoffQuote = await getPayoffQuote();
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-8 lg:px-8 lg:py-12">
@@ -107,6 +110,9 @@ export default async function PortalDashboard() {
           </div>
         )}
       </div>
+
+      {/* Early payoff card — only if there is something left to pay off */}
+      {payoffQuote.ok ? <PayoffCard quote={payoffQuote} /> : null}
 
       {/* Actions strip */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">

@@ -99,7 +99,7 @@ export function PlatformLogo({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={active.url}
-        alt=""
+        alt={`${platformName} logo`}
         width={iconSize}
         height={iconSize}
         style={{ width: iconSize, height: iconSize, objectFit: "contain" }}
