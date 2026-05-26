@@ -642,19 +642,22 @@ export async function acceptOffer(input: {
     console.error("[contacts] OFFER_ACCEPTED stage update failed:", err);
   }
 
-  // Best-effort ACH disbursement using existing Increase pipeline.
-  // Failures here don't block acceptance — admin can retry from the detail page.
+  // Best-effort disbursement using the fastest rail the borrower's bank
+  // supports. safeDisburse tries RTP first (instant), falls back to
+  // Same-Day ACH, then standard ACH. Failures here don't block
+  // acceptance - admin can retry from the detail page.
   try {
     if (process.env.INCREASE_API_KEY) {
       const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-      const { createAchCredit } = await import("@/lib/increase");
+      const { safeDisburse } = await import("@/lib/increase");
       const ext = await ensureIncreaseExternalAccount(app.id);
       if (ext.ok) {
-        const transfer = await createAchCredit({
+        const transfer = await safeDisburse({
           externalAccountId: ext.externalAccountId,
           amountCents: Math.round(input.selectedAmount * 100),
           statementDescriptor: "PENNYLIME ADV",
           individualName: `${app.firstName} ${app.lastName}`.slice(0, 22),
+          remittanceInformation: `PennyLime advance - ${app.applicationCode}`,
         });
         if (transfer.ok) {
           await prisma.application.update({
@@ -663,10 +666,11 @@ export async function acceptOffer(input: {
               status: "FUNDED",
               fundedAt: new Date(),
               fundedAmount: input.selectedAmount,
-              increaseTransferId: transfer.data.id,
-              increaseTransferStatus: transfer.data.status,
+              increaseTransferId: transfer.transferId,
+              increaseTransferStatus: transfer.status,
             },
           });
+          console.log(`[disburse] app ${app.applicationCode} funded via ${transfer.rail}`);
           // Move linked contact to FUNDED stage (drives stage-tracking).
           const linkedContact = await prisma.contact.findFirst({
             where: { applicationId: app.id },

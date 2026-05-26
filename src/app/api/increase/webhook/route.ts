@@ -52,15 +52,26 @@ export async function POST(req: NextRequest) {
   const objectId = body.associated_object_id;
   const eventType = body.type;
 
-  if (objectType === "ach_transfer" && objectId) {
-    const status = eventType?.replace("ach_transfer.", "") || "";
-    // Increase ACH statuses we care about:
+  // Handle ACH + RTP transfer events with the same downstream logic.
+  // RTP fires "real_time_payments_transfer.complete" when the destination
+  // bank posts the credit (typically within seconds). RTP cannot return -
+  // once complete it's final.
+  const isAchEvent = objectType === "ach_transfer";
+  const isRtpEvent = objectType === "real_time_payments_transfer";
+
+  if ((isAchEvent || isRtpEvent) && objectId) {
+    const prefix = isAchEvent ? "ach_transfer." : "real_time_payments_transfer.";
+    const status = eventType?.replace(prefix, "") || "";
+    // ACH statuses we care about:
     //   "submitted" -> NACHA file delivered to the Fed, not yet posted at
     //   the receiving bank. Treat as in-flight, NOT settled.
     //   "settled"   -> money has posted at the destination.
     //   "returned"  -> ACH return (NSF / R-code).
-    const isReturn = status === "returned";
-    const isSettled = status === "settled";
+    // RTP statuses we care about:
+    //   "complete"  -> credit posted at destination (instant + irrevocable)
+    //   "rejected"  -> destination bank refused the RTP transfer
+    const isReturn = status === "returned" || status === "rejected";
+    const isSettled = status === "settled" || status === "complete";
     const isInflight = status === "submitted" || status === "pending_submission";
 
     // Disbursement leg: webhook fires when our credit to the borrower

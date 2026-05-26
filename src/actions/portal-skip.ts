@@ -146,11 +146,14 @@ export async function executeSkip(): Promise<
   if (!ext.ok) return { ok: false, error: ext.error };
 
   const { createAchDebit } = await import("@/lib/increase");
+  // Same-Day ACH for the skip fee — customer agreed to the fee and the
+  // skip is contingent on it actually clearing.
   const result = await createAchDebit({
     externalAccountId: ext.externalAccountId,
     amountCents: Math.round(quote.feeAmount * 100),
     statementDescriptor: "PENNYLIME SKIP",
     individualName: `${app.firstName} ${app.lastName}`.slice(0, 22),
+    sameDay: true,
   });
   if (!result.ok) return { ok: false, error: result.error };
 

@@ -462,7 +462,7 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
   let transferStatus: string;
   try {
     const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-    const { createAchCredit } = await import("@/lib/increase");
+    const { safeDisburse } = await import("@/lib/increase");
     const ext = await ensureIncreaseExternalAccount(applicationId);
     if (!ext.ok) {
       await prisma.application.update({
@@ -471,21 +471,26 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
       });
       return { success: false, error: `Couldn't set up Increase external account: ${ext.error}` };
     }
-    const transfer = await createAchCredit({
+    // safeDisburse: try RTP (instant) -> Same-Day ACH -> standard ACH.
+    // Borrower gets cash in seconds if their bank supports RTP, in hours
+    // if it supports Same-Day ACH, otherwise next business day.
+    const transfer = await safeDisburse({
       externalAccountId: ext.externalAccountId,
       amountCents: Math.round(fundedAmount * 100),
       statementDescriptor: "PENNYLIME ADV",
       individualName: `${application.firstName} ${application.lastName}`.slice(0, 22),
+      remittanceInformation: `PennyLime advance - ${application.applicationCode}`,
     });
     if (!transfer.ok) {
       await prisma.application.update({
         where: { id: applicationId },
         data: { increaseDisburseError: transfer.error },
       });
-      return { success: false, error: `Increase ACH credit failed: ${transfer.error}` };
+      return { success: false, error: `Disbursement failed: ${transfer.error}` };
     }
-    transferId = transfer.data.id;
-    transferStatus = transfer.data.status;
+    transferId = transfer.transferId;
+    transferStatus = transfer.status;
+    console.log(`[disburse] app ${application.applicationCode} funded via ${transfer.rail}`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "increase error";
     await prisma.application.update({

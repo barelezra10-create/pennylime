@@ -36,11 +36,16 @@ export async function initiateACHDebit(paymentId: string): Promise<
   }
 
   const { createAchDebit } = await import("@/lib/increase");
+  // Same-Day ACH if we're before Increase's ~2pm ET cutoff. Money posts
+  // into our Increase account by EOD instead of T+1/T+2. Past cutoff
+  // Increase silently downgrades to standard ACH, so we always pass
+  // true and let Increase pick the fastest available rail.
   const result = await createAchDebit({
     externalAccountId: ext.externalAccountId,
     amountCents,
     statementDescriptor: "PENNYLIME PMT",
     individualName: `${payment.application.firstName} ${payment.application.lastName}`.slice(0, 22),
+    sameDay: true,
   });
 
   if (!result.ok) {

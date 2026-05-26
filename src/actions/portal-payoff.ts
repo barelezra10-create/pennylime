@@ -196,11 +196,14 @@ export async function executePayoff(): Promise<
   if (!ext.ok) return { ok: false, error: ext.error };
 
   const { createAchDebit } = await import("@/lib/increase");
+  // Same-Day ACH so the customer's "I'm done" moment matches reality —
+  // money clears into our account by EOD instead of mid-week.
   const result = await createAchDebit({
     externalAccountId: ext.externalAccountId,
     amountCents: Math.round(quote.payoffAmount * 100),
     statementDescriptor: "PENNYLIME PAYOFF",
     individualName: `${app.firstName} ${app.lastName}`.slice(0, 22),
+    sameDay: true,
   });
   if (!result.ok) return { ok: false, error: result.error };
 
