@@ -81,14 +81,14 @@ export function Problem() {
                 The Problem
               </div>
               <h2 className="font-extrabold tracking-[-0.04em] leading-[0.95] text-black mb-5" style={{ fontSize: "clamp(36px, 5vw, 60px)" }}>
-                Banks don&apos;t get
+                Banks don&apos;t fund
                 <br />
-                platform work.
+                solopreneurs.
               </h2>
               <div className="space-y-4">
                 <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
-                  <span><strong className="text-black">Underwriting wants traditional employment proof.</strong> Drivers, sellers, and small business owners don&apos;t have a corporate payroll behind them.</span>
+                  <span><strong className="text-black">Business underwriting demands a corporate balance sheet.</strong> 1099 drivers, sellers, and platform operators run real businesses without the corporate paperwork banks insist on.</span>
                 </p>
                 <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
