@@ -35,24 +35,27 @@ export async function initiateACHDebit(paymentId: string): Promise<
     return { success: false, error: ext.error };
   }
 
-  const { createAchDebit } = await import("@/lib/increase");
-  // Same-Day ACH if we're before Increase's ~2pm ET cutoff. Money posts
-  // into our Increase account by EOD instead of T+1/T+2. Past cutoff
-  // Increase silently downgrades to standard ACH, so we always pass
-  // true and let Increase pick the fastest available rail.
-  const result = await createAchDebit({
+  const { safeDebit } = await import("@/lib/increase");
+  // safeDebit tries Same-Day ACH first (money in our account by EOD)
+  // and falls back to standard ACH on 400s (past the ~2:45pm ET cutoff,
+  // destination doesn't support same-day, etc).
+  const result = await safeDebit({
     externalAccountId: ext.externalAccountId,
     amountCents,
     statementDescriptor: "PENNYLIME PMT",
     individualName: `${payment.application.firstName} ${payment.application.lastName}`.slice(0, 22),
-    sameDay: true,
   });
 
   if (!result.ok) {
     return { success: false, error: result.error };
   }
 
-  return { success: true, transferId: result.data.id };
+  if (result.rail === "ach") {
+    console.log(`[debit] payment ${paymentId} via standard ACH (same-day rejected)`);
+  } else {
+    console.log(`[debit] payment ${paymentId} via ${result.rail}`);
+  }
+  return { success: true, transferId: result.transferId };
 }
 
 /**

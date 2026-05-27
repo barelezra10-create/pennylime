@@ -251,6 +251,51 @@ export async function getRtpTransfer(id: string) {
   return call<RtpTransfer>("GET", `/real_time_payments_transfers/${id}`);
 }
 
+/**
+ * Debit with Same-Day ACH first, fall back to standard ACH if Increase
+ * rejects (past the ~2:45pm ET cutoff, destination bank not eligible,
+ * etc.). Mirrors safeDisburse for credits but for repayment debits.
+ *
+ * Returns the same normalised shape as safeDisburse so callers can log
+ * which rail actually carried the debit.
+ */
+export type DebitResult =
+  | { ok: true; rail: "same_day_ach" | "ach"; transferId: string; status: string }
+  | { ok: false; error: string };
+
+export async function safeDebit(input: {
+  externalAccountId: string;
+  amountCents: number;
+  statementDescriptor: string;
+  individualName?: string;
+}): Promise<DebitResult> {
+  // 1. Try Same-Day ACH
+  const sameDay = await createAchDebit({
+    externalAccountId: input.externalAccountId,
+    amountCents: input.amountCents,
+    statementDescriptor: input.statementDescriptor,
+    individualName: input.individualName,
+    sameDay: true,
+  });
+  if (sameDay.ok) {
+    return { ok: true, rail: "same_day_ach", transferId: sameDay.data.id, status: sameDay.data.status };
+  }
+  console.warn("[increase] Same-Day ACH debit failed, falling back to standard:", sameDay.error);
+
+  // 2. Fall back to standard ACH
+  const standard = await createAchDebit({
+    externalAccountId: input.externalAccountId,
+    amountCents: input.amountCents,
+    statementDescriptor: input.statementDescriptor,
+    individualName: input.individualName,
+    sameDay: false,
+  });
+  if (standard.ok) {
+    return { ok: true, rail: "ach", transferId: standard.data.id, status: standard.data.status };
+  }
+  return { ok: false, error: standard.error };
+}
+
 export async function getAchTransfer(id: string) {
   return call<AchTransfer>("GET", `/ach_transfers/${id}`);
 }
