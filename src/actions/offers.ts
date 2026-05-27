@@ -89,13 +89,21 @@ export async function setOfferTerms(input: {
   // Reuse existing token if already set; otherwise mint a fresh one.
   const existing = await prisma.application.findUnique({
     where: { id: input.applicationId },
-    select: { offerToken: true, offerStatus: true },
+    select: { offerToken: true, offerStatus: true, status: true },
   });
   const offerToken = existing?.offerToken ?? randomBytes(24).toString("hex");
   // Only notify on the first time an offer goes out. Edits to an
   // existing OFFERED record (e.g. Bar tweaking the plans, recompute
   // button) shouldn't spam the borrower with duplicate emails.
   const wasFirstOffer = existing?.offerStatus !== "OFFERED";
+
+  // Sending an offer is the approval action - there's no separate
+  // Approve button in the admin UI. Flip status PENDING -> APPROVED
+  // so the badge says "Offer Sent" instead of staying on "Pending".
+  // Only nudge status when it's still PENDING to avoid downgrading
+  // a later FUNDED/ACTIVE application back to APPROVED when the
+  // admin recomputes offer plans.
+  const shouldApprove = existing?.status === "PENDING";
 
   const updated = await prisma.application.update({
     where: { id: input.applicationId },
@@ -106,6 +114,11 @@ export async function setOfferTerms(input: {
       offeredTermsJson: JSON.stringify(input.terms),
       offerToken,
       offerSentAt: new Date(),
+      ...(shouldApprove && {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approvedBy: session.user.email,
+      }),
     },
     select: {
       id: true,
