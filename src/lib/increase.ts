@@ -102,11 +102,16 @@ export async function createAchCredit(input: {
   statementDescriptor: string;
   companyName?: string;
   individualName?: string;
-  /** Use Same-Day ACH instead of standard 1-3 business day settlement.
-   *  Increase honours this when the call lands before the same-day cutoff
-   *  (~2pm ET). Past the cutoff, falls back to standard automatically. */
+  // sameDay is accepted for backwards compat but ignored - see note below.
   sameDay?: boolean;
 }): Promise<{ ok: true; data: AchTransfer } | { ok: false; error: string }> {
+  // Note on Same-Day ACH:
+  // Increase's /ach_transfers endpoint does NOT accept a "same_day_ach"
+  // input parameter (returns 400: "Unexpected parameter"). Same-Day vs
+  // future-dated settlement is determined automatically by Increase based
+  // on submission time vs cutoff (~2:45pm ET). The "settlement_schedule"
+  // field appears in the RESPONSE ("same_day" / "future_dated") so we
+  // know which rail won, but it's not an input.
   return call<AchTransfer>("POST", "/ach_transfers", {
     account_id: process.env.INCREASE_ACCOUNT_ID,
     external_account_id: input.externalAccountId,
@@ -116,7 +121,6 @@ export async function createAchCredit(input: {
     individual_name: input.individualName,
     funding: "checking",
     standard_entry_class_code: "corporate_credit_or_debit",
-    same_day_ach: input.sameDay ?? false,
   });
 }
 
@@ -126,10 +130,8 @@ export async function createAchDebit(input: {
   statementDescriptor: string;
   companyName?: string;
   individualName?: string;
-  /** Use Same-Day ACH for the debit. Money clears into our Increase
-   *  account by EOD instead of T+1/T+2. We default this ON for portal-
-   *  triggered payoff + skip fee debits (customer expects same-day
-   *  movement) and let the daily cron decide based on cutoff time. */
+  // sameDay accepted for backwards compat but ignored - Increase handles
+  // settlement schedule selection automatically based on submission time.
   sameDay?: boolean;
 }): Promise<{ ok: true; data: AchTransfer } | { ok: false; error: string }> {
   return call<AchTransfer>("POST", "/ach_transfers", {
@@ -142,7 +144,6 @@ export async function createAchDebit(input: {
     funding: "checking",
     standard_entry_class_code: "prearranged_payments_and_deposit",
     require_approval: false,
-    same_day_ach: input.sameDay ?? false,
   });
 }
 
@@ -194,7 +195,7 @@ export async function createRtpTransfer(input: {
  * portal.
  */
 export type DisbursementResult =
-  | { ok: true; rail: "rtp" | "same_day_ach" | "ach"; transferId: string; status: string }
+  | { ok: true; rail: "rtp" | "ach"; transferId: string; status: string }
   | { ok: false; error: string };
 
 export async function safeDisburse(input: {
@@ -204,7 +205,7 @@ export async function safeDisburse(input: {
   individualName?: string;
   remittanceInformation?: string;
 }): Promise<DisbursementResult> {
-  // 1. RTP first
+  // 1. RTP first - instant, 24/7, but only if destination bank supports it
   const rtp = await createRtpTransfer({
     externalAccountId: input.externalAccountId,
     amountCents: input.amountCents,
@@ -214,32 +215,16 @@ export async function safeDisburse(input: {
   if (rtp.ok) {
     return { ok: true, rail: "rtp", transferId: rtp.data.id, status: rtp.data.status };
   }
-  // RTP failed - check if the failure was "destination doesn't support RTP"
-  // vs a real error. The error string from Increase contains the routing
-  // number text. Either way we fall through to ACH.
   console.warn("[increase] RTP failed, falling back to ACH:", rtp.error);
 
-  // 2. Same-Day ACH if we're before the cutoff. Increase ignores the
-  //    same_day_ach flag silently if we're past the cutoff, so this is
-  //    safe to always pass true and let Increase decide.
-  const sameDay = await createAchCredit({
-    externalAccountId: input.externalAccountId,
-    amountCents: input.amountCents,
-    statementDescriptor: input.statementDescriptor,
-    individualName: input.individualName,
-    sameDay: true,
-  });
-  if (sameDay.ok) {
-    return { ok: true, rail: "same_day_ach", transferId: sameDay.data.id, status: sameDay.data.status };
-  }
-
-  // 3. Standard ACH last resort
+  // 2. ACH - Increase picks Same-Day vs Future-Dated automatically based
+  //    on submission time + cutoff (~2:45pm ET). The response will tell
+  //    us which one was used via settlement_schedule.
   const ach = await createAchCredit({
     externalAccountId: input.externalAccountId,
     amountCents: input.amountCents,
     statementDescriptor: input.statementDescriptor,
     individualName: input.individualName,
-    sameDay: false,
   });
   if (ach.ok) {
     return { ok: true, rail: "ach", transferId: ach.data.id, status: ach.data.status };
@@ -252,15 +237,13 @@ export async function getRtpTransfer(id: string) {
 }
 
 /**
- * Debit with Same-Day ACH first, fall back to standard ACH if Increase
- * rejects (past the ~2:45pm ET cutoff, destination bank not eligible,
- * etc.). Mirrors safeDisburse for credits but for repayment debits.
- *
- * Returns the same normalised shape as safeDisburse so callers can log
- * which rail actually carried the debit.
+ * Wrapper around createAchDebit that returns a normalised result shape.
+ * Increase automatically picks Same-Day vs Future-Dated based on
+ * submission time relative to its cutoff (~2:45pm ET) - we don't pass
+ * a flag, we just check the response's settlement_schedule.
  */
 export type DebitResult =
-  | { ok: true; rail: "same_day_ach" | "ach"; transferId: string; status: string }
+  | { ok: true; rail: "ach"; transferId: string; status: string }
   | { ok: false; error: string };
 
 export async function safeDebit(input: {
@@ -269,31 +252,16 @@ export async function safeDebit(input: {
   statementDescriptor: string;
   individualName?: string;
 }): Promise<DebitResult> {
-  // 1. Try Same-Day ACH
-  const sameDay = await createAchDebit({
+  const result = await createAchDebit({
     externalAccountId: input.externalAccountId,
     amountCents: input.amountCents,
     statementDescriptor: input.statementDescriptor,
     individualName: input.individualName,
-    sameDay: true,
   });
-  if (sameDay.ok) {
-    return { ok: true, rail: "same_day_ach", transferId: sameDay.data.id, status: sameDay.data.status };
+  if (result.ok) {
+    return { ok: true, rail: "ach", transferId: result.data.id, status: result.data.status };
   }
-  console.warn("[increase] Same-Day ACH debit failed, falling back to standard:", sameDay.error);
-
-  // 2. Fall back to standard ACH
-  const standard = await createAchDebit({
-    externalAccountId: input.externalAccountId,
-    amountCents: input.amountCents,
-    statementDescriptor: input.statementDescriptor,
-    individualName: input.individualName,
-    sameDay: false,
-  });
-  if (standard.ok) {
-    return { ok: true, rail: "ach", transferId: standard.data.id, status: standard.data.status };
-  }
-  return { ok: false, error: standard.error };
+  return { ok: false, error: result.error };
 }
 
 export async function getAchTransfer(id: string) {
