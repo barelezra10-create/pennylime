@@ -81,6 +81,16 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Missing or unparseable 'from' address" }, { status: 400 });
   }
 
+  // Auto-archive obvious automated / promotional senders so they never
+  // count toward the unread CRM badge. They still land in /admin/inbox
+  // under the "Archived" filter so nothing is permanently lost - just
+  // hidden from the day-to-day view.
+  const isAutoNoise =
+    /(^|[._-])(no[-_]?reply|donotreply|do[-_]?not[-_]?reply|notifications?|noreply)@/i.test(fromEmail) ||
+    /@(em|email|mailer|mail|news|notifications?|updates|hello|info)\.(.+)/i.test(fromEmail) &&
+      /noreply|no-reply|donotreply/i.test(fromEmail);
+  const initialStatus = isAutoNoise ? "ARCHIVED" : "UNREAD";
+
   // Match contact by from email (case-insensitive).
   const contact = await prisma.contact.findUnique({
     where: { email: fromEmail },
@@ -118,6 +128,7 @@ export async function POST(req: NextRequest) {
       inReplyTo: payload.inReplyTo ?? null,
       contactId: contact?.id ?? null,
       receivedAt: payload.receivedAt ? new Date(payload.receivedAt) : new Date(),
+      status: initialStatus,
     },
   }).catch((err) => {
     console.error("[inbound-email] InboundEmail insert failed:", err);
