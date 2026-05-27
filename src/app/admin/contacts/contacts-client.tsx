@@ -388,7 +388,12 @@ function NextDuePill({ nextDue, isLate }: { nextDue: { date: string; amount: num
   const days = Math.floor((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   let label: string;
   let cls: string;
-  if (isLate) {
+  if (nextDue.status === "PROCESSING") {
+    // ACH debit was initiated and is settling - customer paid on time,
+    // this is just the rail waiting. Distinct from "Late".
+    label = "Processing";
+    cls = "text-[#2563eb] bg-[#eff6ff]";
+  } else if (isLate) {
     label = `${Math.abs(days)}d late`;
     cls = "text-[#dc2626] bg-[#fef2f2]";
   } else if (days === 0) {
@@ -397,6 +402,11 @@ function NextDuePill({ nextDue, isLate }: { nextDue: { date: string; amount: num
   } else if (days === 1) {
     label = "Due tomorrow";
     cls = "text-[#b45309] bg-[#fffbeb]";
+  } else if (days < 0) {
+    // Past due date but still within grace window - charged on time,
+    // just waiting for cron / ACH to settle. Don't scream "late" yet.
+    label = "Pending settle";
+    cls = "text-[#52525b] bg-[#fafafa]";
   } else {
     label = `In ${days}d`;
     cls = "text-[#71717a] bg-[#fafafa]";

@@ -79,7 +79,16 @@ export function computeLoanSummary(app: ApplicationLite | null | undefined): Loa
   // First unpaid payment is the "next due"
   const nextUnpaid = payments.find((p) => p.status !== "PAID" && !p.paidAt);
   const now = Date.now();
-  const isLate = nextUnpaid ? new Date(nextUnpaid.dueDate).getTime() < now : false;
+  // A payment is "late" only if it's PENDING or FAILED past its due date.
+  // PROCESSING means we already initiated an ACH debit and we're waiting
+  // for it to settle - the customer paid on time, just waiting on rails.
+  // Also give 1 grace day to absorb ACH settlement delay on payments
+  // initiated right at the due date.
+  const GRACE_MS = 24 * 60 * 60 * 1000;
+  const isLate = nextUnpaid
+    ? nextUnpaid.status !== "PROCESSING" &&
+      new Date(nextUnpaid.dueDate).getTime() + GRACE_MS < now
+    : false;
 
   // Cadence detection from payment date gaps
   let cadence: LoanSummary["cadence"] = "unknown";

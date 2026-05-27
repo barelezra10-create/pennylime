@@ -81,14 +81,46 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Missing or unparseable 'from' address" }, { status: 400 });
   }
 
-  // Auto-archive obvious automated / promotional senders so they never
-  // count toward the unread CRM badge. They still land in /admin/inbox
-  // under the "Archived" filter so nothing is permanently lost - just
-  // hidden from the day-to-day view.
-  const isAutoNoise =
-    /(^|[._-])(no[-_]?reply|donotreply|do[-_]?not[-_]?reply|notifications?|noreply)@/i.test(fromEmail) ||
-    /@(em|email|mailer|mail|news|notifications?|updates|hello|info)\.(.+)/i.test(fromEmail) &&
-      /noreply|no-reply|donotreply/i.test(fromEmail);
+  // Auto-archive obvious automated / promotional senders + emails from
+  // known vendor domains so they never count toward the unread CRM
+  // badge. They still land in /admin/inbox under the "Archived" filter
+  // so nothing is permanently lost - just hidden from the day-to-day
+  // view that's reserved for actual customer messages.
+  const lowerFrom = fromEmail.toLowerCase();
+  const isNoReply =
+    /(^|[._-])(no[-_]?reply|donotreply|do[-_]?not[-_]?reply|notifications?|noreply)@/i.test(fromEmail);
+  // Vendor / infrastructure domains. Emails from these are tooling
+  // conversations (Bar has threads going with Increase support, Resend
+  // updates Bar via product email, etc) - not customer leads. Includes
+  // bare domain + common @subdomain.vendor.com patterns.
+  const VENDOR_DOMAINS = [
+    "increase.com",
+    "resend.com",
+    "updates.resend.com",
+    "plaid.com",
+    "twilio.com",
+    "stripe.com",
+    "railway.app",
+    "vercel.com",
+    "anthropic.com",
+    "github.com",
+    "google.com",          // ads, workspace, analytics
+    "googleapis.com",
+    "workspace.google.com",
+    "feedback.google.com",
+    "noreply.google.com",
+    "accounts.google.com",
+    "aws.com",
+    "amazonaws.com",
+    "cloudflare.com",
+    "openai.com",
+    "mongodb.com",
+    "vercel-storage.com",
+  ];
+  const isVendor = VENDOR_DOMAINS.some(
+    (d) => lowerFrom.endsWith(`@${d}`) || lowerFrom.endsWith(`.${d}`),
+  );
+  const isAutoNoise = isNoReply || isVendor;
   const initialStatus = isAutoNoise ? "ARCHIVED" : "UNREAD";
 
   // Match contact by from email (case-insensitive).
