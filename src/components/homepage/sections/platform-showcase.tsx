@@ -96,7 +96,7 @@ export function PlatformShowcase({ platforms: _platforms }: PlatformShowcaseProp
             Every major platform.
           </h2>
           <p className="text-[#52525b] text-[15px] md:text-[16px] max-w-xl mx-auto">
-            If your deposits come from any of these, your earnings qualify. No W-2 required.
+            If your 1099 deposits come from any of these, your business qualifies.
           </p>
         </div>
 

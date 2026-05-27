@@ -53,10 +53,10 @@ const features: FeatureRow[] = [
     bank: { value: "Monthly fixed", positive: true },
   },
   {
-    label: "Gig Workers OK",
+    label: "1099 / gig workers OK",
     lime: { value: "Yes", positive: true },
     mca: { value: "Business only", positive: false },
-    bank: { value: "W-2 preferred", positive: false },
+    bank: { value: "Traditional payroll only", positive: false },
   },
 ];
 

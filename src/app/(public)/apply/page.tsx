@@ -1524,10 +1524,13 @@ const WORKER_TYPES = [
     bullets: ["Gig workers (Uber, DoorDash, TaskRabbit, etc.)", "Freelancers or 1099 contractors", "Income from multiple clients or platforms"],
   },
   {
-    id: "NOT_SURE",
-    title: "Not sure which fits me",
-    description: "Choose this option if you don't earn contractor or business income.",
-    bullets: ["W-2 Employee", "Unemployed", "Retired or disabled", "Other non-contractor income"],
+    // INELIGIBLE: PennyLime only funds self-employed 1099 contractors
+    // and small business owners. Selecting this option triggers a
+    // polite gating screen instead of continuing the application.
+    id: "NOT_ELIGIBLE",
+    title: "None of these — I'm a salaried employee",
+    description: "PennyLime only serves self-employed 1099 contractors and small business owners.",
+    bullets: ["Salaried / hourly employee", "Income from a single employer", "Retired or unemployed"],
   },
 ];
 
@@ -1632,6 +1635,14 @@ function StepWorkerType({
               toast.error("Please select how you earn");
               return;
             }
+            // Gate non-1099 / non-business-owner applicants out of the
+            // funnel. Show a polite rejection inline instead of letting
+            // them through to bank-linking + ID upload only to be
+            // declined later.
+            if (workerType === "NOT_ELIGIBLE") {
+              toast.error("PennyLime is for self-employed 1099 contractors and small business owners only.");
+              return;
+            }
             onNext();
           }}
           className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
@@ -1640,6 +1651,13 @@ function StepWorkerType({
           Continue &rarr;
         </motion.button>
       </div>
+
+      {workerType === "NOT_ELIGIBLE" ? (
+        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-[13px] text-amber-900">
+          <strong className="block mb-1">PennyLime can't help today.</strong>
+          We're built specifically for self-employed 1099 contractors and small business owners — the underwriting reads your business deposit patterns, not pay stubs. If you start earning 1099 income, come back and we'll be ready.
+        </div>
+      ) : null}
     </motion.div>
   );
 }

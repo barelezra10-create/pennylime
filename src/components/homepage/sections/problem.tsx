@@ -88,7 +88,7 @@ export function Problem() {
               <div className="space-y-4">
                 <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>
-                  <span><strong className="text-black">Underwriting wants a W-2.</strong> Drivers, sellers, and operators don&apos;t have one.</span>
+                  <span><strong className="text-black">Underwriting wants traditional employment proof.</strong> Drivers, sellers, and small business owners don&apos;t have a corporate payroll behind them.</span>
                 </p>
                 <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#dc2626] text-[18px] mt-0.5">&#10005;</span>

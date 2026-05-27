@@ -11,7 +11,7 @@ const STEPS = [
   {
     num: "01",
     headline: "Apply in 5 minutes",
-    desc: "Short form. No W-2, no tax returns. Just the platforms you earn on and basic info. We never pull your credit.",
+    desc: "Short form. No tax returns, no pay stubs. Just the platforms your 1099 income comes from and basic info. We never pull your credit.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="6" y="3" width="20" height="26" rx="3" />

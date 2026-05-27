@@ -145,7 +145,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
           <ol className="space-y-4">
             {[
               { num: "1", title: "Apply in 5 minutes", body: `Tell us how much you need and link your bank account where your ${platform.platformName} earnings deposit.` },
-              { num: "2", title: "Instant decision", body: "Our underwriting reads your deposit history. No credit check, no W-2 required. Most applicants hear back same day." },
+              { num: "2", title: "Instant decision", body: "Our underwriting reads your 1099 deposit history. No credit check, no pay stubs. Most applicants hear back same day." },
               { num: "3", title: "Funds in as fast as 24 hours", body: "Once you accept, the ACH credit goes out to your linked bank account. Repay through small weekly debits over 4 to 12 weeks." },
             ].map((s) => (
               <li key={s.num} className="flex gap-4">

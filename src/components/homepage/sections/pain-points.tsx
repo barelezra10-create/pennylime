@@ -164,7 +164,7 @@ export function PainPoints() {
           </Link>
           <p className="text-[#52525b] text-[14px]">
             <span className="font-semibold text-black">48-hour funding</span>{" "}
-            · No credit pull · Verified deposits, not W-2s
+            · No credit pull · Verified 1099 deposits, not pay stubs
           </p>
         </div>
       </div>
