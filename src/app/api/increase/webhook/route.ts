@@ -39,18 +39,27 @@ function verifySignature(rawBody: string, headerSig: string | null): boolean {
 export async function POST(req: NextRequest) {
   const raw = await req.text();
   const sig = req.headers.get("Increase-Webhook-Signature");
-  if (!verifySignature(raw, sig)) return new Response("invalid signature", { status: 401 });
+  // Log every webhook arrival so we can diagnose silent failures.
+  // Without this, signature mismatches return 401 with zero trace and
+  // the admin sees stale statuses forever.
+  console.log(`[increase webhook] arrived (sig=${sig ? "present" : "MISSING"} len=${raw.length})`);
+  if (!verifySignature(raw, sig)) {
+    console.error(`[increase webhook] signature verification FAILED - check INCREASE_WEBHOOK_SECRET matches the Increase dashboard endpoint secret`);
+    return new Response("invalid signature", { status: 401 });
+  }
 
   let body: { type?: string; associated_object_type?: string; associated_object_id?: string; created_at?: string };
   try {
     body = JSON.parse(raw);
   } catch {
+    console.error("[increase webhook] invalid JSON body");
     return new Response("invalid json", { status: 400 });
   }
 
   const objectType = body.associated_object_type;
   const objectId = body.associated_object_id;
   const eventType = body.type;
+  console.log(`[increase webhook] event=${eventType} object=${objectType} id=${objectId}`);
 
   // Handle ACH + RTP transfer events with the same downstream logic.
   // RTP fires "real_time_payments_transfer.complete" when the destination
