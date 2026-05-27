@@ -198,7 +198,7 @@ In no event will PennyLime be liable to Merchant for indirect, incidental, speci
 
 **12.3 Jury trial waiver.** **THE PARTIES KNOWINGLY AND VOLUNTARILY WAIVE THE RIGHT TO TRIAL BY JURY IN ANY DISPUTE ARISING FROM OR RELATED TO THIS AGREEMENT.** Each Party acknowledges making this waiver after consultation with counsel of its choice (or having had the opportunity to do so).
 
-**12.4 Arbitration.** At the election of either Party (the **"Requesting Party"**), any dispute arising from or related to this Agreement will be resolved by binding arbitration administered by the **American Arbitration Association ("AAA")** under its Consumer Arbitration Rules then in effect.
+**12.4 Arbitration.** At the election of either Party (the **"Requesting Party"**), any dispute arising from or related to this Agreement will be resolved by binding arbitration administered by the **American Arbitration Association ("AAA")** under its Commercial Arbitration Rules then in effect. This is a commercial transaction between two businesses; the AAA Consumer Rules do not apply.
 
 - The Requesting Party must first send the other Party written notice of intent to arbitrate by certified mail.
 - If the dispute is not resolved within 30 days of that notice, either Party may initiate AAA proceedings.
