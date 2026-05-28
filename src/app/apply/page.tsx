@@ -126,7 +126,7 @@ function StepIndicator({ current, stepNames }: { current: number; stepNames: str
 /* ------------------------------------------------------------------ */
 /*  RIGHT SIDEBAR                                                       */
 /* ------------------------------------------------------------------ */
-function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount: number; loanTermMonths: number }) {
+function SidebarContent({ step, amount, loanTermMonths, totalSteps }: { step: number; amount: number; loanTermMonths: number; totalSteps: number }) {
   const weeklyEstimate = ((amount * 0.30 * Math.pow(1.30, loanTermMonths)) / (Math.pow(1.30, loanTermMonths) - 1)).toFixed(0);
 
   const content = [
@@ -196,7 +196,7 @@ function SidebarContent({ step, amount, loanTermMonths }: { step: number; amount
       </div>
       <div className="bg-white/10 rounded-xl px-4 py-3">
         <p className="text-[12px] text-white/60 mb-1">Progress</p>
-        <p className="text-[16px] font-bold text-white">Step 2 of 7. You&apos;re doing great.</p>
+        <p className="text-[16px] font-bold text-white">Step {step + 1} of {totalSteps}. You&apos;re doing great.</p>
       </div>
     </div>,
 
@@ -3587,7 +3587,7 @@ function ApplyPageInner() {
               </span>
             </div>
 
-            <SidebarContent step={step} amount={loanAmount} loanTermMonths={loanTermMonths} />
+            <SidebarContent step={step} amount={loanAmount} loanTermMonths={loanTermMonths} totalSteps={activeStepNames.length} />
 
             {/* Bottom trust line */}
             <div className="mt-10 pt-6 border-t border-white/20">
