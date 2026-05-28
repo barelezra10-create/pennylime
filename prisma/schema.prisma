@@ -949,6 +949,44 @@ model SmsSequenceEnrollment {
 /// acceptance. Captures the exact text shown, the schedule they
 /// agreed to, IP/user-agent, and the agreement version hash so we
 /// can prove later what was on screen when they clicked.
+// State-specific Commercial Financing Disclosure Law (CFDL) disclosure.
+// Required by NY, CA, UT, VA, GA (and growing). Generated + delivered to
+// the merchant BEFORE they sign the Receivables Purchase Agreement, with
+// its own scroll-and-sign. Retained for the state-mandated period (5+
+// years across all current CFDL states).
+model CfdlDisclosure {
+  id                String   @id @default(uuid())
+  applicationId     String
+  state             String   // NY | CA | UT | VA | GA
+  // Calculation snapshot at sign time (immutable evidence of what we
+  // showed the merchant). All other amounts on the Application can change
+  // later via cancel + re-offer; this row reflects the specific quote the
+  // merchant saw and signed off on.
+  disbursedAmount   Decimal
+  totalRepayment    Decimal
+  financeCharge     Decimal
+  aprPercent        Float    // APR-equivalent on the factor-rate transaction
+  termDays          Int
+  specifiedPercent  Float    // % of receivables remitted per payment
+  weeklyPayment     Decimal
+  // Signing evidence
+  signedName        String
+  signedAt          DateTime @default(now())
+  signedIp          String?
+  signedUserAgent   String?
+  scrolledToBottom  Boolean  @default(false)
+  // Template version + body hash so we can prove exactly what was shown
+  // if the regulator asks. Body itself stored as a Document for retrieval.
+  templateVersion   String   @default("v1-2026-05-28")
+  bodyHash          String?  // SHA-256 of the rendered disclosure text
+  documentId        String?  // links to Document storing the signed PDF
+  createdAt         DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([state])
+  @@index([signedAt])
+}
+
 model AchAuthorization {
   id                  String   @id @default(uuid())
   applicationId       String

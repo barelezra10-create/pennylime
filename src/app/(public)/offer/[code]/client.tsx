@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
 import { acceptOffer } from "@/actions/offers";
+import { CfdlDisclosureModal } from "./cfdl-disclosure-modal";
 
 type Term = {
   weeklyRemittance: number;
@@ -17,6 +18,7 @@ type Term = {
 
 type InitialOffer = {
   ok: true;
+  applicationId: string;
   firstName: string;
   lastName: string;
   status: "OFFERED" | "ACCEPTED" | "DECLINED";
@@ -31,6 +33,10 @@ type InitialOffer = {
   bankAccountMask: string | null;
   accountSubtype: string | null;
   fullAddress: string | null;
+  // CFDL gate signals (NY/CA/UT/VA/GA merchants must sign a state
+  // commercial financing disclosure before the RPSA can be accepted).
+  cfdlState: string | null;
+  cfdlSigned: boolean;
 };
 
 const fmt = (n: number) =>
@@ -236,6 +242,14 @@ export function OfferClient({
     );
   }
 
+  // CFDL gate state: NY/CA/UT/VA/GA merchants must sign a Commercial
+  // Financing Disclosure first. The modal opens when handleAccept fires
+  // and they haven't signed yet. After signing, handleAccept auto-fires
+  // again to complete the RPSA acceptance.
+  const [cfdlModalOpen, setCfdlModalOpen] = useState(false);
+  const [cfdlSigned, setCfdlSigned] = useState(initial.cfdlSigned);
+  const needsCfdl = !!initial.cfdlState && !cfdlSigned;
+
   async function handleAccept() {
     if (!agreedToAgreement || !agreedToAch) {
       toast.error("Please check both boxes to accept.");
@@ -247,6 +261,12 @@ export function OfferClient({
     }
     if (!nameLooksValid) {
       toast.error("Please type your full legal name (first and last) to sign.");
+      return;
+    }
+    // CFDL gate fires BEFORE acceptOffer. Modal handles its own scroll +
+    // signing; on success it flips cfdlSigned and re-enters this function.
+    if (needsCfdl) {
+      setCfdlModalOpen(true);
       return;
     }
     setSubmitting(true);
@@ -525,6 +545,31 @@ export function OfferClient({
           )}
         </div>
       </main>
+
+      {cfdlModalOpen && initial.cfdlState ? (
+        <CfdlDisclosureModal
+          applicationId={initial.applicationId}
+          selectedAmount={amount}
+          termWeeks={initial.terms[selectedTerm]?.durationWeeks ?? 8}
+          weeklyPayment={
+            initial.terms[selectedTerm]
+              ? Math.round(
+                  initial.terms[selectedTerm].weeklyRemittance *
+                    (amount / Math.max(initial.terms[selectedTerm].disbursedAmount, 1)) *
+                    100,
+                ) / 100
+              : 0
+          }
+          stateCode={initial.cfdlState}
+          onSigned={() => {
+            setCfdlModalOpen(false);
+            setCfdlSigned(true);
+            // Auto-resume acceptance now that the disclosure is signed.
+            setTimeout(() => handleAccept(), 100);
+          }}
+          onCancel={() => setCfdlModalOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

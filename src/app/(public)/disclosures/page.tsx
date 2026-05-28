@@ -60,10 +60,13 @@ export default function DisclosuresPage() {
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
-          State Disclosures
+          State Commercial Financing Disclosures
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          California, New York, Virginia, Georgia, and Utah residents receive additional written disclosures required by state commercial financing disclosure laws. These disclosures are presented before acceptance of any advance and are also available on request from <a href="mailto:legal@pennylime.com" className="text-[#15803d] hover:underline">legal@pennylime.com</a>.
+          Merchants in California, New York, Utah, Virginia, and Georgia receive an additional written Commercial Financing Disclosure required by state law (NY Financial Services Law §§ 800-815, CA Financial Code §§ 22800 et seq., Utah Commercial Financing Registration and Disclosure Act, VA Commercial Financing Disclosure Act, GA Commercial Financing Disclosure Law). The disclosure includes the disbursed amount, finance charge, total payment, estimated APR-equivalent, repayment schedule, specified percentage, prepayment policy, and a statement that the transaction is unsecured.
+        </p>
+        <p className="text-[15px] text-[#71717a] leading-relaxed mt-3">
+          The disclosure is displayed on the offer page and must be reviewed in full and signed by the merchant (typed-name signature with IP and timestamp captured) before the Receivables Purchase Agreement can be accepted. Each signed disclosure is retained as a PDF in the merchant's account and is available on request from <a href="mailto:info@pennylime.com" className="text-[#15803d] hover:underline">info@pennylime.com</a>.
         </p>
       </div>
     </div>

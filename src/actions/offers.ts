@@ -421,8 +421,24 @@ export async function getOfferForApplicant(input: {
   ].filter(Boolean);
   const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : null;
 
+  // CFDL gate signal: tell the offer page if this merchant's state
+  // requires a Commercial Financing Disclosure before accepting, and
+  // whether they've already signed one.
+  const { isCfdlState, normalizeStateCode } = await import(
+    "@/lib/compliance/cfdl/state-requirements"
+  );
+  const stateCode = normalizeStateCode(app.addressState);
+  const cfdlState = stateCode && isCfdlState(stateCode) ? stateCode : null;
+  const cfdlSigned = cfdlState
+    ? !!(await prisma.cfdlDisclosure.findFirst({
+        where: { applicationId: app.id },
+        select: { id: true },
+      }))
+    : false;
+
   return {
     ok: true as const,
+    applicationId: app.id,
     firstName: app.firstName,
     lastName: app.lastName,
     status: app.offerStatus as "OFFERED" | "ACCEPTED" | "DECLINED",
@@ -437,6 +453,8 @@ export async function getOfferForApplicant(input: {
     bankAccountMask,
     accountSubtype: app.plaidAccountSubtype ?? null,
     fullAddress,
+    cfdlState,
+    cfdlSigned,
   };
 }
 
@@ -489,6 +507,28 @@ export async function acceptOffer(input: {
   }
   if (app.offerStatus !== "OFFERED") {
     return { ok: false as const, error: "Offer not available" };
+  }
+
+  // CFDL gate: NY/CA/UT/VA/GA merchants must sign the state Commercial
+  // Financing Disclosure BEFORE acceptOffer can run. If they haven't, we
+  // refuse acceptance instead of letting the RPSA signature land without
+  // the required state disclosure - which would be a misrepresentation
+  // and a CFDL violation.
+  const { isCfdlState, normalizeStateCode } = await import(
+    "@/lib/compliance/cfdl/state-requirements"
+  );
+  const merchantState = normalizeStateCode(app.addressState);
+  if (merchantState && isCfdlState(merchantState)) {
+    const existingDisclosure = await prisma.cfdlDisclosure.findFirst({
+      where: { applicationId: app.id },
+      select: { id: true },
+    });
+    if (!existingDisclosure) {
+      return {
+        ok: false as const,
+        error: `You must review and sign the ${merchantState} state Commercial Financing Disclosure before accepting this offer.`,
+      };
+    }
   }
 
   const min = Number(app.offeredMinAmount ?? 0);
