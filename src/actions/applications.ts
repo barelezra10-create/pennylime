@@ -131,6 +131,7 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
   try {
     const { fetchAndStoreIncome, ensureIncreaseExternalAccount, createAssetReport } =
       await import("@/actions/plaid");
+    const { screenApplicantSanctions } = await import("@/actions/sanctions-screening");
     await Promise.allSettled([
       fetchAndStoreIncome(application.id),
       ensureIncreaseExternalAccount(application.id),
@@ -138,6 +139,10 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       // the actual transactions/balances get populated later when
       // ASSETS:PRODUCT_READY webhook fires (typically 10-60s later).
       createAssetReport(application.id),
+      // OFAC / PEP screen via OpenSanctions. Best-effort - failures
+      // log a REVIEW stub so admin investigates, but don't block the
+      // applicant. Required by BSA / 31 CFR 1010.430.
+      screenApplicantSanctions(application.id),
     ]);
   } catch (err) {
     console.error("Post-submit Plaid pipeline failed:", err);

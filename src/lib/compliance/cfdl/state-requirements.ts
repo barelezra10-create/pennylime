@@ -12,9 +12,9 @@
  * statement renders.
  */
 
-export type CfdlState = "NY" | "CA" | "UT" | "VA" | "GA";
+export type CfdlState = "NY" | "CA" | "UT" | "VA" | "GA" | "CT" | "MO" | "KS";
 
-export const CFDL_STATES: CfdlState[] = ["NY", "CA", "UT", "VA", "GA"];
+export const CFDL_STATES: CfdlState[] = ["NY", "CA", "UT", "VA", "GA", "CT", "MO", "KS"];
 
 const STATE_NAMES: Record<CfdlState, string> = {
   NY: "New York",
@@ -22,6 +22,9 @@ const STATE_NAMES: Record<CfdlState, string> = {
   UT: "Utah",
   VA: "Virginia",
   GA: "Georgia",
+  CT: "Connecticut",
+  MO: "Missouri",
+  KS: "Kansas",
 };
 
 const STATE_STATUTES: Record<CfdlState, string> = {
@@ -30,12 +33,16 @@ const STATE_STATUTES: Record<CfdlState, string> = {
   UT: "Utah Code §§ 7-27-101 et seq. (the Commercial Financing Registration and Disclosure Act)",
   VA: "Virginia Code §§ 6.2-2228 et seq. (the Commercial Financing Disclosure Act)",
   GA: "Georgia Code §§ 7-7-1 et seq. (the Commercial Financing Disclosure Law)",
+  CT: "Connecticut General Statutes §§ 36a-860 et seq. (the Commercial Financing Disclosure Act)",
+  MO: "Missouri Revised Statutes §§ 408.700 et seq. (the Commercial Financing Disclosure Act)",
+  KS: "Kansas Statutes Annotated §§ 16a-2-901 et seq. (the Kansas Commercial Financing Disclosure Act)",
 };
 
 /**
  * Threshold above which the CFDL disclosure is NOT required.
- * Most states cap at $500K or $2.5M; PennyLime's max advance is $10K,
- * so we always need to disclose in CFDL states.
+ * NY caps at $2.5M, CT at $250K, most others at $500K or unlimited;
+ * PennyLime's max advance is $10K, so we always need to disclose in
+ * CFDL states.
  */
 const STATE_CAPS: Record<CfdlState, number> = {
   NY: 2_500_000,
@@ -43,6 +50,9 @@ const STATE_CAPS: Record<CfdlState, number> = {
   UT: Number.POSITIVE_INFINITY, // all commercial financing
   VA: 500_000,
   GA: 500_000,
+  CT: 250_000,
+  MO: Number.POSITIVE_INFINITY,
+  KS: Number.POSITIVE_INFINITY,
 };
 
 export function isCfdlState(stateCode: string | null | undefined): stateCode is CfdlState {
@@ -81,6 +91,9 @@ export function normalizeStateCode(input: string | null | undefined): string | n
     UTAH: "UT",
     VIRGINIA: "VA",
     GEORGIA: "GA",
+    CONNECTICUT: "CT",
+    MISSOURI: "MO",
+    KANSAS: "KS",
   };
   return lookup[trimmed] || null;
 }

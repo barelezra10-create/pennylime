@@ -949,11 +949,42 @@ model SmsSequenceEnrollment {
 /// acceptance. Captures the exact text shown, the schedule they
 /// agreed to, IP/user-agent, and the agreement version hash so we
 /// can prove later what was on screen when they clicked.
+// OFAC / PEP sanctions screening. Run on application submit (best
+// effort) and again at approval (admin-blocking). Hits the
+// OpenSanctions API which aggregates OFAC SDN, EU/UN/UK consolidated
+// sanctions, and Politically Exposed Persons (PEP) lists, updated
+// daily. Retained 5 years per BSA / 31 CFR 1010.430.
+//
+// status:
+//   CLEAR  - no matches above threshold; safe to proceed
+//   REVIEW - one or more partial matches; admin review required
+//   MATCH  - high-confidence match; do not fund without remediation
+model SanctionsScreening {
+  id              String   @id @default(uuid())
+  applicationId   String
+  fullName        String
+  dateOfBirth     String?
+  addressCountry  String?
+  provider        String   @default("opensanctions")
+  status          String
+  hitCount        Int      @default(0)
+  rawResponse     String?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+  screenedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([applicationId])
+  @@index([status])
+  @@index([screenedAt])
+}
+
 // State-specific Commercial Financing Disclosure Law (CFDL) disclosure.
-// Required by NY, CA, UT, VA, GA (and growing). Generated + delivered to
-// the merchant BEFORE they sign the Receivables Purchase Agreement, with
-// its own scroll-and-sign. Retained for the state-mandated period (5+
-// years across all current CFDL states).
+// Required by NY, CA, UT, VA, GA, CT, MO, KS (and growing). Generated +
+// delivered to the merchant BEFORE they sign the Receivables Purchase
+// Agreement, with its own scroll-and-sign. Retained for the state-
+// mandated period (5+ years across all current CFDL states).
 model CfdlDisclosure {
   id                String   @id @default(uuid())
   applicationId     String
