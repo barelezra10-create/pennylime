@@ -76,7 +76,7 @@ const formSchema = z.object({
 /* ------------------------------------------------------------------ */
 function Navbar() {
   return (
-    <nav className="fixed top-0 z-50 w-full bg-[#fafaf7]/90 backdrop-blur-xl border-b border-[#e4e4e7]">
+    <nav className="sticky top-0 z-50 w-full bg-[#fafaf7]/90 backdrop-blur-xl border-b border-[#e4e4e7]">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 sm:px-10 h-16 md:h-20">
         <Link href="/" className="inline-flex items-center gap-2 min-h-[44px]">
           <Image
@@ -3162,7 +3162,7 @@ function ApplyPageInner() {
       )}
       <Navbar />
 
-      <div className="flex min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)] pt-[64px] md:pt-[80px]">
+      <div className="flex min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-80px)]">
         {/* Left: Form */}
         <div className="flex-1 flex flex-col justify-center px-5 md:px-16 py-8 md:py-12 min-w-0">
           <div className="w-full max-w-xl mx-auto">
