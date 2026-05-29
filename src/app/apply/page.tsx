@@ -41,6 +41,23 @@ const STEPS = [
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
 
+/**
+ * Weekly-compounded factor rate matching what the signed agreement
+ * actually charges (5% per week compounded). Total repayment =
+ * principal × (1.05)^weeks. We've been advertising a much higher
+ * synthetic rate here previously (~30% / period) that produced
+ * ~$2300/wk on a $5,000 / 4-week quote — wildly above the real
+ * pricing. This is the same WEEKLY_RATE used in src/actions/portal-
+ * payoff and the partner deck so the apply page, contract, and
+ * portal all agree.
+ */
+const WEEKLY_RATE = 0.05;
+function quoteWeeklyEstimate(amount: number, weeks: number): number {
+  if (amount <= 0 || weeks <= 0) return 0;
+  const total = amount * Math.pow(1 + WEEKLY_RATE, weeks);
+  return Math.round(total / weeks);
+}
+
 const GIG_PLATFORMS = [
   { id: "uber", label: "Uber" },
   { id: "lyft", label: "Lyft" },
@@ -127,7 +144,10 @@ function StepIndicator({ current, stepNames }: { current: number; stepNames: str
 /*  RIGHT SIDEBAR                                                       */
 /* ------------------------------------------------------------------ */
 function SidebarContent({ step, amount, loanTermMonths, totalSteps }: { step: number; amount: number; loanTermMonths: number; totalSteps: number }) {
-  const weeklyEstimate = ((amount * 0.30 * Math.pow(1.30, loanTermMonths)) / (Math.pow(1.30, loanTermMonths) - 1)).toFixed(0);
+  // loanTermMonths actually stores WEEKS - legacy field name. Use the
+  // real compound 5%/week formula so the quote matches what the signed
+  // contract will charge.
+  const weeklyEstimate = quoteWeeklyEstimate(amount, loanTermMonths).toString();
 
   const content = [
     // Step 0: Amount
@@ -370,8 +390,9 @@ function StepAmount({
   onNext: () => void;
 }) {
   const pct = ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
-  // loanTermMonths field now holds WEEKS, compute weekly payment
-  const weeklyEstimate = ((amount * 0.30 * Math.pow(1.30, loanTermMonths)) / (Math.pow(1.30, loanTermMonths) - 1)).toFixed(0);
+  // loanTermMonths field now holds WEEKS. Same compound 5%/week formula
+  // as the sidebar so both quotes agree.
+  const weeklyEstimate = quoteWeeklyEstimate(amount, loanTermMonths).toString();
 
   return (
     <motion.div
