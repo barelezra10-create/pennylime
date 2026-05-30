@@ -41,6 +41,11 @@ export type MoneyFlow = {
   revenuePeriod: number; // interest + late fees collected in period
   defaultLossesLifetime: number; // principal stuck in COLLECTIONS
   expectedRevenueOutstanding: number; // interest scheduled but not yet collected on active loans
+  // Raw cash hitting our Increase account — full payment amount including
+  // principal-back portion. Operator-friendly counterpart to revenue,
+  // which is GAAP-style (interest only).
+  cashCollectedPeriod: number;
+  cashCollectedLifetime: number;
 };
 
 export type AdSpendBreakdown = {
@@ -152,6 +157,10 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
   const principalRecovered = paymentsLifetime.reduce((s, p) => s + num(p.principal), 0);
   const revenueLifetime = paymentsLifetime.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
   const revenuePeriod = paymentsPeriod.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
+  // Cash collected = full payment amount (principal + interest + late fee).
+  // Operator-friendly: matches what shows up in the Increase account.
+  const cashCollectedLifetime = paymentsLifetime.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
+  const cashCollectedPeriod = paymentsPeriod.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
 
   const defaultLossesLifetime = collectionsApps.reduce((sum, app) => {
     const funded = num(app.fundedAmount) || num(app.loanAmount);
@@ -184,6 +193,8 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
       revenuePeriod,
       defaultLossesLifetime,
       expectedRevenueOutstanding,
+      cashCollectedPeriod,
+      cashCollectedLifetime,
     },
     adSpend: {
       totalSpend: totalAdSpendPeriod,

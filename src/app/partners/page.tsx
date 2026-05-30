@@ -106,7 +106,7 @@ async function renderDashboard() {
     : {
         period: { startDate: new Date(), endDate: new Date(), days: 30 },
         loanOps: { pendingReview: 0, approvedNotFunded: 0, rejected: 0, active: 0, late: 0, paidOff: 0, defaulted: 0, totalApplications: 0 },
-        moneyFlow: { totalDisbursed: 0, outstandingPrincipal: 0, principalRecovered: 0, revenueLifetime: 0, revenuePeriod: 0, defaultLossesLifetime: 0, expectedRevenueOutstanding: 0 },
+        moneyFlow: { totalDisbursed: 0, outstandingPrincipal: 0, principalRecovered: 0, revenueLifetime: 0, revenuePeriod: 0, defaultLossesLifetime: 0, expectedRevenueOutstanding: 0, cashCollectedPeriod: 0, cashCollectedLifetime: 0 },
         adSpend: { totalSpend: 0, byPlatform: [] },
         newContacts: 0,
         fundedThisPeriod: 0,
@@ -183,8 +183,8 @@ async function renderDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-        <KpiCard label="Revenue (30d)" value={fmtMoney(financials.moneyFlow.revenuePeriod)} sub={`${fmtMoney(financials.moneyFlow.revenueLifetime)} lifetime`} />
-        <KpiCard label="Net profit (30d)" value={fmtMoney(financials.netProfitPeriod)} sub="revenue − ad spend" />
+        <KpiCard label="Cash collected (30d)" value={fmtMoney(financials.moneyFlow.cashCollectedPeriod)} sub={`${fmtMoney(financials.moneyFlow.cashCollectedLifetime)} lifetime`} />
+        <KpiCard label="Fee revenue (30d)" value={fmtMoney(financials.moneyFlow.revenuePeriod)} sub={`${fmtMoney(financials.moneyFlow.revenueLifetime)} lifetime · interest only`} accent />
         <KpiCard label="Default losses" value={fmtMoney(financials.moneyFlow.defaultLossesLifetime)} sub="principal in collections" />
         <KpiCard
           label="Increase balance"
