@@ -96,12 +96,13 @@ export async function planMonth(
     const scheduledFor = publishTimeForDay(year, monthIdx, day);
     const dateStr = scheduledFor.toISOString().slice(0, 10);
 
-    // For reels: only schedule on Mon/Wed/Fri (UTC dayOfWeek 1, 3, 5).
-    // Other days simply have no reel slot — that's expected, not "skipped."
-    if (mediaType === "reel") {
-      const dow = scheduledFor.getUTCDay();
-      if (!REEL_DAYS.has(dow)) continue;
-    }
+    // Reels claim Mon/Wed/Fri exclusively; images cover Tue/Thu/Sat/Sun.
+    // Without the image-side skip, the image planner would greedily fill
+    // ALL 7 days, leaving the reel planner with nothing to plan (every
+    // day already in existingDays). Each mediaType only owns its days.
+    const dow = scheduledFor.getUTCDay();
+    if (mediaType === "reel" && !REEL_DAYS.has(dow)) continue;
+    if (mediaType === "image" && REEL_DAYS.has(dow)) continue;
 
     if (existingDays.has(day)) {
       result.skipped++;

@@ -33,8 +33,22 @@ export async function POST(req: NextRequest) {
   const results: Record<string, unknown> = {};
   for (const a of accounts) {
     try {
-      const r = await planMonth(a.platform as Platform, year, month);
-      results[a.platform] = { planned: r.planned, skipped: r.skipped, failed: r.failed };
+      // Two passes per account: images own Tue/Thu/Sat/Sun, reels own
+      // Mon/Wed/Fri. Without the reel pass, MWF was being filled with
+      // still images - the bug Bar saw in the calendar ("in reel day it
+      // uploaded a picture"). Reels only post to Instagram for now since
+      // that's the only platform with Reels publishing wired up.
+      const img = await planMonth(a.platform as Platform, year, month, undefined, "image");
+      const reel =
+        a.platform === "instagram"
+          ? await planMonth(a.platform as Platform, year, month, undefined, "reel")
+          : null;
+      results[a.platform] = {
+        image: { planned: img.planned, skipped: img.skipped, failed: img.failed },
+        reel: reel
+          ? { planned: reel.planned, skipped: reel.skipped, failed: reel.failed }
+          : "not_supported",
+      };
     } catch (err) {
       results[a.platform] = { error: err instanceof Error ? err.message : String(err) };
     }
