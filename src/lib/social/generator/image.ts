@@ -39,6 +39,7 @@ Describe ONE concrete visual scene that represents this topic. Constraints:
 - 1-2 sentences, ~25 words
 - Specific physical objects only (phone showing app UI, car dashboard, gas pump nozzle, paper receipt, delivery bag on doorstep, packing tape on cardboard box, etc.)
 - NO people, NO faces, NO signs with readable words, NO logos, NO numbers
+- US setting only — no foreign-language signage, no non-Latin scripts (no Arabic, no Cyrillic, no Chinese/Japanese/Korean characters in the scene)
 - Concrete time-of-day + lighting cue (e.g. "early morning sunlight through windshield", "neon glow from phone in dark cab", "kitchen-table light on tax forms")
 
 Output ONLY the scene description. No preamble. No quotes.`;
@@ -65,7 +66,10 @@ Composition:
 Documentary observational angle, as if a passerby caught the moment. Tight on the object. The objects fill the frame; they are the subject. The scene is wordless and silent — purely a still life of the thing.
 
 Render quality:
-Editorial, modern, calm, confident. Like a New York Times opinion-page illustration. Not 3D rendered. Not cartoonish. Not stock photo. Not generic fintech gradient. ${aspectRatio} aspect ratio.`;
+Editorial, modern, calm, confident. Like a New York Times opinion-page illustration. Not 3D rendered. Not cartoonish. Not stock photo. Not generic fintech gradient. ${aspectRatio} aspect ratio.
+
+Typography:
+If any incidental lettering appears in the scene (a receipt header, an app screen label, a button caption), it is rendered in clean English using the standard Latin alphabet. No Arabic script, no Cyrillic, no Chinese / Japanese / Korean characters, no decorative foreign typography, no garbled or invented characters. US-style English only.`;
 }
 
 export async function generatePostImage(topic: string, platform: Platform): Promise<string> {

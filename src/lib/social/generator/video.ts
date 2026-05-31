@@ -45,6 +45,7 @@ Describe ONE concrete 8-second video shot that represents this topic. Constraint
 - Specific physical objects only (phone screen with app UI, car dashboard, gas pump, paper receipt, delivery bag on doorstep, packing tape on cardboard box, etc.)
 - One sustained scene, slow intentional camera move (slow push-in, subtle pan, gentle hand-held drift)
 - NO people, NO faces, NO hands, NO signs with readable words, NO logos, NO numbers
+- US setting only — no foreign-language signage, no non-Latin scripts (no Arabic, no Cyrillic, no Chinese/Japanese/Korean characters)
 - Concrete time-of-day + lighting cue (early-morning windshield light, neon glow from phone in dark cab, kitchen-table light on tax forms, etc.)
 
 Output ONLY the shot description. No preamble. No quotes.`;
@@ -68,7 +69,10 @@ Composition and camera:
 Documentary observational angle, tight on the object. Single sustained scene, no cuts, no transitions. Slow intentional camera motion only (subtle hand-held breathing, gentle gimbal drift, very slow push-in under 1.2x). The scene is wordless and silent.
 
 Quality:
-Editorial, modern, calm, confident. Real-world physical lighting. Not 3D rendered. Not cartoonish. Not stock footage. Not generic fintech gradient.`;
+Editorial, modern, calm, confident. Real-world physical lighting. Not 3D rendered. Not cartoonish. Not stock footage. Not generic fintech gradient.
+
+Typography:
+If any incidental lettering appears (a receipt header, an app screen label, a button caption), it is rendered in clean English using the standard Latin alphabet. No Arabic script, no Cyrillic, no Chinese / Japanese / Korean characters, no decorative foreign typography, no garbled or invented characters. US-style English only.`;
 }
 
 interface VeoOperation {
