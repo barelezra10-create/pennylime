@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { PublishReelButton } from "./publish-reel-button";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,14 @@ export default async function SocialAdminPage() {
   return (
     <div className="space-y-8">
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Social Bot</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Read-only overview — account health, today&apos;s posts, and engagement counts.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Social Bot</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Read-only overview — account health, today&apos;s posts, and engagement counts.
+          </p>
+        </div>
+        <PublishReelButton />
       </div>
 
       {/* ── Section 1: Account Health ── */}
