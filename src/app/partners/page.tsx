@@ -174,10 +174,23 @@ async function renderDashboard() {
         </div>
       ) : null}
 
-      {/* Big KPIs */}
+      {/* Big KPIs — pipeline state */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Applications" value={totalApps.toString()} sub={`${financials.loanOps.pendingReview} pending`} />
+        <KpiCard label="Applications" value={totalApps.toString()} sub="total received" />
+        <KpiCard
+          label="Pending review"
+          value={financials.loanOps.pendingReview.toString()}
+          sub="awaiting decision"
+        />
+        <KpiCard
+          label="Rejected"
+          value={financials.loanOps.rejected.toString()}
+          sub="all-time declines"
+        />
         <KpiCard label="Funded loans" value={fundedCount.toString()} sub={`${financials.fundedThisPeriod} in period`} accent />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 mt-4">
         <KpiCard label="Money out" value={fmtMoney(financials.moneyFlow.outstandingPrincipal)} sub={`${fmtMoney(financials.moneyFlow.totalDisbursed)} lifetime`} />
         <KpiCard label="Expected profit" value={fmtMoney(expectedProfit)} sub="interest on active loans" highlight />
       </div>
