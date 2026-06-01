@@ -564,6 +564,10 @@ export function DetailClient({
                   terms: parsedTerms,
                   offerToken: a.offerToken ?? null,
                   applicationCode: application.applicationCode,
+                  // Borrower's requested amount from the apply form. Caps
+                  // the default offered max so we never accidentally
+                  // offer more than they asked for.
+                  requestedAmount: application.loanAmount != null ? Number(application.loanAmount) : null,
                 }}
               />
             );

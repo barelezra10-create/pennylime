@@ -12,6 +12,10 @@ type ExistingOffer = {
   terms: OfferTerm[];
   offerToken: string | null;
   applicationCode: string;
+  // What the borrower originally asked for on the apply form. Used as the
+  // ceiling for the default offered max so admin doesn't accidentally
+  // offer more than the borrower wanted.
+  requestedAmount: number | null;
 };
 
 const blankTerm = (recommended = false): OfferTerm => ({
@@ -46,14 +50,27 @@ export function SetOfferTermsForm({
   existing: ExistingOffer;
 }) {
   const [open, setOpen] = useState(existing.status === "PENDING");
-  const [minAmount, setMinAmount] = useState<number>(existing.minAmount ?? 300);
-  const [maxAmount, setMaxAmount] = useState<number>(existing.maxAmount ?? 2000);
+  // Default the offered MAX to what the borrower actually requested - we
+  // shouldn't accidentally offer more than they asked for. Default the
+  // MIN to half their request (rounded down to the nearest $50), capped
+  // at $300 floor. Falls back to the legacy 300/2000 range only when the
+  // borrower's requested amount is missing.
+  const defaultMax = existing.maxAmount ?? existing.requestedAmount ?? 2000;
+  const defaultMin =
+    existing.minAmount ??
+    (existing.requestedAmount
+      ? Math.max(300, Math.floor((existing.requestedAmount / 2) / 50) * 50)
+      : 300);
+  const [minAmount, setMinAmount] = useState<number>(defaultMin);
+  const [maxAmount, setMaxAmount] = useState<number>(defaultMax);
   const [weeklyRate, setWeeklyRate] = useState<number>(5);
-  const [genPrincipal, setGenPrincipal] = useState<number>(500);
+  const [genPrincipal, setGenPrincipal] = useState<number>(
+    existing.requestedAmount ?? 500,
+  );
   const [terms, setTerms] = useState<OfferTerm[]>(
     existing.terms.length > 0
       ? existing.terms
-      : buildDefaultTerms(500, 5),
+      : buildDefaultTerms(existing.requestedAmount ?? 500, 5),
   );
   const [submitting, setSubmitting] = useState(false);
   const [savedToken, setSavedToken] = useState<string | null>(existing.offerToken);

@@ -89,8 +89,23 @@ export async function setOfferTerms(input: {
   // Reuse existing token if already set; otherwise mint a fresh one.
   const existing = await prisma.application.findUnique({
     where: { id: input.applicationId },
-    select: { offerToken: true, offerStatus: true, status: true },
+    select: {
+      offerToken: true,
+      offerStatus: true,
+      status: true,
+      loanAmount: true,
+    },
   });
+  // Server-side ceiling: don't let the offered max exceed what the borrower
+  // actually requested. Stops accidental over-offers if the form default
+  // gets out of sync or someone hits the API directly.
+  const requested = existing?.loanAmount ? Number(existing.loanAmount) : null;
+  if (requested != null && input.offeredMaxAmount > requested) {
+    return {
+      ok: false as const,
+      error: `Borrower requested $${requested}. Offered max ($${input.offeredMaxAmount}) cannot exceed that.`,
+    };
+  }
   const offerToken = existing?.offerToken ?? randomBytes(24).toString("hex");
   // Only notify on the first time an offer goes out. Edits to an
   // existing OFFERED record (e.g. Bar tweaking the plans, recompute
