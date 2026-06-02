@@ -260,7 +260,28 @@ export async function getApplications(status?: string) {
 export async function getApplicationById(id: string) {
   return prisma.application.findUnique({
     where: { id },
-    include: { documents: true },
+    include: {
+      documents: true,
+      contact: {
+        select: {
+          source: true,
+          utmSource: true,
+          utmMedium: true,
+          utmCampaign: true,
+          utmTerm: true,
+          utmContent: true,
+          gclid: true,
+          gbraid: true,
+          wbraid: true,
+          fbclid: true,
+          ttclid: true,
+          msclkid: true,
+          landingPage: true,
+          referrer: true,
+          createdAt: true,
+        },
+      },
+    },
   });
 }
 

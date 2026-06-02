@@ -545,6 +545,9 @@ export function DetailClient({
             )}
           </div>
 
+          {/* ── Traffic Source ── */}
+          <TrafficSourceCard contact={(application as any).contact} />
+
           {/* ── Offer terms ── */}
           {(() => {
             const a = application as any;
@@ -2059,6 +2062,171 @@ function DocGroup({
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+
+// ── Traffic Source ────────────────────────────────────────────────
+// Sourced from the Contact row created by the apply funnel. Shows
+// where the lead came from (UTM tags, ad click IDs, referrer, landing
+// page) so we can tell paid vs organic at a glance.
+type TrafficSourceContact = {
+  source: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  utmTerm: string | null;
+  utmContent: string | null;
+  gclid: string | null;
+  gbraid: string | null;
+  wbraid: string | null;
+  fbclid: string | null;
+  ttclid: string | null;
+  msclkid: string | null;
+  landingPage: string | null;
+  referrer: string | null;
+  createdAt: Date | string | null;
+} | null | undefined;
+
+function summarizeChannel(c: NonNullable<TrafficSourceContact>): { label: string; tone: "google" | "meta" | "tiktok" | "bing" | "organic" | "direct" | "other" } {
+  if (c.gclid || c.gbraid || c.wbraid) return { label: "Google Ads", tone: "google" };
+  if (c.fbclid) return { label: "Meta Ads", tone: "meta" };
+  if (c.ttclid) return { label: "TikTok Ads", tone: "tiktok" };
+  if (c.msclkid) return { label: "Microsoft / Bing Ads", tone: "bing" };
+  const src = (c.utmSource || "").toLowerCase();
+  const med = (c.utmMedium || "").toLowerCase();
+  if (med === "cpc" || med === "paid" || src.includes("google") || src.includes("facebook") || src.includes("tiktok")) {
+    return { label: `Paid · ${c.utmSource || med}`, tone: "other" };
+  }
+  if (med === "organic" || src.includes("google_organic")) return { label: "Organic search", tone: "organic" };
+  if (c.referrer) return { label: `Referral · ${shortHost(c.referrer)}`, tone: "other" };
+  if (c.utmSource) return { label: c.utmSource, tone: "other" };
+  return { label: "Direct / unknown", tone: "direct" };
+}
+
+function shortHost(url: string | null): string {
+  if (!url) return "—";
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url.slice(0, 40);
+  }
+}
+
+function shortPath(url: string | null): string {
+  if (!url) return "—";
+  try {
+    const u = new URL(url);
+    return (u.pathname + u.search).slice(0, 80) || "/";
+  } catch {
+    return url.slice(0, 80);
+  }
+}
+
+function TrafficSourceCard({ contact }: { contact: TrafficSourceContact }) {
+  if (!contact) {
+    return (
+      <div className="bg-white rounded-[10px] p-6">
+        <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-2 flex items-center gap-2">
+          <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0a8.949 8.949 0 0 0 4.951-1.488A3.987 3.987 0 0 0 13 16h-2a3.987 3.987 0 0 0-3.951 3.512A8.949 8.949 0 0 0 12 21Zm3-11.25a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+          Traffic Source
+        </h2>
+        <p className="text-sm text-[#71717a]">No contact record linked to this application.</p>
+      </div>
+    );
+  }
+
+  const channel = summarizeChannel(contact);
+  const toneClass: Record<typeof channel.tone, string> = {
+    google: "bg-[#e8f0fe] text-[#1a73e8]",
+    meta: "bg-[#e7f0ff] text-[#1877f2]",
+    tiktok: "bg-[#fce8ee] text-[#fe2c55]",
+    bing: "bg-[#e6f3f7] text-[#008373]",
+    organic: "bg-[#e8f5e9] text-[#15803d]",
+    direct: "bg-[#f4f4f5] text-[#52525b]",
+    other: "bg-[#f4f4f5] text-[#27272a]",
+  };
+
+  const clickId =
+    contact.gclid ? { label: "gclid", value: contact.gclid } :
+    contact.gbraid ? { label: "gbraid", value: contact.gbraid } :
+    contact.wbraid ? { label: "wbraid", value: contact.wbraid } :
+    contact.fbclid ? { label: "fbclid", value: contact.fbclid } :
+    contact.ttclid ? { label: "ttclid", value: contact.ttclid } :
+    contact.msclkid ? { label: "msclkid", value: contact.msclkid } :
+    null;
+
+  return (
+    <div className="bg-white rounded-[10px] p-6">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+        <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black flex items-center gap-2">
+          <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0a8.949 8.949 0 0 0 4.951-1.488A3.987 3.987 0 0 0 13 16h-2a3.987 3.987 0 0 0-3.951 3.512A8.949 8.949 0 0 0 12 21Zm3-11.25a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+          </svg>
+          Traffic Source
+        </h2>
+        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${toneClass[channel.tone]}`}>
+          {channel.label}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Source</p>
+          <p className="mt-1 text-sm text-black">{contact.utmSource || contact.source || "—"}</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Medium</p>
+          <p className="mt-1 text-sm text-black">{contact.utmMedium || "—"}</p>
+        </div>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Campaign</p>
+          <p className="mt-1 text-sm text-black break-all">{contact.utmCampaign || "—"}</p>
+        </div>
+        {contact.utmTerm && (
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Term / Keyword</p>
+            <p className="mt-1 text-sm text-black break-all">{contact.utmTerm}</p>
+          </div>
+        )}
+        {contact.utmContent && (
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Ad Content</p>
+            <p className="mt-1 text-sm text-black break-all">{contact.utmContent}</p>
+          </div>
+        )}
+        {clickId && (
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Click ID ({clickId.label})</p>
+            <p className="mt-1 text-xs font-mono text-black break-all">{clickId.value}</p>
+          </div>
+        )}
+        <div className="sm:col-span-2 lg:col-span-3">
+          <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Landing Page</p>
+          <p className="mt-1 text-sm text-black break-all">
+            {contact.landingPage ? (
+              <>
+                <span className="font-semibold">{shortHost(contact.landingPage)}</span>
+                <span className="text-[#52525b]">{shortPath(contact.landingPage)}</span>
+              </>
+            ) : "—"}
+          </p>
+        </div>
+        <div className="sm:col-span-2 lg:col-span-3">
+          <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Referrer</p>
+          <p className="mt-1 text-sm text-black break-all">
+            {contact.referrer ? (
+              <>
+                <span className="font-semibold">{shortHost(contact.referrer)}</span>
+                <span className="text-[#52525b]">{shortPath(contact.referrer)}</span>
+              </>
+            ) : <span className="text-[#71717a]">Direct visit (no referrer)</span>}
+          </p>
+        </div>
       </div>
     </div>
   );
