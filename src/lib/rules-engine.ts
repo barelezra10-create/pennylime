@@ -27,9 +27,13 @@ export async function evaluateApplication(
   const loanAmount = Number(application.loanAmount);
   const loanLimit = Number(rules.loan_limit || "10000");
   const minLoan = Number(rules.min_loan || "100");
-  const incomeMultiplier = Number(rules.income_multiplier_ratio || "2.0");
-  const minBankBalance = Number(rules.min_bank_balance || "200");
-  const requiredPayStubs = Number(rules.required_pay_stubs || "3");
+  // Affordability bar: monthly income must be ≥ advance × min_income_ratio.
+  // Default 0.5 → a $1,000 advance needs ≥ $500/mo income. This replaces
+  // the old "income over loan term ≥ 2× advance" math, which was wildly
+  // strict on short 4-week terms (would have required ~2.16× monthly
+  // income just to clear the bar) and was rejecting profiles we'd
+  // actually want to approve.
+  const minIncomeRatio = Number(rules.min_income_ratio || "0.5");
   // Term is stored in WEEKS in the loanTermMonths column (legacy field
   // name from the old monthly model — kept to avoid a migration). Read
   // the new max_term_weeks rule first, fall back to the legacy key.
@@ -52,30 +56,20 @@ export async function evaluateApplication(
     reasons.push(`Term ${loanTermWeeks} weeks exceeds maximum of ${maxTermWeeks} weeks`);
   }
 
-  // Check income verification. Expected income over the term =
-  // monthlyIncome × (weeks / 4.33). Must be ≥ incomeMultiplier × advance.
+  // Income verification + affordability check.
   const monthlyIncome = application.monthlyIncome ? Number(application.monthlyIncome) : null;
 
   if (!monthlyIncome) {
     if (recommendation !== "REJECT") recommendation = "MANUAL_REVIEW";
     reasons.push("Income not yet verified via Plaid");
   } else {
-    const totalIncomeOverTerm = monthlyIncome * (loanTermWeeks / 4.33);
-    const requiredIncome = incomeMultiplier * loanAmount;
-    if (totalIncomeOverTerm < requiredIncome) {
+    const requiredMonthlyIncome = minIncomeRatio * loanAmount;
+    if (monthlyIncome < requiredMonthlyIncome) {
       recommendation = "REJECT";
       reasons.push(
-        `Income over term ($${totalIncomeOverTerm.toFixed(0)}) < ${incomeMultiplier}× advance ($${requiredIncome.toFixed(0)})`
+        `Monthly income ($${monthlyIncome.toFixed(0)}) below ${minIncomeRatio}× advance ($${requiredMonthlyIncome.toFixed(0)})`
       );
     }
-  }
-
-  // Check documents
-  if (application.documents.length < requiredPayStubs) {
-    if (recommendation !== "REJECT") recommendation = "MANUAL_REVIEW";
-    reasons.push(
-      `Only ${application.documents.length} documents uploaded, ${requiredPayStubs} required`
-    );
   }
 
   // Check Plaid bank connection
