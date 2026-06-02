@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { PublishReelButton } from "./publish-reel-button";
+import { ScheduleGiveawayButton } from "./schedule-giveaway-button";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,10 @@ export default async function SocialAdminPage() {
             Read-only overview — account health, today&apos;s posts, and engagement counts.
           </p>
         </div>
-        <PublishReelButton />
+        <div className="flex items-center gap-2 flex-wrap">
+          <ScheduleGiveawayButton />
+          <PublishReelButton />
+        </div>
       </div>
 
       {/* ── Section 1: Account Health ── */}
