@@ -258,7 +258,7 @@ export async function getApplications(status?: string) {
 }
 
 export async function getApplicationById(id: string) {
-  return prisma.application.findUnique({
+  const app = await prisma.application.findUnique({
     where: { id },
     include: {
       documents: true,
@@ -283,6 +283,42 @@ export async function getApplicationById(id: string) {
       },
     },
   });
+
+  if (!app) return null;
+
+  // Look up the borrower's other advances so the detail page can show
+  // repeat-applicant context (active balance, prior outcomes). Match on
+  // ssnHash when present (strongest), else fall back to email so we
+  // still catch repeats during the pre-SSN steps of the funnel.
+  const orClauses: Array<Record<string, unknown>> = [];
+  if (app.ssnHash) orClauses.push({ ssnHash: app.ssnHash });
+  if (app.email) orClauses.push({ email: { equals: app.email, mode: "insensitive" } });
+
+  const priorAdvances = orClauses.length
+    ? await prisma.application.findMany({
+        where: {
+          OR: orClauses,
+          id: { not: app.id },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          applicationCode: true,
+          status: true,
+          loanAmount: true,
+          fundedAmount: true,
+          fundedAt: true,
+          createdAt: true,
+          rejectionReason: true,
+          payments: {
+            select: { paymentNumber: true, principal: true, status: true, dueDate: true, paidAt: true, amount: true },
+            orderBy: { paymentNumber: "asc" },
+          },
+        },
+      })
+    : [];
+
+  return Object.assign(app, { priorAdvances });
 }
 
 export async function updateTotalIncome(id: string, totalIncome: number) {

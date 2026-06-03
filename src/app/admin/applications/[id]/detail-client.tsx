@@ -548,6 +548,9 @@ export function DetailClient({
           {/* ── Traffic Source ── */}
           <TrafficSourceCard contact={(application as any).contact} />
 
+          {/* ── Prior advances (repeat-applicant context) ── */}
+          <PriorAdvancesCard priorAdvances={(application as any).priorAdvances ?? []} />
+
           {/* ── Offer terms ── */}
           {(() => {
             const a = application as any;
@@ -2227,6 +2230,173 @@ function TrafficSourceCard({ contact }: { contact: TrafficSourceContact }) {
             ) : <span className="text-[#71717a]">Direct visit (no referrer)</span>}
           </p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Prior advances panel ──────────────────────────────────────────
+// Repeat-applicant context. When the same SSN (or email) has earlier
+// advances in our system, surface them here so the reviewer can see
+// outstanding exposure + repayment track record at a glance.
+
+type PriorPayment = {
+  paymentNumber: number;
+  principal: any;
+  amount: any;
+  status: string;
+  dueDate: Date | string | null;
+  paidAt: Date | string | null;
+};
+
+type PriorAdvance = {
+  id: string;
+  applicationCode: string;
+  status: string;
+  loanAmount: any;
+  fundedAmount: any | null;
+  fundedAt: Date | string | null;
+  createdAt: Date | string;
+  rejectionReason: string | null;
+  payments: PriorPayment[];
+};
+
+function statusTone(status: string): { bg: string; text: string } {
+  switch (status) {
+    case "FUNDED": return { bg: "bg-[#e8f5e9]", text: "text-[#15803d]" };
+    case "PAID_OFF": return { bg: "bg-[#dcfce7]", text: "text-[#166534]" };
+    case "LATE": return { bg: "bg-[#fef3c7]", text: "text-[#b45309]" };
+    case "DEFAULTED": return { bg: "bg-[#fee2e2]", text: "text-[#dc2626]" };
+    case "REJECTED": return { bg: "bg-[#fee2e2]", text: "text-[#dc2626]" };
+    case "APPROVED": return { bg: "bg-[#dbeafe]", text: "text-[#1d4ed8]" };
+    case "PENDING": return { bg: "bg-[#f4f4f5]", text: "text-[#52525b]" };
+    default: return { bg: "bg-[#f4f4f5]", text: "text-[#52525b]" };
+  }
+}
+
+function PriorAdvancesCard({ priorAdvances }: { priorAdvances: PriorAdvance[] }) {
+  if (!priorAdvances || priorAdvances.length === 0) return null;
+
+  // Summary roll-up
+  let totalOutstanding = 0;
+  let activeCount = 0;
+  let paidOffCount = 0;
+  let latePaymentTotal = 0;
+  for (const adv of priorAdvances) {
+    if (["FUNDED", "LATE"].includes(adv.status)) {
+      activeCount++;
+      const paidPrincipal = adv.payments
+        .filter((p) => p.status === "PAID")
+        .reduce((s, p) => s + Number(p.principal), 0);
+      const totalPrincipal = adv.payments.reduce((s, p) => s + Number(p.principal), 0);
+      totalOutstanding += Math.max(0, totalPrincipal - paidPrincipal);
+    }
+    if (adv.status === "PAID_OFF") paidOffCount++;
+    latePaymentTotal += adv.payments.filter((p) => p.status === "LATE").length;
+  }
+
+  return (
+    <div className="bg-white rounded-[10px] border-2 border-[#f97316] p-6">
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black flex items-center gap-2">
+          <svg className="h-5 w-5 text-[#f97316]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          Prior advances ({priorAdvances.length})
+        </h2>
+        <div className="flex items-center gap-2 flex-wrap text-[11px]">
+          {activeCount > 0 && (
+            <span className="rounded-full bg-[#fff7ed] text-[#9a3412] font-semibold px-3 py-1">
+              {activeCount} active · ${totalOutstanding.toFixed(2)} outstanding
+            </span>
+          )}
+          {paidOffCount > 0 && (
+            <span className="rounded-full bg-[#dcfce7] text-[#166534] font-semibold px-3 py-1">
+              {paidOffCount} paid off
+            </span>
+          )}
+          {latePaymentTotal > 0 && (
+            <span className="rounded-full bg-[#fef3c7] text-[#b45309] font-semibold px-3 py-1">
+              {latePaymentTotal} late payments
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {priorAdvances.map((adv) => {
+          const tone = statusTone(adv.status);
+          const total = adv.payments.length;
+          const paid = adv.payments.filter((p) => p.status === "PAID").length;
+          const late = adv.payments.filter((p) => p.status === "LATE").length;
+          const paidPrincipal = adv.payments
+            .filter((p) => p.status === "PAID")
+            .reduce((s, p) => s + Number(p.principal), 0);
+          const totalPrincipal = adv.payments.reduce((s, p) => s + Number(p.principal), 0);
+          const outstanding = Math.max(0, totalPrincipal - paidPrincipal);
+          const isActive = ["FUNDED", "LATE"].includes(adv.status);
+          const fundedDate = adv.fundedAt ? new Date(adv.fundedAt) : null;
+          const nextDue = adv.payments.find((p) => p.status === "PENDING" || p.status === "PROCESSING");
+
+          return (
+            <a
+              key={adv.id}
+              href={`/admin/applications/${adv.id}`}
+              className="block rounded-lg border border-[#e4e4e7] hover:border-[#a1a1aa] p-4 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="font-mono text-[12px] font-semibold text-[#15803d] bg-[#f0f5f0] rounded px-2 py-0.5">
+                    {adv.applicationCode}
+                  </span>
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${tone.bg} ${tone.text}`}>
+                    {adv.status}
+                  </span>
+                  <span className="text-[13px] text-[#52525b]">
+                    ${Number(adv.loanAmount).toFixed(0)} requested
+                    {adv.fundedAmount && ` · $${Number(adv.fundedAmount).toFixed(0)} funded`}
+                  </span>
+                </div>
+                <span className="text-[11px] text-[#71717a]">
+                  {fundedDate ? `funded ${fundedDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : `applied ${new Date(adv.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                </span>
+              </div>
+
+              {total > 0 && (
+                <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-[#a1a1aa] font-semibold">Payments</p>
+                    <p className="text-[13px] font-semibold text-black">{paid} / {total} paid</p>
+                  </div>
+                  {isActive && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-[#a1a1aa] font-semibold">Outstanding</p>
+                      <p className="text-[13px] font-semibold text-[#dc2626]">${outstanding.toFixed(2)}</p>
+                    </div>
+                  )}
+                  {late > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-[#a1a1aa] font-semibold">Late</p>
+                      <p className="text-[13px] font-semibold text-[#b45309]">{late}</p>
+                    </div>
+                  )}
+                  {isActive && nextDue?.dueDate && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-[#a1a1aa] font-semibold">Next due</p>
+                      <p className="text-[13px] font-semibold text-black">
+                        {new Date(nextDue.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · ${Number(nextDue.amount).toFixed(2)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {adv.status === "REJECTED" && adv.rejectionReason && (
+                <p className="mt-2 text-[12px] text-[#dc2626]">Rejected: {adv.rejectionReason}</p>
+              )}
+            </a>
+          );
+        })}
       </div>
     </div>
   );
