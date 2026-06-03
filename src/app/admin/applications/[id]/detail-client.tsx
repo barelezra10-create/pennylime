@@ -495,6 +495,12 @@ export function DetailClient({
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Platform</p>
                 <p className="mt-1 text-sm text-black">{(application as any).platform || "N/A"}</p>
               </div>
+              {(application as any).businessType && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Business type</p>
+                  <p className="mt-1 text-sm text-black">{(application as any).businessType}</p>
+                </div>
+              )}
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Term</p>
                 <p className="mt-1 text-sm text-black">

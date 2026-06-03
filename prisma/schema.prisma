@@ -70,6 +70,11 @@ model Application {
   acceptedTermIndex        Int?
   acceptedAt               DateTime?
   workerType               String?
+  // For BUSINESS_OWNER applicants: the industry / category they
+  // operate in (Restaurant, Retail, Trades, Services, eCommerce, etc.).
+  // When the applicant picks "Other", the free-text description they
+  // type is appended after a colon (e.g. "Other: Tarot reading studio").
+  businessType             String?
   workStartMonth           Int?
   workStartYear            Int?
   addressStreet            String?

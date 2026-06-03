@@ -1531,6 +1531,21 @@ function StepClassifyTransactions({
 /* ------------------------------------------------------------------ */
 /*  STEP 3, GIG PLATFORMS & EARNINGS                                   */
 /* ------------------------------------------------------------------ */
+const BUSINESS_TYPES = [
+  "Restaurant / Food service",
+  "Retail / eCommerce",
+  "Construction / Trades",
+  "Professional services",
+  "Beauty / Wellness",
+  "Health / Medical",
+  "Auto / Transport",
+  "Real estate",
+  "Cleaning / Home services",
+  "Creative / Media",
+  "Education / Tutoring",
+  "Other",
+];
+
 const WORKER_TYPES = [
   {
     id: "BUSINESS_OWNER",
@@ -1692,6 +1707,10 @@ function StepPlatforms({
   setWeeklyEarnings,
   workerType,
   setWorkerType,
+  businessType,
+  setBusinessType,
+  businessTypeOther,
+  setBusinessTypeOther,
   workStartMonth,
   setWorkStartMonth,
   workStartYear,
@@ -1707,6 +1726,10 @@ function StepPlatforms({
   setWeeklyEarnings: (v: string) => void;
   workerType: string;
   setWorkerType: (v: string) => void;
+  businessType: string;
+  setBusinessType: (v: string) => void;
+  businessTypeOther: string;
+  setBusinessTypeOther: (v: string) => void;
   workStartMonth: number;
   setWorkStartMonth: (v: number) => void;
   workStartYear: number;
@@ -1757,6 +1780,48 @@ function StepPlatforms({
             placeholder="Acme LLC"
             className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
           />
+
+          {/* Business type / industry */}
+          <div className="mt-6">
+            <label className="mb-1.5 block text-[14px] font-semibold text-black">Business type</label>
+            <p className="mb-3 text-[12px] text-[#a1a1aa]">Pick the category that best fits what you do.</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {BUSINESS_TYPES.map((bt) => {
+                const selected = businessType === bt;
+                return (
+                  <motion.button
+                    key={bt}
+                    type="button"
+                    onClick={() => setBusinessType(bt)}
+                    className={`rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all duration-200 ${
+                      selected
+                        ? "bg-[#15803d] text-white"
+                        : "bg-[#f0fdf4] text-[#52525b] hover:bg-[#dcfce7]"
+                    }`}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {bt}
+                  </motion.button>
+                );
+              })}
+            </div>
+
+            {businessType === "Other" && (
+              <motion.div
+                className="mt-3"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                transition={{ duration: 0.2 }}
+              >
+                <input
+                  value={businessTypeOther}
+                  onChange={(e) => setBusinessTypeOther(e.target.value)}
+                  placeholder="Describe what your business does..."
+                  className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+                />
+              </motion.div>
+            )}
+          </div>
         </motion.div>
       )}
 
@@ -1961,6 +2026,14 @@ function StepPlatforms({
             if (workerType === "BUSINESS_OWNER") {
               if (!otherPlatform.trim()) {
                 toast.error("Please enter your business name");
+                return;
+              }
+              if (!businessType) {
+                toast.error("Please pick your business type");
+                return;
+              }
+              if (businessType === "Other" && !businessTypeOther.trim()) {
+                toast.error("Please describe what your business does");
                 return;
               }
             } else {
@@ -2922,6 +2995,8 @@ type PersistedState = {
   otherPlatform: string;
   weeklyEarnings: string;
   workerType: string;
+  businessType?: string;
+  businessTypeOther?: string;
   workStartMonth: number;
   workStartYear: number;
   bankName: string;
@@ -2982,6 +3057,8 @@ function ApplyPageInner() {
   const [otherPlatform, setOtherPlatform] = useState(persisted?.otherPlatform ?? "");
   const [weeklyEarnings, setWeeklyEarnings] = useState(persisted?.weeklyEarnings ?? "");
   const [workerType, setWorkerType] = useState(persisted?.workerType ?? "INDEPENDENT_CONTRACTOR");
+  const [businessType, setBusinessType] = useState<string>(persisted?.businessType ?? "");
+  const [businessTypeOther, setBusinessTypeOther] = useState<string>(persisted?.businessTypeOther ?? "");
   const [workStartMonth, setWorkStartMonth] = useState(() => persisted?.workStartMonth ?? new Date().getMonth() + 1);
   const [workStartYear, setWorkStartYear] = useState(() => persisted?.workStartYear ?? new Date().getFullYear());
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
@@ -3024,6 +3101,8 @@ function ApplyPageInner() {
           otherPlatform,
           weeklyEarnings,
           workerType,
+          businessType,
+          businessTypeOther,
           workStartMonth,
           workStartYear,
           bankName,
@@ -3041,6 +3120,8 @@ function ApplyPageInner() {
     otherPlatform,
     weeklyEarnings,
     workerType,
+    businessType,
+    businessTypeOther,
     workStartMonth,
     workStartYear,
     bankName,
@@ -3131,6 +3212,12 @@ function ApplyPageInner() {
         identityNeedsReview: identityResult?.needsReview ?? true,
         plaidIdentityName: identityResult?.matchedName ?? undefined,
         workerType,
+        businessType:
+          workerType === "BUSINESS_OWNER" && businessType
+            ? businessType === "Other"
+              ? `Other: ${businessTypeOther.trim()}`
+              : businessType
+            : undefined,
         workStartMonth,
         workStartYear,
         addressStreet: form.addressStreet,
@@ -3342,6 +3429,10 @@ function ApplyPageInner() {
                         setWeeklyEarnings={setWeeklyEarnings}
                         workerType={workerType}
                         setWorkerType={setWorkerType}
+                        businessType={businessType}
+                        setBusinessType={setBusinessType}
+                        businessTypeOther={businessTypeOther}
+                        setBusinessTypeOther={setBusinessTypeOther}
                         workStartMonth={workStartMonth}
                         setWorkStartMonth={setWorkStartMonth}
                         workStartYear={workStartYear}
@@ -3513,6 +3604,10 @@ function ApplyPageInner() {
                   setWeeklyEarnings={setWeeklyEarnings}
                   workerType={workerType}
                   setWorkerType={setWorkerType}
+                  businessType={businessType}
+                  setBusinessType={setBusinessType}
+                  businessTypeOther={businessTypeOther}
+                  setBusinessTypeOther={setBusinessTypeOther}
                   workStartMonth={workStartMonth}
                   setWorkStartMonth={setWorkStartMonth}
                   workStartYear={workStartYear}
