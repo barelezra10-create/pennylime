@@ -97,7 +97,27 @@ interface Contact {
   tags: string[];
   activities: Activity[];
   application: Application | null;
+  otherApplications?: OtherApplication[];
   loan: LoanSummary;
+}
+
+interface OtherApplication {
+  id: string;
+  applicationCode: string;
+  status: string;
+  loanAmount: number;
+  fundedAmount: number | null;
+  fundedAt: string | null;
+  createdAt: string;
+  rejectionReason: string | null;
+  payments: Array<{
+    paymentNumber: number;
+    amount: number;
+    principal: number;
+    status: string;
+    dueDate: string | null;
+    paidAt: string | null;
+  }>;
 }
 
 const TOTAL_APP_STEPS = 11;
@@ -230,6 +250,13 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
       )}
 
       {contact.loan.hasLoan && <LoanSummaryCard loan={contact.loan} />}
+
+      {contact.otherApplications && contact.otherApplications.length > 0 && (
+        <OtherApplicationsCard
+          others={contact.otherApplications}
+          activeApplicationId={contact.application?.id ?? null}
+        />
+      )}
 
       <TabBar tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
@@ -1303,6 +1330,98 @@ function TopUpRequestsPanel({ applicationId }: { applicationId: string }) {
                 </div>
               )}
             </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Other applications card ───────────────────────────────────────
+// Shows every application from this borrower that ISN'T the currently
+// linked primary one. Headline already shows the most-relevant active
+// advance; this lists the rest (prior funded, paid off, rejected,
+// in-progress alternates) so a repeat applicant's full history is
+// visible from the Contact page.
+
+function otherStatusTone(status: string): { bg: string; text: string } {
+  switch (status) {
+    case "FUNDED": return { bg: "bg-[#e8f5e9]", text: "text-[#15803d]" };
+    case "PAID_OFF": return { bg: "bg-[#dcfce7]", text: "text-[#166534]" };
+    case "LATE": return { bg: "bg-[#fef3c7]", text: "text-[#b45309]" };
+    case "DEFAULTED": return { bg: "bg-[#fee2e2]", text: "text-[#dc2626]" };
+    case "REJECTED": return { bg: "bg-[#fee2e2]", text: "text-[#dc2626]" };
+    case "APPROVED": return { bg: "bg-[#dbeafe]", text: "text-[#1d4ed8]" };
+    case "PENDING": return { bg: "bg-[#f4f4f5]", text: "text-[#52525b]" };
+    default: return { bg: "bg-[#f4f4f5]", text: "text-[#52525b]" };
+  }
+}
+
+function OtherApplicationsCard({
+  others,
+  activeApplicationId,
+}: {
+  others: OtherApplication[];
+  activeApplicationId: string | null;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-[#e4e4e7] p-5 mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[13px] font-bold text-black uppercase tracking-[0.05em]">
+          All advances ({others.length + (activeApplicationId ? 1 : 0)})
+        </h2>
+        <span className="text-[11px] text-[#71717a]">{others.length} other</span>
+      </div>
+      <div className="space-y-2">
+        {others.map((a) => {
+          const tone = otherStatusTone(a.status);
+          const total = a.payments.length;
+          const paid = a.payments.filter((p) => p.status === "PAID").length;
+          const paidPrincipal = a.payments
+            .filter((p) => p.status === "PAID")
+            .reduce((s, p) => s + p.principal, 0);
+          const totalPrincipal = a.payments.reduce((s, p) => s + p.principal, 0);
+          const outstanding = Math.max(0, totalPrincipal - paidPrincipal);
+          const isActive = ["FUNDED", "LATE"].includes(a.status);
+          return (
+            <a
+              key={a.id}
+              href={`/admin/applications/${a.id}`}
+              className="block rounded-lg border border-[#e4e4e7] hover:border-[#a1a1aa] hover:bg-[#fafafa] p-3 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-mono text-[11px] font-semibold text-[#15803d] bg-[#f0f5f0] rounded px-1.5 py-0.5">
+                    {a.applicationCode}
+                  </span>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${tone.bg} ${tone.text}`}>
+                    {a.status}
+                  </span>
+                  <span className="text-[12px] text-[#52525b]">
+                    ${a.loanAmount.toFixed(0)} requested
+                    {a.fundedAmount != null && ` · $${a.fundedAmount.toFixed(0)} funded`}
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#a1a1aa]">
+                  {a.fundedAt
+                    ? `funded ${new Date(a.fundedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                    : `applied ${new Date(a.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                </span>
+              </div>
+              {total > 0 && (
+                <div className="mt-2 flex items-center gap-4 text-[11px] text-[#52525b]">
+                  <span>{paid} / {total} paid</span>
+                  {isActive && (
+                    <span className="text-[#dc2626] font-semibold">
+                      ${outstanding.toFixed(2)} outstanding
+                    </span>
+                  )}
+                </div>
+              )}
+              {a.status === "REJECTED" && a.rejectionReason && (
+                <p className="mt-1.5 text-[11px] text-[#dc2626]">Rejected: {a.rejectionReason}</p>
+              )}
+            </a>
           );
         })}
       </div>

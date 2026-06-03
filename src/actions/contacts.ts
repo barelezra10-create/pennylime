@@ -74,7 +74,7 @@ export async function getContacts(filters?: {
 }
 
 export async function getContact(id: string) {
-  return prisma.contact.findUnique({
+  const contact = await prisma.contact.findUnique({
     where: { id },
     include: {
       tags: true,
@@ -87,6 +87,46 @@ export async function getContact(id: string) {
       },
       activities: { orderBy: { createdAt: "desc" }, take: 50 },
     },
+  });
+  if (!contact) return null;
+
+  // Pull every Application from this borrower, not just the one linked
+  // to contact.applicationId. The link only points at the most-recent
+  // app (last upsert from the funnel), so a repeat applicant would
+  // otherwise lose their prior funded advance from the headline view.
+  // Match on ssnHash when known (strongest), else email.
+  const linkedApp = contact.application;
+  const orClauses: Array<Record<string, unknown>> = [];
+  if (linkedApp?.ssnHash) orClauses.push({ ssnHash: linkedApp.ssnHash });
+  if (contact.email) orClauses.push({ email: { equals: contact.email, mode: "insensitive" } });
+
+  const allApps = orClauses.length
+    ? await prisma.application.findMany({
+        where: { OR: orClauses },
+        orderBy: { createdAt: "desc" },
+        include: {
+          payments: { orderBy: { paymentNumber: "asc" } },
+          documents: { orderBy: { createdAt: "desc" } },
+        },
+      })
+    : linkedApp ? [linkedApp] : [];
+
+  // Promote the most relevant advance to the headline. Funded/late
+  // advances trump a fresh pending one so the "Advance" card stops
+  // showing $0 / 0 payments for a borrower with an active loan.
+  const STATUS_PRIORITY = ["FUNDED", "LATE", "APPROVED", "ACCEPTED", "PAID_OFF", "DEFAULTED", "PENDING", "REJECTED"];
+  const sorted = [...allApps].sort((a, b) => {
+    const ai = STATUS_PRIORITY.indexOf(a.status);
+    const bi = STATUS_PRIORITY.indexOf(b.status);
+    if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+  const primary = sorted[0] ?? linkedApp ?? null;
+  const others = sorted.filter((a) => a.id !== primary?.id);
+
+  return Object.assign(contact, {
+    application: primary,
+    otherApplications: others,
   });
 }
 
