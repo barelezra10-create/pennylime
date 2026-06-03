@@ -13,7 +13,7 @@ import { evaluateApplicationAction } from "@/actions/evaluation";
 import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
 import type { OfferTerm } from "@/actions/offers";
-import { getPaymentsSummary, retryPayment, waiveLateFee, chargePaymentNow } from "@/actions/payments";
+import { getPaymentsSummary, retryPayment, waiveLateFee, chargePaymentNow, sendMissedPaymentNotice } from "@/actions/payments";
 import { uploadBankStatements, setVerifiedMonthlyIncome, parseBankStatementsWithAI, deleteBankStatement, deleteApplicationDocument } from "@/actions/bank-statements";
 import { runAiRiskAnalysis, getAiRiskAnalysis } from "@/actions/risk";
 import type { AiRiskAnalysis } from "@/lib/risk/ai-risk";
@@ -1185,6 +1185,18 @@ export function DetailClient({
                       const badgeClass = statusColors[payment.status] ?? "bg-gray-100 text-[#a1a1aa]";
                       const lateFee = Number(payment.lateFee);
                       const isPaid = payment.status === "PAID";
+                      // Any state where pulling the debit again makes sense:
+                      // PENDING past due (cron didn't catch it), FAILED, NSF
+                      // RETURNED, or already-LATE / COLLECTIONS rows.
+                      const isOverduePending =
+                        payment.status === "PENDING" &&
+                        new Date(payment.dueDate).getTime() < Date.now();
+                      const canRecharge =
+                        payment.status === "FAILED" ||
+                        payment.status === "RETURNED" ||
+                        payment.status === "LATE" ||
+                        payment.status === "COLLECTIONS" ||
+                        isOverduePending;
 
                       return (
                         <tr key={payment.id} className="border-b border-gray-50 last:border-0 hover:bg-[#f8faf8] transition-colors">
@@ -1251,24 +1263,46 @@ export function DetailClient({
                                   Refresh
                                 </button>
                               )}
-                              {payment.status === "FAILED" && (
-                                <button
-                                  onClick={async () => {
-                                    const result = await retryPayment(payment.id);
-                                    if (result.success) {
-                                      toast.success(`Payment #${payment.paymentNumber} queued for retry`);
-                                      getPaymentsSummary(application.id).then(setPaymentSummary);
-                                    } else {
-                                      toast.error(result.error || "Failed to retry payment");
-                                    }
-                                  }}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-[#2563eb] hover:bg-[#eef4ff] transition-colors"
-                                >
-                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
-                                  </svg>
-                                  Retry
-                                </button>
+                              {canRecharge && (
+                                <>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Recharge payment #${payment.paymentNumber} ($${fmt(Number(payment.amount) + lateFee)}) right now?`)) return;
+                                      const result = await retryPayment(payment.id);
+                                      if (result.success) {
+                                        toast.success(`Payment #${payment.paymentNumber} queued for recharge`);
+                                        getPaymentsSummary(application.id).then(setPaymentSummary);
+                                      } else {
+                                        toast.error(result.error || "Failed to recharge payment");
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-[#2563eb] bg-white px-2.5 py-1 text-xs font-semibold text-[#2563eb] hover:bg-[#eef4ff] transition-colors"
+                                    title="Re-attempt the ACH debit through Increase right now"
+                                  >
+                                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+                                    </svg>
+                                    Recharge now
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      if (!confirm(`Email the borrower about missed payment #${payment.paymentNumber} and ask when to retry?`)) return;
+                                      const result = await sendMissedPaymentNotice(payment.id);
+                                      if (result.success) {
+                                        toast.success("Missed-payment email sent");
+                                      } else {
+                                        toast.error(result.error || "Failed to send email");
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-[#15803d] bg-white px-2.5 py-1 text-xs font-semibold text-[#15803d] hover:bg-[#f0fdf4] transition-colors"
+                                    title="Email the borrower so they can reply with a date that works for them"
+                                  >
+                                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                                    </svg>
+                                    Email borrower
+                                  </button>
+                                </>
                               )}
                               {lateFee > 0 && (
                                 <button

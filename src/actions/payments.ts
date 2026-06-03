@@ -53,8 +53,20 @@ export async function retryPayment(paymentId: string) {
   });
 
   if (!payment) return { success: false, error: "Payment not found" };
-  if (payment.status !== "FAILED" && payment.status !== "LATE" && payment.status !== "COLLECTIONS") {
-    return { success: false, error: "Payment cannot be retried in current status" };
+  // Recharge covers any non-paid state where pulling again makes sense:
+  // a failed ACH, an NSF return, a missed-cron LATE flag, or a PENDING
+  // row whose due date has already passed (so the borrower is overdue
+  // but we never attempted the debit yet).
+  const overduePending =
+    payment.status === "PENDING" && payment.dueDate && payment.dueDate.getTime() < Date.now();
+  const retriable =
+    payment.status === "FAILED" ||
+    payment.status === "LATE" ||
+    payment.status === "RETURNED" ||
+    payment.status === "COLLECTIONS" ||
+    overduePending;
+  if (!retriable) {
+    return { success: false, error: `Payment is ${payment.status} and not overdue, nothing to recharge.` };
   }
 
   // Mark as PROCESSING so cron doesn't double-debit
@@ -181,6 +193,65 @@ export async function waiveLateFee(paymentId: string) {
   });
 
   return { success: true, waivedAmount };
+}
+
+/**
+ * Send the borrower a friendly "we missed your remittance, tell us when
+ * to retry" email. Used by admin when a payment is overdue/failed and
+ * we want the borrower to pick a recharge date instead of auto-retrying.
+ */
+export async function sendMissedPaymentNotice(paymentId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { application: true },
+  });
+  if (!payment) return { success: false, error: "Payment not found" };
+
+  const { sendEmail } = await import("@/lib/emails/send");
+  const { missedPaymentEmail } = await import("@/lib/emails/missed-payment");
+
+  const contact = await prisma.contact.findFirst({
+    where: { applicationId: payment.applicationId },
+    select: { id: true },
+  });
+
+  try {
+    await sendEmail({
+      to: payment.application.email,
+      ...missedPaymentEmail({
+        firstName: payment.application.firstName,
+        applicationCode: payment.application.applicationCode,
+        paymentNumber: payment.paymentNumber,
+        amount: Number(payment.amount) + Number(payment.lateFee),
+        dueDate: payment.dueDate,
+      }),
+      contactId: contact?.id,
+      templateId: "payment-missed-notice",
+    });
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Email send failed",
+    };
+  }
+
+  await logAudit({
+    action: "COLLECTIONS_ESCALATION",
+    entityType: "PAYMENT",
+    entityId: paymentId,
+    performedBy: session.user.email,
+    details: {
+      kind: "missed_payment_notice",
+      applicationId: payment.applicationId,
+      paymentNumber: payment.paymentNumber,
+      amount: Number(payment.amount) + Number(payment.lateFee),
+    },
+  });
+
+  return { success: true };
 }
 
 export async function getAllPayments(status?: string) {
