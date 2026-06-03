@@ -247,11 +247,153 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // ──────────────────────────────────────────────────────────────
+  // Increase repayment poll. Mirrors the disbursement poll above but
+  // for the Payment table. Catches any borrower debit whose terminal
+  // event (settled / returned) didn't reach our webhook — without this,
+  // a missed webhook leaves the Payment stuck in PROCESSING forever
+  // and the parent Application never moves into REPAYING / LATE.
+  // ──────────────────────────────────────────────────────────────
+  let repaymentsRefreshed = 0;
+  let repaymentsSettled = 0;
+  let repaymentsReturned = 0;
+  const dirtyApplicationIds = new Set<string>();
+  const pendingRepayments = await prisma.payment.findMany({
+    where: {
+      increaseTransferId: { not: null },
+      OR: [
+        { increaseTransferStatus: null },
+        { increaseTransferStatus: { notIn: TERMINAL } },
+      ],
+    },
+    select: {
+      id: true,
+      applicationId: true,
+      status: true,
+      paidAt: true,
+      increaseTransferId: true,
+      increaseTransferStatus: true,
+    },
+    take: 100,
+  });
+  for (const p of pendingRepayments) {
+    if (!p.increaseTransferId) continue;
+    const isRtp = p.increaseTransferId.startsWith("real_time_payments_transfer_");
+    const url = `https://api.increase.com${
+      isRtp
+        ? `/real_time_payments_transfers/${p.increaseTransferId}`
+        : `/ach_transfers/${p.increaseTransferId}`
+    }`;
+    try {
+      const r = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${process.env.INCREASE_API_KEY}`,
+          "Increase-Version": "2024-04-15",
+        },
+      });
+      if (!r.ok) continue;
+      const data = (await r.json()) as { status?: string };
+      const newStatus = data.status;
+      if (!newStatus || newStatus === p.increaseTransferStatus) continue;
+
+      const isSettled = newStatus === "settled" || newStatus === "complete";
+      const isReturn = newStatus === "returned" || newStatus === "rejected";
+      const nextPaymentStatus = isReturn ? "RETURNED" : isSettled ? "PAID" : p.status;
+
+      await prisma.payment.update({
+        where: { id: p.id },
+        data: {
+          increaseTransferStatus: newStatus,
+          paidAt: isSettled && !p.paidAt ? new Date() : p.paidAt,
+          status: nextPaymentStatus,
+        },
+      });
+      repaymentsRefreshed++;
+      if (isSettled) repaymentsSettled++;
+      if (isReturn) repaymentsReturned++;
+      if (isSettled || isReturn) dirtyApplicationIds.add(p.applicationId);
+    } catch (err) {
+      console.error(`[payment-status] repayment poll failed for ${p.id}:`, err);
+    }
+  }
+
+  // Cascade payment-level changes onto each touched application so the
+  // FUNDED -> REPAYING -> LATE -> PAID_OFF transitions land without a
+  // separate cron pass.
+  for (const appId of dirtyApplicationIds) {
+    await refreshApplicationStatusFromPayments(appId);
+  }
+
   return NextResponse.json({
     processed: processingPayments.length,
     settled,
     failed,
     pending,
     disbursementsRefreshed,
+    repaymentsRefreshed,
+    repaymentsSettled,
+    repaymentsReturned,
   });
+}
+
+/**
+ * Recompute an application's status from its payment ledger. Mirrors
+ * the helper in the Increase webhook so both code paths (push events
+ * + pull-based cron poll) drive the same lifecycle deterministically.
+ *
+ *   PAID_OFF  - every payment PAID
+ *   LATE      - any RETURNED/FAILED, or any PENDING past dueDate (+grace)
+ *   REPAYING  - at least one payment PAID and not paid off / not late
+ *   FUNDED    - disbursed but no payments PAID yet
+ *
+ * Only acts on advances that have been disbursed (FUNDED/REPAYING/ACTIVE/LATE).
+ * Will not override REJECTED/DEFAULTED/PAID_OFF/PENDING/APPROVED.
+ */
+async function refreshApplicationStatusFromPayments(applicationId: string): Promise<void> {
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { payments: true },
+  });
+  if (!app) return;
+
+  const ACTIVE_STATUSES = ["FUNDED", "REPAYING", "ACTIVE", "LATE"];
+  if (!ACTIVE_STATUSES.includes(app.status)) return;
+
+  const payments = app.payments;
+  const allPaid = payments.length > 0 && payments.every((p) => p.status === "PAID");
+  if (allPaid) {
+    if (app.status !== "PAID_OFF") {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { status: "PAID_OFF" },
+      });
+    }
+    return;
+  }
+
+  const now = new Date();
+  const GRACE_DAYS = 1;
+  const hasFailedPayment = payments.some(
+    (p) => p.status === "RETURNED" || p.status === "FAILED",
+  );
+  const hasOverduePending = payments.some(
+    (p) =>
+      (p.status === "PENDING" || p.status === "PROCESSING") &&
+      p.dueDate &&
+      (now.getTime() - p.dueDate.getTime()) / (1000 * 60 * 60 * 24) > GRACE_DAYS,
+  );
+  const isLate = hasFailedPayment || hasOverduePending;
+  const hasPaidPayment = payments.some((p) => p.status === "PAID");
+
+  let nextStatus: string = app.status;
+  if (isLate) nextStatus = "LATE";
+  else if (hasPaidPayment) nextStatus = "REPAYING";
+  else nextStatus = "FUNDED";
+
+  if (nextStatus !== app.status) {
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { status: nextStatus },
+    });
+  }
 }

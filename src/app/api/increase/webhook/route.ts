@@ -112,8 +112,79 @@ export async function POST(req: NextRequest) {
           status: isReturn ? "RETURNED" : isSettled ? "PAID" : payment.status,
         },
       });
+
+      // Cascade the payment event to the parent application status so
+      // the pipeline / financial summaries reflect reality without a
+      // manual nudge.
+      if (isSettled || isReturn) {
+        await refreshApplicationStatusFromPayments(payment.applicationId);
+      }
     }
   }
 
   return Response.json({ ok: true });
+}
+
+/**
+ * Recompute an application's status from its payment ledger. Drives the
+ * FUNDED -> REPAYING -> LATE -> PAID_OFF lifecycle automatically so we
+ * don't need a human to flip statuses when an ACH posts or returns.
+ *
+ *   PAID_OFF  - every payment PAID
+ *   LATE      - any RETURNED/FAILED past grace, or PENDING past dueDate
+ *   REPAYING  - at least one payment PAID and not paid off / not late
+ *   FUNDED    - disbursed but no payments PAID yet
+ *
+ * The function only DOWNGRADES into REPAYING/LATE from FUNDED — it never
+ * overrides terminal statuses (REJECTED/DEFAULTED) or pre-disburse
+ * statuses (PENDING/APPROVED).
+ */
+async function refreshApplicationStatusFromPayments(applicationId: string): Promise<void> {
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { payments: true },
+  });
+  if (!app) return;
+
+  // Only act on advances that have actually been disbursed.
+  const ACTIVE_STATUSES = ["FUNDED", "REPAYING", "ACTIVE", "LATE"];
+  if (!ACTIVE_STATUSES.includes(app.status)) return;
+
+  const payments = app.payments;
+  const allPaid = payments.length > 0 && payments.every((p) => p.status === "PAID");
+  if (allPaid) {
+    if (app.status !== "PAID_OFF") {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { status: "PAID_OFF" },
+      });
+    }
+    return;
+  }
+
+  const now = new Date();
+  const GRACE_DAYS = 1;
+  const hasFailedPayment = payments.some(
+    (p) => p.status === "RETURNED" || p.status === "FAILED",
+  );
+  const hasOverduePending = payments.some(
+    (p) =>
+      (p.status === "PENDING" || p.status === "PROCESSING") &&
+      p.dueDate &&
+      (now.getTime() - p.dueDate.getTime()) / (1000 * 60 * 60 * 24) > GRACE_DAYS,
+  );
+  const isLate = hasFailedPayment || hasOverduePending;
+  const hasPaidPayment = payments.some((p) => p.status === "PAID");
+
+  let nextStatus: string = app.status;
+  if (isLate) nextStatus = "LATE";
+  else if (hasPaidPayment) nextStatus = "REPAYING";
+  else nextStatus = "FUNDED";
+
+  if (nextStatus !== app.status) {
+    await prisma.application.update({
+      where: { id: applicationId },
+      data: { status: nextStatus },
+    });
+  }
 }
