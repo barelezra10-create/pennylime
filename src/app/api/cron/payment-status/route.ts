@@ -395,5 +395,76 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
       where: { id: applicationId },
       data: { status: nextStatus },
     });
+    await syncContactStageForApplication(app, nextStatus);
+  }
+}
+
+/**
+ * Mirror an application status change onto the borrower's CRM Contact
+ * pipeline stage. Lookup by ssnHash first (strongest match — survives
+ * top-up applications that rewrite Contact.applicationId), then email.
+ * See the matching helper in /api/increase/webhook for full mapping
+ * docs.
+ */
+async function syncContactStageForApplication(
+  app: { id: string; email: string; ssnHash: string | null },
+  _newStatus: string,
+): Promise<void> {
+  const orClauses: Array<Record<string, unknown>> = [];
+  if (app.ssnHash) orClauses.push({ application: { ssnHash: app.ssnHash } });
+  if (app.email) orClauses.push({ email: { equals: app.email, mode: "insensitive" } });
+  if (orClauses.length === 0) return;
+
+  const contact = await prisma.contact.findFirst({
+    where: { OR: orClauses },
+    select: { id: true, stage: true, email: true },
+  });
+  if (!contact) return;
+
+  const appOrClauses: Array<Record<string, unknown>> = [];
+  if (app.ssnHash) appOrClauses.push({ ssnHash: app.ssnHash });
+  if (contact.email) appOrClauses.push({ email: { equals: contact.email, mode: "insensitive" } });
+  const allApps = await prisma.application.findMany({
+    where: { OR: appOrClauses },
+    select: { status: true },
+  });
+
+  const PRIORITY = [
+    "FUNDED",
+    "LATE",
+    "REPAYING",
+    "APPROVED",
+    "OFFER_ACCEPTED",
+    "PAID_OFF",
+    "DEFAULTED",
+    "PENDING",
+    "REJECTED",
+  ];
+  const strongest = [...allApps].sort((a, b) => {
+    const ai = PRIORITY.indexOf(a.status);
+    const bi = PRIORITY.indexOf(b.status);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  })[0]?.status;
+  if (!strongest) return;
+
+  const STATUS_TO_STAGE: Record<string, string> = {
+    APPROVED: "APPROVED",
+    OFFER_ACCEPTED: "OFFER_ACCEPTED",
+    FUNDED: "FUNDED",
+    REPAYING: "REPAYING",
+    LATE: "REPAYING",
+    PAID_OFF: "PAID_OFF",
+    DEFAULTED: "DEFAULTED",
+    REJECTED: "REJECTED",
+    PENDING: "APPLICANT",
+  };
+  const targetStage = STATUS_TO_STAGE[strongest];
+  if (!targetStage || contact.stage === targetStage) return;
+
+  try {
+    const { updateContactStage } = await import("@/actions/contacts");
+    await updateContactStage(contact.id, targetStage);
+  } catch (err) {
+    console.error(`[stage-sync] failed to update contact ${contact.id} to ${targetStage}:`, err);
   }
 }

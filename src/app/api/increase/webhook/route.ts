@@ -186,5 +186,97 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
       where: { id: applicationId },
       data: { status: nextStatus },
     });
+    await syncContactStageForApplication(app, nextStatus);
+  }
+}
+
+/**
+ * Mirror an application status change onto the borrower's CRM Contact
+ * pipeline stage so the kanban + contact page reflect lifecycle without
+ * a human touching the dropdown. Stage IS a 1:1 relation that points
+ * at the borrower's most recent application, so we look up the contact
+ * by ssnHash (strongest match for repeat borrowers) before falling
+ * back to email.
+ *
+ * Mapping:
+ *   APPROVED  -> APPROVED   (handled elsewhere, included for completeness)
+ *   FUNDED    -> FUNDED
+ *   REPAYING  -> REPAYING
+ *   LATE      -> REPAYING   (no LATE pipeline stage; flagged via badge)
+ *   PAID_OFF  -> PAID_OFF
+ *   DEFAULTED -> DEFAULTED
+ *
+ * Skips when no contact is found (lead never made it into the CRM)
+ * or when the current stage is already correct.
+ */
+async function syncContactStageForApplication(
+  app: { id: string; email: string; ssnHash: string | null },
+  _newStatus: string,
+): Promise<void> {
+  // Look up the borrower's contact (by ssnHash first, email fallback)
+  // and ALL their applications, then drive the pipeline stage from the
+  // strongest one. We can't just act on the app that changed because a
+  // repeat borrower's rejected top-up would otherwise downgrade their
+  // contact stage even though their original advance is still funded.
+  const orClauses: Array<Record<string, unknown>> = [];
+  if (app.ssnHash) {
+    orClauses.push({ application: { ssnHash: app.ssnHash } });
+  }
+  if (app.email) {
+    orClauses.push({ email: { equals: app.email, mode: "insensitive" } });
+  }
+  if (orClauses.length === 0) return;
+
+  const contact = await prisma.contact.findFirst({
+    where: { OR: orClauses },
+    select: { id: true, stage: true, email: true },
+  });
+  if (!contact) return;
+
+  const appOrClauses: Array<Record<string, unknown>> = [];
+  if (app.ssnHash) appOrClauses.push({ ssnHash: app.ssnHash });
+  if (contact.email) appOrClauses.push({ email: { equals: contact.email, mode: "insensitive" } });
+  const allApps = await prisma.application.findMany({
+    where: { OR: appOrClauses },
+    select: { status: true },
+  });
+
+  const PRIORITY = [
+    "FUNDED",
+    "LATE",
+    "REPAYING",
+    "APPROVED",
+    "OFFER_ACCEPTED",
+    "PAID_OFF",
+    "DEFAULTED",
+    "PENDING",
+    "REJECTED",
+  ];
+  const strongest = [...allApps].sort((a, b) => {
+    const ai = PRIORITY.indexOf(a.status);
+    const bi = PRIORITY.indexOf(b.status);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  })[0]?.status;
+  if (!strongest) return;
+
+  const STATUS_TO_STAGE: Record<string, string> = {
+    APPROVED: "APPROVED",
+    OFFER_ACCEPTED: "OFFER_ACCEPTED",
+    FUNDED: "FUNDED",
+    REPAYING: "REPAYING",
+    LATE: "REPAYING",
+    PAID_OFF: "PAID_OFF",
+    DEFAULTED: "DEFAULTED",
+    REJECTED: "REJECTED",
+    PENDING: "APPLICANT",
+  };
+  const targetStage = STATUS_TO_STAGE[strongest];
+  if (!targetStage || contact.stage === targetStage) return;
+
+  try {
+    const { updateContactStage } = await import("@/actions/contacts");
+    await updateContactStage(contact.id, targetStage);
+  } catch (err) {
+    console.error(`[stage-sync] failed to update contact ${contact.id} to ${targetStage}:`, err);
   }
 }
