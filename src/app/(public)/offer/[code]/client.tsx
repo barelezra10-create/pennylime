@@ -96,13 +96,20 @@ export function OfferClient({
     const term = initial.terms[selectedTerm];
     if (!term) return [];
     const weekly = Math.round(term.weeklyRemittance * (amount / Math.max(term.disbursedAmount, 1)) * 100) / 100;
+    // Preview must mirror generateWeeklySchedule in actions/offers.ts so
+    // the dates the borrower sees on the offer page match what the
+    // server creates on acceptance. 3-day minimum buffer, then nearest
+    // preferredChargeDay (or +3 if no preference is on file).
+    const FIRST_PAYMENT_BUFFER_DAYS = 3;
     const firstDue = new Date();
-    firstDue.setDate(firstDue.getDate() + 7);
     if (initial.preferredChargeDay != null) {
       const targetDay = initial.preferredChargeDay;
-      const currentDay = firstDue.getDay();
-      const diff = (targetDay - currentDay + 7) % 7;
-      firstDue.setDate(firstDue.getDate() + diff);
+      const startDay = firstDue.getDay();
+      let dayOffset = (targetDay - startDay + 7) % 7;
+      if (dayOffset < FIRST_PAYMENT_BUFFER_DAYS) dayOffset += 7;
+      firstDue.setDate(firstDue.getDate() + dayOffset);
+    } else {
+      firstDue.setDate(firstDue.getDate() + FIRST_PAYMENT_BUFFER_DAYS);
     }
     const out: { paymentNumber: number; date: Date; amount: number }[] = [];
     for (let i = 0; i < term.durationWeeks; i++) {
