@@ -207,37 +207,66 @@ export async function executePayoff(): Promise<
   if (!result.ok) return { ok: false, error: result.error };
 
   const transferId = result.transferId;
-  const nextPaymentNumber = (app.payments[app.payments.length - 1]?.paymentNumber || 0) + 1;
   const now = new Date();
+  // Repurpose the next unpaid payment as the payoff line rather than
+  // creating a brand-new row + waiving the original. This keeps the
+  // total payment count stable so the portal / admin view shows a
+  // clean ledger (1 payoff + remaining waived) instead of N+1 rows
+  // including an out-of-order extra entry.
+  const nextUnpaid = app.payments.find(
+    (p) => p.status !== "PAID" && !p.paidAt,
+  );
 
   await prisma.$transaction(async (tx) => {
-    // Mark all unpaid scheduled payments as WAIVED — they're being collapsed
-    // into the single payoff debit and the customer is no longer on the hook
-    // for the remaining schedule.
+    // Mark every OTHER unpaid scheduled payment as WAIVED — they're
+    // collapsed into the single payoff debit.
     await tx.payment.updateMany({
       where: {
         applicationId: app.id,
         status: { notIn: ["PAID"] },
         paidAt: null,
+        ...(nextUnpaid ? { id: { not: nextUnpaid.id } } : {}),
       },
       data: { status: "WAIVED" },
     });
-    // Create the payoff Payment row. The interest portion is the accrued
-    // interest computed above; everything else is principal.
-    await tx.payment.create({
-      data: {
-        applicationId: app.id,
-        amount: quote.payoffAmount,
-        principal: quote.outstandingPrincipal,
-        interest: quote.accruedInterestSinceLastPayment,
-        lateFee: 0,
-        dueDate: now,
-        paymentNumber: nextPaymentNumber,
-        status: "PROCESSING",
-        increaseTransferId: transferId,
-        increaseTransferStatus: "pending_submission",
-      },
-    });
+
+    if (nextUnpaid) {
+      // Update the next-unpaid row to BE the payoff. Carries the new
+      // amount, principal, interest, the ACH transfer id, and moves
+      // status to PROCESSING.
+      await tx.payment.update({
+        where: { id: nextUnpaid.id },
+        data: {
+          amount: quote.payoffAmount,
+          principal: quote.outstandingPrincipal,
+          interest: quote.accruedInterestSinceLastPayment,
+          lateFee: 0,
+          dueDate: now,
+          status: "PROCESSING",
+          increaseTransferId: transferId,
+          increaseTransferStatus: "pending_submission",
+        },
+      });
+    } else {
+      // No unpaid row exists (shouldn't happen since computeQuote
+      // bailed earlier if balance is zero, but guard anyway). Create
+      // one as the trailing slot.
+      const nextPaymentNumber = (app.payments[app.payments.length - 1]?.paymentNumber || 0) + 1;
+      await tx.payment.create({
+        data: {
+          applicationId: app.id,
+          amount: quote.payoffAmount,
+          principal: quote.outstandingPrincipal,
+          interest: quote.accruedInterestSinceLastPayment,
+          lateFee: 0,
+          dueDate: now,
+          paymentNumber: nextPaymentNumber,
+          status: "PROCESSING",
+          increaseTransferId: transferId,
+          increaseTransferStatus: "pending_submission",
+        },
+      });
+    }
   });
 
   await logAudit({
