@@ -47,12 +47,21 @@ export default async function PortalDashboard() {
   }
 
   const fundedAmount = app.fundedAmount ? Number(app.fundedAmount) : Number(app.loanAmount);
-  const totalRepay = app.payments.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
-  const paidPayments = app.payments.filter((p) => p.status === "PAID" || p.paidAt);
+  // Exclude WAIVED/CANCELED/RETURNED rows from totals + counts. They
+  // represent payments collapsed into a payoff (or refunded) and would
+  // otherwise inflate the borrower's "total" and "remaining" figures
+  // long after they've actually paid off.
+  const obligatedPayments = app.payments.filter(
+    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
+  );
+  const totalRepay = obligatedPayments.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
+  const paidPayments = obligatedPayments.filter((p) => p.status === "PAID" || p.paidAt);
   const paidAmount = paidPayments.reduce((s, p) => s + Number(p.amount), 0);
   const remainingAmount = Math.max(totalRepay - paidAmount, 0);
-  const nextDue = app.payments.find((p) => p.status !== "PAID" && !p.paidAt);
-  const progressPct = app.payments.length > 0 ? Math.round((paidPayments.length / app.payments.length) * 100) : 0;
+  const nextDue = obligatedPayments.find((p) => p.status !== "PAID" && !p.paidAt);
+  const progressPct = obligatedPayments.length > 0
+    ? Math.round((paidPayments.length / obligatedPayments.length) * 100)
+    : 0;
   const signedAgreement = app.documents[0] || null;
   const [payoffQuote, skipQuote, topUpEligibility] = await Promise.all([
     getPayoffQuote(),
@@ -91,11 +100,11 @@ export default async function PortalDashboard() {
           <StatusBadge status={app.status} offerStatus={app.offerStatus} />
         </div>
 
-        {app.payments.length > 0 && (
+        {obligatedPayments.length > 0 && (
           <div className="mt-6">
             <div className="flex items-center justify-between text-[12px] mb-1.5">
               <span className="text-[#71717a]">
-                {paidPayments.length} of {app.payments.length} payments
+                {paidPayments.length} of {obligatedPayments.length} payments
               </span>
               <span className="text-[#71717a] tabular-nums">{progressPct}% paid</span>
             </div>
