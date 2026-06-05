@@ -96,9 +96,11 @@ export function ChatWidget() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          // Attach lead to existing anonymous session if we have one,
+          // otherwise the route creates a fresh session.
+          sessionId,
           leadFirstName: leadFirst,
           leadEmail,
-          // No text yet — just starting the session so the form clears.
         }),
       });
       const data = await res.json();
@@ -112,6 +114,7 @@ export function ChatWidget() {
         try {
           window.localStorage.setItem(LEAD_KEY, JSON.stringify(captured));
         } catch {}
+        setWantSaveContact(false);
       } else if (data.error) {
         setLeadErr(data.error);
       }
@@ -124,7 +127,7 @@ export function ChatWidget() {
 
   async function send() {
     const t = text.trim();
-    if (!t || busy || !sessionId) return;
+    if (!t || busy) return;
     setBusy(true);
     setText("");
     const localMsg: Msg = { role: "user", text: t };
@@ -141,6 +144,10 @@ export function ChatWidget() {
         }),
       });
       const data = await res.json();
+      if (data.sessionId && !sessionId) {
+        setSessionId(data.sessionId);
+        try { window.localStorage.setItem(SESSION_KEY, data.sessionId); } catch {}
+      }
       if (data.mode) setMode(data.mode);
       if (data.reply) {
         setMessages((m) => [...m, { role: "assistant", authoredBy: "ai", text: data.reply }]);
@@ -155,7 +162,11 @@ export function ChatWidget() {
     }
   }
 
-  const needsLead = !sessionId || !lead;
+  // Lead capture is now optional — only surfaced when the user clicks
+  // "Save chat to inbox" or after several turns. General questions
+  // work anonymously.
+  const [wantSaveContact, setWantSaveContact] = useState(false);
+  const needsLead = wantSaveContact && !lead;
 
   return (
     <>
@@ -232,7 +243,7 @@ export function ChatWidget() {
               <div ref={listRef} style={{ flex: 1, padding: 12, overflowY: "auto", background: "#fafafa" }}>
                 {messages.length === 0 && (
                   <div style={{ color: "#6b7280", fontSize: 14 }}>
-                    Hi {lead.firstName}. Ask me about your application, payments, or how PennyLime works.
+                    Hi{lead ? ` ${lead.firstName}` : ""}. Ask me anything about PennyLime — how the advance works, eligibility, rates, repayment. Account-specific questions may need your email.
                   </div>
                 )}
                 {messages.map((m, i) => {
@@ -277,6 +288,17 @@ export function ChatWidget() {
                   Send
                 </button>
               </form>
+              {!lead && (
+                <div style={{ padding: "6px 12px 10px", textAlign: "center", borderTop: "1px solid #f4f4f5", background: "#fafafa" }}>
+                  <button
+                    type="button"
+                    onClick={() => setWantSaveContact(true)}
+                    style={{ background: "transparent", border: "none", color: "#1f8a3c", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Save this chat to your inbox
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

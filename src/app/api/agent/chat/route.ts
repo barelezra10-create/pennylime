@@ -37,13 +37,10 @@ export async function POST(req: NextRequest) {
     return handlePoll(sessionId, sinceMessageId);
   }
 
-  // Lead-capture / start-session path.
-  if (!sessionId && (!leadFirstName || !leadEmail)) {
-    return Response.json(
-      { error: "leadFirstName and leadEmail required to start a chat" },
-      { status: 400 },
-    );
-  }
+  // Lead-capture / start-session path. Lead info is now optional —
+  // visitors can ask general questions without identifying themselves.
+  // We only validate the format of anything that IS provided. Tools
+  // that need identity will prompt for it later in the conversation.
   if (leadEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmail)) {
     return Response.json({ error: "invalid email" }, { status: 400 });
   }
@@ -114,10 +111,44 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     }
   } else {
-    // Existing session — bump lastPolledAt every time the user sends.
+    // Existing session — bump lastPolledAt + late-bind lead info if
+    // this is the call where the visitor decided to identify themselves
+    // ("Save chat to inbox"). Upsert a Contact in the same shot.
+    let contactIdUpdate: string | null | undefined = undefined;
+    if (leadEmail && !session.contactId) {
+      const existing = await prisma.contact.findUnique({ where: { email: leadEmail } });
+      if (existing) {
+        contactIdUpdate = existing.id;
+      } else {
+        const created = await prisma.contact.create({
+          data: {
+            email: leadEmail,
+            firstName: leadFirstName ?? "Visitor",
+            lastName: leadLastName,
+            source: "chat",
+            stage: "LEAD",
+          },
+        });
+        contactIdUpdate = created.id;
+        await prisma.activity.create({
+          data: {
+            contactId: created.id,
+            type: "chat_started",
+            title: "Started a chat",
+            performedBy: "chat-widget",
+          },
+        });
+      }
+    }
     await prisma.agentSession.update({
       where: { id: session.id },
-      data: { lastPolledAt: new Date() },
+      data: {
+        lastPolledAt: new Date(),
+        ...(leadFirstName && !session.leadFirstName ? { leadFirstName } : {}),
+        ...(leadLastName && !session.leadLastName ? { leadLastName } : {}),
+        ...(leadEmail && !session.leadEmail ? { leadEmail } : {}),
+        ...(contactIdUpdate ? { contactId: contactIdUpdate } : {}),
+      },
     });
   }
 
