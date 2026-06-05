@@ -22,16 +22,37 @@ function generateWeeklySchedule(input: {
   const interestPerPayment = totalInterest / input.termWeeks;
   const principalPerPayment = input.weeklyPayment - interestPerPayment;
 
-  // First-payment anchor: either today + 7 (legacy behavior) or the
-  // next occurrence of preferredChargeDay AFTER today+7 so we never
-  // pull money the same week the advance disburses.
+  // First-payment anchor.
+  //
+  // When the borrower has a preferredChargeDay (inferred from their
+  // bank deposit pattern), we want the NEAREST occurrence of that day
+  // that still leaves the ACH disbursement enough time to clear. The
+  // old logic added 7 days unconditionally and then snapped, which
+  // routinely pushed the first debit out to 11-14 days. The closer the
+  // first debit, the less "free spend" before repayment kicks in,
+  // which is what we want.
+  //
+  // New rule: find the next preferredChargeDay that's at least
+  // FIRST_PAYMENT_BUFFER_DAYS from start. If the next occurrence is
+  // sooner than that, skip to the following week. Gives ACH ~3-day
+  // cushion for the disbursement to settle.
+  const FIRST_PAYMENT_BUFFER_DAYS = 3;
   const firstDue = new Date(input.startDate);
-  firstDue.setDate(firstDue.getDate() + 7);
   if (input.preferredChargeDay != null) {
     const targetDay = input.preferredChargeDay;
-    const currentDay = firstDue.getDay();
-    const diff = (targetDay - currentDay + 7) % 7;
-    firstDue.setDate(firstDue.getDate() + diff);
+    const startDay = firstDue.getDay();
+    let dayOffset = (targetDay - startDay + 7) % 7;
+    if (dayOffset < FIRST_PAYMENT_BUFFER_DAYS) {
+      // Next occurrence is too close (e.g., accepting on a Monday with
+      // preferredChargeDay = Tuesday gives only 1 day for ACH to clear).
+      // Push to the following week.
+      dayOffset += 7;
+    }
+    firstDue.setDate(firstDue.getDate() + dayOffset);
+  } else {
+    // No preferred day on file — fall back to start + 7 so we still
+    // give the borrower a week of breathing room.
+    firstDue.setDate(firstDue.getDate() + 7);
   }
 
   const schedule: Array<{
