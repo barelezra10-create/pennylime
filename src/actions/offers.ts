@@ -50,9 +50,10 @@ function generateWeeklySchedule(input: {
     }
     firstDue.setDate(firstDue.getDate() + dayOffset);
   } else {
-    // No preferred day on file — fall back to start + 7 so we still
-    // give the borrower a week of breathing room.
-    firstDue.setDate(firstDue.getDate() + 7);
+    // No preferred day on file (Plaid didn't infer a deposit pattern).
+    // Still apply the 3-day buffer rule so first payment lands as
+    // close to acceptance as ACH timing allows.
+    firstDue.setDate(firstDue.getDate() + FIRST_PAYMENT_BUFFER_DAYS);
   }
 
   const schedule: Array<{
