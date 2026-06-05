@@ -195,7 +195,7 @@ export default async function PortalDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {app.payments.map((p) => {
+                {obligatedPayments.map((p) => {
                   const isPaid = p.status === "PAID" || !!p.paidAt;
                   const lateFee = Number(p.lateFee);
                   return (
@@ -266,6 +266,14 @@ function PortalPaymentPill({ status, isPaid, dueDate }: { status: string; isPaid
       <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 text-red-700 text-[11px] font-semibold px-2.5 py-1">
         <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
         Failed
+      </span>
+    );
+  }
+  if (status === "WAIVED" || status === "CANCELED") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 text-stone-500 text-[11px] font-semibold px-2.5 py-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+        Waived
       </span>
     );
   }
