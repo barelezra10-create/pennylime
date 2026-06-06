@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getPortalApplicationId } from "@/lib/portal-auth";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { PortalLogoutButton } from "./logout-button";
+import { PortalAutoRefresh } from "./portal-auto-refresh";
 import { getPayoffQuote } from "@/actions/portal-payoff";
 import { PayoffCard } from "./payoff-card";
 import { getSkipQuote } from "@/actions/portal-skip";
@@ -76,7 +77,10 @@ export default async function PortalDashboard() {
         <span className="text-xl font-bold tracking-tight">
           Penny<span className="text-[#15803d]">Lime<span className="text-[#a3e635]">.</span></span>
         </span>
-        <PortalLogoutButton />
+        <div className="flex items-center gap-2">
+          <PortalAutoRefresh />
+          <PortalLogoutButton />
+        </div>
       </div>
 
       {/* Greeting */}
