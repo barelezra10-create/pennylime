@@ -14,13 +14,28 @@ export type NotificationEvent =
   | "chatStarted"
   | "applicationSubmitted"
   | "leadCreated"
-  | "inboundEmail";
+  | "inboundEmail"
+  | "paymentSettled"
+  | "paymentFailed"
+  | "paymentInitiated";
 
-const FIELD_BY_EVENT: Record<NotificationEvent, "chatStartedEmails" | "applicationSubmittedEmails" | "leadCreatedEmails" | "inboundEmailEmails"> = {
+type RecipientField =
+  | "chatStartedEmails"
+  | "applicationSubmittedEmails"
+  | "leadCreatedEmails"
+  | "inboundEmailEmails"
+  | "paymentSettledEmails"
+  | "paymentFailedEmails"
+  | "paymentInitiatedEmails";
+
+const FIELD_BY_EVENT: Record<NotificationEvent, RecipientField> = {
   chatStarted: "chatStartedEmails",
   applicationSubmitted: "applicationSubmittedEmails",
   leadCreated: "leadCreatedEmails",
   inboundEmail: "inboundEmailEmails",
+  paymentSettled: "paymentSettledEmails",
+  paymentFailed: "paymentFailedEmails",
+  paymentInitiated: "paymentInitiatedEmails",
 };
 
 function parseRecipients(csv: string): string[] {

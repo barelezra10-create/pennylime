@@ -11,7 +11,14 @@ import {
 
 type EventDef = {
   key: keyof NotificationConfigState;
-  apiKey: "chatStarted" | "applicationSubmitted" | "leadCreated" | "inboundEmail";
+  apiKey:
+    | "chatStarted"
+    | "applicationSubmitted"
+    | "leadCreated"
+    | "inboundEmail"
+    | "paymentSettled"
+    | "paymentFailed"
+    | "paymentInitiated";
   title: string;
   description: string;
 };
@@ -40,6 +47,24 @@ const EVENTS: EventDef[] = [
     apiKey: "inboundEmail",
     title: "Reply received",
     description: "A known Contact replied to one of our emails (info@pennylime.com). Requires the inbound webhook to be wired up.",
+  },
+  {
+    key: "paymentSettledEmails",
+    apiKey: "paymentSettled",
+    title: "Payment settled",
+    description: "An ACH debit posted and the Payment row flipped to PAID. Fires from both the Increase webhook and the payment-status cron poll.",
+  },
+  {
+    key: "paymentFailedEmails",
+    apiKey: "paymentFailed",
+    title: "Payment failed",
+    description: "An ACH debit returned (NSF / R-code) or the initiation itself was rejected. Highest priority of the three — pair with the Recharge button on the application.",
+  },
+  {
+    key: "paymentInitiatedEmails",
+    apiKey: "paymentInitiated",
+    title: "Payment initiated",
+    description: "The payment-processor cron just kicked off a fresh ACH debit. Useful for treasury / cash-flow tracking but can be noisy on heavy days.",
   },
 ];
 

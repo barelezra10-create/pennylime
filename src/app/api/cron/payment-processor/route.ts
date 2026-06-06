@@ -55,6 +55,20 @@ export async function POST(request: NextRequest) {
         details: { transferId: result.transferId, amount: Number(payment.amount) },
       });
 
+      try {
+        const { notifyPaymentInitiated } = await import("@/lib/notify-payment");
+        await notifyPaymentInitiated({
+          applicationId: payment.applicationId,
+          applicationCode: payment.application.applicationCode,
+          borrowerName: `${payment.application.firstName} ${payment.application.lastName}`.trim(),
+          paymentNumber: payment.paymentNumber,
+          amount: Number(payment.amount) + Number(payment.lateFee),
+          source: "cron",
+        });
+      } catch (notifyErr) {
+        console.error(`[payment-processor] notify initiate failed for ${payment.id}:`, notifyErr);
+      }
+
       results.push({ paymentId: payment.id, success: true });
     } else {
       // Revert to FAILED if ACH initiation fails
@@ -88,6 +102,21 @@ export async function POST(request: NextRequest) {
         }),
         contactId: failContact?.id,
       });
+
+      try {
+        const { notifyPaymentFailed } = await import("@/lib/notify-payment");
+        await notifyPaymentFailed({
+          applicationId: payment.applicationId,
+          applicationCode: payment.application.applicationCode,
+          borrowerName: `${payment.application.firstName} ${payment.application.lastName}`.trim(),
+          paymentNumber: payment.paymentNumber,
+          amount: Number(payment.amount) + Number(payment.lateFee),
+          source: "cron",
+          reason: result.error,
+        });
+      } catch (notifyErr) {
+        console.error(`[payment-processor] notify failed for ${payment.id}:`, notifyErr);
+      }
 
       results.push({ paymentId: payment.id, success: false, error: result.error });
     }

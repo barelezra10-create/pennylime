@@ -674,6 +674,16 @@ model NotificationConfig {
   // Fired when an inbound email lands at info@pennylime.com and matches
   // a known Contact. POSTed by the email provider's inbound webhook.
   inboundEmailEmails          String   @default("")
+  // Fired when an Increase ACH debit settles and a Payment row flips
+  // to PAID (whether via webhook push or payment-status cron poll).
+  paymentSettledEmails        String   @default("")
+  // Fired when an Increase ACH debit returns (NSF/R-code) or fails,
+  // i.e. money didn't get pulled. Highest-priority of the three.
+  paymentFailedEmails         String   @default("")
+  // Fired when the payment-processor cron kicks off a new ACH debit
+  // (Payment goes PENDING -> PROCESSING). Useful for treasury but can
+  // be noisy on funded-loan-heavy days.
+  paymentInitiatedEmails      String   @default("")
   updatedAt                   DateTime @updatedAt
 }
 

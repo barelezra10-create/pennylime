@@ -10,6 +10,9 @@ export type NotificationConfigState = {
   applicationSubmittedEmails: string;
   leadCreatedEmails: string;
   inboundEmailEmails: string;
+  paymentSettledEmails: string;
+  paymentFailedEmails: string;
+  paymentInitiatedEmails: string;
 };
 
 export async function getNotificationConfig(): Promise<NotificationConfigState> {
@@ -23,6 +26,9 @@ export async function getNotificationConfig(): Promise<NotificationConfigState> 
     applicationSubmittedEmails: config.applicationSubmittedEmails,
     leadCreatedEmails: config.leadCreatedEmails,
     inboundEmailEmails: config.inboundEmailEmails,
+    paymentSettledEmails: config.paymentSettledEmails,
+    paymentFailedEmails: config.paymentFailedEmails,
+    paymentInitiatedEmails: config.paymentInitiatedEmails,
   };
 }
 
@@ -48,6 +54,9 @@ export async function saveNotificationConfig(input: NotificationConfigState) {
       applicationSubmittedEmails: normalize(input.applicationSubmittedEmails),
       leadCreatedEmails: normalize(input.leadCreatedEmails),
       inboundEmailEmails: normalize(input.inboundEmailEmails),
+      paymentSettledEmails: normalize(input.paymentSettledEmails),
+      paymentFailedEmails: normalize(input.paymentFailedEmails),
+      paymentInitiatedEmails: normalize(input.paymentInitiatedEmails),
     },
     create: {
       id: "singleton",
@@ -55,6 +64,9 @@ export async function saveNotificationConfig(input: NotificationConfigState) {
       applicationSubmittedEmails: normalize(input.applicationSubmittedEmails),
       leadCreatedEmails: normalize(input.leadCreatedEmails),
       inboundEmailEmails: normalize(input.inboundEmailEmails),
+      paymentSettledEmails: normalize(input.paymentSettledEmails),
+      paymentFailedEmails: normalize(input.paymentFailedEmails),
+      paymentInitiatedEmails: normalize(input.paymentInitiatedEmails),
     },
   });
 
@@ -76,7 +88,16 @@ export async function saveNotificationConfig(input: NotificationConfigState) {
  * so admin can verify recipients receive mail without waiting for a real
  * customer event.
  */
-export async function sendTestNotification(event: "chatStarted" | "applicationSubmitted" | "leadCreated" | "inboundEmail") {
+export async function sendTestNotification(
+  event:
+    | "chatStarted"
+    | "applicationSubmitted"
+    | "leadCreated"
+    | "inboundEmail"
+    | "paymentSettled"
+    | "paymentFailed"
+    | "paymentInitiated",
+) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
 
@@ -86,6 +107,9 @@ export async function sendTestNotification(event: "chatStarted" | "applicationSu
     applicationSubmitted: "Application submitted",
     leadCreated: "Lead created",
     inboundEmail: "Inbound email",
+    paymentSettled: "Payment settled",
+    paymentFailed: "Payment failed",
+    paymentInitiated: "Payment initiated",
   };
   const r = await notifyAdmins(event, {
     subject: `[TEST] PennyLime — ${labelByEvent[event]}`,

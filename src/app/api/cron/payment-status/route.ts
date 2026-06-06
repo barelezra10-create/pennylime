@@ -311,7 +311,38 @@ export async function POST(request: NextRequest) {
       repaymentsRefreshed++;
       if (isSettled) repaymentsSettled++;
       if (isReturn) repaymentsReturned++;
-      if (isSettled || isReturn) dirtyApplicationIds.add(p.applicationId);
+      if (isSettled || isReturn) {
+        dirtyApplicationIds.add(p.applicationId);
+
+        // Admin notification for the lifecycle change we just
+        // observed. Same dispatcher as the webhook so emails read
+        // identically regardless of which side caught the event.
+        try {
+          const owner = await prisma.application.findUnique({
+            where: { id: p.applicationId },
+            select: { applicationCode: true, firstName: true, lastName: true },
+          });
+          const fullPayment = await prisma.payment.findUnique({
+            where: { id: p.id },
+            select: { paymentNumber: true, amount: true, lateFee: true },
+          });
+          if (owner && fullPayment) {
+            const { notifyPaymentSettled, notifyPaymentFailed } = await import("@/lib/notify-payment");
+            const ctx = {
+              applicationId: p.applicationId,
+              applicationCode: owner.applicationCode,
+              borrowerName: `${owner.firstName} ${owner.lastName}`.trim(),
+              paymentNumber: fullPayment.paymentNumber,
+              amount: Number(fullPayment.amount) + Number(fullPayment.lateFee),
+              source: "cron" as const,
+            };
+            if (isSettled) await notifyPaymentSettled(ctx);
+            else if (isReturn) await notifyPaymentFailed({ ...ctx, reason: newStatus });
+          }
+        } catch (notifyErr) {
+          console.error(`[payment-status] notify failed for ${p.id}:`, notifyErr);
+        }
+      }
     } catch (err) {
       console.error(`[payment-status] repayment poll failed for ${p.id}:`, err);
     }

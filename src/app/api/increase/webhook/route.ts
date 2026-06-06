@@ -118,6 +118,30 @@ export async function POST(req: NextRequest) {
       // manual nudge.
       if (isSettled || isReturn) {
         await refreshApplicationStatusFromPayments(payment.applicationId);
+
+        // Fire admin notification. Best-effort — failures are swallowed
+        // by notifyAdmins so they never block the webhook ack.
+        try {
+          const owner = await prisma.application.findUnique({
+            where: { id: payment.applicationId },
+            select: { applicationCode: true, firstName: true, lastName: true },
+          });
+          if (owner) {
+            const { notifyPaymentSettled, notifyPaymentFailed } = await import("@/lib/notify-payment");
+            const ctx = {
+              applicationId: payment.applicationId,
+              applicationCode: owner.applicationCode,
+              borrowerName: `${owner.firstName} ${owner.lastName}`.trim(),
+              paymentNumber: payment.paymentNumber,
+              amount: Number(payment.amount) + Number(payment.lateFee),
+              source: "webhook" as const,
+            };
+            if (isSettled) await notifyPaymentSettled(ctx);
+            else if (isReturn) await notifyPaymentFailed({ ...ctx, reason: status });
+          }
+        } catch (notifyErr) {
+          console.error("[increase webhook] notify failed:", notifyErr);
+        }
       }
     }
   }
