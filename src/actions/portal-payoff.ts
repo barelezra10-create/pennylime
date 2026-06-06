@@ -74,14 +74,25 @@ async function computeQuote(applicationId: string): Promise<PayoffQuote> {
     return { ok: false, error: "No payment schedule on file." };
   }
 
-  // Sum the principal portions of UNPAID payments. That's what the borrower
-  // still owes in principal terms — independent of when they pay it off.
+  // Refuse to quote while a debit is still settling. Without this, a
+  // borrower who already hit "Pay off now" sees a stale quote that
+  // double-counts the in-flight payoff principal as still outstanding
+  // and could click pay off again, double-charging themselves.
+  const inflight = app.payments.some((p) => p.status === "PROCESSING");
+  if (inflight) {
+    return { ok: false, error: "A payment is currently processing. Once it settles, the dashboard will refresh." };
+  }
+
+  // Sum the principal portions of UNPAID, NON-WAIVED payments. WAIVED /
+  // CANCELED / RETURNED rows have been collapsed into a prior payoff or
+  // refunded and must never inflate the outstanding figure.
   let outstandingPrincipal = 0;
   let scheduledUnpaidInterest = 0;
   let scheduledUnpaidTotal = 0;
   for (const p of app.payments) {
     const isPaid = p.status === "PAID" || !!p.paidAt;
     if (isPaid) continue;
+    if (p.status === "WAIVED" || p.status === "CANCELED" || p.status === "RETURNED") continue;
     outstandingPrincipal += Number(p.principal);
     scheduledUnpaidInterest += Number(p.interest);
     scheduledUnpaidTotal += Number(p.amount) + Number(p.lateFee);
