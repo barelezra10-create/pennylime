@@ -182,6 +182,22 @@ export function DetailClient({
     }
   }, [application.id, application.status]);
 
+  /* Auto-refresh while a payment is in flight. Polls getPaymentsSummary
+     every 20s when any row is PROCESSING so the admin sees the status
+     flip (PROCESSING -> PAID / RETURNED) without clicking Refresh.
+     Backs off when nothing is in flight. */
+  useEffect(() => {
+    if (!paymentSummary) return;
+    const hasInflight = paymentSummary.payments.some((p) => p.status === "PROCESSING");
+    if (!hasInflight) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    const handle = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      getPaymentsSummary(application.id).then(setPaymentSummary);
+    }, 20_000);
+    return () => clearInterval(handle);
+  }, [application.id, paymentSummary]);
+
   /* SSN reveal */
   const [ssn, setSsn] = useState<string | null>(null);
   const [ssnLoading, setSsnLoading] = useState(false);
