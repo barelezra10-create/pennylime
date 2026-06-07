@@ -6,6 +6,7 @@ import { TabBar } from "@/components/admin/tab-bar";
 import { StageBadge } from "@/components/admin/stage-badge";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { PageHeader } from "@/components/admin/page-header";
+import { PaymentScheduleCard } from "@/components/admin/payment-schedule-card";
 import { updateContactStage, assignContactRep, addContactTag, removeContactTag } from "@/actions/contacts";
 import { archiveContact, unarchiveContact, deleteContact } from "@/actions/archive";
 import { logActivity } from "@/actions/activities";
@@ -505,6 +506,7 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                 <PortalPreviewButton applicationId={contact.application.id} />
               </div>
             </div>
+            <PaymentScheduleCard applicationId={contact.application.id} />
             <IncreaseTransfersPanel applicationId={contact.application.id} />
             <TopUpRequestsPanel applicationId={contact.application.id} />
             </>
