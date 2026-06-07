@@ -187,37 +187,53 @@ export function DetailClient({
      something polls Increase. So for each PROCESSING row we call
      refreshPaymentStatus (the same action behind the manual Refresh
      button) which hits Increase + writes back the latest status,
-     then re-reads the summary. Polls every 20s. Pauses when the tab
-     is hidden. Stops automatically when nothing is in flight. */
-  useEffect(() => {
-    if (!paymentSummary) return;
+     then re-reads the summary. */
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const [syncingNow, setSyncingNow] = useState(false);
+
+  async function syncFromIncrease(): Promise<{ updated: number; total: number }> {
+    if (!paymentSummary) return { updated: 0, total: 0 };
     const inflightIds = paymentSummary.payments
       .filter((p) => p.status === "PROCESSING")
       .map((p) => p.id);
-    if (inflightIds.length === 0) return;
+    if (inflightIds.length === 0) return { updated: 0, total: 0 };
+    setSyncingNow(true);
+    try {
+      const { refreshPaymentStatus } = await import("@/actions/refresh-payment-status");
+      const results = await Promise.all(
+        inflightIds.map((id) => refreshPaymentStatus(id).catch(() => null)),
+      );
+      const fresh = await getPaymentsSummary(application.id);
+      setPaymentSummary(fresh);
+      setLastSyncAt(Date.now());
+      const updated = results.filter((r): r is { ok: true; status: string; transferStatus: string } =>
+        !!r && r.ok && (r.status === "PAID" || r.status === "RETURNED"),
+      ).length;
+      return { updated, total: inflightIds.length };
+    } finally {
+      setSyncingNow(false);
+    }
+  }
 
+  useEffect(() => {
+    if (!paymentSummary) return;
+    const hasInflight = paymentSummary.payments.some((p) => p.status === "PROCESSING");
+    if (!hasInflight) return;
     let cancelled = false;
-    async function pollOnce(ids: string[]) {
+    // Fire one sync immediately on mount so the user sees activity
+    // right away, then keep polling every 20s.
+    void syncFromIncrease().catch(() => null);
+    const handle = setInterval(() => {
       if (cancelled) return;
       if (typeof document !== "undefined" && document.hidden) return;
-      try {
-        const { refreshPaymentStatus } = await import("@/actions/refresh-payment-status");
-        await Promise.all(ids.map((id) => refreshPaymentStatus(id).catch(() => null)));
-        if (!cancelled) {
-          const fresh = await getPaymentsSummary(application.id);
-          if (!cancelled) setPaymentSummary(fresh);
-        }
-      } catch {
-        // Silent — manual Refresh button is still there as a backstop.
-      }
-    }
-
-    const handle = setInterval(() => pollOnce(inflightIds), 20_000);
+      void syncFromIncrease().catch(() => null);
+    }, 20_000);
     return () => {
       cancelled = true;
       clearInterval(handle);
     };
-  }, [application.id, paymentSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [application.id, paymentSummary?.payments.length]);
 
   /* SSN reveal */
   const [ssn, setSsn] = useState<string | null>(null);
@@ -1166,12 +1182,43 @@ export function DetailClient({
           {/* ── Payment Schedule ── */}
           {paymentSummary && (
             <div className="bg-white rounded-[10px] p-6">
-              <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-5 flex items-center gap-2">
-                <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                </svg>
-                Payment Schedule
-              </h2>
+              <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+                <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black flex items-center gap-2">
+                  <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                  </svg>
+                  Payment Schedule
+                </h2>
+                {paymentSummary.payments.some((p) => p.status === "PROCESSING") && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] text-[#71717a]">
+                      {syncingNow
+                        ? "Syncing with Increase…"
+                        : lastSyncAt
+                        ? `Last synced ${Math.max(1, Math.round((Date.now() - lastSyncAt) / 1000))}s ago · auto-syncs every 20s`
+                        : "Auto-sync every 20s"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const r = await syncFromIncrease();
+                        if (r.updated > 0) {
+                          toast.success(`Synced — ${r.updated} of ${r.total} now updated`);
+                        } else if (r.total > 0) {
+                          toast.info(`Synced — Increase still says submitted for all ${r.total}`);
+                        }
+                      }}
+                      disabled={syncingNow}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#15803d] bg-white text-[#15803d] hover:bg-[#f0fdf4] disabled:opacity-60 text-[12px] font-semibold px-3 py-1.5 transition-colors"
+                    >
+                      <svg className={`h-3.5 w-3.5 ${syncingNow ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                      </svg>
+                      {syncingNow ? "Syncing" : "Sync from Increase"}
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {/* Summary Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
