@@ -182,20 +182,41 @@ export function DetailClient({
     }
   }, [application.id, application.status]);
 
-  /* Auto-refresh while a payment is in flight. Polls getPaymentsSummary
-     every 20s when any row is PROCESSING so the admin sees the status
-     flip (PROCESSING -> PAID / RETURNED) without clicking Refresh.
-     Backs off when nothing is in flight. */
+  /* Auto-refresh while a payment is in flight.
+     Re-reading the DB alone won't help — the DB only updates when
+     something polls Increase. So for each PROCESSING row we call
+     refreshPaymentStatus (the same action behind the manual Refresh
+     button) which hits Increase + writes back the latest status,
+     then re-reads the summary. Polls every 20s. Pauses when the tab
+     is hidden. Stops automatically when nothing is in flight. */
   useEffect(() => {
     if (!paymentSummary) return;
-    const hasInflight = paymentSummary.payments.some((p) => p.status === "PROCESSING");
-    if (!hasInflight) return;
-    if (typeof document !== "undefined" && document.hidden) return;
-    const handle = setInterval(() => {
+    const inflightIds = paymentSummary.payments
+      .filter((p) => p.status === "PROCESSING")
+      .map((p) => p.id);
+    if (inflightIds.length === 0) return;
+
+    let cancelled = false;
+    async function pollOnce(ids: string[]) {
+      if (cancelled) return;
       if (typeof document !== "undefined" && document.hidden) return;
-      getPaymentsSummary(application.id).then(setPaymentSummary);
-    }, 20_000);
-    return () => clearInterval(handle);
+      try {
+        const { refreshPaymentStatus } = await import("@/actions/refresh-payment-status");
+        await Promise.all(ids.map((id) => refreshPaymentStatus(id).catch(() => null)));
+        if (!cancelled) {
+          const fresh = await getPaymentsSummary(application.id);
+          if (!cancelled) setPaymentSummary(fresh);
+        }
+      } catch {
+        // Silent — manual Refresh button is still there as a backstop.
+      }
+    }
+
+    const handle = setInterval(() => pollOnce(inflightIds), 20_000);
+    return () => {
+      cancelled = true;
+      clearInterval(handle);
+    };
   }, [application.id, paymentSummary]);
 
   /* SSN reveal */

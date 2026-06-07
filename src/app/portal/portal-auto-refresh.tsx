@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { refreshMyPaymentStatus } from "@/actions/portal-refresh-status";
 
 /**
  * Browser-side auto-refresh for the portal dashboard so payment
@@ -24,9 +25,19 @@ export function PortalAutoRefresh() {
   useEffect(() => {
     let cancelled = false;
 
-    function tick() {
+    async function tick() {
       if (cancelled) return;
       if (typeof document !== "undefined" && document.hidden) return;
+      // Pull live status from Increase for any PROCESSING payments
+      // first, then trigger a server-component re-fetch so the page
+      // reflects the new state. Without the Increase pull, re-fetching
+      // the server tree just re-renders the same stale row.
+      try {
+        await refreshMyPaymentStatus();
+      } catch {
+        // ignore — router.refresh() still runs as the safety net
+      }
+      if (cancelled) return;
       router.refresh();
     }
 
@@ -39,8 +50,12 @@ export function PortalAutoRefresh() {
 
   async function handleManualRefresh() {
     setRefreshing(true);
+    try {
+      await refreshMyPaymentStatus();
+    } catch {
+      // continue to router.refresh() either way
+    }
     router.refresh();
-    // Visual feedback — flash "Refreshed" then clear after a beat
     setTimeout(() => {
       setRefreshing(false);
       setJustRefreshedAt(Date.now());
