@@ -329,6 +329,18 @@ export async function POST(request: NextRequest) {
           ...(returnReason ? { increaseReturnReason: returnReason } : {}),
         },
       });
+      try {
+        const { updateAttemptStatus } = await import("@/lib/payment-attempts");
+        await updateAttemptStatus({
+          transferId: p.increaseTransferId!,
+          transferStatus: newStatus,
+          finalStatus: isSettled ? "PAID" : isReturn ? "RETURNED" : null,
+          settledAt: isSettled ? new Date() : null,
+          returnReason: isReturn ? returnReason : null,
+        });
+      } catch (err) {
+        console.error(`[payment-status] attempt update failed for ${p.id}:`, err);
+      }
       repaymentsRefreshed++;
       if (isSettled) repaymentsSettled++;
       if (isReturn) repaymentsReturned++;

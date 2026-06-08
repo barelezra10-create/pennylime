@@ -144,6 +144,18 @@ export async function POST(req: NextRequest) {
           ...(returnReason ? { increaseReturnReason: returnReason } : {}),
         },
       });
+      try {
+        const { updateAttemptStatus } = await import("@/lib/payment-attempts");
+        await updateAttemptStatus({
+          transferId: objectId,
+          transferStatus: status,
+          finalStatus: isSettled ? "PAID" : isReturn ? "RETURNED" : null,
+          settledAt: isSettled ? new Date() : null,
+          returnReason: isReturn ? returnReason : null,
+        });
+      } catch (err) {
+        console.error(`[increase webhook] attempt update failed for ${objectId}:`, err);
+      }
 
       // Cascade the payment event to the parent application status so
       // the pipeline / financial summaries reflect reality without a

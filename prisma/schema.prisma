@@ -191,6 +191,13 @@ model Payment {
   // we detect a returned/rejected status. Shown next to the RETURNED
   // pill in the payment schedule.
   increaseReturnReason   String?
+  // Every ACH initiation against this Payment, in order. We used to
+  // overwrite increaseTransferId on each retry and lose the trail —
+  // the audit button could only check the latest transfer's status,
+  // hiding the fact that we'd tried (and seen returns on) earlier
+  // attempts too. PaymentAttempt is the source of truth for that
+  // history; the latest one's transferId is mirrored onto Payment.
+  attempts        PaymentAttempt[]
   retryCount      Int       @default(0)
   lastRetryAt     DateTime?
   createdAt       DateTime  @default(now())
@@ -199,6 +206,33 @@ model Payment {
   @@index([applicationId])
   @@index([status])
   @@index([dueDate])
+}
+
+// One row per ACH initiation against a Payment. Created when:
+//   - payment-processor cron kicks off the scheduled debit
+//   - admin clicks "Charge now" / "Recharge now"
+//   - payment-retry cron re-attempts a FAILED row
+//   - portal early-payoff debit
+// Updated when status pollers + the webhook observe the transfer
+// reaching a terminal state. Lets the admin see every attempt, not
+// just the latest one, when a payment has been retried multiple
+// times.
+model PaymentAttempt {
+  id                     String   @id @default(uuid())
+  paymentId              String
+  payment                Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  attemptNumber          Int
+  initiatedAt            DateTime @default(now())
+  initiatedBy            String   // "system:payment-processor" | "system:payment-retry" | "admin:bar@..." | "portal:Patricia Giglio" | etc.
+  amount                 Decimal
+  increaseTransferId     String?
+  increaseTransferStatus String?  // last polled status — settled / returned / submitted / ...
+  finalStatus            String?  // PAID | RETURNED | FAILED | null while in flight
+  settledAt              DateTime?
+  returnReason           String?  // human-readable, e.g. "Insufficient funds (R01)"
+
+  @@index([paymentId, attemptNumber])
+  @@index([increaseTransferId])
 }
 
 model AuditLog {

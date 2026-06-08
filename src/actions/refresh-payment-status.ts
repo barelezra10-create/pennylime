@@ -93,6 +93,19 @@ export async function refreshPaymentStatus(paymentId: string): Promise<
       ...(returnReason ? { increaseReturnReason: returnReason } : {}),
     },
   });
+  try {
+    const { updateAttemptStatus } = await import("@/lib/payment-attempts");
+    await updateAttemptStatus({
+      transferId: payment.increaseTransferId,
+      transferStatus: newTransferStatus,
+      finalStatus:
+        newPaymentStatus === "PAID" ? "PAID" : newPaymentStatus === "RETURNED" ? "RETURNED" : null,
+      settledAt: paidAt,
+      returnReason: returnReason,
+    });
+  } catch (err) {
+    console.error(`[refresh-payment-status] attempt update failed for ${paymentId}:`, err);
+  }
 
   return { ok: true, status: newPaymentStatus, transferStatus: newTransferStatus };
 }

@@ -68,7 +68,15 @@ export async function POST(request: NextRequest) {
         entityType: "PAYMENT",
         entityId: payment.id,
         performedBy: "system:payment-retry",
-        details: { retryCount: payment.retryCount + 1 },
+        details: { retryCount: payment.retryCount + 1, transferId: result.transferId },
+      });
+
+      const { recordAttemptStart } = await import("@/lib/payment-attempts");
+      await recordAttemptStart({
+        paymentId: payment.id,
+        initiatedBy: "system:payment-retry",
+        amount: Number(payment.amount) + Number(payment.lateFee),
+        transferId: result.transferId,
       });
 
       retried++;

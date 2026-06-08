@@ -280,6 +280,27 @@ export async function executePayoff(): Promise<
     }
   });
 
+  // Record the payoff in the attempt history on whichever Payment
+  // row was repurposed (or freshly created) above. Look up by the
+  // transferId we just wrote.
+  try {
+    const target = await prisma.payment.findFirst({
+      where: { applicationId: app.id, increaseTransferId: transferId },
+      select: { id: true },
+    });
+    if (target) {
+      const { recordAttemptStart } = await import("@/lib/payment-attempts");
+      await recordAttemptStart({
+        paymentId: target.id,
+        initiatedBy: `portal:${app.firstName} ${app.lastName}`,
+        amount: quote.payoffAmount,
+        transferId,
+      });
+    }
+  } catch (err) {
+    console.error("[payoff] attempt-history record failed:", err);
+  }
+
   await logAudit({
     action: "MANUAL_CHARGE_PAYMENT",
     entityType: "APPLICATION",

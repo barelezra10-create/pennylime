@@ -55,6 +55,14 @@ export async function POST(request: NextRequest) {
         details: { transferId: result.transferId, amount: Number(payment.amount) },
       });
 
+      const { recordAttemptStart } = await import("@/lib/payment-attempts");
+      await recordAttemptStart({
+        paymentId: payment.id,
+        initiatedBy: "system:payment-processor",
+        amount: Number(payment.amount) + Number(payment.lateFee),
+        transferId: result.transferId,
+      });
+
       try {
         const { notifyPaymentInitiated } = await import("@/lib/notify-payment");
         await notifyPaymentInitiated({

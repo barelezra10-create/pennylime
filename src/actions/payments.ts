@@ -16,6 +16,9 @@ export async function getPaymentsSummary(applicationId: string) {
   const payments = await prisma.payment.findMany({
     where: { applicationId },
     orderBy: { paymentNumber: "asc" },
+    include: {
+      attempts: { orderBy: { attemptNumber: "asc" } },
+    },
   });
 
   // WAIVED / CANCELED / RETURNED rows shouldn't count as "owed" — they
@@ -86,7 +89,18 @@ export async function retryPayment(paymentId: string) {
   if (result.success) {
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { achTransferId: result.transferId },
+      data: {
+        achTransferId: result.transferId,
+        increaseTransferId: result.transferId,
+        increaseTransferStatus: "pending_submission",
+      },
+    });
+    const { recordAttemptStart } = await import("@/lib/payment-attempts");
+    await recordAttemptStart({
+      paymentId,
+      initiatedBy: `admin:${session.user.email}`,
+      amount: Number(payment.amount) + Number(payment.lateFee),
+      transferId: result.transferId,
     });
   } else {
     // Revert to FAILED if ACH initiation fails
@@ -153,12 +167,20 @@ export async function chargePaymentNow(paymentId: string) {
     },
   });
 
+  const { recordAttemptStart } = await import("@/lib/payment-attempts");
+  await recordAttemptStart({
+    paymentId,
+    initiatedBy: `admin:${session.user.email}`,
+    amount: Number(payment.amount) + Number(payment.lateFee),
+    transferId: result.transferId,
+  });
+
   await logAudit({
     action: "MANUAL_CHARGE_PAYMENT",
     entityType: "PAYMENT",
     entityId: paymentId,
     performedBy: session.user.email,
-    details: { applicationId: payment.applicationId, paymentNumber: payment.paymentNumber },
+    details: { applicationId: payment.applicationId, paymentNumber: payment.paymentNumber, transferId: result.transferId },
   });
 
   return { success: true, transferId: result.transferId };

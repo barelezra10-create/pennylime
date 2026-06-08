@@ -213,6 +213,11 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                         Increase: {(payment as any).increaseTransferStatus}
                       </p>
                     )}
+                    {(payment as any).attempts && (payment as any).attempts.length > 1 && (
+                      <p className="mt-1 text-[10px] text-[#71717a] leading-tight">
+                        {(payment as any).attempts.length} attempts
+                      </p>
+                    )}
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -307,6 +312,73 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                   </td>
                 </tr>
               );
+            }).flatMap((row, i) => {
+              const p = paymentSummary.payments[i] as any;
+              const atts = (p?.attempts ?? []) as Array<{
+                id: string;
+                attemptNumber: number;
+                initiatedAt: string | Date;
+                initiatedBy: string;
+                amount: any;
+                increaseTransferId: string | null;
+                increaseTransferStatus: string | null;
+                finalStatus: string | null;
+                returnReason: string | null;
+              }>;
+              if (atts.length <= 1) return [row];
+              return [
+                row,
+                <tr key={`${p.id}-attempts`} className="border-b border-gray-50 last:border-0">
+                  <td colSpan={8} className="px-3 pb-3 pt-0">
+                    <div className="rounded-lg bg-[#fafafa] border border-[#f4f4f5] p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#71717a] mb-2">
+                        Charge history ({atts.length} attempts)
+                      </p>
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">
+                            <th className="text-left py-1">#</th>
+                            <th className="text-left py-1">When</th>
+                            <th className="text-left py-1">By</th>
+                            <th className="text-right py-1">Amount</th>
+                            <th className="text-left py-1">Result</th>
+                            <th className="text-left py-1">Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {atts.map((a) => (
+                            <tr key={a.id} className="border-t border-[#f4f4f5]">
+                              <td className="py-1 font-semibold">{a.attemptNumber}</td>
+                              <td className="py-1 text-[#52525b]">
+                                {new Date(a.initiatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}{" "}
+                                <span className="text-[#a1a1aa]">{new Date(a.initiatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}</span>
+                              </td>
+                              <td className="py-1 text-[#52525b]">{a.initiatedBy.replace(/^admin:/, "").replace(/^system:/, "")}</td>
+                              <td className="py-1 text-right tabular-nums">${Number(a.amount).toFixed(2)}</td>
+                              <td className="py-1">
+                                <span
+                                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                    a.finalStatus === "PAID"
+                                      ? "bg-[#f0f5f0] text-[#15803d]"
+                                      : a.finalStatus === "RETURNED" || a.finalStatus === "FAILED"
+                                      ? "bg-[#fff1f2] text-[#dc2626]"
+                                      : "bg-[#eef4ff] text-[#2563eb]"
+                                  }`}
+                                >
+                                  {a.finalStatus ?? a.increaseTransferStatus ?? "in flight"}
+                                </span>
+                              </td>
+                              <td className="py-1 text-[#dc2626] text-[10px] leading-tight">
+                                {a.returnReason ?? ""}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </td>
+                </tr>,
+              ];
             })}
           </tbody>
         </table>
