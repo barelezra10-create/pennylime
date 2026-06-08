@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ApplicationTable } from "@/components/application-table";
 import { PageHeader } from "@/components/admin/page-header";
+import { AuditReturnsButton } from "./audit-returns-button";
 import type { ApplicationWithDocuments } from "@/types";
 
 type FilterTab = "All" | "Pending" | "Approved" | "Funded" | "Active" | "Late" | "Collections" | "Defaulted" | "Paid Off";
@@ -48,7 +49,10 @@ export function ApplicationsClient({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Applications" />
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <PageHeader title="Applications" />
+        <AuditReturnsButton />
+      </div>
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1 flex-wrap">

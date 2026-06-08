@@ -259,10 +259,15 @@ export async function POST(request: NextRequest) {
   let repaymentsSettled = 0;
   let repaymentsReturned = 0;
   const dirtyApplicationIds = new Set<string>();
+  // Sweep includes FAILED + RETURNED rows so we self-heal any
+  // payment our DB has prematurely marked terminal while Increase
+  // still considers it pending. Limited to 100 per run to stay
+  // under Cloudflare's 100s window.
   const pendingRepayments = await prisma.payment.findMany({
     where: {
       increaseTransferId: { not: null },
       OR: [
+        { status: { in: ["PROCESSING", "FAILED", "RETURNED"] } },
         { increaseTransferStatus: null },
         { increaseTransferStatus: { notIn: TERMINAL } },
       ],
