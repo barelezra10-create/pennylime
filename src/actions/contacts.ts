@@ -173,11 +173,22 @@ export async function upsertContact(data: {
     select: { id: true },
   });
 
+  // Never let the funnel's "Applicant" placeholder downgrade a real
+  // name that's already on the contact. The funnel calls upsertContact
+  // on the email-only step before the borrower has typed their name,
+  // which used to wipe Jeffery / Patricia / etc. back to "Applicant"
+  // every time the funnel restarted.
+  const PLACEHOLDER = "Applicant";
+  const firstNameUpdate =
+    data.firstName && data.firstName !== PLACEHOLDER ? data.firstName : undefined;
+  const lastNameUpdate =
+    data.lastName && data.lastName !== PLACEHOLDER ? data.lastName : undefined;
+
   const contact = await prisma.contact.upsert({
     where: { email: data.email },
     update: {
-      firstName: data.firstName,
-      lastName: data.lastName,
+      firstName: firstNameUpdate,
+      lastName: lastNameUpdate,
       phone: data.phone,
       lastAppStep: data.lastAppStep,
       loanAmountIntent: data.loanAmountIntent ?? undefined,
