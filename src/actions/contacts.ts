@@ -70,7 +70,63 @@ export async function getContacts(filters?: {
     prisma.contact.count({ where }),
   ]);
 
-  return { contacts, total, totalPages: Math.ceil(total / perPage) };
+  // For repeat borrowers, the linked application is whatever was last
+  // upserted by the funnel — usually a rejected top-up. The list row
+  // should reflect their STRONGEST advance (matches the pipeline stage
+  // sync logic), not the last-touched one. Swap in the strongest app
+  // per contact.
+  const PRIORITY = [
+    "FUNDED",
+    "REPAYING",
+    "LATE",
+    "ACTIVE",
+    "APPROVED",
+    "OFFER_ACCEPTED",
+    "PAID_OFF",
+    "DEFAULTED",
+    "PENDING",
+    "REJECTED",
+  ];
+  const sortByPriority = <T extends { status: string }>(arr: T[]) =>
+    [...arr].sort((a, b) => {
+      const ai = PRIORITY.indexOf(a.status);
+      const bi = PRIORITY.indexOf(b.status);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+  const enriched = await Promise.all(
+    contacts.map(async (c) => {
+      const linked = c.application;
+      const orClauses: Array<Record<string, unknown>> = [];
+      if (linked?.ssnHash) orClauses.push({ ssnHash: linked.ssnHash });
+      if (c.email) orClauses.push({ email: { equals: c.email, mode: "insensitive" } });
+      if (orClauses.length === 0) return c;
+      const all = await prisma.application.findMany({
+        where: { OR: orClauses },
+        include: {
+          payments: {
+            orderBy: { paymentNumber: "asc" },
+            select: {
+              id: true,
+              amount: true,
+              principal: true,
+              interest: true,
+              lateFee: true,
+              dueDate: true,
+              paidAt: true,
+              status: true,
+              paymentNumber: true,
+            },
+          },
+        },
+      });
+      if (all.length <= 1) return c;
+      const strongest = sortByPriority(all)[0];
+      return { ...c, application: strongest };
+    }),
+  );
+
+  return { contacts: enriched, total, totalPages: Math.ceil(total / perPage) };
 }
 
 export async function getContact(id: string) {
