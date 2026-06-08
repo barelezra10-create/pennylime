@@ -185,6 +185,12 @@ model Payment {
   increaseTransferId     String?
   increaseTransferStatus String?
   increaseLastError      String?
+  // Human-readable explanation of why an ACH debit returned (NSF,
+  // account closed, customer revoked auth, etc.). Populated from
+  // Increase's return.return_reason_code on the transfer object when
+  // we detect a returned/rejected status. Shown next to the RETURNED
+  // pill in the payment schedule.
+  increaseReturnReason   String?
   retryCount      Int       @default(0)
   lastRetryAt     DateTime?
   createdAt       DateTime  @default(now())

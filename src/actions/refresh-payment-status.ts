@@ -36,7 +36,12 @@ export async function refreshPaymentStatus(paymentId: string): Promise<
       : `/ach_transfers/${payment.increaseTransferId}`
   }`;
 
-  let data: { status?: string } | null = null;
+  type IncreaseTransferPayload = {
+    status?: string;
+    return?: { return_reason_code?: string };
+    rejection?: { reject_reason_code?: string };
+  };
+  let data: IncreaseTransferPayload | null = null;
   try {
     const r = await fetch(url, {
       headers: {
@@ -48,23 +53,35 @@ export async function refreshPaymentStatus(paymentId: string): Promise<
       const text = await r.text();
       return { ok: false, error: `Increase ${r.status}: ${text.slice(0, 200)}` };
     }
-    data = (await r.json()) as { status?: string };
+    data = (await r.json()) as IncreaseTransferPayload;
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "fetch failed" };
   }
 
   const newTransferStatus = data?.status || "unknown";
   // Map Increase statuses to our Payment.status enum.
-  // settled / complete -> PAID
-  // returned / rejected -> RETURNED
-  // submitted / pending_* -> stay PROCESSING (in flight)
+  //   settled / complete         -> PAID
+  //   returned / rejected        -> RETURNED (with reason code)
+  //   submitted / pending_*      -> stay PROCESSING (still in flight)
+  // Intermediate states like "pending_returning" must NOT flip to
+  // RETURNED — the return is being processed but not final.
   let newPaymentStatus = payment.status;
   let paidAt: Date | null = null;
+  let returnReason: string | null = null;
   if (newTransferStatus === "settled" || newTransferStatus === "complete") {
     newPaymentStatus = "PAID";
     paidAt = new Date();
   } else if (newTransferStatus === "returned" || newTransferStatus === "rejected") {
     newPaymentStatus = "RETURNED";
+    const { explainReturnCode } = await import("@/lib/ach-return-codes");
+    const code =
+      data.return?.return_reason_code ?? data.rejection?.reject_reason_code ?? null;
+    returnReason = explainReturnCode(code);
+  } else if (payment.status === "RETURNED" || payment.status === "FAILED") {
+    // Self-heal: if our DB row says RETURNED/FAILED but Increase is
+    // still in a pending state, the local status was set prematurely
+    // (e.g., by a previous mapping bug). Move it back to PROCESSING.
+    newPaymentStatus = "PROCESSING";
   }
 
   await prisma.payment.update({
@@ -73,6 +90,7 @@ export async function refreshPaymentStatus(paymentId: string): Promise<
       increaseTransferStatus: newTransferStatus,
       ...(newPaymentStatus !== payment.status && { status: newPaymentStatus }),
       ...(paidAt && { paidAt }),
+      ...(returnReason ? { increaseReturnReason: returnReason } : {}),
     },
   });
 

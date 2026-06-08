@@ -203,6 +203,16 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
                       {payment.status}
                     </span>
+                    {payment.status === "RETURNED" && (payment as any).increaseReturnReason && (
+                      <p className="mt-1 text-[10px] text-[#dc2626] leading-tight max-w-[180px]">
+                        {(payment as any).increaseReturnReason}
+                      </p>
+                    )}
+                    {payment.status === "RETURNED" && !(payment as any).increaseReturnReason && (payment as any).increaseTransferStatus && (
+                      <p className="mt-1 text-[10px] text-[#71717a] leading-tight">
+                        Increase: {(payment as any).increaseTransferStatus}
+                      </p>
+                    )}
                   </td>
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-2 flex-wrap">

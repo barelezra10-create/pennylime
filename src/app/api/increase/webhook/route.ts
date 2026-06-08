@@ -105,12 +105,43 @@ export async function POST(req: NextRequest) {
     // posts (settle -> PAID) or returns (NSF -> RETURNED).
     const payment = await prisma.payment.findFirst({ where: { increaseTransferId: objectId } });
     if (payment) {
+      // On return, refetch the transfer from Increase so we can store
+      // the human-readable reason ("Insufficient funds (R01)") rather
+      // than just "returned". Admins (and possibly the borrower) need
+      // to know whether it was NSF, account closed, frozen, etc.
+      let returnReason: string | null = null;
+      if (isReturn) {
+        try {
+          const prefixUrl = isAchEvent
+            ? `/ach_transfers/${objectId}`
+            : `/real_time_payments_transfers/${objectId}`;
+          const r = await fetch(`https://api.increase.com${prefixUrl}`, {
+            headers: {
+              Authorization: `Bearer ${process.env.INCREASE_API_KEY}`,
+              "Increase-Version": "2024-04-15",
+            },
+          });
+          if (r.ok) {
+            const td = (await r.json()) as {
+              return?: { return_reason_code?: string };
+              rejection?: { reject_reason_code?: string };
+            };
+            const { explainReturnCode } = await import("@/lib/ach-return-codes");
+            const code =
+              td.return?.return_reason_code ?? td.rejection?.reject_reason_code ?? null;
+            returnReason = explainReturnCode(code);
+          }
+        } catch (err) {
+          console.error(`[increase webhook] return-reason fetch failed for ${objectId}:`, err);
+        }
+      }
       await prisma.payment.update({
         where: { id: payment.id },
         data: {
           increaseTransferStatus: status,
           paidAt: isSettled ? new Date() : payment.paidAt,
           status: isReturn ? "RETURNED" : isSettled ? "PAID" : payment.status,
+          ...(returnReason ? { increaseReturnReason: returnReason } : {}),
         },
       });
 

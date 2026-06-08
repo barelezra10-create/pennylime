@@ -293,13 +293,27 @@ export async function POST(request: NextRequest) {
         },
       });
       if (!r.ok) continue;
-      const data = (await r.json()) as { status?: string };
+      const data = (await r.json()) as {
+        status?: string;
+        return?: { return_reason_code?: string };
+        rejection?: { reject_reason_code?: string };
+      };
       const newStatus = data.status;
       if (!newStatus || newStatus === p.increaseTransferStatus) continue;
 
+      // Only "settled" / "complete" => PAID. Only the final "returned"
+      // / "rejected" => RETURNED. Intermediate states like
+      // "pending_returning", "submitted", "pending_submission" stay
+      // PROCESSING — they're still in flight. Earlier mapping was
+      // marking some of these as RETURNED prematurely.
       const isSettled = newStatus === "settled" || newStatus === "complete";
       const isReturn = newStatus === "returned" || newStatus === "rejected";
-      const nextPaymentStatus = isReturn ? "RETURNED" : isSettled ? "PAID" : p.status;
+      const nextPaymentStatus = isReturn ? "RETURNED" : isSettled ? "PAID" : "PROCESSING";
+
+      const { explainReturnCode } = await import("@/lib/ach-return-codes");
+      const reasonCode =
+        data.return?.return_reason_code ?? data.rejection?.reject_reason_code ?? null;
+      const returnReason = isReturn ? explainReturnCode(reasonCode) : null;
 
       await prisma.payment.update({
         where: { id: p.id },
@@ -307,6 +321,7 @@ export async function POST(request: NextRequest) {
           increaseTransferStatus: newStatus,
           paidAt: isSettled && !p.paidAt ? new Date() : p.paidAt,
           status: nextPaymentStatus,
+          ...(returnReason ? { increaseReturnReason: returnReason } : {}),
         },
       });
       repaymentsRefreshed++;
