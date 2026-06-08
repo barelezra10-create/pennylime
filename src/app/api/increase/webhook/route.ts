@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/db";
+import { easternDayDiff } from "@/lib/eastern-time";
 
 /**
  * Increase webhook receiver.
@@ -191,11 +192,13 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   const hasFailedPayment = payments.some(
     (p) => p.status === "RETURNED" || p.status === "FAILED",
   );
+  // Anchor "today" to Eastern Time so an advance whose payment is due
+  // Jun 8 doesn't flip to LATE at 8 PM EDT (when UTC rolls to Jun 9).
   const hasOverduePending = payments.some(
     (p) =>
       (p.status === "PENDING" || p.status === "PROCESSING") &&
       p.dueDate &&
-      (now.getTime() - p.dueDate.getTime()) / (1000 * 60 * 60 * 24) > GRACE_DAYS,
+      easternDayDiff(now, p.dueDate) > GRACE_DAYS,
   );
   const isLate = hasFailedPayment || hasOverduePending;
   const hasPaidPayment = payments.some((p) => p.status === "PAID");

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
 import { StageBadge } from "@/components/admin/stage-badge";
 import { StatusBadge } from "@/components/admin/status-badge";
+import { easternDayDiff } from "@/lib/eastern-time";
 import { PIPELINE_STAGES } from "@/lib/contact-helpers";
 import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 
@@ -385,7 +386,11 @@ function KpiTile({ label, value, sub, accent }: { label: string; value: string; 
 
 function NextDuePill({ nextDue, isLate }: { nextDue: { date: string; amount: number; status: string }; isLate: boolean }) {
   const due = new Date(nextDue.date);
-  const days = Math.floor((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  // Anchor "today" to Eastern Time, not UTC. Railway runs UTC; after
+  // ~8 PM EDT the UTC date is already tomorrow, which used to make
+  // this pill say "DUE TODAY" for payments actually due tomorrow.
+  // easternDayDiff compares calendar days in America/New_York.
+  const days = -easternDayDiff(new Date(), due);
   let label: string;
   let cls: string;
   if (nextDue.status === "PROCESSING") {

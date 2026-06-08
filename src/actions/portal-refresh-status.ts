@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { getPortalApplicationId } from "@/lib/portal-auth";
+import { easternDayDiff } from "@/lib/eastern-time";
 
 /**
  * Borrower-portal-side sync of in-flight payment statuses against
@@ -112,7 +113,7 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
     (p) =>
       (p.status === "PENDING" || p.status === "PROCESSING") &&
       p.dueDate &&
-      (now.getTime() - p.dueDate.getTime()) / (1000 * 60 * 60 * 24) > GRACE_DAYS,
+      easternDayDiff(now, p.dueDate) > GRACE_DAYS,
   );
   const hasPaidPayment = payments.some((p) => p.status === "PAID");
   let nextStatus: string = app.status;

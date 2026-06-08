@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { easternDayDiff } from "@/lib/eastern-time";
 import { checkTransferStatus } from "@/lib/plaid-transfer";
 import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/emails/send";
@@ -407,11 +408,13 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   const hasFailedPayment = payments.some(
     (p) => p.status === "RETURNED" || p.status === "FAILED",
   );
+  // Eastern-anchored so UTC midnight doesn't prematurely flip
+  // a borrower to LATE on the evening before grace expires.
   const hasOverduePending = payments.some(
     (p) =>
       (p.status === "PENDING" || p.status === "PROCESSING") &&
       p.dueDate &&
-      (now.getTime() - p.dueDate.getTime()) / (1000 * 60 * 60 * 24) > GRACE_DAYS,
+      easternDayDiff(now, p.dueDate) > GRACE_DAYS,
   );
   const isLate = hasFailedPayment || hasOverduePending;
   const hasPaidPayment = payments.some((p) => p.status === "PAID");

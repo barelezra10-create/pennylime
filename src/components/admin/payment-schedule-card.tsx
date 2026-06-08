@@ -9,6 +9,7 @@ import {
   sendMissedPaymentNotice,
   waiveLateFee,
 } from "@/actions/payments";
+import { easternDayDiff } from "@/lib/eastern-time";
 
 /**
  * Self-contained Payment Schedule card.
@@ -174,7 +175,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
               const isPaid = payment.status === "PAID";
               const isOverduePending =
                 payment.status === "PENDING" &&
-                new Date(payment.dueDate).getTime() < Date.now();
+                easternDayDiff(new Date(payment.dueDate), new Date()) < 0;
               const canRecharge =
                 payment.status === "FAILED" ||
                 payment.status === "RETURNED" ||
