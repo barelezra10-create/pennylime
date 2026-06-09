@@ -50,9 +50,15 @@ export async function updateAttemptStatus(params: {
 }): Promise<void> {
   const att = await prisma.paymentAttempt.findFirst({
     where: { increaseTransferId: params.transferId },
-    select: { id: true },
+    select: { id: true, paymentId: true, amount: true, finalStatus: true },
   });
   if (!att) return;
+
+  // Only credit collectedAmount when we're flipping a previously-
+  // non-PAID attempt to PAID. Idempotent on repeated webhooks /
+  // polls — the same attempt never gets counted twice.
+  const newlySettled = params.finalStatus === "PAID" && att.finalStatus !== "PAID";
+
   await prisma.paymentAttempt.update({
     where: { id: att.id },
     data: {
@@ -62,4 +68,33 @@ export async function updateAttemptStatus(params: {
       ...(params.returnReason !== undefined ? { returnReason: params.returnReason } : {}),
     },
   });
+
+  if (newlySettled) {
+    // Sum every PAID attempt for this Payment, then set Payment
+    // status from how that compares to amount: collected >= amount
+    // -> PAID, else the original status (LATE / PROCESSING / etc.)
+    // is restored so admin can keep collecting more.
+    const paid = await prisma.paymentAttempt.aggregate({
+      where: { paymentId: att.paymentId, finalStatus: "PAID" },
+      _sum: { amount: true },
+    });
+    const collected = Number(paid._sum.amount ?? 0);
+    const payment = await prisma.payment.findUnique({
+      where: { id: att.paymentId },
+      select: { amount: true, status: true },
+    });
+    if (!payment) return;
+    const fullyCollected = collected + 0.01 >= Number(payment.amount);
+    await prisma.payment.update({
+      where: { id: att.paymentId },
+      data: {
+        collectedAmount: collected,
+        ...(fullyCollected
+          ? { status: "PAID", paidAt: params.settledAt ?? new Date() }
+          : payment.status === "PROCESSING"
+          ? { status: "PENDING" } // unfreeze for additional micro-collections
+          : {}),
+      },
+    });
+  }
 }

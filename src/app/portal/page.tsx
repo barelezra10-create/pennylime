@@ -57,7 +57,12 @@ export default async function PortalDashboard() {
   );
   const totalRepay = obligatedPayments.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
   const paidPayments = obligatedPayments.filter((p) => p.status === "PAID" || p.paidAt);
-  const paidAmount = paidPayments.reduce((s, p) => s + Number(p.amount), 0);
+  // Count partial micro-collections too — borrower should see the
+  // running balance, not just fully-paid rows.
+  const paidAmount = obligatedPayments.reduce(
+    (s, p) => s + Math.max(Number((p as any).collectedAmount ?? 0), p.status === "PAID" || p.paidAt ? Number(p.amount) : 0),
+    0,
+  );
   const remainingAmount = Math.max(totalRepay - paidAmount, 0);
   const nextDue = obligatedPayments.find((p) => p.status !== "PAID" && !p.paidAt);
   const progressPct = obligatedPayments.length > 0

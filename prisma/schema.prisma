@@ -200,6 +200,12 @@ model Payment {
   attempts        PaymentAttempt[]
   retryCount      Int       @default(0)
   lastRetryAt     DateTime?
+  // Running total of money actually pulled from the borrower's bank
+  // for this payment, across all successful ACH attempts (full +
+  // partial micro-collections). When collectedAmount >= amount the
+  // row flips to PAID; otherwise the row stays open with the
+  // outstanding balance = amount - collectedAmount.
+  collectedAmount Decimal   @default(0)
   createdAt       DateTime  @default(now())
   application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 

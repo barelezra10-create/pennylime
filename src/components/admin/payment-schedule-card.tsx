@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+  chargePartialPayment,
   chargePaymentNow,
   getPaymentsSummary,
   retryPayment,
@@ -193,7 +194,14 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                       year: "numeric",
                     })}
                   </td>
-                  <td className={`py-2.5 px-3 text-right font-medium ${isPaid ? "text-[#15803d]" : "text-black"}`}>${fmt(Number(payment.amount))}</td>
+                  <td className={`py-2.5 px-3 text-right font-medium ${isPaid ? "text-[#15803d]" : "text-black"}`}>
+                    ${fmt(Number(payment.amount))}
+                    {Number((payment as any).collectedAmount ?? 0) > 0 && !isPaid && (
+                      <div className="text-[10px] text-[#7c3aed] font-semibold mt-0.5">
+                        ${fmt(Number((payment as any).collectedAmount))} collected
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2.5 px-3 text-right text-black">${fmt(Number(payment.principal))}</td>
                   <td className="py-2.5 px-3 text-right text-[#a1a1aa]">${fmt(Number(payment.interest))}</td>
                   <td className={`py-2.5 px-3 text-right font-medium ${lateFee > 0 ? "text-[#b45309]" : "text-[#a1a1aa]"}`}>
@@ -274,6 +282,38 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                             title="Re-attempt the ACH debit through Increase right now"
                           >
                             Recharge now
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const collected = Number((payment as any).collectedAmount ?? 0);
+                              const outstanding = Math.max(0, Number(payment.amount) - collected) + lateFee;
+                              const input = window.prompt(
+                                `Micro-collection for payment #${payment.paymentNumber}.\nOutstanding: $${fmt(outstanding)}\n\nEnter the amount to debit (less than the full):`,
+                                "",
+                              );
+                              if (!input) return;
+                              const amt = Number(input.replace(/[^0-9.]/g, ""));
+                              if (!Number.isFinite(amt) || amt <= 0) {
+                                toast.error("Enter a positive dollar amount.");
+                                return;
+                              }
+                              if (amt > outstanding + 0.01) {
+                                toast.error(`Amount can't exceed outstanding ($${fmt(outstanding)}).`);
+                                return;
+                              }
+                              if (!confirm(`Debit $${fmt(amt)} now? This reduces #${payment.paymentNumber} outstanding from $${fmt(outstanding)} to $${fmt(outstanding - amt)}.`)) return;
+                              const result = await chargePartialPayment(payment.id, amt);
+                              if (result.success) {
+                                toast.success(`Micro-collection of $${fmt(amt)} initiated`);
+                                getPaymentsSummary(applicationId).then(setPaymentSummary);
+                              } else {
+                                toast.error(result.error || "Failed to debit");
+                              }
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[#7c3aed] bg-white px-2.5 py-1 text-xs font-semibold text-[#7c3aed] hover:bg-[#f5f3ff] transition-colors"
+                            title="ACH a custom (smaller) amount and credit it against the outstanding"
+                          >
+                            Charge custom
                           </button>
                           <button
                             onClick={async () => {

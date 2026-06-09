@@ -28,9 +28,14 @@ export async function getPaymentsSummary(applicationId: string) {
     (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
   );
   const totalOwed = obligatedPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const totalPaid = payments
-    .filter((p) => p.status === "PAID")
-    .reduce((s, p) => s + Number(p.amount), 0);
+  // Sum collectedAmount across ALL obligated payments so partial
+  // micro-collections show up in totals even on rows that aren't
+  // fully PAID yet. For fully-paid rows collectedAmount == amount,
+  // so this still adds up correctly.
+  const totalPaid = obligatedPayments.reduce(
+    (s, p) => s + Math.max(Number(p.collectedAmount ?? 0), p.status === "PAID" ? Number(p.amount) : 0),
+    0,
+  );
   const totalLateFees = obligatedPayments.reduce((s, p) => s + Number(p.lateFee), 0);
   const nextPayment = payments.find(
     (p) => p.status === "PENDING" || p.status === "FAILED"
@@ -181,6 +186,113 @@ export async function chargePaymentNow(paymentId: string) {
     entityId: paymentId,
     performedBy: session.user.email,
     details: { applicationId: payment.applicationId, paymentNumber: payment.paymentNumber, transferId: result.transferId },
+  });
+
+  return { success: true, transferId: result.transferId };
+}
+
+/**
+ * Micro-collection: ACH-debit a custom amount (less than the
+ * scheduled) against a single Payment. The amount is recorded on
+ * a PaymentAttempt row and, when the debit settles, increments
+ * Payment.collectedAmount. The row stays open until collectedAmount
+ * >= amount, at which point the cascade flips it to PAID.
+ *
+ * Use when a borrower can't cover the full weekly debit but agrees
+ * to a smaller pull. Avoids returning the whole amount and burning
+ * an R01 / R09 NSF code on the file.
+ */
+export async function chargePartialPayment(paymentId: string, amount: number) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { success: false, error: "Amount must be positive" };
+  }
+  if (amount > 100_000) {
+    return { success: false, error: "Amount exceeds per-debit cap" };
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: { application: { select: { id: true, firstName: true, lastName: true } } },
+  });
+  if (!payment) return { success: false, error: "Payment not found" };
+
+  // Guard: don't double-charge while another debit is in flight on
+  // the same Payment. Same guard the early-payoff path uses.
+  if (payment.status === "PROCESSING") {
+    return { success: false, error: "Another debit is already processing for this payment" };
+  }
+
+  const outstanding =
+    Math.max(0, Number(payment.amount) - Number(payment.collectedAmount)) +
+    Number(payment.lateFee);
+  if (amount > outstanding + 0.01) {
+    return {
+      success: false,
+      error: `Amount exceeds outstanding ($${outstanding.toFixed(2)})`,
+    };
+  }
+
+  // Lock to PROCESSING so concurrent admin clicks can't double-debit.
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { status: "PROCESSING" },
+  });
+
+  const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
+  const ext = await ensureIncreaseExternalAccount(payment.application.id);
+  if (!ext.ok) {
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: "PENDING" },
+    });
+    return { success: false, error: ext.error };
+  }
+
+  const { safeDebit } = await import("@/lib/increase");
+  const result = await safeDebit({
+    externalAccountId: ext.externalAccountId,
+    amountCents: Math.round(amount * 100),
+    statementDescriptor: "PENNYLIME COLLECT",
+    individualName: `${payment.application.firstName} ${payment.application.lastName}`.slice(0, 22),
+  });
+  if (!result.ok) {
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: "PENDING" },
+    });
+    return { success: false, error: result.error };
+  }
+
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: {
+      achTransferId: result.transferId,
+      increaseTransferId: result.transferId,
+      increaseTransferStatus: "pending_submission",
+    },
+  });
+
+  const { recordAttemptStart } = await import("@/lib/payment-attempts");
+  await recordAttemptStart({
+    paymentId,
+    initiatedBy: `admin:${session.user.email}`,
+    amount,
+    transferId: result.transferId,
+  });
+
+  await logAudit({
+    action: "MANUAL_CHARGE_PAYMENT",
+    entityType: "PAYMENT",
+    entityId: paymentId,
+    performedBy: session.user.email,
+    details: {
+      kind: "MICRO_COLLECTION",
+      amount,
+      paymentNumber: payment.paymentNumber,
+      transferId: result.transferId,
+    },
   });
 
   return { success: true, transferId: result.transferId };
