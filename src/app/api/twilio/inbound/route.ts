@@ -71,11 +71,11 @@ export async function POST(req: NextRequest) {
 
   let reply = "";
   if (action === "stop") {
-    reply = "You've been unsubscribed from PennyLime SMS. Reply START to opt back in.";
+    reply = "PennyLime: You're unsubscribed and won't receive more texts. Reply START to opt back in.";
   } else if (action === "start") {
-    reply = "You're back subscribed to PennyLime SMS. Reply STOP to opt out.";
+    reply = "PennyLime: You're opted in to account alerts. Msg frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out.";
   } else if (action === "help") {
-    reply = "PennyLime: msg & data rates may apply. Reply STOP to opt out, START to opt in. Support: info@pennylime.com";
+    reply = "PennyLime account support: info@pennylime.com or pennylime.com. Msg frequency varies, msg & data rates may apply. Reply STOP to opt out, START to opt in.";
   } else if (agentReply) {
     reply = agentReply;
   }
