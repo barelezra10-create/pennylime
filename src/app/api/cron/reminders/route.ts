@@ -6,10 +6,16 @@ import { paymentReminderEmail } from "@/lib/emails/payment-reminder";
 import { sendSms } from "@/lib/sms/twilio";
 import { paymentReminderSms } from "@/lib/sms/transactional";
 import { calculateRemainingBalance } from "@/lib/amortization";
+import { paymentsPausedUntil } from "@/lib/payment-pause";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
   if (authError) return authError;
+
+  const pausedUntil = await paymentsPausedUntil();
+  if (pausedUntil) {
+    return NextResponse.json({ paused: true, resumesOn: pausedUntil.toISOString(), reminders: 0 });
+  }
 
   // Find payments due tomorrow
   const tomorrow = new Date();

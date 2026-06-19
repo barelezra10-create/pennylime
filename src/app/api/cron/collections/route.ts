@@ -6,10 +6,16 @@ import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/emails/send";
 import { collectionWarningEmail } from "@/lib/emails/collection-warning";
 import { collectionEscalationEmail } from "@/lib/emails/collection-escalation";
+import { paymentsPausedUntil } from "@/lib/payment-pause";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
   if (authError) return authError;
+
+  const pausedUntil = await paymentsPausedUntil();
+  if (pausedUntil) {
+    return NextResponse.json({ paused: true, resumesOn: pausedUntil.toISOString(), warnings7: 0, warnings14: 0, escalated: 0 });
+  }
 
   const rules = await getLoanRules();
   const collectionsThreshold = parseInt(rules.collections_threshold_days || "30");

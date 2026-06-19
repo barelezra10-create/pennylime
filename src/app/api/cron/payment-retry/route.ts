@@ -4,10 +4,16 @@ import { verifyCronSecret } from "@/lib/cron-auth";
 import { initiateACHDebit } from "@/lib/plaid-transfer";
 import { logAudit } from "@/lib/audit";
 import { getLoanRules } from "@/lib/rules-engine";
+import { paymentsPausedUntil } from "@/lib/payment-pause";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
   if (authError) return authError;
+
+  const pausedUntil = await paymentsPausedUntil();
+  if (pausedUntil) {
+    return NextResponse.json({ paused: true, resumesOn: pausedUntil.toISOString(), retried: 0 });
+  }
 
   const rules = await getLoanRules();
   const collectionsThresholdDays = parseInt(rules.collections_threshold_days || "30");

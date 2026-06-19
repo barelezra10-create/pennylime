@@ -7,10 +7,16 @@ import { sendEmail } from "@/lib/emails/send";
 import { lateFeeAddedEmail } from "@/lib/emails/late-fee-added";
 import { sendSms } from "@/lib/sms/twilio";
 import { lateFeeAddedSms } from "@/lib/sms/transactional";
+import { paymentsPausedUntil } from "@/lib/payment-pause";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
   if (authError) return authError;
+
+  const pausedUntil = await paymentsPausedUntil();
+  if (pausedUntil) {
+    return NextResponse.json({ paused: true, resumesOn: pausedUntil.toISOString(), feesAdded: 0 });
+  }
 
   const rules = await getLoanRules();
   const lateFeeAmount = parseFloat(rules.late_fee_amount || "25");

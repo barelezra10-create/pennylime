@@ -7,10 +7,16 @@ import { sendEmail } from "@/lib/emails/send";
 import { paymentFailedEmail } from "@/lib/emails/payment-failed";
 import { sendSms } from "@/lib/sms/twilio";
 import { paymentFailedSms } from "@/lib/sms/transactional";
+import { paymentsPausedUntil } from "@/lib/payment-pause";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
   if (authError) return authError;
+
+  const pausedUntil = await paymentsPausedUntil();
+  if (pausedUntil) {
+    return NextResponse.json({ paused: true, resumesOn: pausedUntil.toISOString(), processed: 0 });
+  }
 
   const today = new Date();
   today.setHours(23, 59, 59, 999);
