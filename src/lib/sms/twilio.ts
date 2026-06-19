@@ -51,8 +51,12 @@ export async function sendSms(opts: {
   const params = new URLSearchParams({ To: to, Body: opts.body });
   if (cfg.twilioMessagingServiceSid) params.set("MessagingServiceSid", cfg.twilioMessagingServiceSid);
   else if (cfg.twilioFromNumber) params.set("From", cfg.twilioFromNumber);
-  if (opts.statusCallbackBaseUrl) {
-    params.set("StatusCallback", `${opts.statusCallbackBaseUrl}/api/twilio/status`);
+  // Always request delivery receipts. Callers may pass an explicit base URL
+  // (request-derived); otherwise fall back to the app's configured URL so
+  // transactional/cron sends also update SmsMessage.status via /api/twilio/status.
+  const callbackBase = (opts.statusCallbackBaseUrl || process.env.APP_URL || process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
+  if (callbackBase) {
+    params.set("StatusCallback", `${callbackBase}/api/twilio/status`);
   }
 
   const auth = Buffer.from(`${cfg.twilioAccountSid}:${cfg.twilioAuthToken}`).toString("base64");
