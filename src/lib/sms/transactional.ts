@@ -6,6 +6,10 @@
 
 const SHORT_URL = "pennylime.com";
 
+// Compliance footer. Carriers and Twilio toll-free verification expect STOP/HELP
+// language on recurring transactional traffic; keep it identical across templates.
+const OPT_OUT = "Reply STOP to opt out, HELP for help.";
+
 function statusLine(applicationCode: string): string {
   return `Track: ${SHORT_URL}/status/${applicationCode}`;
 }
@@ -25,7 +29,7 @@ export function applicationSubmittedSms(p: {
   firstName: string;
   applicationCode: string;
 }): string {
-  return `PennyLime: Got your application, ${p.firstName}. Code ${p.applicationCode}. We're reviewing now and will text the decision shortly.`;
+  return `PennyLime: Got your application, ${p.firstName}. Code ${p.applicationCode}. We're reviewing now and will text the decision shortly. ${OPT_OUT}`;
 }
 
 export function applicationApprovedSms(p: {
@@ -33,7 +37,7 @@ export function applicationApprovedSms(p: {
   applicationCode: string;
   loanAmount: number;
 }): string {
-  return `PennyLime: Approved, ${p.firstName}. ${money(p.loanAmount)} advance is ready. ${statusLine(p.applicationCode)}`;
+  return `PennyLime: Approved, ${p.firstName}. ${money(p.loanAmount)} advance is ready. ${statusLine(p.applicationCode)} ${OPT_OUT}`;
 }
 
 export function offerReadySms(p: {
@@ -42,10 +46,10 @@ export function offerReadySms(p: {
   offerToken: string;
   approvedAmount: number;
 }): string {
-  // Full token is required — server validates exact match. Length runs
-  // ~145 chars, still fits a single GSM-7 segment.
+  // Full token is required - server validates exact match. With the compliance
+  // footer this typically runs ~2 GSM-7 segments; acceptable for a one-time offer.
   const url = `${SHORT_URL}/offer/${p.applicationCode}?t=${p.offerToken}`;
-  return `PennyLime: Approved ${p.firstName}! ${money(p.approvedAmount)} advance ready. Review & accept: ${url}`;
+  return `PennyLime: Approved ${p.firstName}! ${money(p.approvedAmount)} advance ready. Review & accept: ${url} ${OPT_OUT}`;
 }
 
 export function advanceFundedSms(p: {
@@ -53,7 +57,7 @@ export function advanceFundedSms(p: {
   fundedAmount: number;
   firstDueDate: Date;
 }): string {
-  return `PennyLime: ${money(p.fundedAmount)} is on the way, ${p.firstName}. First payment ${shortDate(p.firstDueDate)}. Reply HELP for help.`;
+  return `PennyLime: ${money(p.fundedAmount)} is on the way, ${p.firstName}. First payment ${shortDate(p.firstDueDate)}. ${OPT_OUT}`;
 }
 
 export function paymentReminderSms(p: {
@@ -61,7 +65,7 @@ export function paymentReminderSms(p: {
   amount: number;
   dueDate: Date;
 }): string {
-  return `PennyLime: Heads up ${p.firstName}, ${money(p.amount)} payment debits tomorrow (${shortDate(p.dueDate)}). Make sure your account is funded.`;
+  return `PennyLime: Heads up ${p.firstName}, ${money(p.amount)} payment debits tomorrow (${shortDate(p.dueDate)}). Make sure your account is funded. ${OPT_OUT}`;
 }
 
 export function paymentFailedSms(p: {
@@ -69,7 +73,7 @@ export function paymentFailedSms(p: {
   amount: number;
   paymentNumber: number;
 }): string {
-  return `PennyLime: Payment #${p.paymentNumber} for ${money(p.amount)} didn't go through. We'll retry shortly. Questions? Reply HELP.`;
+  return `PennyLime: Payment #${p.paymentNumber} for ${money(p.amount)} didn't go through. We'll retry shortly. ${OPT_OUT}`;
 }
 
 export function lateFeeAddedSms(p: {
@@ -78,5 +82,5 @@ export function lateFeeAddedSms(p: {
   totalDue: number;
   paymentNumber: number;
 }): string {
-  return `PennyLime: A ${money(p.lateFeeAmount)} late fee was added to payment #${p.paymentNumber}. New total ${money(p.totalDue)}. Reply HELP for help.`;
+  return `PennyLime: A ${money(p.lateFeeAmount)} late fee was added to payment #${p.paymentNumber}. New total ${money(p.totalDue)}. ${OPT_OUT}`;
 }

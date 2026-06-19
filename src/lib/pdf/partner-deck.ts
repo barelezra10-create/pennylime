@@ -166,7 +166,7 @@ function buildDeckHtml(logoDataUri: string): string {
 
   const footer = `
     <div class="footer">
-      <div class="mark">${logoImg}<span>PennyLime — 770 Technology Way LLC</span></div>
+      <div class="mark">${logoImg}<span>PennyLime · 770 Technology LLC</span></div>
       <div>Confidential · 2026 Partner Deck</div>
     </div>`;
 
@@ -196,7 +196,7 @@ function buildDeckHtml(logoDataUri: string): string {
     </div>
     <div class="meta">
       <div>
-        <strong>770 Technology Way LLC</strong>
+        <strong>770 Technology LLC</strong>
         Florida · Operated under the PennyLime brand
       </div>
       <div>
@@ -450,7 +450,7 @@ function buildDeckHtml(logoDataUri: string): string {
       </div>
       <div class="col">
         <h3>Regulatory posture</h3>
-        <p>Operated as merchant-cash-advance product (receivables purchase) rather than consumer loan. Florida-domiciled under 770 Technology Way LLC. Reviewed by counsel before each new state launch. No interest-rate-bearing instruments.</p>
+        <p>Operated as merchant-cash-advance product (receivables purchase) rather than consumer loan. Florida-domiciled under 770 Technology LLC. Reviewed by counsel before each new state launch. No interest-rate-bearing instruments.</p>
 
         <h3 style="margin-top:18px;">Repeat customer upside</h3>
         <p>Not modeled above. Industry benchmark: 30% of paid-off borrowers take a second advance within 60 days. Repeat loans carry effectively zero CAC. If achieved, blended CAC drops ~18% in H2 2026, adding roughly <strong style="color:${COLORS.greenDeep}">$15K-$25K</strong> to net contribution. Pure upside on the target scenario.</p>
@@ -480,7 +480,7 @@ function buildDeckHtml(logoDataUri: string): string {
       </div>
       <div>
         <strong>PennyLime · 2026</strong>
-        770 Technology Way LLC
+        770 Technology LLC
       </div>
     </div>
   </section>

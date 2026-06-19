@@ -234,7 +234,7 @@ export default async function PortalDashboard() {
 
       <div className="mt-10 pt-6 border-t border-[#e4e4e7] text-[11px] text-[#a1a1aa]">
         <p>
-          PennyLime · 770 Technology Way LLC · This is a merchant cash advance.{" "}
+          PennyLime · 770 Technology LLC · This is a merchant cash advance.{" "}
           <a href="/terms" className="text-[#15803d] hover:underline">Terms</a> ·{" "}
           <a href="/privacy" className="text-[#15803d] hover:underline">Privacy</a>
         </p>

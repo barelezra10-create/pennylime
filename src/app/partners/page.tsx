@@ -307,7 +307,7 @@ async function renderDashboard() {
       </Section>
 
       <div className="mt-12 pt-6 border-t border-[#e4e4e7] text-[11px] text-[#a1a1aa]">
-        <p>PennyLime · operated by 770 Technology Way LLC · Confidential. Data refreshes on each page load.</p>
+        <p>PennyLime · operated by 770 Technology LLC · Confidential. Data refreshes on each page load.</p>
       </div>
     </div>
   );
