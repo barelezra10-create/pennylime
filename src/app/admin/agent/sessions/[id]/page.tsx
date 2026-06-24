@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { SessionReplyPanel } from "./reply-panel";
+import { SessionStatusControls } from "./status-controls";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,15 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
         }`}>
           {isOnline ? "● online" : "○ offline"}
         </div>
+        {session.handlingStatus !== "OPEN" && (
+          <div className={`rounded-lg px-3 py-1.5 font-semibold text-[12px] uppercase tracking-wide ${
+            session.handlingStatus === "RESOLVED"
+              ? "bg-[#dcfce7] text-[#166534]"
+              : "bg-[#fef3c7] text-[#92400e]"
+          }`}>
+            {session.handlingStatus === "RESOLVED" ? "Resolved" : "Waiting on client"}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2 mb-6">
@@ -110,6 +120,7 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
         )}
       </div>
 
+      <SessionStatusControls sessionId={session.id} initialStatus={session.handlingStatus} />
       <SessionReplyPanel sessionId={session.id} initialMode={session.mode} isOnline={isOnline} />
     </div>
   );

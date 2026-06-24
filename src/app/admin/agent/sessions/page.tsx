@@ -2,18 +2,31 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { SessionRowActions } from "./row-actions";
+import { sessionDisplayStatus, isHandlingStatus } from "@/lib/agent/session-status";
 
 export const dynamic = "force-dynamic";
+
+const STATUS_BADGE: Record<string, string> = {
+  needs_reply: "bg-[#dc2626] text-white",
+  waiting_client: "bg-[#fef3c7] text-[#92400e]",
+  resolved: "bg-[#dcfce7] text-[#166534]",
+};
 
 export default async function AgentSessionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ channel?: string; archived?: string }>;
+  searchParams: Promise<{ channel?: string; archived?: string; status?: string }>;
 }) {
   const sp = await searchParams;
   const showArchived = sp.archived === "1";
-  const where: { channel?: string; archivedAt?: { not: null } | null } = {};
+  const statusFilter = isHandlingStatus(sp.status) ? sp.status : undefined;
+  const where: {
+    channel?: string;
+    archivedAt?: { not: null } | null;
+    handlingStatus?: string;
+  } = {};
   if (sp.channel) where.channel = sp.channel;
+  if (statusFilter) where.handlingStatus = statusFilter;
   // Default: hide archived. ?archived=1 shows ONLY archived.
   where.archivedAt = showArchived ? { not: null } : null;
   const sessions = await prisma.agentSession.findMany({
@@ -78,6 +91,30 @@ export default async function AgentSessionsPage({
             </Link>
           );
         })()}
+        <span className="mx-2 h-5 w-px bg-[#e4e4e7]" />
+        {[
+          { key: "", label: "All" },
+          { key: "OPEN", label: "Open" },
+          { key: "WAITING_CLIENT", label: "Waiting on client" },
+          { key: "RESOLVED", label: "Resolved" },
+        ].map((st) => {
+          const active = (statusFilter ?? "") === st.key;
+          const params = new URLSearchParams();
+          if (sp.channel) params.set("channel", sp.channel);
+          if (showArchived) params.set("archived", "1");
+          if (st.key) params.set("status", st.key);
+          return (
+            <Link
+              key={st.key || "all-status"}
+              href={`?${params.toString()}`}
+              className={`rounded-lg px-3 py-1.5 text-[13px] font-medium transition-all ${
+                active ? "bg-[#1a1a1a] text-white" : "bg-[#f4f4f5] text-[#71717a] hover:bg-[#e4e4e7]"
+              }`}
+            >
+              {st.label}
+            </Link>
+          );
+        })}
       </div>
 
       <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
@@ -115,25 +152,34 @@ export default async function AgentSessionsPage({
                 // been formally ended. That's our "unread" signal.
                 const lastMessage = s.messages[0];
                 const needsReply = !s.endedAt && lastMessage?.role === "user";
-                const noMessages = s.messages.length === 0;
+                const display = sessionDisplayStatus({
+                  handlingStatus: s.handlingStatus,
+                  needsReply,
+                  hasMessages: s.messages.length > 0,
+                  ended: !!s.endedAt,
+                });
                 return (
                 <tr key={s.id} className={`transition-colors border-t border-[#f4f4f5] ${
                   needsReply ? "bg-[#fff5f5] hover:bg-[#ffe9e9] font-medium" : "hover:bg-[#f8f8f6]"
                 }`}>
                   <td className="px-3 py-3">
-                    {needsReply ? (
+                    {display.kind === "needs_reply" ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dc2626] text-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        Needs reply
+                        {display.label}
                       </span>
-                    ) : noMessages ? (
+                    ) : display.kind === "waiting_client" || display.kind === "resolved" ? (
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${STATUS_BADGE[display.kind]}`}>
+                        {display.label}
+                      </span>
+                    ) : display.kind === "no_messages" ? (
                       <span className="text-[11px] text-[#a1a1aa]">no messages</span>
-                    ) : s.endedAt ? (
+                    ) : display.kind === "ended" ? (
                       <span className="text-[11px] text-[#a1a1aa]">ended</span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 text-[11px] text-[#15803d] font-semibold">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#15803d]" />
-                        Caught up
+                        {display.label}
                       </span>
                     )}
                   </td>

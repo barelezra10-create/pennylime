@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { isHandlingStatus } from "@/lib/agent/session-status";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -33,6 +34,23 @@ export async function unarchiveAgentSession(sessionId: string) {
   });
   revalidatePath("/admin/agent/sessions");
   return { ok: true as const };
+}
+
+export async function setSessionHandlingStatus(
+  sessionId: string,
+  status: string
+) {
+  await requireAdmin();
+  if (!isHandlingStatus(status)) {
+    return { ok: false as const, error: "Invalid status" };
+  }
+  await prisma.agentSession.update({
+    where: { id: sessionId },
+    data: { handlingStatus: status },
+  });
+  revalidatePath("/admin/agent/sessions");
+  revalidatePath(`/admin/agent/sessions/${sessionId}`);
+  return { ok: true as const, status };
 }
 
 export async function deleteAgentSession(sessionId: string) {
