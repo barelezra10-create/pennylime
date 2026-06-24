@@ -75,6 +75,19 @@ model Application {
   // When the applicant picks "Other", the free-text description they
   // type is appended after a colon (e.g. "Other: Tarot reading studio").
   businessType             String?
+  // Employer Identification Number, collected from BUSINESS_OWNER
+  // applicants on the Documents step (format "XX-XXXXXXX"). Used as
+  // business-existence proof alongside the uploaded 90-day statement.
+  ein                      String?
+  // Result of verifyWorkSignals(): does the bank data actually show the
+  // gig/business income the applicant declared? "VERIFIED" | "WEAK" |
+  // "UNVERIFIED". workVerificationJson holds the matched counterparties,
+  // totals, and the human-readable reason. workNeedsReview soft-flags
+  // weak/unverified applicants for a human without blocking submission.
+  workVerificationStatus   String?
+  workVerificationJson     String?
+  workVerificationAt       DateTime?
+  workNeedsReview          Boolean   @default(false)
   workStartMonth           Int?
   workStartYear            Int?
   addressStreet            String?
@@ -1259,6 +1272,11 @@ model AgentSession {
   // Admin-archived sessions hide from the default sessions list and
   // from the unread-count badge. Null = active.
   archivedAt     DateTime?
+  // Admin-controlled triage state, separate from the derived "needs
+  // reply / caught up" signal. "OPEN" (default, needs handling),
+  // "WAITING_CLIENT" (we replied, waiting on the customer), or
+  // "RESOLVED" (handled). Only changes when an admin clicks a button.
+  handlingStatus String   @default("OPEN")
   messages       AgentMessage[]
   toolCalls      AgentToolCall[]
   tickets        SupportTicket[]
@@ -1266,6 +1284,7 @@ model AgentSession {
   @@index([channel, startedAt])
   @@index([mode, startedAt])
   @@index([archivedAt])
+  @@index([handlingStatus])
 }
 
 model AgentMessage {

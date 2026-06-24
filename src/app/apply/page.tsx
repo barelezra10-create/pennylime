@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { usePlaidLink } from "react-plaid-link";
 import { CheckCircle, Building2 } from "lucide-react";
 import { submitApplication } from "@/actions/applications";
+import { finalizeDocumentsAndVerify } from "@/actions/application-documents";
 import { previewPlaidIncome, verifyApplicantIdentity } from "@/actions/plaid";
 import { upsertContact, updateContactLastStep, linkContactApplication } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
@@ -35,8 +36,9 @@ const STEPS = [
   "Platforms",     // 6
   "Bank link",     // 7
   "Classify",      // 8
-  "Verified",      // 9
-  "Review",        // 10
+  "Documents",     // 9
+  "Verified",      // 10
+  "Review",        // 11
 ];
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
@@ -1302,6 +1304,174 @@ function StepSSN({
         </svg>
         <p className="text-[12px] leading-relaxed text-[#15803d]">
           Your SSN is encrypted end to end and only used for identity verification. We never sell it or share it.
+        </p>
+      </div>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={handleNext}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP DOCUMENTS (90-day statement for all + EIN for business owners) */
+/* ------------------------------------------------------------------ */
+const DOC_ACCEPT = ".pdf,.png,.jpg,.jpeg,.csv,application/pdf,image/png,image/jpeg,text/csv";
+const formatEin = (d: string) =>
+  d.replace(/\D/g, "").slice(0, 9).replace(/(\d{2})(\d{0,7})/, (_m, a, b) => (b ? `${a}-${b}` : a));
+
+function StepDocuments({
+  workerType,
+  statementFiles,
+  setStatementFiles,
+  ein,
+  setEin,
+  previewMode,
+  onNext,
+  onBack,
+}: {
+  workerType: string;
+  statementFiles: File[];
+  setStatementFiles: (f: File[]) => void;
+  ein: string;
+  setEin: (v: string) => void;
+  previewMode: boolean;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const isBusiness = workerType === "BUSINESS_OWNER";
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    const incoming = Array.from(list);
+    // Cap total at 6 files; dedupe by name+size.
+    const merged = [...statementFiles];
+    for (const f of incoming) {
+      if (merged.length >= 6) break;
+      if (!merged.some((m) => m.name === f.name && m.size === f.size)) merged.push(f);
+    }
+    setStatementFiles(merged);
+  };
+
+  const removeFile = (i: number) =>
+    setStatementFiles(statementFiles.filter((_, idx) => idx !== i));
+
+  const handleNext = () => {
+    if (statementFiles.length === 0 && !previewMode) {
+      toast.error("Please upload your last 90 days of bank statements");
+      return;
+    }
+    if (isBusiness) {
+      const cleanEin = ein.replace(/\D/g, "");
+      if (!/^\d{9}$/.test(cleanEin) && !previewMode) {
+        toast.error("Please enter your business EIN (9 digits)");
+        return;
+      }
+    }
+    onNext();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        Upload your documents
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Last step before review. We verify your income from the documents you upload here,
+        on top of your linked bank.
+      </p>
+
+      {/* 90-day bank statement — required for everyone */}
+      <div className="mt-8">
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">
+          Last 90 days of bank statements
+        </label>
+        <p className="mb-2 text-[12px] text-[#71717a]">
+          PDF, image, or CSV exports covering the last 3 months. You can add more than one file.
+        </p>
+        <label
+          className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#e4e4e7] bg-white px-4 py-7 text-center transition-all hover:border-[#15803d] hover:bg-[#f0fdf4]"
+        >
+          <svg className="mb-2 h-7 w-7 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+          </svg>
+          <span className="text-[14px] font-semibold text-[#15803d]">Tap to upload statements</span>
+          <span className="mt-0.5 text-[12px] text-[#a1a1aa]">PDF, PNG, JPG, or CSV</span>
+          <input
+            type="file"
+            accept={DOC_ACCEPT}
+            multiple
+            className="hidden"
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+          />
+        </label>
+
+        {statementFiles.length > 0 && (
+          <ul className="mt-3 space-y-2">
+            {statementFiles.map((f, i) => (
+              <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-3 rounded-lg bg-[#f4f4f5] px-3 py-2">
+                <span className="truncate text-[13px] text-[#0a0a0a]">{f.name}</span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  className="flex-shrink-0 text-[12px] font-semibold text-[#dc2626] hover:underline"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* EIN — business owners only */}
+      {isBusiness && (
+        <div className="mt-6">
+          <label className="mb-1.5 block text-[14px] font-semibold text-black">
+            Business EIN
+          </label>
+          <p className="mb-2 text-[12px] text-[#71717a]">
+            Your federal Employer Identification Number, so we can confirm your business exists.
+          </p>
+          <input
+            inputMode="numeric"
+            value={ein}
+            onChange={(e) => setEin(formatEin(e.target.value))}
+            onKeyDown={(e) => { if (e.key === "Enter") handleNext(); }}
+            placeholder="XX-XXXXXXX"
+            className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] placeholder:text-[#a1a1aa] outline-none transition-all duration-200 focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+          />
+        </div>
+      )}
+
+      {/* Trust card */}
+      <div className="mt-6 flex items-start gap-3 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl px-4 py-4">
+        <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+        </svg>
+        <p className="text-[12px] leading-relaxed text-[#15803d]">
+          Your documents are stored securely and used only to verify your income and business. Never shared or sold.
         </p>
       </div>
 
@@ -2997,6 +3167,7 @@ type PersistedState = {
   workerType: string;
   businessType?: string;
   businessTypeOther?: string;
+  ein?: string;
   workStartMonth: number;
   workStartYear: number;
   bankName: string;
@@ -3061,6 +3232,11 @@ function ApplyPageInner() {
   const [businessTypeOther, setBusinessTypeOther] = useState<string>(persisted?.businessTypeOther ?? "");
   const [workStartMonth, setWorkStartMonth] = useState(() => persisted?.workStartMonth ?? new Date().getMonth() + 1);
   const [workStartYear, setWorkStartYear] = useState(() => persisted?.workStartYear ?? new Date().getFullYear());
+  // Documents step: 90-day bank statement (required for everyone) held
+  // client-side until submit (Files can't serialize to the persisted
+  // sessionStorage snapshot), plus the EIN for business owners.
+  const [statementFiles, setStatementFiles] = useState<File[]>([]);
+  const [ein, setEin] = useState(persisted?.ein ?? "");
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
@@ -3103,6 +3279,7 @@ function ApplyPageInner() {
           workerType,
           businessType,
           businessTypeOther,
+          ein,
           workStartMonth,
           workStartYear,
           bankName,
@@ -3122,6 +3299,7 @@ function ApplyPageInner() {
     workerType,
     businessType,
     businessTypeOther,
+    ein,
     workStartMonth,
     workStartYear,
     bankName,
@@ -3253,6 +3431,15 @@ function ApplyPageInner() {
             );
           } catch {}
         }
+        // Persist the uploaded 90-day statement + EIN and run work
+        // verification. Best-effort: a slow AI parse must not block the
+        // applicant's confirmation screen, and the result is admin-facing.
+        try {
+          const fd = new FormData();
+          statementFiles.forEach((f) => fd.append("statement", f));
+          if (ein) fd.append("ein", ein);
+          await finalizeDocumentsAndVerify(result.applicationId, fd);
+        } catch {}
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -3481,6 +3668,21 @@ function ApplyPageInner() {
                       />
                     );
                   }
+                  if (builtinKey === "documents") {
+                    return (
+                      <StepDocuments
+                        key="documents"
+                        workerType={workerType}
+                        statementFiles={statementFiles}
+                        setStatementFiles={setStatementFiles}
+                        ein={ein}
+                        setEin={setEin}
+                        previewMode={previewMode}
+                        onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
                   if (builtinKey === "verified") {
                     return (
                       <StepVerified
@@ -3649,6 +3851,18 @@ function ApplyPageInner() {
                   onBack={() => setStep(7)}
                 />
               ) : step === 9 ? (
+                <StepDocuments
+                  key="documents"
+                  workerType={workerType}
+                  statementFiles={statementFiles}
+                  setStatementFiles={setStatementFiles}
+                  ein={ein}
+                  setEin={setEin}
+                  previewMode={previewMode}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 10); } catch {} setStep(10); }}
+                  onBack={() => setStep(8)}
+                />
+              ) : step === 10 ? (
                 <StepVerified
                   key="verified"
                   plaidAccessToken={plaidAccessToken}
@@ -3656,8 +3870,8 @@ function ApplyPageInner() {
                   lastName={form.lastName}
                   identityResult={identityResult}
                   setIdentityResult={setIdentityResult}
-                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 10); } catch {} setStep(10); }}
-                  onBack={() => setStep(8)}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 11); } catch {} setStep(11); }}
+                  onBack={() => setStep(9)}
                 />
               ) : (
                 <StepReview
@@ -3672,7 +3886,7 @@ function ApplyPageInner() {
                   identityNeedsReview={identityResult?.needsReview ?? true}
                   plaidPreviewIncome={plaidPreviewIncome}
                   submitting={submitting}
-                  onBack={() => setStep(9)}
+                  onBack={() => setStep(10)}
                   onSubmit={handleSubmit}
                 />
               )}
