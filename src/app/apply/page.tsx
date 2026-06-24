@@ -3381,7 +3381,14 @@ function ApplyPageInner() {
         phone: form.phone,
         loanAmount,
         loanTermMonths,
-        platform: platforms.join(", "),
+        // Persist the typed "Other" description (platform name for
+        // contractors, business name for business owners) instead of the
+        // bare "other" id, so it actually shows in admin. Validation on
+        // the platforms step already forces a non-empty value here.
+        platform: platforms
+          .map((p) => (p === "other" ? otherPlatform.trim() || "Other" : p))
+          .join(", ")
+          .slice(0, 60),
         ssnRaw: form.ssn || undefined,
         plaidAccessToken,
         plaidItemId,
