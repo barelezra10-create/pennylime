@@ -10,10 +10,8 @@ describe("sessionDisplayStatus", () => {
     );
   });
 
-  it("shows Waiting on client when admin set WAITING_CLIENT and no unanswered message", () => {
-    expect(sessionDisplayStatus({ ...base, handlingStatus: "WAITING_CLIENT" }).kind).toBe(
-      "waiting_client"
-    );
+  it("auto-shows Waiting on client when we replied last (open, has messages, not ended)", () => {
+    expect(sessionDisplayStatus({ ...base }).kind).toBe("waiting_client");
   });
 
   it("shows Resolved when admin set RESOLVED and no unanswered message", () => {
@@ -30,8 +28,8 @@ describe("sessionDisplayStatus", () => {
     expect(sessionDisplayStatus({ ...base, ended: true }).kind).toBe("ended");
   });
 
-  it("falls back to caught_up for an open session with messages, nothing outstanding", () => {
-    expect(sessionDisplayStatus(base).kind).toBe("caught_up");
+  it("needs_reply still wins over the auto waiting_client when the customer messaged last", () => {
+    expect(sessionDisplayStatus({ ...base, needsReply: true }).kind).toBe("needs_reply");
   });
 });
 

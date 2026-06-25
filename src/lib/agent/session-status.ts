@@ -11,11 +11,10 @@ export function isHandlingStatus(v: unknown): v is HandlingStatus {
 
 export type DisplayStatusKind =
   | "needs_reply" // customer is waiting on us (urgent)
-  | "waiting_client" // we replied, waiting on the customer
+  | "waiting_client" // we (team or AI) replied last, ball is in the client's court
   | "resolved" // admin marked handled
   | "ended" // session formally ended
-  | "no_messages" // empty session
-  | "caught_up"; // open, nothing outstanding
+  | "no_messages"; // empty session
 
 export type DisplayStatus = { kind: DisplayStatusKind; label: string };
 
@@ -25,17 +24,19 @@ const LABELS: Record<DisplayStatusKind, string> = {
   resolved: "Resolved",
   ended: "Ended",
   no_messages: "No messages",
-  caught_up: "Caught up",
 };
 
 /**
  * Decide the badge for a session row.
  *
- * Precedence: an unanswered customer message (needsReply) is always the
- * most urgent and wins, even over an admin-set status — a fresh question
- * must never hide under "Resolved". Otherwise the admin's stored
- * handlingStatus (WAITING_CLIENT / RESOLVED) shows. Falling through to
- * the original derived signals (ended / no messages / caught up).
+ * Precedence:
+ *  1. An unanswered customer message (needsReply) is the most urgent and
+ *     always wins, even over a "Resolved" mark — a fresh question must
+ *     never hide.
+ *  2. A manual "Resolved" mark.
+ *  3. Otherwise, if the conversation has messages and isn't ended, we
+ *     replied last, so it's automatically "Waiting on client" — no
+ *     tagging needed.
  */
 export function sessionDisplayStatus(input: {
   handlingStatus: string;
@@ -45,11 +46,10 @@ export function sessionDisplayStatus(input: {
 }): DisplayStatus {
   const kind = ((): DisplayStatusKind => {
     if (input.needsReply) return "needs_reply";
-    if (input.handlingStatus === "WAITING_CLIENT") return "waiting_client";
     if (input.handlingStatus === "RESOLVED") return "resolved";
     if (!input.hasMessages) return "no_messages";
     if (input.ended) return "ended";
-    return "caught_up";
+    return "waiting_client";
   })();
   return { kind, label: LABELS[kind] };
 }

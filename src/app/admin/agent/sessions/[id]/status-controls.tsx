@@ -42,18 +42,6 @@ export function SessionStatusControls({
       </span>
       <button
         type="button"
-        onClick={() => set("WAITING_CLIENT", "Marked: waiting on client")}
-        disabled={busy !== null || status === "WAITING_CLIENT"}
-        className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50 ${
-          status === "WAITING_CLIENT"
-            ? "bg-[#fde68a] text-[#92400e] ring-1 ring-[#f59e0b]"
-            : "bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a]"
-        }`}
-      >
-        {busy === "WAITING_CLIENT" ? "…" : "Waiting on client"}
-      </button>
-      <button
-        type="button"
         onClick={() => set("RESOLVED", "Marked resolved")}
         disabled={busy !== null || status === "RESOLVED"}
         className={`rounded-lg px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50 ${

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { SessionRowActions } from "./row-actions";
-import { sessionDisplayStatus, isHandlingStatus } from "@/lib/agent/session-status";
+import { sessionDisplayStatus } from "@/lib/agent/session-status";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,10 @@ const STATUS_BADGE: Record<string, string> = {
   resolved: "bg-[#dcfce7] text-[#166534]",
 };
 
+// Tab keys map to the DERIVED display status (so the tabs match the
+// auto-computed badges, not a stored field).
+const STATUS_TABS = ["needs_reply", "waiting_client", "resolved"] as const;
+
 export default async function AgentSessionsPage({
   searchParams,
 }: {
@@ -19,20 +23,20 @@ export default async function AgentSessionsPage({
 }) {
   const sp = await searchParams;
   const showArchived = sp.archived === "1";
-  const statusFilter = isHandlingStatus(sp.status) ? sp.status : undefined;
+  const statusFilter = (STATUS_TABS as readonly string[]).includes(sp.status ?? "")
+    ? sp.status
+    : undefined;
   const where: {
     channel?: string;
     archivedAt?: { not: null } | null;
-    handlingStatus?: string;
   } = {};
   if (sp.channel) where.channel = sp.channel;
-  if (statusFilter) where.handlingStatus = statusFilter;
   // Default: hide archived. ?archived=1 shows ONLY archived.
   where.archivedAt = showArchived ? { not: null } : null;
-  const sessions = await prisma.agentSession.findMany({
+  const allSessions = await prisma.agentSession.findMany({
     where,
     orderBy: { startedAt: "desc" },
-    take: 100,
+    take: 300,
     include: {
       contact: { select: { firstName: true, lastName: true, phone: true, email: true } },
       // Pull the latest message so we can flag rows where the customer
@@ -44,6 +48,22 @@ export default async function AgentSessionsPage({
       },
     },
   });
+
+  // Compute the derived display status once per row, then apply the
+  // status tab filter in-memory (the status is derived, not a column).
+  const withStatus = allSessions.map((s) => ({
+    s,
+    display: sessionDisplayStatus({
+      handlingStatus: s.handlingStatus,
+      needsReply: !s.endedAt && s.messages[0]?.role === "user",
+      hasMessages: s.messages.length > 0,
+      ended: !!s.endedAt,
+    }),
+  }));
+  const sessionsView = statusFilter
+    ? withStatus.filter((r) => r.display.kind === statusFilter)
+    : withStatus;
+  const sessions = sessionsView.map((r) => r.s);
 
   const channels: { key: string; label: string }[] = [
     { key: "", label: "All" },
@@ -94,9 +114,9 @@ export default async function AgentSessionsPage({
         <span className="mx-2 h-5 w-px bg-[#e4e4e7]" />
         {[
           { key: "", label: "All" },
-          { key: "OPEN", label: "Open" },
-          { key: "WAITING_CLIENT", label: "Waiting on client" },
-          { key: "RESOLVED", label: "Resolved" },
+          { key: "needs_reply", label: "Needs reply" },
+          { key: "waiting_client", label: "Waiting on client" },
+          { key: "resolved", label: "Resolved" },
         ].map((st) => {
           const active = (statusFilter ?? "") === st.key;
           const params = new URLSearchParams();

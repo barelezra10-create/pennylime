@@ -68,13 +68,9 @@ export default async function SessionDetail({ params }: { params: Promise<{ id: 
         }`}>
           {isOnline ? "● online" : "○ offline"}
         </div>
-        {session.handlingStatus !== "OPEN" && (
-          <div className={`rounded-lg px-3 py-1.5 font-semibold text-[12px] uppercase tracking-wide ${
-            session.handlingStatus === "RESOLVED"
-              ? "bg-[#dcfce7] text-[#166534]"
-              : "bg-[#fef3c7] text-[#92400e]"
-          }`}>
-            {session.handlingStatus === "RESOLVED" ? "Resolved" : "Waiting on client"}
+        {session.handlingStatus === "RESOLVED" && (
+          <div className="rounded-lg px-3 py-1.5 font-semibold text-[12px] uppercase tracking-wide bg-[#dcfce7] text-[#166534]">
+            Resolved
           </div>
         )}
       </div>
