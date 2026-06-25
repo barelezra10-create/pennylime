@@ -1,6 +1,18 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Applicants upload their last 90 days of bank statements to the
+  // finalizeDocumentsAndVerify Server Action. The Next.js default body
+  // limit is 1MB, which silently rejected most statement PDFs (1-5MB+) —
+  // the application was created but the statement never saved. Raise it
+  // to comfortably cover real statements (the app's own rule still caps
+  // each file at max_file_size_mb).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "15mb",
+    },
+  },
+
   // Allow brand logos served by Simple Icons CDN. Used on the
   // /cash-advance hub + leaf pages to show each platform's logo
   // next to its name. SVG is unoptimized by next/image; we use
