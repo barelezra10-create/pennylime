@@ -42,8 +42,8 @@ Merchant waives any future right to argue, in litigation or arbitration, that th
 | Purchase Price (paid to Merchant) | $[Disbursed Amount] |
 | Purchased Receivables (total to deliver) | $[Total Receivables] |
 | Specified Percentage of each Payment Transaction | [Specified Percentage]% |
-| Initial scheduled remittance frequency | Weekly |
-| Initial scheduled remittance amount | $[Weekly Remittance] |
+| Initial scheduled remittance frequency | [Remittance Frequency] |
+| Initial scheduled remittance amount | $[Remittance Amount] |
 | Origination fee (if any) | $[Origination Fee] |
 
 **Early Delivery Discount.** If Merchant chooses to deliver the full remaining Purchased Receivables ahead of schedule, PennyLime may offer a discount on the outstanding balance. The discount is determined by PennyLime at the time of the early-delivery request and is valid for 24 hours from when quoted. To request an early-delivery quote, contact `info@pennylime.com` or call the number on the Merchant's account dashboard. No prepayment penalty applies.

@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CheckCircle } from "lucide-react";
 import { acceptOffer } from "@/actions/offers";
+import { generateRepaymentSchedule } from "@/lib/repayment-schedule";
 import { CfdlDisclosureModal } from "./cfdl-disclosure-modal";
 
 type Term = {
@@ -29,6 +30,7 @@ type InitialOffer = {
   acceptedTermIndex: number | null;
   acceptedAt: string | null;
   preferredChargeDay: number | null;
+  paymentFrequency: "WEEKLY" | "DAILY";
   bankName: string | null;
   bankAccountMask: string | null;
   accountSubtype: string | null;
@@ -89,35 +91,24 @@ export function OfferClient({
     return () => observer.disconnect();
   }, []);
 
+  const isDaily = initial.paymentFrequency === "DAILY";
+
   // Compute the schedule we're about to show the borrower for ACH auth.
-  // Mirrors the server-side generateWeeklySchedule snap-to-charge-day
-  // logic so what the borrower sees exactly matches what we create.
+  // Uses the SAME shared engine the server runs at acceptOffer, so the
+  // dates/amounts the borrower sees and authorizes exactly match what we
+  // create (weekly snap-to-charge-day, or daily business-day debits).
   function computeSchedule() {
     const term = initial.terms[selectedTerm];
     if (!term) return [];
     const weekly = Math.round(term.weeklyRemittance * (amount / Math.max(term.disbursedAmount, 1)) * 100) / 100;
-    // Preview must mirror generateWeeklySchedule in actions/offers.ts so
-    // the dates the borrower sees on the offer page match what the
-    // server creates on acceptance. 3-day minimum buffer, then nearest
-    // preferredChargeDay (or +3 if no preference is on file).
-    const FIRST_PAYMENT_BUFFER_DAYS = 3;
-    const firstDue = new Date();
-    if (initial.preferredChargeDay != null) {
-      const targetDay = initial.preferredChargeDay;
-      const startDay = firstDue.getDay();
-      let dayOffset = (targetDay - startDay + 7) % 7;
-      if (dayOffset < FIRST_PAYMENT_BUFFER_DAYS) dayOffset += 7;
-      firstDue.setDate(firstDue.getDate() + dayOffset);
-    } else {
-      firstDue.setDate(firstDue.getDate() + FIRST_PAYMENT_BUFFER_DAYS);
-    }
-    const out: { paymentNumber: number; date: Date; amount: number }[] = [];
-    for (let i = 0; i < term.durationWeeks; i++) {
-      const due = new Date(firstDue);
-      due.setDate(due.getDate() + 7 * i);
-      out.push({ paymentNumber: i + 1, date: due, amount: weekly });
-    }
-    return out;
+    return generateRepaymentSchedule({
+      principal: amount,
+      weeklyPayment: weekly,
+      termWeeks: term.durationWeeks,
+      startDate: new Date(),
+      frequency: initial.paymentFrequency,
+      preferredChargeDay: initial.preferredChargeDay,
+    }).map((r) => ({ paymentNumber: r.paymentNumber, date: r.dueDate, amount: r.amount }));
   }
   const schedule = computeSchedule();
   const totalDebit = schedule.reduce((s, p) => s + p.amount, 0);
@@ -125,7 +116,7 @@ export function OfferClient({
     ? `${initial.bankName}${initial.bankAccountMask ? " ending in " + initial.bankAccountMask : ""}`
     : "your linked bank account";
 
-  const authorizationText = `I authorize PennyLime (770 Technology LLC) to ACH debit ${bankLabel} for ${schedule.length} weekly payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
+  const authorizationText = `I authorize PennyLime (770 Technology LLC) to ACH debit ${bankLabel} for ${schedule.length} ${isDaily ? "daily (Monday through Friday)" : "weekly"} payments totaling ${fmt(totalDebit)}, on the dates above. This authorization remains in effect until the full amount has been delivered or I revoke it in writing by emailing info@pennylime.com at least 3 business days before the next scheduled debit.`;
 
   // Substitute the [Placeholder] tokens in the agreement HTML with the
   // borrower's actual values so they see a real, completed agreement
@@ -166,11 +157,14 @@ export function OfferClient({
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }),
-      // Weekly debits hit 100% of the scheduled amount (no percentage
-      // split); the merchant remits the full weekly amount each cycle.
+      // Each debit hits 100% of the scheduled amount (no percentage
+      // split); the merchant remits the full scheduled amount each cycle.
       "[Specified Percentage]": "100",
-      "[Weekly Remittance]": term
-        ? term.weeklyRemittance.toLocaleString("en-US", {
+      "[Remittance Frequency]": isDaily ? "Daily (Monday through Friday)" : "Weekly",
+      // Per-debit amount straight from the schedule we're showing, so the
+      // agreement's remittance amount matches the actual cadence.
+      "[Remittance Amount]": schedule[0]
+        ? schedule[0].amount.toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })
@@ -223,6 +217,7 @@ export function OfferClient({
     initial.bankName,
     initial.bankAccountMask,
     initial.accountSubtype,
+    initial.paymentFrequency,
     schedule,
     totalDebit,
   ]);
@@ -697,7 +692,9 @@ function SuccessScreen({ firstName, amount }: { firstName: string; amount: numbe
           typically arrive within 1 business day.
         </p>
         <p className="mt-4 text-[12px] text-[#71717a]">
-          Weekly remittances will start automatically next week.
+          {isDaily
+            ? "Daily remittances (Monday through Friday) will start automatically."
+            : "Weekly remittances will start automatically next week."}
         </p>
       </motion.div>
     </div>

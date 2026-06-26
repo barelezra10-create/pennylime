@@ -114,6 +114,12 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
   // they actually accepted, so the cover + agreement body show the
   // numbers that match the schedule.
   const effectiveWeekly = schedule[0]?.amount ?? params.recommendedTerm.weeklyRemittance;
+  // Infer cadence from the schedule's date spacing: consecutive business
+  // days (<= 3 day gap) = daily; ~7 day gap = weekly. Keeps the agreement
+  // terms accurate without threading a frequency param through callers.
+  const isDaily =
+    schedule.length >= 2 &&
+    (schedule[1].date.getTime() - schedule[0].date.getTime()) / 86400000 <= 3;
 
   const subs: Record<string, string> = {
     "[Acceptance Date]": todayLong,
@@ -128,7 +134,8 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
     "[Disbursed Amount]": fmt(params.approvedAmount),
     "[Total Receivables]": fmt(totalDebit),
     "[Specified Percentage]": "100",
-    "[Weekly Remittance]": fmt(effectiveWeekly),
+    "[Remittance Frequency]": isDaily ? "Daily (Monday through Friday)" : "Weekly",
+    "[Remittance Amount]": fmt(effectiveWeekly),
     "[Origination Fee]": fmt(params.recommendedTerm.processingFee),
   };
   for (const [token, value] of Object.entries(subs)) {
