@@ -334,7 +334,7 @@ async function syncContactStageForApplication(
     OFFER_ACCEPTED: "OFFER_ACCEPTED",
     FUNDED: "FUNDED",
     REPAYING: "REPAYING",
-    LATE: "REPAYING",
+    LATE: "LATE",
     PAID_OFF: "PAID_OFF",
     DEFAULTED: "DEFAULTED",
     REJECTED: "REJECTED",

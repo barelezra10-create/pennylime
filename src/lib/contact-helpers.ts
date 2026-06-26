@@ -7,6 +7,7 @@ export const PIPELINE_STAGES = [
   "REJECTED",
   "FUNDED",
   "REPAYING",
+  "LATE",
   "PAID_OFF",
   "DEFAULTED",
   "LOST",
@@ -23,6 +24,7 @@ export const STAGE_COLORS: Record<string, { bg: string; text: string }> = {
   REJECTED: { bg: "bg-[#fef2f2]", text: "text-[#dc2626]" },
   FUNDED: { bg: "bg-[#f0fdf4]", text: "text-[#15803d]" },
   REPAYING: { bg: "bg-[#eff6ff]", text: "text-[#2563eb]" },
+  LATE: { bg: "bg-[#fef2f2]", text: "text-[#dc2626]" },
   PAID_OFF: { bg: "bg-[#f0fdf4]", text: "text-[#166534]" },
   DEFAULTED: { bg: "bg-[#fef2f2]", text: "text-[#dc2626]" },
   LOST: { bg: "bg-[#f4f4f5]", text: "text-[#71717a]" },
@@ -36,6 +38,7 @@ export const KANBAN_STAGES: PipelineStage[] = [
   "OFFER_ACCEPTED",
   "FUNDED",
   "REPAYING",
+  "LATE",
 ];
 
 export function parseUtmParams(searchParams: URLSearchParams) {
