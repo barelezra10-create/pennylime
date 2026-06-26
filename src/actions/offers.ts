@@ -3,79 +3,12 @@
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import {
+  generateRepaymentSchedule,
+  type PaymentFrequency,
+} from "@/lib/repayment-schedule";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-function generateWeeklySchedule(input: {
-  principal: number;
-  weeklyPayment: number;
-  termWeeks: number;
-  startDate: Date;
-  // When set (0=Sunday … 6=Saturday), the FIRST payment date snaps
-  // to the next occurrence of this day-of-week, and every subsequent
-  // payment is exactly 7 days later. Lets us land debits one day
-  // after the borrower's typical paycheck day.
-  preferredChargeDay?: number | null;
-}) {
-  const totalToRepay = input.weeklyPayment * input.termWeeks;
-  const totalInterest = Math.max(0, totalToRepay - input.principal);
-  const interestPerPayment = totalInterest / input.termWeeks;
-  const principalPerPayment = input.weeklyPayment - interestPerPayment;
-
-  // First-payment anchor.
-  //
-  // When the borrower has a preferredChargeDay (inferred from their
-  // bank deposit pattern), we want the NEAREST occurrence of that day
-  // that still leaves the ACH disbursement enough time to clear. The
-  // old logic added 7 days unconditionally and then snapped, which
-  // routinely pushed the first debit out to 11-14 days. The closer the
-  // first debit, the less "free spend" before repayment kicks in,
-  // which is what we want.
-  //
-  // New rule: find the next preferredChargeDay that's at least
-  // FIRST_PAYMENT_BUFFER_DAYS from start. If the next occurrence is
-  // sooner than that, skip to the following week. Gives ACH ~3-day
-  // cushion for the disbursement to settle.
-  const FIRST_PAYMENT_BUFFER_DAYS = 3;
-  const firstDue = new Date(input.startDate);
-  if (input.preferredChargeDay != null) {
-    const targetDay = input.preferredChargeDay;
-    const startDay = firstDue.getDay();
-    let dayOffset = (targetDay - startDay + 7) % 7;
-    if (dayOffset < FIRST_PAYMENT_BUFFER_DAYS) {
-      // Next occurrence is too close (e.g., accepting on a Monday with
-      // preferredChargeDay = Tuesday gives only 1 day for ACH to clear).
-      // Push to the following week.
-      dayOffset += 7;
-    }
-    firstDue.setDate(firstDue.getDate() + dayOffset);
-  } else {
-    // No preferred day on file (Plaid didn't infer a deposit pattern).
-    // Still apply the 3-day buffer rule so first payment lands as
-    // close to acceptance as ACH timing allows.
-    firstDue.setDate(firstDue.getDate() + FIRST_PAYMENT_BUFFER_DAYS);
-  }
-
-  const schedule: Array<{
-    paymentNumber: number;
-    dueDate: Date;
-    amount: number;
-    principal: number;
-    interest: number;
-  }> = [];
-  for (let i = 0; i < input.termWeeks; i++) {
-    const due = new Date(firstDue);
-    due.setDate(due.getDate() + 7 * i);
-    schedule.push({
-      paymentNumber: i + 1,
-      dueDate: due,
-      amount: Math.round(input.weeklyPayment * 100) / 100,
-      principal: Math.round(principalPerPayment * 100) / 100,
-      interest: Math.round(interestPerPayment * 100) / 100,
-    });
-  }
-  return schedule;
-}
 
 export type OfferTerm = {
   weeklyRemittance: number;
@@ -598,14 +531,18 @@ export async function acceptOffer(input: {
   const scaledWeeklyPayment =
     Math.round(term.weeklyRemittance * scaleRatio * 100) / 100;
 
-  // Snap each weekly due date to the borrower's preferredChargeDay if
-  // we computed one from their bank deposit pattern — debit lands when
-  // balance is freshest, lifting success rates.
-  const schedule = generateWeeklySchedule({
+  // Build the repayment schedule at the borrower's chosen cadence. WEEKLY
+  // (default) snaps each due date to the preferredChargeDay; DAILY debits
+  // every business day for the same total. Same total cost of capital
+  // either way — only the debit frequency differs.
+  const frequency: PaymentFrequency =
+    app.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY";
+  const schedule = generateRepaymentSchedule({
     principal: input.selectedAmount,
     weeklyPayment: scaledWeeklyPayment,
     termWeeks: term.durationWeeks,
     startDate: new Date(),
+    frequency,
     preferredChargeDay: app.preferredChargeDay,
   });
 
@@ -835,6 +772,7 @@ export async function acceptOffer(input: {
                   monthlyPayment: scheduleForEmail[0].amount,
                   firstDueDate: scheduleForEmail[0].dueDate,
                   schedule: scheduleForEmail,
+                  frequency,
                 }),
                 contactId: linkedContact?.id,
                 templateId: "advance-funded",

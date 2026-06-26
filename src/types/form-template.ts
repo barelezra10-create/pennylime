@@ -15,7 +15,7 @@ export interface FormStep {
   order: number;
   enabled: boolean;
   type: "builtin" | "custom";
-  builtinKey?: "amount" | "email" | "phone" | "workerType" | "details" | "ssn" | "platforms" | "bank" | "classify" | "documents" | "verified" | "review";
+  builtinKey?: "amount" | "email" | "phone" | "workerType" | "details" | "ssn" | "platforms" | "bank" | "classify" | "documents" | "verified" | "paymentFrequency" | "review";
   customFields?: FormField[];
 }
 
@@ -31,5 +31,6 @@ export const DEFAULT_STEPS: FormStep[] = [
   { id: "step-classify", title: "Classify", description: "Classify your transactions", order: 8, enabled: true, type: "builtin", builtinKey: "classify" },
   { id: "step-documents", title: "Documents", description: "Upload your last 90 days of bank statements (and EIN for business owners)", order: 9, enabled: true, type: "builtin", builtinKey: "documents" },
   { id: "step-verified", title: "Verified", description: "We confirm your identity from your bank", order: 10, enabled: true, type: "builtin", builtinKey: "verified" },
-  { id: "step-review", title: "Review", description: "Review and submit your application", order: 11, enabled: true, type: "builtin", builtinKey: "review" },
+  { id: "step-payments", title: "Payments", description: "Choose daily or weekly repayment", order: 11, enabled: true, type: "builtin", builtinKey: "paymentFrequency" },
+  { id: "step-review", title: "Review", description: "Review and submit your application", order: 12, enabled: true, type: "builtin", builtinKey: "review" },
 ];

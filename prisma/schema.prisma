@@ -16,6 +16,11 @@ model Application {
   phone           String
   loanAmount      Decimal
   loanTermMonths  Int       @default(6)
+  // Repayment cadence the borrower chose in the funnel. "WEEKLY"
+  // (default) debits once a week; "DAILY" debits every business day
+  // (Mon-Fri) for the same total. Read at offer acceptance to build
+  // the Payment schedule.
+  paymentFrequency String   @default("WEEKLY")
   platform        String?
   ssnEncrypted    String?
   ssnHash         String?

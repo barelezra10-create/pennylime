@@ -14,15 +14,23 @@ export function advanceFundedEmail(params: {
   monthlyPayment?: number;
   firstDueDate: Date;
   schedule: ScheduleEntry[];
+  // Repayment cadence. WEEKLY (default) labels the schedule per week;
+  // DAILY debits every business day, so the labels change accordingly.
+  frequency?: "WEEKLY" | "DAILY";
 }) {
   const statusUrl = `${APP_URL}/status/${params.applicationCode}`;
-  const weeks = params.schedule.length;
+  const isDaily = params.frequency === "DAILY";
+  const numPayments = params.schedule.length;
   const totalRepayment = params.schedule.reduce((s, p) => s + p.amount, 0);
   const factorRate = params.fundedAmount > 0 ? totalRepayment / params.fundedAmount : 1;
-  // Weekly remittance == first payment amount. Schedule entries are uniform
-  // in the standard plan; using schedule[0] keeps the displayed weekly in
+  // Per-debit amount == first payment amount. Schedule entries are uniform
+  // in the standard plan; using schedule[0] keeps the displayed amount in
   // lockstep with what the borrower will actually be debited.
-  const weeklyRemittance = params.schedule[0]?.amount ?? totalRepayment / Math.max(weeks, 1);
+  const perDebit = params.schedule[0]?.amount ?? totalRepayment / Math.max(numPayments, 1);
+  const termLabel = isDaily
+    ? `${numPayments} daily payments (Mon-Fri)`
+    : `${numPayments} weeks`;
+  const remittanceLabel = isDaily ? "Daily Remittance" : "Weekly Remittance";
   const scheduleRows = params.schedule
     .map(
       (p) =>
@@ -45,8 +53,8 @@ export function advanceFundedEmail(params: {
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Funded Amount</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${params.fundedAmount.toLocaleString()}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Factor Rate</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${factorRate.toFixed(2)}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Total Repayment</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${totalRepayment.toFixed(2)}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Term</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${weeks} weeks</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Weekly Remittance</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${weeklyRemittance.toFixed(2)}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Term</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${termLabel}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${remittanceLabel}</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${perDebit.toFixed(2)}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">First Remittance Due</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${params.firstDueDate.toLocaleDateString()}</td></tr>
         </table>
         <h3>Remittance Schedule</h3>

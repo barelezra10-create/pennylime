@@ -38,7 +38,8 @@ const STEPS = [
   "Classify",      // 8
   "Documents",     // 9
   "Verified",      // 10
-  "Review",        // 11
+  "Payments",      // 11
+  "Review",        // 12
 ];
 // Loan term options in WEEKS. Max 16 weeks (≈4 months). Stored in loanTermMonths column for now.
 const LOAN_TERMS = [1, 2, 3, 4, 6, 8, 12, 16];
@@ -1486,6 +1487,104 @@ function StepDocuments({
         <motion.button
           type="button"
           onClick={handleNext}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          whileTap={{ scale: 0.97 }}
+        >
+          Continue &rarr;
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  STEP PAYMENT FREQUENCY (daily vs weekly)                            */
+/* ------------------------------------------------------------------ */
+function StepPaymentFrequency({
+  amount,
+  loanTermMonths,
+  paymentFrequency,
+  setPaymentFrequency,
+  onNext,
+  onBack,
+}: {
+  amount: number;
+  loanTermMonths: number;
+  paymentFrequency: "WEEKLY" | "DAILY";
+  setPaymentFrequency: (v: "WEEKLY" | "DAILY") => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const weeks = loanTermMonths;
+  const weeklyAmt = quoteWeeklyEstimate(amount, weeks);
+  const total = weeklyAmt * weeks;
+  // Daily debits run every business day (Mon-Fri) for the same total.
+  const dailyAmt = weeks > 0 ? Math.max(1, Math.round(total / (weeks * 5))) : 0;
+
+  const options: { id: "WEEKLY" | "DAILY"; title: string; sub: string; est: string }[] = [
+    { id: "WEEKLY", title: "Weekly", sub: "One payment a week", est: `~$${weeklyAmt.toLocaleString()}/week` },
+    { id: "DAILY", title: "Daily", sub: "A small payment every business day (Mon-Fri)", est: `~$${dailyAmt.toLocaleString()}/day` },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.4 }}
+      className="w-full"
+    >
+      <h2 className="text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        How do you want to repay?
+      </h2>
+      <p className="mt-2 text-[15px] text-[#52525b]">
+        Same total either way. Pick the rhythm that fits your cash flow. Many drivers find smaller daily payments easier than one bigger weekly hit.
+      </p>
+
+      <div className="mt-8 flex flex-col gap-3">
+        {options.map((opt) => {
+          const selected = paymentFrequency === opt.id;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setPaymentFrequency(opt.id)}
+              className={`flex items-center justify-between text-left rounded-xl border px-4 py-4 transition-all duration-200 ${
+                selected
+                  ? "border-[#15803d] bg-[#f0fdf4] ring-2 ring-[#15803d]/20"
+                  : "border-[#e4e4e7] bg-white hover:border-[#15803d]/50 hover:bg-[#f0fdf4]/50"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`h-4 w-4 flex-shrink-0 rounded-full border-2 flex items-center justify-center ${selected ? "border-[#15803d] bg-[#15803d]" : "border-[#a1a1aa]"}`}>
+                  {selected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
+                </div>
+                <div>
+                  <div className={`text-[15px] font-semibold ${selected ? "text-[#15803d]" : "text-[#0a0a0a]"}`}>{opt.title}</div>
+                  <div className="text-[12px] text-[#71717a]">{opt.sub}</div>
+                </div>
+              </div>
+              <div className={`text-[14px] font-bold ${selected ? "text-[#15803d]" : "text-[#52525b]"}`}>{opt.est}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="mt-4 text-[12px] text-[#a1a1aa]">
+        Estimate only. Your exact schedule is set when you accept your offer.
+      </p>
+
+      <div className="mt-8 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+        >
+          &larr; Back
+        </button>
+        <motion.button
+          type="button"
+          onClick={onNext}
           className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
           whileTap={{ scale: 0.97 }}
         >
@@ -3168,6 +3267,7 @@ type PersistedState = {
   businessType?: string;
   businessTypeOther?: string;
   ein?: string;
+  paymentFrequency?: "WEEKLY" | "DAILY";
   workStartMonth: number;
   workStartYear: number;
   bankName: string;
@@ -3237,6 +3337,9 @@ function ApplyPageInner() {
   // sessionStorage snapshot), plus the EIN for business owners.
   const [statementFiles, setStatementFiles] = useState<File[]>([]);
   const [ein, setEin] = useState(persisted?.ein ?? "");
+  const [paymentFrequency, setPaymentFrequency] = useState<"WEEKLY" | "DAILY">(
+    persisted?.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY",
+  );
   const [plaidAccessToken, setPlaidAccessToken] = useState<string | null>(null);
   const [plaidAccountId, setPlaidAccountId] = useState<string | null>(null);
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
@@ -3280,6 +3383,7 @@ function ApplyPageInner() {
           businessType,
           businessTypeOther,
           ein,
+          paymentFrequency,
           workStartMonth,
           workStartYear,
           bankName,
@@ -3300,6 +3404,7 @@ function ApplyPageInner() {
     businessType,
     businessTypeOther,
     ein,
+    paymentFrequency,
     workStartMonth,
     workStartYear,
     bankName,
@@ -3403,6 +3508,7 @@ function ApplyPageInner() {
               ? `Other: ${businessTypeOther.trim()}`
               : businessType
             : undefined,
+        paymentFrequency,
         workStartMonth,
         workStartYear,
         addressStreet: form.addressStreet,
@@ -3704,6 +3810,19 @@ function ApplyPageInner() {
                       />
                     );
                   }
+                  if (builtinKey === "paymentFrequency") {
+                    return (
+                      <StepPaymentFrequency
+                        key="payments"
+                        amount={loanAmount}
+                        loanTermMonths={loanTermMonths}
+                        paymentFrequency={paymentFrequency}
+                        setPaymentFrequency={setPaymentFrequency}
+                        onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
+                        onBack={() => setStep(step - 1)}
+                      />
+                    );
+                  }
                   if (builtinKey === "review") {
                     return (
                       <StepReview
@@ -3880,6 +3999,16 @@ function ApplyPageInner() {
                   onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 11); } catch {} setStep(11); }}
                   onBack={() => setStep(9)}
                 />
+              ) : step === 11 ? (
+                <StepPaymentFrequency
+                  key="payments"
+                  amount={loanAmount}
+                  loanTermMonths={loanTermMonths}
+                  paymentFrequency={paymentFrequency}
+                  setPaymentFrequency={setPaymentFrequency}
+                  onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 12); } catch {} setStep(12); }}
+                  onBack={() => setStep(10)}
+                />
               ) : (
                 <StepReview
                   key="review"
@@ -3893,7 +4022,7 @@ function ApplyPageInner() {
                   identityNeedsReview={identityResult?.needsReview ?? true}
                   plaidPreviewIncome={plaidPreviewIncome}
                   submitting={submitting}
-                  onBack={() => setStep(10)}
+                  onBack={() => setStep(11)}
                   onSubmit={handleSubmit}
                 />
               )}
