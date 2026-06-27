@@ -15,18 +15,27 @@ const ALLOWED_DOC_TYPES = new Set([
   "application/csv",
 ]);
 
+export type StatementRef = {
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  storagePath: string;
+};
+
 /**
  * Applicant-facing: called right after submitApplication() returns the
- * new application id. Stores the uploaded 90-day bank statement(s),
- * saves the business EIN, then parses the statement and runs the
- * deterministic work-verification comparator. A WEAK/UNVERIFIED result
- * soft-flags the application for manual review — it never blocks
- * submission, and every failure is swallowed so a slow/AI parse can't
- * break the applicant's confirmation screen.
+ * new application id. The statement file(s) are uploaded separately
+ * through the /api/upload multipart route (which has no Server Action
+ * body limit), and this action receives only their lightweight storage
+ * refs — so a multi-MB PDF never travels through a Server Action, which
+ * was silently rejecting them at the 1MB default and leaving
+ * applications with no statement. Creates the Document rows, saves the
+ * EIN, parses the statement, and runs the work-verification comparator.
+ * WEAK/UNVERIFIED soft-flags for manual review; never blocks submission.
  */
 export async function finalizeDocumentsAndVerify(
   applicationId: string,
-  formData: FormData
+  input: { ein?: string; statements: StatementRef[] }
 ) {
   try {
     const app = await prisma.application.findUnique({
@@ -38,28 +47,37 @@ export async function finalizeDocumentsAndVerify(
     const rules = await getLoanRules();
     const maxBytes = Number(rules.max_file_size_mb || "10") * 1024 * 1024;
 
-    // 1. Store statement files.
-    const files = (formData.getAll("statement") as File[]).filter(Boolean);
+    // 1. Record the already-uploaded statement files as Document rows and
+    //    pull their bytes back from storage for AI parsing.
+    const refs = (input.statements ?? []).filter(
+      (s) =>
+        s &&
+        s.storagePath &&
+        ALLOWED_DOC_TYPES.has(s.mimeType) &&
+        s.fileSize <= maxBytes,
+    );
     const stored: Array<{ filename: string; buffer: Buffer; mimeType: string }> = [];
-    for (const file of files) {
-      if (!ALLOWED_DOC_TYPES.has(file.type) || file.size > maxBytes) continue;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const storagePath = await storage.upload(buffer, file.name);
+    for (const ref of refs) {
       await prisma.document.create({
         data: {
           applicationId,
-          fileName: file.name,
-          mimeType: file.type,
-          fileSize: file.size,
-          storagePath,
+          fileName: ref.fileName,
+          mimeType: ref.mimeType,
+          fileSize: ref.fileSize,
+          storagePath: ref.storagePath,
           documentType: "BANK_STATEMENT_90D",
         },
       });
-      stored.push({ filename: file.name, buffer, mimeType: file.type });
+      try {
+        const buffer = await storage.read(ref.storagePath);
+        stored.push({ filename: ref.fileName, buffer, mimeType: ref.mimeType });
+      } catch (err) {
+        console.error("[finalizeDocuments] could not read stored statement:", ref.fileName, err);
+      }
     }
 
     // 2. Save EIN (business owners).
-    const ein = (formData.get("ein") as string | null)?.replace(/\D/g, "") ?? "";
+    const ein = (input.ein ?? "").replace(/\D/g, "");
     if (ein) {
       await prisma.application.update({
         where: { id: applicationId },

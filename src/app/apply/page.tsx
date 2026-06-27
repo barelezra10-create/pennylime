@@ -3545,13 +3545,26 @@ function ApplyPageInner() {
           } catch {}
         }
         // Persist the uploaded 90-day statement + EIN and run work
-        // verification. Best-effort: a slow AI parse must not block the
-        // applicant's confirmation screen, and the result is admin-facing.
+        // verification. The files go through the /api/upload multipart
+        // route (no Server Action 1MB body limit, which was silently
+        // dropping multi-MB statement PDFs); finalize then gets only the
+        // lightweight storage refs. Best-effort so a slow parse never
+        // blocks the confirmation screen; the result is admin-facing.
         try {
-          const fd = new FormData();
-          statementFiles.forEach((f) => fd.append("statement", f));
-          if (ein) fd.append("ein", ein);
-          await finalizeDocumentsAndVerify(result.applicationId, fd);
+          let statements: Array<{ fileName: string; mimeType: string; fileSize: number; storagePath: string }> = [];
+          if (statementFiles.length > 0) {
+            const up = new FormData();
+            statementFiles.forEach((f) => up.append("files", f));
+            const res = await fetch("/api/upload", { method: "POST", body: up });
+            if (res.ok) {
+              const j = await res.json();
+              statements = j.files ?? [];
+            }
+          }
+          await finalizeDocumentsAndVerify(result.applicationId, {
+            ein: ein || undefined,
+            statements,
+          });
         } catch {}
       }
     } catch (err) {
