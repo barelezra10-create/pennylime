@@ -32,6 +32,9 @@ type Config = {
   twilioFromNumber: string | null;
   twilioMessagingServiceSid: string | null;
   twilioVerifyServiceSid: string | null;
+  twilioTwimlAppSid: string | null;
+  twilioApiKeySid: string | null;
+  twilioApiKeySecret: string | null;
   eventMappings: string;
   customHeadHtml: string | null;
   customBodyHtml: string | null;
@@ -153,6 +156,14 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                 In Twilio console, set Status Callback URL to <code className="bg-[#fafafa] px-1.5 py-0.5 rounded">https://pennylime.com/api/twilio/status</code>{" "}
                 and Inbound Messaging Webhook to <code className="bg-[#fafafa] px-1.5 py-0.5 rounded">https://pennylime.com/api/twilio/inbound</code>.
               </p>
+            </Card>
+
+            <Card title="Twilio Voice (dialer)" subtitle="Browser softphone via Twilio Programmable Voice. TwiML App + API Key are required to mint client tokens.">
+              <Grid>
+                <Field name="twilioTwimlAppSid" label="TwiML App SID (voice)" placeholder="AP..." defaultValue={config.twilioTwimlAppSid} />
+                <Field name="twilioApiKeySid" label="API Key SID (voice)" placeholder="SK..." defaultValue={config.twilioApiKeySid} />
+                <Field name="twilioApiKeySecret" label="API Key secret (voice)" defaultValue={config.twilioApiKeySecret} secret />
+              </Grid>
             </Card>
           </div>
         )}
