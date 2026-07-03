@@ -787,6 +787,9 @@ model TrackingConfig {
   twilioFromNumber              String?
   twilioMessagingServiceSid     String?
   twilioVerifyServiceSid        String?
+  twilioTwimlAppSid             String?
+  twilioApiKeySid               String?
+  twilioApiKeySecret            String?
   // Toggles
   enabled                       Boolean  @default(true)
   testMode                      Boolean  @default(false)
@@ -974,6 +977,33 @@ model SmsMessage {
   @@index([status])
   @@index([twilioSid])
   @@index([createdAt])
+}
+
+model CallLog {
+  id             String    @id @default(uuid())
+  contactId      String?
+  direction      String    // outbound | inbound
+  kind           String    @default("call") // call | voicemail
+  fromNumber     String
+  toNumber       String
+  twilioCallSid  String?   @unique
+  status         String    @default("initiated") // initiated, ringing, in-progress, completed, no-answer, busy, failed, canceled
+  durationSec    Int?
+  recordingSid   String?
+  recordingUrl   String?
+  transcription  String?
+  outcome        String?   // answered, no-answer, voicemail-left, busy, wrong-number, other
+  notes          String?
+  agentEmail     String?
+  heardAt        DateTime?
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([contactId])
+  @@index([createdAt])
+  @@index([status])
 }
 
 model SmsCampaign {
