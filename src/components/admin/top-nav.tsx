@@ -93,7 +93,7 @@ const TABS: TopTab[] = [
     id: "crm",
     label: "CRM",
     icon: "◉",
-    prefixes: ["/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance", "/admin/calls"],
+    prefixes: ["/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
     href: "/admin/contacts",
     subnav: [
       { href: "/admin/contacts", label: "Contacts" },
@@ -101,9 +101,20 @@ const TABS: TopTab[] = [
       { href: "/admin/visitors", label: "Visitors" },
       { href: "/admin/pipeline", label: "Pipeline" },
       { href: "/admin/abandoned", label: "Abandoned" },
-      { href: "/admin/calls", label: "Calls" },
       { href: "/admin/team", label: "Team" },
       { href: "/admin/compliance", label: "Compliance" },
+    ],
+  },
+  {
+    id: "dialer",
+    label: "Dialer",
+    icon: "✆",
+    prefixes: ["/admin/calls"],
+    href: "/admin/calls",
+    subnav: [
+      { href: "/admin/calls", label: "Calls & voicemails" },
+      { href: "/admin/pipeline", label: "Call from pipeline" },
+      { href: "/admin/settings/tracking", label: "Voice settings" },
     ],
   },
   {
