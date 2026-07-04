@@ -125,12 +125,16 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
     if (c.phone) void startCall({ phone: c.phone, name: c.name || c.phone, contactId: c.id });
   }, [selectContact, startCall]);
 
+  const filterActive = search.trim() !== "" || stage !== "ALL";
+  const runnableQueue = useMemo(
+    () => buildCallQueue(contacts, filterActive, filtered),
+    [contacts, filterActive, filtered]
+  );
+
   const startRun = () => {
-    const filterActive = search.trim() !== "" || stage !== "ALL";
-    const queue = buildCallQueue(contacts, filterActive, filtered);
-    if (queue.length === 0) return;
-    setRun({ queue, index: 0, status: "dialing", countdown: 0 });
-    dialContact(queue[0]);
+    if (runnableQueue.length === 0) return;
+    setRun({ queue: runnableQueue, index: 0, status: "dialing", countdown: 0 });
+    dialContact(runnableQueue[0]);
   };
 
   const endRun = () => setRun(null);
@@ -214,10 +218,7 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
       <div className="lg:w-1/3 w-full">
         <button
           onClick={startRun}
-          disabled={
-            !!run ||
-            buildCallQueue(contacts, search.trim() !== "" || stage !== "ALL", filtered).length === 0
-          }
+          disabled={!!run || runnableQueue.length === 0}
           className="w-full mb-3 rounded-lg bg-[#15803d] text-white py-2 text-[13px] font-semibold disabled:opacity-40"
         >
           &#9742; Start call run{" "}
