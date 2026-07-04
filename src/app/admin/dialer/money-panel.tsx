@@ -161,10 +161,34 @@ export function MoneyPanel({ contactId }: { contactId: string }) {
                   <span className="text-[#71717a]"> due {new Date(m.dueDate).toLocaleDateString()}</span>
                   {m.returnReason && <span className="text-[#dc2626]"> - {m.returnReason}</span>}
                 </div>
+                {/*
+                 * Route the charge based on whether any money has already
+                 * been collected for this payment row:
+                 *
+                 *   - No prior collection: retryPayment keeps its retry/audit
+                 *     semantics and outstanding === amount + lateFee, so the
+                 *     label is exact and no money has been double-pulled.
+                 *
+                 *   - Partial collection: retryPayment MUST NOT be used here
+                 *     because it calls initiateACHDebit, which debits
+                 *     payment.amount + lateFee unconditionally -- it ignores
+                 *     collectedAmount entirely. That would re-pull already-
+                 *     collected funds and debit more than the label shows.
+                 *     chargePartialPayment validates against the server-side
+                 *     outstanding figure and credits collectedAmount on
+                 *     settlement, so the borrower is charged exactly what the
+                 *     label says.
+                 */}
                 <ConfirmChargeButton
                   label={`Charge ${usd(m.outstanding)}`}
                   confirmLabel="Confirm?"
-                  onCharge={() => runCharge(() => retryPayment(m.paymentId))}
+                  onCharge={() =>
+                    runCharge(() =>
+                      m.collectedAmount > 0
+                        ? chargePartialPayment(m.paymentId, m.outstanding)
+                        : retryPayment(m.paymentId)
+                    )
+                  }
                 />
               </div>
             ))}
