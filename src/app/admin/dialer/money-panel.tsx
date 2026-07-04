@@ -112,7 +112,8 @@ export function MoneyPanel({ contactId }: { contactId: string }) {
   const oldest = money.missed[0];
   const parsedAmount = Number(customAmount);
   const amountValid =
-    oldest && Number.isFinite(parsedAmount) && parsedAmount > 0 && parsedAmount <= oldest.outstanding + 0.001;
+    // same tolerance as chargePartialPayment's server-side outstanding check
+    oldest && Number.isFinite(parsedAmount) && parsedAmount > 0 && parsedAmount <= oldest.outstanding + 0.01;
 
   return (
     <div className="rounded-xl border border-[#e4e4e7] bg-white p-5">
