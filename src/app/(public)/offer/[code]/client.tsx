@@ -240,6 +240,7 @@ export function OfferClient({
       <SuccessScreen
         firstName={initial.firstName}
         amount={initial.acceptedAmount ?? amount}
+        isDaily={isDaily}
       />
     );
   }
@@ -670,7 +671,7 @@ function Row({ label, value, sub }: { label: string; value: string; sub: string 
   );
 }
 
-function SuccessScreen({ firstName, amount }: { firstName: string; amount: number }) {
+function SuccessScreen({ firstName, amount, isDaily }: { firstName: string; amount: number; isDaily: boolean }) {
   return (
     <div className="min-h-screen bg-[#fafaf7] flex items-center justify-center px-4">
       <motion.div

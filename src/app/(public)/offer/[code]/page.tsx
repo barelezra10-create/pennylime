@@ -56,7 +56,10 @@ export default async function OfferPage({
     <OfferClient
       applicationCode={code}
       token={t}
-      initial={result}
+      initial={{
+        ...result,
+        paymentFrequency: result.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY",
+      }}
       agreementHtml={await agreementHtml}
     />
   );

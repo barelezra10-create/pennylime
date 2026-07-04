@@ -119,7 +119,7 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
   // terms accurate without threading a frequency param through callers.
   const isDaily =
     schedule.length >= 2 &&
-    (schedule[1].date.getTime() - schedule[0].date.getTime()) / 86400000 <= 3;
+    (new Date(schedule[1].date).getTime() - new Date(schedule[0].date).getTime()) / 86400000 <= 3;
 
   const subs: Record<string, string> = {
     "[Acceptance Date]": todayLong,
