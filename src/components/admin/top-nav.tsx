@@ -93,7 +93,7 @@ const TABS: TopTab[] = [
     id: "crm",
     label: "CRM",
     icon: "◉",
-    prefixes: ["/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
+    prefixes: ["/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance", "/admin/calls"],
     href: "/admin/contacts",
     subnav: [
       { href: "/admin/contacts", label: "Contacts" },
@@ -101,6 +101,7 @@ const TABS: TopTab[] = [
       { href: "/admin/visitors", label: "Visitors" },
       { href: "/admin/pipeline", label: "Pipeline" },
       { href: "/admin/abandoned", label: "Abandoned" },
+      { href: "/admin/calls", label: "Calls" },
       { href: "/admin/team", label: "Team" },
       { href: "/admin/compliance", label: "Compliance" },
     ],
