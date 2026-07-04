@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_MAP: Record<string, string> = {
   completed: "completed",
+  // DialCallStatus "answered" is rare but observed; map it into our enum
   answered: "completed",
   "no-answer": "no-answer",
   busy: "busy",

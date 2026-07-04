@@ -17,7 +17,7 @@ export function outboundDialTwiml(opts: { callerId: string; to: string; baseUrl:
     `<Response><Dial callerId="${esc(opts.callerId)}" record="record-from-answer-dual" ` +
     `recordingStatusCallback="${b}/api/voice/recording" action="${b}/api/voice/dial-complete">` +
     `<Number url="${b}/api/voice/whisper" statusCallback="${b}/api/voice/status" ` +
-    `statusCallbackEvent="ringing answered completed">${esc(opts.to)}</Number>` +
+    `statusCallbackEvent="ringing answered">${esc(opts.to)}</Number>` +
     `</Dial></Response>`
   );
 }
