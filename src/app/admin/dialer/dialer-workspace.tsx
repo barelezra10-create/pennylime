@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { ContactCalls } from "@/components/admin/dialer/contact-calls";
@@ -9,6 +9,7 @@ import { KANBAN_STAGES, STAGE_COLORS } from "@/lib/contact-helpers";
 import { dialedDigits, formatDialed, dialedToE164 } from "@/lib/voice/dialpad";
 import { addContactNote, getContactNotes } from "@/actions/contacts";
 import { MoneyPanel } from "./money-panel";
+import { buildCallQueue } from "./call-queue";
 
 type ContactRow = {
   id: string;
@@ -19,6 +20,13 @@ type ContactRow = {
 };
 
 type Note = { id: string; details: string; performedBy: string | null; createdAt: string };
+
+type RunState = {
+  queue: ContactRow[];
+  index: number;
+  status: "dialing" | "between" | "paused";
+  countdown: number;
+};
 
 const PAD_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"];
 
@@ -38,8 +46,14 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
   const [noteText, setNoteText] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [savingNote, startNoteSave] = useTransition();
-  const { startCall, state } = useDialer();
+  const { startCall, hangUp, state } = useDialer();
   const selectedIdRef = useRef<string | null>(null);
+
+  // --- Run state ---
+  const [run, setRun] = useState<RunState | null>(null);
+  const runRef = useRef<RunState | null>(null);
+  runRef.current = run;
+  const prevPhaseRef = useRef(state.phase);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -62,7 +76,8 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
     return contacts.find((c) => tenDigits(c.phone) === ten) || null;
   }, [contacts, e164]);
 
-  const selectContact = (c: ContactRow) => {
+  // Memoized so dialContact (which depends on it) stays stable across renders.
+  const selectContact = useCallback((c: ContactRow) => {
     selectedIdRef.current = c.id;
     setSelected(c);
     setTab("contact");
@@ -72,7 +87,7 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
     getContactNotes(c.id)
       .then((n) => { if (selectedIdRef.current === c.id) setNotes(n); })
       .catch(() => { if (selectedIdRef.current === c.id) setNotes([]); });
-  };
+  }, []);
 
   const saveNote = () => {
     if (!selected || !noteText.trim()) return;
@@ -104,10 +119,110 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
     void startCall({ phone: e164, name: dialName, contactId: matchedContact?.id });
   };
 
+  // Selects and dials a contact. Side effects are always called outside setRun updaters.
+  const dialContact = useCallback((c: ContactRow) => {
+    selectContact(c);
+    if (c.phone) void startCall({ phone: c.phone, name: c.name || c.phone, contactId: c.id });
+  }, [selectContact, startCall]);
+
+  const startRun = () => {
+    const filterActive = search.trim() !== "" || stage !== "ALL";
+    const queue = buildCallQueue(contacts, filterActive, filtered);
+    if (queue.length === 0) return;
+    setRun({ queue, index: 0, status: "dialing", countdown: 0 });
+    dialContact(queue[0]);
+  };
+
+  const endRun = () => setRun(null);
+
+  // Advances to the next contact in the queue. All dialContact calls happen outside
+  // the setRun updater to avoid strict-mode double-invocation issues.
+  const advanceRun = useCallback((immediate: boolean) => {
+    const r = runRef.current;
+    if (!r) return;
+    const nextIndex = r.index + 1;
+    if (nextIndex >= r.queue.length) {
+      setRun(null); // run finished
+      return;
+    }
+    if (immediate) {
+      setRun({ ...r, index: nextIndex, status: "dialing", countdown: 0 });
+      dialContact(r.queue[nextIndex]);
+    } else {
+      // Enter "between" with countdown 3; the countdown effect will dial r.queue[nextIndex].
+      setRun({ ...r, index: nextIndex, status: "between", countdown: 3 });
+    }
+  }, [dialContact]);
+
+  // Advance when a wrap-up is completed while a run is active.
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = state.phase;
+    const r = runRef.current;
+    if (!r) return;
+    if (prev === "wrap-up" && state.phase === "idle" && r.status === "dialing") {
+      advanceRun(false);
+    }
+    if (state.phase === "error" && r.status === "dialing") {
+      setRun((cur) => (cur ? { ...cur, status: "paused", countdown: 0 } : cur));
+    }
+  }, [state.phase, advanceRun]);
+
+  // Between-calls countdown: tick once per second, dial when it reaches 0.
+  // dialContact is called OUTSIDE the setRun call to avoid strict-mode double-invocation.
+  useEffect(() => {
+    if (!run || run.status !== "between") return;
+    const t = setTimeout(() => {
+      const r = runRef.current;
+      if (!r || r.status !== "between") return;
+      if (r.countdown <= 1) {
+        const contact = r.queue[r.index];
+        setRun({ ...r, status: "dialing", countdown: 0 });
+        dialContact(contact);
+      } else {
+        setRun({ ...r, countdown: r.countdown - 1 });
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [run, dialContact]);
+
+  const pauseRun = () =>
+    setRun((r) => (r ? { ...r, status: "paused", countdown: 0 } : r));
+
+  const resumeRun = () => {
+    // Read current run before setRun so we can dialContact outside the updater.
+    const r = runRef.current;
+    setRun((cur) => (cur ? { ...cur, status: "dialing" } : cur));
+    if (r && state.phase === "idle") dialContact(r.queue[r.index]);
+  };
+
+  const skipRun = () => {
+    if (
+      state.phase === "in-call" ||
+      state.phase === "ringing" ||
+      state.phase === "connecting"
+    ) {
+      hangUp(); // triggers disconnect -> wrap-up; saving wrap-up advances via phase effect
+    } else {
+      advanceRun(true);
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Left: contact list */}
       <div className="lg:w-1/3 w-full">
+        <button
+          onClick={startRun}
+          disabled={
+            !!run ||
+            buildCallQueue(contacts, search.trim() !== "" || stage !== "ALL", filtered).length === 0
+          }
+          className="w-full mb-3 rounded-lg bg-[#15803d] text-white py-2 text-[13px] font-semibold disabled:opacity-40"
+        >
+          &#9742; Start call run{" "}
+          {stage === "ALL" && !search.trim() ? "(Late, then Repaying)" : "(current filter)"}
+        </button>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -152,25 +267,54 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
 
       {/* Right: dial pad / contact */}
       <div className="lg:w-2/3 w-full">
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setTab("dialpad")}
-            className={`rounded-lg px-3 py-1.5 text-[13px] font-medium border ${
-              tab === "dialpad" ? "bg-[#18181b] text-white border-[#18181b]" : "bg-white text-[#3f3f46] border-[#e4e4e7]"
-            }`}
-          >
-            Dial pad
-          </button>
-          <button
-            onClick={() => setTab("contact")}
-            disabled={!selected}
-            className={`rounded-lg px-3 py-1.5 text-[13px] font-medium border disabled:opacity-40 ${
-              tab === "contact" ? "bg-[#18181b] text-white border-[#18181b]" : "bg-white text-[#3f3f46] border-[#e4e4e7]"
-            }`}
-          >
-            {selected ? selected.name || "Contact" : "Contact"}
-          </button>
-        </div>
+        {run && (
+          <div className="flex items-center justify-between gap-2 mb-4 rounded-lg bg-[#18181b] text-white px-3 py-2">
+            <span className="text-[13px] font-medium">
+              Call run: {run.index + 1} of {run.queue.length}
+              {run.status === "between" && ` - calling next in ${run.countdown}...`}
+              {run.status === "paused" && " - paused"}
+            </span>
+            <div className="flex gap-1.5">
+              {run.status === "paused" ? (
+                <button onClick={resumeRun} className="rounded bg-white/15 px-2 py-1 text-[12px]">
+                  Resume
+                </button>
+              ) : (
+                <button onClick={pauseRun} className="rounded bg-white/15 px-2 py-1 text-[12px]">
+                  Pause
+                </button>
+              )}
+              <button onClick={skipRun} className="rounded bg-white/15 px-2 py-1 text-[12px]">
+                Skip
+              </button>
+              <button onClick={endRun} className="rounded bg-white/15 px-2 py-1 text-[12px]">
+                End run
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!run && (
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setTab("dialpad")}
+              className={`rounded-lg px-3 py-1.5 text-[13px] font-medium border ${
+                tab === "dialpad" ? "bg-[#18181b] text-white border-[#18181b]" : "bg-white text-[#3f3f46] border-[#e4e4e7]"
+              }`}
+            >
+              Dial pad
+            </button>
+            <button
+              onClick={() => setTab("contact")}
+              disabled={!selected}
+              className={`rounded-lg px-3 py-1.5 text-[13px] font-medium border disabled:opacity-40 ${
+                tab === "contact" ? "bg-[#18181b] text-white border-[#18181b]" : "bg-white text-[#3f3f46] border-[#e4e4e7]"
+              }`}
+            >
+              {selected ? selected.name || "Contact" : "Contact"}
+            </button>
+          </div>
+        )}
 
         {tab === "dialpad" && (
           <div className="rounded-xl border border-[#e4e4e7] bg-white p-6 max-w-sm">
