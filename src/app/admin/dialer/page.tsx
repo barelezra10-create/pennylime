@@ -14,7 +14,6 @@ export default async function DialerPage() {
       email: true,
       phone: true,
       stage: true,
-      updatedAt: true,
     },
     orderBy: { updatedAt: "desc" },
     take: 1000,
@@ -27,7 +26,6 @@ export default async function DialerPage() {
       email: c.email,
       phone: c.phone,
       stage: c.stage,
-      updatedAt: c.updatedAt.toISOString(),
     }))
     .sort((a, b) => (a.phone ? 0 : 1) - (b.phone ? 0 : 1));
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { ContactCalls } from "@/components/admin/dialer/contact-calls";
@@ -15,7 +15,6 @@ type ContactRow = {
   email: string;
   phone: string | null;
   stage: string;
-  updatedAt: string;
 };
 
 type Note = { id: string; details: string; performedBy: string | null; createdAt: string };
@@ -39,6 +38,7 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
   const [noteError, setNoteError] = useState<string | null>(null);
   const [savingNote, startNoteSave] = useTransition();
   const { startCall, state } = useDialer();
+  const selectedIdRef = useRef<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -62,24 +62,30 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
   }, [contacts, e164]);
 
   const selectContact = (c: ContactRow) => {
+    selectedIdRef.current = c.id;
     setSelected(c);
     setTab("contact");
     setNotes(null);
     setNoteText("");
     setNoteError(null);
-    getContactNotes(c.id).then(setNotes).catch(() => setNotes([]));
+    getContactNotes(c.id)
+      .then((n) => { if (selectedIdRef.current === c.id) setNotes(n); })
+      .catch(() => { if (selectedIdRef.current === c.id) setNotes([]); });
   };
 
   const saveNote = () => {
     if (!selected || !noteText.trim()) return;
+    const forId = selected.id;
     setNoteError(null);
     startNoteSave(async () => {
       try {
-        const note = await addContactNote(selected.id, noteText);
-        setNotes((n) => [note, ...(n || [])]);
-        setNoteText("");
+        const note = await addContactNote(forId, noteText);
+        if (selectedIdRef.current === forId) {
+          setNotes((n) => [note, ...(n || [])]);
+          setNoteText("");
+        }
       } catch {
-        setNoteError("Could not save the note. Try again.");
+        if (selectedIdRef.current === forId) setNoteError("Could not save the note. Try again.");
       }
     });
   };
@@ -184,15 +190,20 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
               </button>
             )}
             <div className="grid grid-cols-3 gap-2 mb-3">
-              {PAD_KEYS.map((k) => (
-                <button
-                  key={k}
-                  onClick={() => padPress(k)}
-                  className="rounded-lg border border-[#e4e4e7] py-3 text-[16px] font-medium hover:bg-[#fafafa]"
-                >
-                  {k}
-                </button>
-              ))}
+              {PAD_KEYS.map((k) => {
+                const inert = k === "*" || k === "#";
+                return (
+                  <button
+                    key={k}
+                    onClick={() => padPress(k)}
+                    disabled={inert}
+                    title={inert ? "Not used for US numbers" : undefined}
+                    className="rounded-lg border border-[#e4e4e7] py-3 text-[16px] font-medium hover:bg-[#fafafa] disabled:opacity-40"
+                  >
+                    {k}
+                  </button>
+                );
+              })}
             </div>
             <div className="flex gap-2">
               <button

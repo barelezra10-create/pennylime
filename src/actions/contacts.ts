@@ -411,6 +411,9 @@ export async function getContactMetrics() {
 // --- Dialer workspace notes -------------------------------------------------
 
 export async function getContactNotes(contactId: string, limit = 10) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
   const notes = await prisma.activity.findMany({
     where: { contactId, type: "note" },
     orderBy: { createdAt: "desc" },

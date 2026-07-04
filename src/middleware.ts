@@ -8,6 +8,7 @@ const ADMIN_PROTECTED = [
   "/admin/dashboard",
   "/admin/applications",
   "/admin/calls",
+  "/admin/dialer",
   "/admin/settings",
   "/admin/audit",
   "/admin/payments",
