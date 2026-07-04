@@ -31,10 +31,11 @@ export async function POST(req: NextRequest) {
   const leadLastName = body.leadLastName ? String(body.leadLastName).trim().slice(0, 80) : null;
   const leadEmail = body.leadEmail ? String(body.leadEmail).trim().toLowerCase().slice(0, 254) : null;
   const sinceMessageId = body.sinceMessageId ? String(body.sinceMessageId) : null;
+  const passive = body.passive === true;
 
   // Long-poll path. Returns new messages since the last one the client saw.
   if (sessionId && sinceMessageId !== null) {
-    return handlePoll(sessionId, sinceMessageId);
+    return handlePoll(sessionId, sinceMessageId, passive);
   }
 
   // Lead-capture / start-session path. Lead info is now optional —
@@ -198,13 +199,17 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function handlePoll(sessionId: string, sinceMessageId: string) {
-  await prisma.agentSession
-    .update({
-      where: { id: sessionId },
-      data: { lastPolledAt: new Date() },
-    })
-    .catch(() => {});
+async function handlePoll(sessionId: string, sinceMessageId: string, passive = false) {
+  // Closed-widget background polls must not count as "online" presence,
+  // otherwise the offline email fallback for admin replies never fires.
+  if (!passive) {
+    await prisma.agentSession
+      .update({
+        where: { id: sessionId },
+        data: { lastPolledAt: new Date() },
+      })
+      .catch(() => {});
+  }
 
   // sinceMessageId === "" means "everything from the start".
   const cursor = sinceMessageId
