@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { selectMissedPayments } from "@/lib/missed-payments";
 
 export async function getPaymentsByApplicationId(applicationId: string) {
   return prisma.payment.findMany({
@@ -405,4 +406,86 @@ export async function getAllPayments(status?: string) {
     orderBy: { dueDate: "asc" },
     take: 200,
   });
+}
+
+// --- Dialer workspace: balance + missed payments for a contact --------------
+
+export async function getContactMoney(contactId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    select: { email: true, applicationId: true },
+  });
+  if (!contact) return null;
+
+  // Resolve the primary advance the same way getContact does: linked app,
+  // plus any application matching by ssnHash or email, FUNDED/LATE first.
+  const linkedApp = contact.applicationId
+    ? await prisma.application.findUnique({ where: { id: contact.applicationId }, select: { id: true, ssnHash: true } })
+    : null;
+  const apps = await prisma.application.findMany({
+    where: {
+      OR: [
+        ...(linkedApp?.ssnHash ? [{ ssnHash: linkedApp.ssnHash }] : []),
+        { email: { equals: contact.email, mode: "insensitive" as const } },
+        ...(linkedApp ? [{ id: linkedApp.id }] : []),
+      ],
+    },
+    select: { id: true, applicationCode: true, status: true, createdAt: true },
+  });
+  const STATUS_PRIORITY = ["FUNDED", "LATE", "APPROVED", "ACCEPTED", "PAID_OFF", "DEFAULTED", "PENDING", "REJECTED"];
+  const sorted = [...apps].sort((a, b) => {
+    const ai = STATUS_PRIORITY.indexOf(a.status);
+    const bi = STATUS_PRIORITY.indexOf(b.status);
+    if (ai !== bi) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
+  const primary = sorted[0];
+  if (!primary) return null;
+
+  // Only advances that actually have money movement are useful on a call.
+  const ACTIVE = ["FUNDED", "ACTIVE", "REPAYING", "LATE", "PAID_OFF", "DEFAULTED", "COLLECTIONS"];
+  if (!ACTIVE.includes(primary.status)) return null;
+
+  const summary = await getPaymentsSummary(primary.id);
+  const missed = selectMissedPayments(
+    summary.payments.map((p) => ({
+      id: p.id,
+      paymentNumber: p.paymentNumber,
+      amount: Number(p.amount),
+      lateFee: Number(p.lateFee),
+      collectedAmount: Number(p.collectedAmount ?? 0),
+      dueDate: p.dueDate,
+      status: p.status,
+      increaseReturnReason: p.increaseReturnReason ?? null,
+    })),
+    new Date()
+  );
+
+  const paidCount = summary.payments.filter((p) => p.status === "PAID").length;
+  const next = summary.nextPayment;
+
+  return {
+    applicationId: primary.id,
+    applicationCode: primary.applicationCode,
+    status: primary.status,
+    remainingBalance: summary.remainingBalance,
+    totalOwed: summary.totalOwed,
+    totalPaid: summary.totalPaid,
+    totalLateFees: summary.totalLateFees,
+    paidCount,
+    totalCount: summary.payments.length,
+    nextDue: next
+      ? {
+          paymentId: next.id,
+          amount: Number(next.amount),
+          lateFee: Number(next.lateFee),
+          dueDate: next.dueDate.toISOString(),
+          status: next.status,
+        }
+      : null,
+    missed: missed.map((m) => ({ ...m, dueDate: m.dueDate.toISOString() })),
+  };
 }
