@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/emails/send";
 
 const OFFLINE_THRESHOLD_SECONDS = 30;
+const ONLINE_THRESHOLD_MS = OFFLINE_THRESHOLD_SECONDS * 1000;
 
 /**
  * Admin takes over an AI chat session. Future user messages do not
@@ -166,4 +167,183 @@ function escapeHtml(s: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// --- Admin chats inbox -------------------------------------------------------
+
+export type ChatConversationRow = {
+  id: string;
+  name: string;
+  contactId: string | null;
+  mode: string;
+  handlingStatus: string;
+  archived: boolean;
+  startedAt: string;
+  online: boolean;
+  needsReply: boolean;
+  waitingSinceMs: number | null;
+  lastMessage: { text: string; at: string; authoredBy: "user" | "ai" | "admin" } | null;
+};
+
+export async function listChatConversations(
+  filter: "needs-reply" | "open" | "all" | "archived"
+): Promise<ChatConversationRow[]> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const where: Record<string, unknown> = { channel: "chat" };
+  if (filter === "archived") where.archivedAt = { not: null };
+  else where.archivedAt = null;
+  if (filter === "open") where.handlingStatus = { not: "RESOLVED" };
+
+  const sessions = await prisma.agentSession.findMany({
+    where,
+    orderBy: { startedAt: "desc" },
+    take: 100,
+    select: {
+      id: true,
+      contactId: true,
+      mode: true,
+      handlingStatus: true,
+      archivedAt: true,
+      startedAt: true,
+      lastPolledAt: true,
+      leadFirstName: true,
+      leadEmail: true,
+      contact: { select: { firstName: true, lastName: true } },
+      messages: {
+        where: { role: { in: ["user", "assistant"] } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { role: true, senderEmail: true, text: true, createdAt: true },
+      },
+    },
+  });
+
+  const now = Date.now();
+  const rows: ChatConversationRow[] = sessions.map((s) => {
+    const last = s.messages[0] ?? null;
+    const needsReply = !!last && last.role === "user";
+    const name =
+      (s.contact ? `${s.contact.firstName} ${s.contact.lastName || ""}`.trim() : "") ||
+      s.leadFirstName ||
+      s.leadEmail ||
+      "Anonymous";
+    return {
+      id: s.id,
+      name,
+      contactId: s.contactId,
+      mode: s.mode,
+      handlingStatus: s.handlingStatus,
+      archived: !!s.archivedAt,
+      startedAt: s.startedAt.toISOString(),
+      online: !!s.lastPolledAt && now - s.lastPolledAt.getTime() < ONLINE_THRESHOLD_MS,
+      needsReply,
+      waitingSinceMs: needsReply && last ? last.createdAt.getTime() : null,
+      lastMessage: last
+        ? {
+            text: last.text.slice(0, 120),
+            at: last.createdAt.toISOString(),
+            authoredBy: last.senderEmail ? "admin" : last.role === "assistant" ? "ai" : "user",
+          }
+        : null,
+    };
+  });
+
+  if (filter === "needs-reply") return rows.filter((r) => r.needsReply);
+  return rows;
+}
+
+export type ChatThreadItem =
+  | { kind: "message"; id: string; authoredBy: "user" | "ai" | "admin"; text: string; emailed: boolean; createdAt: string }
+  | { kind: "tool"; id: string; name: string; status: string; summary: string | null; createdAt: string };
+
+export async function getChatConversation(sessionId: string, sinceIso?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const ag = await prisma.agentSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      contactId: true,
+      mode: true,
+      handlingStatus: true,
+      archivedAt: true,
+      startedAt: true,
+      lastPolledAt: true,
+      leadFirstName: true,
+      leadEmail: true,
+      contact: { select: { firstName: true, lastName: true } },
+    },
+  });
+  if (!ag) return null;
+
+  const since = sinceIso ? new Date(sinceIso) : new Date(0);
+  const [messages, tools] = await Promise.all([
+    prisma.agentMessage.findMany({
+      where: { sessionId, createdAt: { gt: since }, role: { in: ["user", "assistant"] } },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+      select: { id: true, role: true, senderEmail: true, emailedAt: true, text: true, createdAt: true },
+    }),
+    prisma.agentToolCall.findMany({
+      where: { sessionId, createdAt: { gt: since } },
+      orderBy: { createdAt: "asc" },
+      take: 100,
+      select: { id: true, name: true, resultStatus: true, resultSummary: true, createdAt: true },
+    }),
+  ]);
+
+  const items: ChatThreadItem[] = [
+    ...messages.map((m): ChatThreadItem => ({
+      kind: "message",
+      id: m.id,
+      authoredBy: m.senderEmail ? ("admin" as const) : m.role === "assistant" ? ("ai" as const) : ("user" as const),
+      text: m.text,
+      emailed: !!m.emailedAt,
+      createdAt: m.createdAt.toISOString(),
+    })),
+    ...tools.map((t): ChatThreadItem => ({
+      kind: "tool",
+      id: t.id,
+      name: t.name,
+      status: t.resultStatus,
+      summary: t.resultSummary,
+      createdAt: t.createdAt.toISOString(),
+    })),
+  ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+  const name =
+    (ag.contact ? `${ag.contact.firstName} ${ag.contact.lastName || ""}`.trim() : "") ||
+    ag.leadFirstName ||
+    ag.leadEmail ||
+    "Anonymous";
+
+  return {
+    session: {
+      id: ag.id,
+      name,
+      contactId: ag.contactId,
+      mode: ag.mode,
+      handlingStatus: ag.handlingStatus,
+      archived: !!ag.archivedAt,
+      online: !!ag.lastPolledAt && Date.now() - ag.lastPolledAt.getTime() < ONLINE_THRESHOLD_MS,
+    },
+    items,
+  };
+}
+
+export async function archiveChatSession(sessionId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  await prisma.agentSession.update({ where: { id: sessionId }, data: { archivedAt: new Date() } });
+  return { ok: true as const };
+}
+
+export async function unarchiveChatSession(sessionId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  await prisma.agentSession.update({ where: { id: sessionId }, data: { archivedAt: null } });
+  return { ok: true as const };
 }

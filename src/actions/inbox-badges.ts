@@ -85,7 +85,7 @@ export async function getInboxBadges(): Promise<InboxBadges> {
 
   const [recentChatSessions, unreadInbound] = await Promise.all([
     prisma.agentSession.findMany({
-      where: { channel: "chat", endedAt: null, startedAt: { gte: chatCutoff } },
+      where: { channel: "chat", endedAt: null, archivedAt: null, startedAt: { gte: chatCutoff } },
       select: {
         id: true,
         messages: {
