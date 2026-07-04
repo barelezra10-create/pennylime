@@ -21,7 +21,7 @@ export function ContactCalls({ contactId }: { contactId: string }) {
   useEffect(() => {
     fetch(`/api/admin/calls?contactId=${encodeURIComponent(contactId)}`)
       .then((r) => (r.ok ? r.json() : { calls: [] }))
-      .then((d) => setCalls(d.calls))
+      .then((d) => setCalls(d.calls ?? []))
       .catch(() => setCalls([]));
   }, [contactId]);
 
@@ -39,7 +39,7 @@ export function ContactCalls({ contactId }: { contactId: string }) {
             </span>
             <span className="text-[#71717a]">
               {new Date(c.createdAt).toLocaleString()}
-              {c.durationSec ? ` , ${c.durationSec}s` : ""}
+              {c.durationSec ? ` (${c.durationSec}s)` : ""}
             </span>
           </div>
           {c.transcription && (
