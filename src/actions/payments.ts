@@ -425,17 +425,17 @@ export async function getContactMoney(contactId: string) {
   const linkedApp = contact.applicationId
     ? await prisma.application.findUnique({ where: { id: contact.applicationId }, select: { id: true, ssnHash: true } })
     : null;
-  const apps = await prisma.application.findMany({
-    where: {
-      OR: [
-        ...(linkedApp?.ssnHash ? [{ ssnHash: linkedApp.ssnHash }] : []),
-        { email: { equals: contact.email, mode: "insensitive" as const } },
-        ...(linkedApp ? [{ id: linkedApp.id }] : []),
-      ],
-    },
-    select: { id: true, applicationCode: true, status: true, createdAt: true },
-  });
-  const STATUS_PRIORITY = ["FUNDED", "LATE", "APPROVED", "ACCEPTED", "PAID_OFF", "DEFAULTED", "PENDING", "REJECTED"];
+  const orClauses: Array<Record<string, unknown>> = [];
+  if (linkedApp?.ssnHash) orClauses.push({ ssnHash: linkedApp.ssnHash });
+  if (contact.email) orClauses.push({ email: { equals: contact.email, mode: "insensitive" as const } });
+  if (linkedApp) orClauses.push({ id: linkedApp.id });
+  const apps = orClauses.length
+    ? await prisma.application.findMany({
+        where: { OR: orClauses },
+        select: { id: true, applicationCode: true, status: true, createdAt: true },
+      })
+    : [];
+  const STATUS_PRIORITY = ["FUNDED", "LATE", "REPAYING", "ACTIVE", "COLLECTIONS", "APPROVED", "ACCEPTED", "PAID_OFF", "DEFAULTED", "PENDING", "REJECTED"];
   const sorted = [...apps].sort((a, b) => {
     const ai = STATUS_PRIORITY.indexOf(a.status);
     const bi = STATUS_PRIORITY.indexOf(b.status);

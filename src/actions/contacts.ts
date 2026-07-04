@@ -172,7 +172,7 @@ export async function getContact(id: string) {
   // Promote the most relevant advance to the headline. Funded/late
   // advances trump a fresh pending one so the "Advance" card stops
   // showing $0 / 0 payments for a borrower with an active loan.
-  const STATUS_PRIORITY = ["FUNDED", "LATE", "APPROVED", "ACCEPTED", "PAID_OFF", "DEFAULTED", "PENDING", "REJECTED"];
+  const STATUS_PRIORITY = ["FUNDED", "LATE", "REPAYING", "ACTIVE", "COLLECTIONS", "APPROVED", "ACCEPTED", "PAID_OFF", "DEFAULTED", "PENDING", "REJECTED"];
   const sorted = [...allApps].sort((a, b) => {
     const ai = STATUS_PRIORITY.indexOf(a.status);
     const bi = STATUS_PRIORITY.indexOf(b.status);
