@@ -7,6 +7,7 @@ import { updateContactStage } from "@/actions/contacts";
 import { logActivity } from "@/actions/activities";
 import { KANBAN_STAGES, STAGE_COLORS } from "@/lib/contact-helpers";
 import { PageHeader } from "@/components/admin/page-header";
+import { CallButton } from "@/components/admin/dialer/call-button";
 
 interface ContactCard {
   id: string;
@@ -103,9 +104,17 @@ export function PipelineClient({
                     }`}
                   >
                     <Link href={`/admin/contacts/${contact.id}`} className="block">
-                      <p className="text-[13px] font-bold text-black">
-                        {contact.firstName} {contact.lastName || ""}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <p className="text-[13px] font-bold text-black">
+                          {contact.firstName} {contact.lastName || ""}
+                        </p>
+                        <CallButton
+                          compact
+                          phone={contact.phone}
+                          name={`${contact.firstName} ${contact.lastName || ""}`.trim()}
+                          contactId={contact.id}
+                        />
+                      </div>
                       <p className="text-[11px] text-[#71717a] mt-0.5 truncate">{contact.email}</p>
                       {contact.source && (
                         <p className="text-[10px] text-[#a1a1aa] mt-1">{contact.source}</p>

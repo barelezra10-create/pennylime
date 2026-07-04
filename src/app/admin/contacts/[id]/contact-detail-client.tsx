@@ -27,6 +27,8 @@ import { PIPELINE_STAGES } from "@/lib/contact-helpers";
 import { fmtMoney, cadenceLabel, type LoanSummary } from "@/lib/loan-summary";
 import { toast } from "sonner";
 import Link from "next/link";
+import { CallButton } from "@/components/admin/dialer/call-button";
+import { ContactCalls } from "@/components/admin/dialer/contact-calls";
 
 interface Activity {
   id: string;
@@ -288,6 +290,11 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                     </span>
                     <span className="text-[13px] text-[#71717a]">{contact.phone}</span>
+                    <CallButton
+                      phone={contact.phone}
+                      name={`${contact.firstName} ${contact.lastName || ""}`.trim()}
+                      contactId={contact.id}
+                    />
                   </div>
                 )}
                 {contact.source && (
@@ -452,6 +459,12 @@ export function ContactDetailClient({ contact, team }: { contact: Contact; team:
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Calls */}
+          <div className="bg-white rounded-xl p-6 border border-[#e4e4e7]">
+            <h2 className="text-[13px] font-bold text-black mb-4">Calls</h2>
+            <ContactCalls contactId={contact.id} />
           </div>
         </div>
       )}
