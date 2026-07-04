@@ -8,6 +8,7 @@ import { useDialer } from "@/components/admin/dialer/dialer-provider";
 import { KANBAN_STAGES, STAGE_COLORS } from "@/lib/contact-helpers";
 import { dialedDigits, formatDialed, dialedToE164 } from "@/lib/voice/dialpad";
 import { addContactNote, getContactNotes } from "@/actions/contacts";
+import { MoneyPanel } from "./money-panel";
 
 type ContactRow = {
   id: string;
@@ -247,6 +248,8 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
               </div>
               <CallButton phone={selected.phone} name={selected.name} contactId={selected.id} />
             </div>
+
+            <MoneyPanel contactId={selected.id} />
 
             <div className="rounded-xl border border-[#e4e4e7] bg-white p-5">
               <h3 className="text-[13px] font-bold text-black mb-3">Notes</h3>
