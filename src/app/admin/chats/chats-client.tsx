@@ -87,16 +87,21 @@ export function ChatsClient() {
     getChatConversation(id, lastItemIsoRef.current ?? undefined)
       .then((delta) => {
         if (selectedRef.current !== id || !delta) return;
+        // Capture appended items outside the updater so side effects run after setState,
+        // keeping the updater pure (both strict-mode invocations produce the same appended value).
+        let appended: ChatThreadItem[] = [];
         setThread((cur) => {
           if (!cur) return cur;
           const seen = new Set(cur.items.map((i) => i.id));
-          const fresh = delta.items.filter((i) => !seen.has(i.id));
-          if (fresh.length) {
-            lastItemIsoRef.current = fresh[fresh.length - 1].createdAt;
-            if (isAtBottom()) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" }), 30);
-          }
-          return { session: delta.session, items: fresh.length ? [...cur.items, ...fresh] : cur.items };
+          appended = delta.items.filter((i) => !seen.has(i.id));
+          return { session: delta.session, items: appended.length ? [...cur.items, ...appended] : cur.items };
         });
+        // Note: lastItemIsoRef cursor uses strictly-greater createdAt; an item sharing the
+        // exact same millisecond as the cursor could be skipped (acceptable at chat volume).
+        if (appended.length) {
+          lastItemIsoRef.current = appended[appended.length - 1].createdAt;
+          if (isAtBottom()) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" }), 30);
+        }
       })
       .catch(() => {});
   }, []);
@@ -200,9 +205,9 @@ export function ChatsClient() {
                 </p>
                 <span className="text-[11px] text-[#a1a1aa] shrink-0">{r.lastMessage ? timeAgo(r.lastMessage.at) : timeAgo(r.startedAt)}</span>
               </div>
-              {r.needsReply && (
+              {r.needsReply && r.waitingSinceMs != null && (
                 <span className="inline-block mt-1 rounded-full bg-[#fef2f2] text-[#dc2626] px-2 py-0.5 text-[10px] font-bold">
-                  Waiting {r.waitingSinceMs ? timeAgo(new Date(r.waitingSinceMs).toISOString()) : ""}
+                  Waiting {timeAgo(new Date(r.waitingSinceMs).toISOString())}
                 </span>
               )}
             </button>
