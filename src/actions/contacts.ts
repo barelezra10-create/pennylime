@@ -1,5 +1,7 @@
 "use server";
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { fireServerEvent } from "@/lib/tracking/server-events";
 
@@ -404,4 +406,44 @@ export async function getContactMetrics() {
   for (const s of byStage) stageMap[s.stage] = s._count.id;
 
   return { total, byStage: stageMap, newThisWeek: thisWeek, abandoned };
+}
+
+// --- Dialer workspace notes -------------------------------------------------
+
+export async function getContactNotes(contactId: string, limit = 10) {
+  const notes = await prisma.activity.findMany({
+    where: { contactId, type: "note" },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+  return notes.map((n) => ({
+    id: n.id,
+    details: n.details || "",
+    performedBy: n.performedBy,
+    createdAt: n.createdAt.toISOString(),
+  }));
+}
+
+export async function addContactNote(contactId: string, details: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const text = details.trim();
+  if (!text) throw new Error("Note is empty");
+
+  const note = await prisma.activity.create({
+    data: {
+      contactId,
+      type: "note",
+      title: "Note",
+      details: text.slice(0, 5000),
+      performedBy: session.user.email,
+    },
+  });
+  return {
+    id: note.id,
+    details: note.details || "",
+    performedBy: note.performedBy,
+    createdAt: note.createdAt.toISOString(),
+  };
 }
