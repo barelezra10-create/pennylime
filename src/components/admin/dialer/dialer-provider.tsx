@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Device, Call } from "@twilio/voice-sdk";
 import { DialerPanel } from "./dialer-panel";
 
@@ -37,7 +37,11 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   const callRef = useRef<Call | null>(null);
   const startedAtRef = useRef<number>(0);
 
+  useEffect(() => () => { deviceRef.current?.destroy(); }, []);
+
   const getDevice = useCallback(async (): Promise<Device> => {
+    if (deviceRef.current) return deviceRef.current;
+
     const res = await fetch("/api/voice/token");
     if (!res.ok) {
       const body = await res.json().catch(() => null);
@@ -45,10 +49,6 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
     }
     const { token } = (await res.json()) as { token: string };
 
-    if (deviceRef.current) {
-      deviceRef.current.updateToken(token);
-      return deviceRef.current;
-    }
     const { Device } = await import("@twilio/voice-sdk");
     const device = new Device(token, { logLevel: "error" });
     device.on("tokenWillExpire", async () => {

@@ -49,8 +49,8 @@ export function DialerPanel() {
           <p className="text-[12px] text-[#71717a]">{state.phone}</p>
         </div>
         {(state.phase === "wrap-up" || state.phase === "error") && (
-          <button onClick={dismiss} className="text-[#a1a1aa] hover:text-[#18181b] text-[16px] leading-none">
-            x
+          <button onClick={dismiss} aria-label="Dismiss" className="text-[#a1a1aa] hover:text-[#18181b] text-[16px] leading-none">
+            &times;
           </button>
         )}
       </div>

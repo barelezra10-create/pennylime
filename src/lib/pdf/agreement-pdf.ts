@@ -117,6 +117,7 @@ export async function buildFilledAgreementHtml(params: FillParams): Promise<stri
   // Infer cadence from the schedule's date spacing: consecutive business
   // days (<= 3 day gap) = daily; ~7 day gap = weekly. Keeps the agreement
   // terms accurate without threading a frequency param through callers.
+  // schedule dates are "Month D, YYYY" strings from toLocaleDateString("en-US")
   const isDaily =
     schedule.length >= 2 &&
     (new Date(schedule[1].date).getTime() - new Date(schedule[0].date).getTime()) / 86400000 <= 3;
