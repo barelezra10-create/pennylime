@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const calls = await prisma.callLog.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    take: Math.min(Number(sp.get("limit") || 100), 500),
+    take: Math.min(Number(sp.get("limit")) || 100, 500),
   });
 
   return NextResponse.json({ calls });
