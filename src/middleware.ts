@@ -7,6 +7,7 @@ const PENNYCLICK_TTL_SECONDS = 60 * 60 * 24 * 365; // 1 year
 const ADMIN_PROTECTED = [
   "/admin/dashboard",
   "/admin/applications",
+  "/admin/calls",
   "/admin/settings",
   "/admin/audit",
   "/admin/payments",
