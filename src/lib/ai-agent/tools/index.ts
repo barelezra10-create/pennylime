@@ -10,6 +10,7 @@ import { getLoanSummary } from "./getLoanSummary";
 import { getPaymentHistory } from "./getPaymentHistory";
 import { schedulePayment } from "./schedulePayment";
 import { changeDueDate } from "./changeDueDate";
+import { askOwner } from "./askOwner";
 
 const ALL_TOOLS: ToolDefinition[] = [
   getLoanProducts,
@@ -22,6 +23,7 @@ const ALL_TOOLS: ToolDefinition[] = [
   getPaymentHistory,
   schedulePayment,
   changeDueDate,
+  askOwner,
 ];
 
 export function listToolsForAuth(authLevel: AuthLevel): ToolDefinition[] {

@@ -156,9 +156,15 @@ export async function runTurn(
   let lastTokensOut = 0;
   const contactSummary = await buildContactSummary(ctx);
 
+  let knowledge: Array<{ question: string; answer: string }> = [];
+  try {
+    const { getAnsweredKnowledge } = await import("@/lib/knowledge");
+    knowledge = await getAnsweredKnowledge();
+  } catch {}
+
   for (let iter = 0; iter < MAX_TOOL_CALLS_PER_TURN + 1; iter++) {
     const tools = listToolsForAuth(currentAuth).map(toolToGeminiDecl);
-    const sys = buildSystemPrompt({ ...ctx, authLevel: currentAuth }, contactSummary);
+    const sys = buildSystemPrompt({ ...ctx, authLevel: currentAuth }, contactSummary, knowledge);
 
     const result = await callGemini(sys, history, tools);
     totalCostCents += tokensToCostCents(result.tokensIn, result.tokensOut);

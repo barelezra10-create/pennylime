@@ -11,6 +11,7 @@ describe("tool registry", () => {
     expect(names).toContain("getLoanProducts");
     expect(names).toContain("getStateRules");
     expect(names).toContain("verifyIdentity");
+    expect(names).toContain("askOwner");
     expect(names).not.toContain("getLoanSummary");
     expect(names).not.toContain("schedulePayment");
   });

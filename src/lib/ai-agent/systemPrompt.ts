@@ -25,8 +25,23 @@ const CHANNEL_RULES: Record<AgentCtx["channel"], string> = {
   voice: `Channel: phone voice. Use short, spoken sentences. Never read URLs out loud. Never read long numbers; offer to text instead. Pause-friendly grammar.`,
 };
 
-export function buildSystemPrompt(ctx: AgentCtx, contactSummary: string | null): string {
+export function buildSystemPrompt(
+  ctx: AgentCtx,
+  contactSummary: string | null,
+  knowledge: Array<{ question: string; answer: string }> = [],
+): string {
   const parts = [BASE, CHANNEL_RULES[ctx.channel], `Current auth level: ${ctx.authLevel}.`];
   if (contactSummary) parts.push(`Caller context: ${contactSummary}`);
+  if (knowledge.length > 0) {
+    const qa = knowledge
+      .map((k) => `Q: ${k.question}\nA: ${k.answer}`)
+      .join("\n\n");
+    parts.push(
+      `## Known answers from the PennyLime team\nUse these authoritative answers when relevant. Do not contradict them.\n\n${qa}`,
+    );
+  }
+  parts.push(
+    "If the user's question is not covered by your tools or the known answers above, call askOwner instead of guessing.",
+  );
   return parts.join("\n\n");
 }
