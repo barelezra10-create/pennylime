@@ -93,12 +93,15 @@ const TABS: TopTab[] = [
     id: "crm",
     label: "CRM",
     icon: "◉",
-    prefixes: ["/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/chats", "/admin/compliance"],
+    prefixes: ["/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/chats", "/admin/compliance", "/admin/agent", "/admin/tickets"],
     href: "/admin/contacts",
     subnav: [
       { href: "/admin/contacts", label: "Contacts" },
       { href: "/admin/inbox", label: "Inbox" },
       { href: "/admin/chats", label: "Chats" },
+      { href: "/admin/tickets", label: "Tickets" },
+      { href: "/admin/agent/metrics", label: "AI metrics" },
+      { href: "/admin/agent/sessions", label: "Sessions (advanced)" },
       { href: "/admin/visitors", label: "Visitors" },
       { href: "/admin/pipeline", label: "Pipeline" },
       { href: "/admin/abandoned", label: "Abandoned" },
@@ -116,18 +119,6 @@ const TABS: TopTab[] = [
       { href: "/admin/dialer", label: "Workspace" },
       { href: "/admin/calls", label: "Calls & voicemails" },
       { href: "/admin/settings/tracking", label: "Voice settings" },
-    ],
-  },
-  {
-    id: "support",
-    label: "AI Support",
-    icon: "✦",
-    prefixes: ["/admin/agent", "/admin/tickets"],
-    href: "/admin/agent/sessions",
-    subnav: [
-      { href: "/admin/agent/sessions", label: "Sessions" },
-      { href: "/admin/agent/metrics", label: "Metrics" },
-      { href: "/admin/tickets", label: "Tickets" },
     ],
   },
 ];
@@ -279,7 +270,6 @@ export function AdminTopNav({ userName }: { userName: string }) {
   // Map tab id → badge count so we can render the right number per tab.
   const tabBadges: Record<string, number> = {
     crm: badges.unrepliedEmails,
-    support: badges.pendingChats,
   };
 
   return (
