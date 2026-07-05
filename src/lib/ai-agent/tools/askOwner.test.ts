@@ -38,4 +38,15 @@ describe("askOwner", () => {
     expect(data.message).toContain("Could not reach the team queue");
     expect(recordOwnerQuestion).toHaveBeenCalledWith("s1", "What is the fee?");
   });
+
+  it("returns model-facing empty-question string without touching the DB when question is blank", async () => {
+    for (const blank of ["", "   ", "\t\n"]) {
+      recordOwnerQuestion.mockReset();
+      const res = await askOwner.handler({ question: blank }, ctx);
+      expect(res.status).toBe("ok");
+      const data = (res as { status: "ok"; data: { message: string } }).data;
+      expect(data.message).toBe("No question provided; ask the user to phrase their question.");
+      expect(recordOwnerQuestion).not.toHaveBeenCalled();
+    }
+  });
 });

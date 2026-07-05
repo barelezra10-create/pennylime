@@ -33,6 +33,12 @@ export async function recordOwnerQuestion(sessionId: string, question: string): 
     select: { id: true, question: true },
   });
   const match = pending.find((p) => questionsMatch(p.question, q));
+  if (!match) {
+    const waiterCount = await prisma.knowledgeWaiter.count({ where: { sessionId } });
+    if (waiterCount >= 5) {
+      throw new Error("session question cap reached");
+    }
+  }
   const entryId = match
     ? match.id
     : (await prisma.knowledgeEntry.create({ data: { question: q }, select: { id: true } })).id;

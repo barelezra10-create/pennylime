@@ -18,6 +18,15 @@ export const askOwner: ToolDefinition = {
   isWrite: false,
   handler: async (args, ctx) => {
     const question = String(args.question ?? "").trim();
+    if (!question) {
+      return {
+        status: "ok",
+        data: {
+          message: "No question provided; ask the user to phrase their question.",
+        },
+        summary: "empty question rejected",
+      };
+    }
     try {
       const { recordOwnerQuestion } = await import("@/lib/knowledge");
       await recordOwnerQuestion(ctx.sessionId, question);

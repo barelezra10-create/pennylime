@@ -41,7 +41,7 @@ export function buildSystemPrompt(
     );
   }
   parts.push(
-    "If the user's question is not covered by your tools or the known answers above, call askOwner instead of guessing.",
+    "If the user's question is not covered by your tools or the known answers above, and it is not a complaint, dispute, fraud, or legal matter (escalate those with escalateToTicket), call askOwner instead of guessing.",
   );
   return parts.join("\n\n");
 }
