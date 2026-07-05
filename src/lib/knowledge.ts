@@ -25,7 +25,10 @@ export function questionsMatch(a: string, b: string): boolean {
  * waiter either way. Returns the entry id.
  */
 export async function recordOwnerQuestion(sessionId: string, question: string): Promise<string> {
-  const q = question.trim().slice(0, 500);
+  // Questions become admin-visible and, once answered, feed every future
+  // system prompt: strip PII before anything is stored.
+  const { redactPII } = await import("@/lib/ai-agent/redact");
+  const q = redactPII(question.trim()).slice(0, 500);
   const pending = await prisma.knowledgeEntry.findMany({
     where: { status: "PENDING" },
     orderBy: { createdAt: "desc" },
