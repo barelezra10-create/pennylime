@@ -95,10 +95,10 @@ export async function sendChatAdminReply(input: { sessionId: string; text: strin
   });
 
   // Auto-flip to human mode on first admin reply so subsequent user
-  // messages don't trigger AI.
+  // messages don't trigger AI. Also mark waiting on client since we just replied.
   await prisma.agentSession.update({
     where: { id: input.sessionId },
-    data: { mode: "human" },
+    data: { mode: "human", handlingStatus: "WAITING_CLIENT" },
   });
 
   // Offline check — if the user's widget hasn't polled in ≥ threshold,
@@ -174,6 +174,7 @@ function escapeHtml(s: string) {
 export type ChatConversationRow = {
   id: string;
   name: string;
+  subject: string;
   contactId: string | null;
   mode: string;
   handlingStatus: string;
@@ -186,15 +187,23 @@ export type ChatConversationRow = {
 };
 
 export async function listChatConversations(
-  filter: "needs-reply" | "open" | "all" | "archived"
+  filter: "needs-reply" | "open" | "resolved" | "all" | "archived"
 ): Promise<ChatConversationRow[]> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("Unauthorized");
 
   const where: Record<string, unknown> = { channel: "chat" };
-  if (filter === "archived") where.archivedAt = { not: null };
-  else where.archivedAt = null;
-  if (filter === "open") where.handlingStatus = { not: "RESOLVED" };
+  if (filter === "archived") {
+    where.archivedAt = { not: null };
+  } else {
+    where.archivedAt = null;
+    if (filter === "open" || filter === "needs-reply") {
+      where.handlingStatus = { not: "RESOLVED" };
+    } else if (filter === "resolved") {
+      where.handlingStatus = "RESOLVED";
+    }
+    // "all": no handlingStatus constraint
+  }
 
   const sessions = await prisma.agentSession.findMany({
     where,
@@ -220,6 +229,21 @@ export async function listChatConversations(
     },
   });
 
+  // Batch-fetch the first user message per session using distinct on sessionId
+  // ordered ascending — Prisma returns rows in orderBy order and keeps the first
+  // occurrence of each distinct value, so this yields the earliest user message
+  // per session in one query.
+  const ids = sessions.map((s) => s.id);
+  const firstUserMessages = ids.length
+    ? await prisma.agentMessage.findMany({
+        where: { sessionId: { in: ids }, role: "user" },
+        orderBy: { createdAt: "asc" },
+        distinct: ["sessionId"],
+        select: { sessionId: true, text: true },
+      })
+    : [];
+  const firstMsgMap = new Map(firstUserMessages.map((m) => [m.sessionId, m.text]));
+
   const now = Date.now();
   const rows: ChatConversationRow[] = sessions.map((s) => {
     const last = s.messages[0] ?? null;
@@ -229,9 +253,12 @@ export async function listChatConversations(
       s.leadFirstName ||
       s.leadEmail ||
       "Anonymous";
+    const rawSubject = firstMsgMap.get(s.id);
+    const subject = rawSubject ? rawSubject.trim().slice(0, 80) : "New conversation";
     return {
       id: s.id,
       name,
+      subject,
       contactId: s.contactId,
       mode: s.mode,
       handlingStatus: s.handlingStatus,
@@ -280,7 +307,7 @@ export async function getChatConversation(sessionId: string, sinceIso?: string) 
   if (!ag) return null;
 
   const since = sinceIso ? new Date(sinceIso) : new Date(0);
-  const [messages, tools] = await Promise.all([
+  const [messages, tools, firstUserMsg] = await Promise.all([
     prisma.agentMessage.findMany({
       where: { sessionId, createdAt: { gt: since }, role: { in: ["user", "assistant"] } },
       orderBy: { createdAt: "asc" },
@@ -292,6 +319,11 @@ export async function getChatConversation(sessionId: string, sinceIso?: string) 
       orderBy: { createdAt: "asc" },
       take: 100,
       select: { id: true, name: true, resultStatus: true, resultSummary: true, createdAt: true },
+    }),
+    prisma.agentMessage.findFirst({
+      where: { sessionId, role: "user" },
+      orderBy: { createdAt: "asc" },
+      select: { text: true },
     }),
   ]);
 
@@ -320,10 +352,13 @@ export async function getChatConversation(sessionId: string, sinceIso?: string) 
     ag.leadEmail ||
     "Anonymous";
 
+  const subject = firstUserMsg ? firstUserMsg.text.trim().slice(0, 80) : "New conversation";
+
   return {
     session: {
       id: ag.id,
       name,
+      subject,
       contactId: ag.contactId,
       mode: ag.mode,
       handlingStatus: ag.handlingStatus,
@@ -332,6 +367,13 @@ export async function getChatConversation(sessionId: string, sinceIso?: string) 
     },
     items,
   };
+}
+
+export async function setChatHandlingStatus(sessionId: string, status: "OPEN" | "WAITING_CLIENT" | "RESOLVED") {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  await prisma.agentSession.update({ where: { id: sessionId }, data: { handlingStatus: status } });
+  return { ok: true as const };
 }
 
 export async function archiveChatSession(sessionId: string) {

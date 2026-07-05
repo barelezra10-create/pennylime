@@ -162,6 +162,13 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "too long" }, { status: 400 });
   }
 
+  // Re-open the ticket whenever the user sends a message. This runs for both
+  // human-takeover and AI paths — a new user message always needs attention.
+  await prisma.agentSession.update({
+    where: { id: session.id },
+    data: { handlingStatus: "OPEN" },
+  });
+
   // Human-takeover mode: store the user message, don't run AI. Admin
   // sees it on the sessions page and replies manually.
   if (session.mode === "human") {
