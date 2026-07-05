@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const leadFirstName = body.leadFirstName ? String(body.leadFirstName).trim().slice(0, 80) : null;
   const leadLastName = body.leadLastName ? String(body.leadLastName).trim().slice(0, 80) : null;
   const leadEmail = body.leadEmail ? String(body.leadEmail).trim().toLowerCase().slice(0, 254) : null;
-  const sinceMessageId = body.sinceMessageId ? String(body.sinceMessageId) : null;
+  const sinceMessageId = typeof body.sinceMessageId === "string" ? body.sinceMessageId : null;
   const passive = body.passive === true;
 
   // Long-poll path. Returns new messages since the last one the client saw.
