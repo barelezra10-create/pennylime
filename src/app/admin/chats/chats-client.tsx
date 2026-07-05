@@ -95,6 +95,8 @@ export function ChatsClient() {
   const [draft, setDraft] = useState("");
   const [sendError, setSendError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selectedId;
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -157,6 +159,7 @@ export function ChatsClient() {
     setThread(null);
     setDraft("");
     setSendError(null);
+    setActionError(null);
     lastItemIsoRef.current = null;
     getChatConversation(id)
       .then((t) => {
@@ -191,31 +194,73 @@ export function ChatsClient() {
   };
 
   const toggleArchive = async () => {
-    if (!thread || !selectedId) return;
-    if (thread.session.archived) await unarchiveChatSession(selectedId);
-    else await archiveChatSession(selectedId);
-    openThread(selectedId);
-    loadList(filter);
+    if (!thread || !selectedId || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const res = thread.session.archived
+        ? await unarchiveChatSession(selectedId)
+        : await archiveChatSession(selectedId);
+      if (!res.ok) {
+        setActionError(res.error || "Action failed");
+        return;
+      }
+      openThread(selectedId);
+      loadList(filter);
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handBackToAI = async () => {
-    if (!selectedId) return;
-    await releaseChatSession(selectedId);
-    openThread(selectedId);
+    if (!selectedId || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const res = await releaseChatSession(selectedId);
+      if (!res.ok) {
+        setActionError(res.error || "Action failed");
+        return;
+      }
+      openThread(selectedId);
+      loadList(filter);
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handleResolve = async () => {
-    if (!selectedId) return;
-    await setChatHandlingStatus(selectedId, "RESOLVED");
-    openThread(selectedId);
-    loadList(filter);
+    if (!selectedId || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const res = await setChatHandlingStatus(selectedId, "RESOLVED");
+      if (!res.ok) {
+        setActionError(res.error || "Action failed");
+        return;
+      }
+      openThread(selectedId);
+      loadList(filter);
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handleReopen = async () => {
-    if (!selectedId) return;
-    await setChatHandlingStatus(selectedId, "OPEN");
-    openThread(selectedId);
-    loadList(filter);
+    if (!selectedId || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const res = await setChatHandlingStatus(selectedId, "OPEN");
+      if (!res.ok) {
+        setActionError(res.error || "Action failed");
+        return;
+      }
+      openThread(selectedId);
+      loadList(filter);
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   return (
@@ -342,6 +387,9 @@ export function ChatsClient() {
                     {thread.session.mode === "human" ? "You are live, AI paused" : "AI answering"}
                   </span>
                   <div className="ml-auto flex items-center gap-2 flex-wrap">
+                    {actionError && (
+                      <span className="text-[12px] text-[#dc2626]">{actionError}</span>
+                    )}
                     {thread.session.contactId && (
                       <Link
                         href={`/admin/contacts/${thread.session.contactId}`}
@@ -353,21 +401,24 @@ export function ChatsClient() {
                     {thread.session.mode === "human" && !thread.session.archived && (
                       <button
                         onClick={handBackToAI}
-                        className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]"
+                        disabled={actionBusy}
+                        className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa] disabled:opacity-40"
                       >
                         Hand back to AI
                       </button>
                     )}
                     <button
                       onClick={toggleArchive}
-                      className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]"
+                      disabled={actionBusy}
+                      className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa] disabled:opacity-40"
                     >
                       {thread.session.archived ? "Unarchive" : "Archive"}
                     </button>
                     {thread.session.handlingStatus !== "RESOLVED" ? (
                       <button
                         onClick={handleResolve}
-                        className="text-[12px] text-white rounded-lg px-2 py-1 font-medium"
+                        disabled={actionBusy}
+                        className="text-[12px] text-white rounded-lg px-2 py-1 font-medium disabled:opacity-40"
                         style={{ background: "#15803d" }}
                       >
                         Resolve
@@ -375,7 +426,8 @@ export function ChatsClient() {
                     ) : (
                       <button
                         onClick={handleReopen}
-                        className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]"
+                        disabled={actionBusy}
+                        className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa] disabled:opacity-40"
                       >
                         Reopen
                       </button>
