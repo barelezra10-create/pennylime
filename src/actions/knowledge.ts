@@ -56,6 +56,13 @@ export async function answerKnowledgeEntry(entryId: string, answer: string) {
   let sent = 0;
   let emailed = 0;
   for (const waiter of entry.waiters) {
+    // Atomically claim this waiter to prevent double-broadcast from concurrent invocations.
+    const claim = await prisma.knowledgeWaiter.updateMany({
+      where: { id: waiter.id, notifiedAt: null },
+      data: { notifiedAt: new Date() },
+    });
+    if (claim.count === 0) continue; // another invocation already handled this waiter
+
     const ag = await prisma.agentSession.findUnique({
       where: { id: waiter.sessionId },
       select: {
@@ -68,12 +75,12 @@ export async function answerKnowledgeEntry(entryId: string, answer: string) {
       },
     });
     if (!ag || ag.archivedAt) {
-      await prisma.knowledgeWaiter.update({ where: { id: waiter.id }, data: { notifiedAt: new Date() } });
       continue;
     }
     const msg = await prisma.agentMessage.create({
       data: { sessionId: ag.id, role: "assistant", senderEmail: null, text },
     });
+    // handlingStatus is set to WAITING_CLIENT; mode is deliberately left unchanged so AI stays in control and the answer is sent as the assistant.
     await prisma.agentSession.update({ where: { id: ag.id }, data: { handlingStatus: "WAITING_CLIENT" } });
     sent++;
 
@@ -107,7 +114,6 @@ export async function answerKnowledgeEntry(entryId: string, answer: string) {
         }
       } catch {}
     }
-    await prisma.knowledgeWaiter.update({ where: { id: waiter.id }, data: { notifiedAt: new Date() } });
   }
 
   if (sent > 0) {
@@ -128,6 +134,10 @@ export async function updateKnowledgeAnswer(entryId: string, answer: string) {
 export async function setKnowledgeStatus(entryId: string, status: "ANSWERED" | "DISABLED") {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  if (status === "ANSWERED") {
+    const entry = await prisma.knowledgeEntry.findUnique({ where: { id: entryId }, select: { answer: true } });
+    if (!entry?.answer?.trim()) return { ok: false as const, error: "Set an answer first" };
+  }
   await prisma.knowledgeEntry.update({ where: { id: entryId }, data: { status } });
   return { ok: true as const };
 }
