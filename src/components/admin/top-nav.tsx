@@ -269,7 +269,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
 
   // Map tab id → badge count so we can render the right number per tab.
   const tabBadges: Record<string, number> = {
-    crm: badges.unrepliedEmails,
+    crm: badges.unrepliedEmails + badges.pendingChats,
   };
 
   return (
