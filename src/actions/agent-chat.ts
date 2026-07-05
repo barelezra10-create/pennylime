@@ -98,7 +98,7 @@ export async function sendChatAdminReply(input: { sessionId: string; text: strin
   // messages don't trigger AI. Also mark waiting on client since we just replied.
   await prisma.agentSession.update({
     where: { id: input.sessionId },
-    data: { mode: "human", handlingStatus: "WAITING_CLIENT" },
+    data: { mode: "human", handlingStatus: "WAITING_CLIENT", adminLastReadAt: new Date() },
   });
 
   // Offline check — if the user's widget hasn't polled in ≥ threshold,
@@ -171,6 +171,13 @@ function escapeHtml(s: string) {
 
 // --- Admin chats inbox -------------------------------------------------------
 
+export async function markChatRead(sessionId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  await prisma.agentSession.update({ where: { id: sessionId }, data: { adminLastReadAt: new Date() } });
+  return { ok: true as const };
+}
+
 export type ChatConversationRow = {
   id: string;
   name: string;
@@ -182,6 +189,7 @@ export type ChatConversationRow = {
   startedAt: string;
   online: boolean;
   needsReply: boolean;
+  unread: boolean;
   waitingSinceMs: number | null;
   lastMessage: { text: string; at: string; authoredBy: "user" | "ai" | "admin" } | null;
 };
@@ -217,6 +225,7 @@ export async function listChatConversations(
       archivedAt: true,
       startedAt: true,
       lastPolledAt: true,
+      adminLastReadAt: true,
       leadFirstName: true,
       leadEmail: true,
       contact: { select: { firstName: true, lastName: true } },
@@ -266,6 +275,7 @@ export async function listChatConversations(
       startedAt: s.startedAt.toISOString(),
       online: !!s.lastPolledAt && now - s.lastPolledAt.getTime() < ONLINE_THRESHOLD_MS,
       needsReply,
+      unread: !!last && (!s.adminLastReadAt || last.createdAt.getTime() > s.adminLastReadAt.getTime()),
       waitingSinceMs: needsReply && last ? last.createdAt.getTime() : null,
       lastMessage: last
         ? {

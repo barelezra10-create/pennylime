@@ -1299,6 +1299,7 @@ model AgentSession {
   // use it as a proxy for "user is online right now" — if it's > 30s
   // stale and admin sends a message, the message is also emailed.
   lastPolledAt   DateTime?
+  adminLastReadAt DateTime?
   startedAt      DateTime @default(now())
   endedAt        DateTime?
   endReason      String?
