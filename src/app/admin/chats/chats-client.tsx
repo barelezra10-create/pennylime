@@ -9,18 +9,22 @@ import {
   releaseChatSession,
   archiveChatSession,
   unarchiveChatSession,
+  setChatHandlingStatus,
   type ChatConversationRow,
   type ChatThreadItem,
 } from "@/actions/agent-chat";
 import { sortConversations } from "./sort-conversations";
+import { KnowledgePanel } from "./knowledge-panel";
 
-type Filter = "needs-reply" | "open" | "all" | "archived";
+type Filter = "needs-reply" | "open" | "resolved" | "all" | "archived";
+type View = "conversations" | "knowledge";
 type Thread = NonNullable<Awaited<ReturnType<typeof getChatConversation>>>;
 type SortedRow = ChatConversationRow & { lastMessageAtMs: number };
 
 const FILTERS: { key: Filter; label: string }[] = [
   { key: "needs-reply", label: "Needs reply" },
   { key: "open", label: "Open" },
+  { key: "resolved", label: "Resolved" },
   { key: "all", label: "All" },
   { key: "archived", label: "Archived" },
 ];
@@ -41,7 +45,49 @@ function dayLabel(iso: string): string {
   return new Date(iso).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
 }
 
+function StatusChip({ handlingStatus, needsReply }: { handlingStatus: string; needsReply: boolean }) {
+  if (handlingStatus === "RESOLVED") {
+    return (
+      <span
+        className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+        style={{ background: "#f0fdf4", color: "#15803d" }}
+      >
+        Resolved
+      </span>
+    );
+  }
+  if (handlingStatus === "WAITING_CLIENT") {
+    return (
+      <span
+        className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+        style={{ background: "#fef9ec", color: "#b45309" }}
+      >
+        Waiting on client
+      </span>
+    );
+  }
+  if (needsReply) {
+    return (
+      <span
+        className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+        style={{ background: "#fef2f2", color: "#dc2626" }}
+      >
+        Open
+      </span>
+    );
+  }
+  return (
+    <span
+      className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+      style={{ background: "#f4f4f5", color: "#71717a" }}
+    >
+      Open
+    </span>
+  );
+}
+
 export function ChatsClient() {
+  const [view, setView] = useState<View>("conversations");
   const [filter, setFilter] = useState<Filter>("needs-reply");
   const [rows, setRows] = useState<SortedRow[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -158,161 +204,251 @@ export function ChatsClient() {
     openThread(selectedId);
   };
 
+  const handleResolve = async () => {
+    if (!selectedId) return;
+    await setChatHandlingStatus(selectedId, "RESOLVED");
+    openThread(selectedId);
+    loadList(filter);
+  };
+
+  const handleReopen = async () => {
+    if (!selectedId) return;
+    await setChatHandlingStatus(selectedId, "OPEN");
+    openThread(selectedId);
+    loadList(filter);
+  };
+
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-220px)] min-h-[480px]">
-      {/* List pane */}
-      <div className={`lg:w-[360px] w-full flex flex-col ${selectedId ? "hidden lg:flex" : "flex"}`}>
-        <div className="flex gap-1.5 mb-3 flex-wrap">
-          {FILTERS.map((f) => (
+    <div className="flex flex-col gap-4">
+      {/* Segmented view switch */}
+      <div className="flex">
+        <div className="flex gap-0.5 rounded-xl border border-[#e4e4e7] bg-[#f4f4f5] p-0.5">
+          {(["conversations", "knowledge"] as const).map((v) => (
             <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`rounded-full px-3 py-1 text-[12px] font-medium border ${
-                filter === f.key ? "bg-[#18181b] text-white border-[#18181b]" : "bg-white text-[#3f3f46] border-[#e4e4e7]"
+              key={v}
+              onClick={() => setView(v)}
+              className={`rounded-[10px] px-4 py-1.5 text-[13px] font-medium transition-colors ${
+                view === v
+                  ? "bg-white text-[#18181b] shadow-sm"
+                  : "text-[#71717a] hover:text-[#3f3f46]"
               }`}
             >
-              {f.label}
+              {v === "conversations" ? "Conversations" : "Knowledge"}
             </button>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto rounded-xl border border-[#e4e4e7] bg-white divide-y divide-[#f4f4f5]">
-          {rows === null && <p className="p-4 text-[13px] text-[#71717a]">Loading...</p>}
-          {rows?.length === 0 && (
-            <p className="p-4 text-[13px] text-[#71717a]">
-              {filter === "needs-reply" ? "No one is waiting. Nice." : "No conversations."}
-            </p>
-          )}
-          {rows?.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => openThread(r.id)}
-              className={`w-full text-left p-3 hover:bg-[#fafafa] ${selectedId === r.id ? "bg-[#eff6ff]" : ""}`}
-            >
-              <div className="flex items-center gap-2">
-                {r.online && <span className="h-2 w-2 rounded-full bg-[#15803d] shrink-0" />}
-                <span className="text-[13px] font-semibold text-[#18181b] truncate">{r.name}</span>
-                <span
-                  className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                    r.mode === "human" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f4f4f5] text-[#71717a]"
+      </div>
+
+      {view === "knowledge" ? (
+        <KnowledgePanel />
+      ) : (
+        <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-260px)] min-h-[480px]">
+          {/* List pane */}
+          <div className={`lg:w-[360px] w-full flex flex-col ${selectedId ? "hidden lg:flex" : "flex"}`}>
+            <div className="flex gap-1.5 mb-3 flex-wrap">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={`rounded-full px-3 py-1 text-[12px] font-medium border ${
+                    filter === f.key
+                      ? "bg-[#18181b] text-white border-[#18181b]"
+                      : "bg-white text-[#3f3f46] border-[#e4e4e7]"
                   }`}
                 >
-                  {r.mode === "human" ? "You" : "AI"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <p className="text-[12px] text-[#71717a] truncate flex-1">
-                  {r.lastMessage ? `${r.lastMessage.authoredBy === "user" ? "" : r.lastMessage.authoredBy === "admin" ? "You: " : "AI: "}${r.lastMessage.text}` : "No messages"}
-                </p>
-                <span className="text-[11px] text-[#a1a1aa] shrink-0">{r.lastMessage ? timeAgo(r.lastMessage.at) : timeAgo(r.startedAt)}</span>
-              </div>
-              {r.needsReply && r.waitingSinceMs != null && (
-                <span className="inline-block mt-1 rounded-full bg-[#fef2f2] text-[#dc2626] px-2 py-0.5 text-[10px] font-bold">
-                  Waiting {timeAgo(new Date(r.waitingSinceMs).toISOString())}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Thread pane */}
-      <div className={`flex-1 flex-col rounded-xl border border-[#e4e4e7] bg-white overflow-hidden ${selectedId ? "flex" : "hidden lg:flex"}`}>
-        {!selectedId && (
-          <div className="flex-1 flex items-center justify-center text-[13px] text-[#71717a]">Pick a conversation.</div>
-        )}
-        {selectedId && thread === null && (
-          <div className="flex-1 flex items-center justify-center text-[13px] text-[#71717a]">Loading conversation...</div>
-        )}
-        {selectedId && thread && (
-          <>
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f4f4f5]">
-              <button onClick={() => setSelectedId(null)} className="lg:hidden text-[#71717a] text-[16px] mr-1" aria-label="Back">
-                &#8592;
-              </button>
-              {thread.session.online && <span className="h-2 w-2 rounded-full bg-[#15803d]" />}
-              <span className="text-[14px] font-semibold text-[#18181b]">{thread.session.name}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                  thread.session.mode === "human" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f4f4f5] text-[#71717a]"
-                }`}
-              >
-                {thread.session.mode === "human" ? "You are live, AI paused" : "AI answering"}
-              </span>
-              <div className="ml-auto flex items-center gap-2">
-                {thread.session.contactId && (
-                  <Link href={`/admin/contacts/${thread.session.contactId}`} className="text-[12px] text-[#2563eb] hover:underline">
-                    Open contact
-                  </Link>
-                )}
-                {thread.session.mode === "human" && !thread.session.archived && (
-                  <button onClick={handBackToAI} className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]">
-                    Hand back to AI
-                  </button>
-                )}
-                <button onClick={toggleArchive} className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]">
-                  {thread.session.archived ? "Unarchive" : "Archive"}
+                  {f.label}
                 </button>
-              </div>
+              ))}
             </div>
-
-            <div ref={scrollBoxRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
-              {thread.items.map((item, i) => {
-                const prev = i > 0 ? thread.items[i - 1] : null;
-                const newDay = !prev || dayLabel(prev.createdAt) !== dayLabel(item.createdAt);
-                return (
-                  <div key={item.id}>
-                    {newDay && (
-                      <div className="text-center my-3">
-                        <span className="text-[11px] text-[#a1a1aa] bg-[#fafafa] rounded-full px-3 py-1">{dayLabel(item.createdAt)}</span>
-                      </div>
-                    )}
-                    {item.kind === "tool" ? <ToolLine item={item} /> : <MessageBubble item={item} />}
-                  </div>
-                );
-              })}
-              <div ref={bottomRef} />
-            </div>
-
-            <div className="border-t border-[#f4f4f5] p-3">
-              {thread.session.archived ? (
-                <p className="text-[12px] text-[#71717a]">
-                  Archived conversation.{" "}
-                  <button onClick={toggleArchive} className="text-[#2563eb] hover:underline">Unarchive to reply</button>
+            <div className="flex-1 overflow-y-auto rounded-xl border border-[#e4e4e7] bg-white divide-y divide-[#f4f4f5]">
+              {rows === null && <p className="p-4 text-[13px] text-[#71717a]">Loading...</p>}
+              {rows?.length === 0 && (
+                <p className="p-4 text-[13px] text-[#71717a]">
+                  {filter === "needs-reply" ? "No one is waiting. Nice." : "No conversations."}
                 </p>
-              ) : (
-                <>
-                  {sendError && <p className="text-[12px] text-[#dc2626] mb-1">{sendError}</p>}
-                  <div className="flex items-end gap-2">
-                    <textarea
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          void send();
-                        }
-                      }}
-                      rows={Math.min(5, Math.max(1, draft.split("\n").length))}
-                      placeholder={thread.session.mode === "ai" ? "Reply (this takes over from the AI)..." : "Reply..."}
-                      className="flex-1 resize-none rounded-xl border border-[#e4e4e7] px-3 py-2 text-[14px]"
-                    />
-                    <button
-                      onClick={send}
-                      disabled={sending || !draft.trim()}
-                      className="rounded-xl bg-[#15803d] text-white px-4 py-2 text-[13px] font-semibold disabled:opacity-40"
-                    >
-                      {sending ? "..." : "Send"}
-                    </button>
-                  </div>
-                  {!thread.session.online && (
-                    <p className="text-[11px] text-[#a1a1aa] mt-1">Visitor is offline; your reply will also be emailed to them.</p>
-                  )}
-                </>
               )}
+              {rows?.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => openThread(r.id)}
+                  className={`w-full text-left p-3 hover:bg-[#fafafa] ${selectedId === r.id ? "bg-[#eff6ff]" : ""}`}
+                >
+                  {/* Line 1: subject + status chip */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-semibold text-[#18181b] truncate flex-1">{r.subject}</span>
+                    <StatusChip handlingStatus={r.handlingStatus} needsReply={r.needsReply} />
+                  </div>
+                  {/* Line 2: name + online dot + mode chip */}
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    {r.online && <span className="h-1.5 w-1.5 rounded-full bg-[#15803d] shrink-0" />}
+                    <span className="text-[12px] text-[#71717a] truncate flex-1">{r.name}</span>
+                    <span
+                      className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                        r.mode === "human" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f4f4f5] text-[#71717a]"
+                      }`}
+                    >
+                      {r.mode === "human" ? "You" : "AI"}
+                    </span>
+                  </div>
+                  {/* Line 3: last-message preview + time */}
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-[12px] text-[#71717a] truncate flex-1">
+                      {r.lastMessage
+                        ? `${r.lastMessage.authoredBy === "user" ? "" : r.lastMessage.authoredBy === "admin" ? "You: " : "AI: "}${r.lastMessage.text}`
+                        : "No messages"}
+                    </p>
+                    <span className="text-[11px] text-[#a1a1aa] shrink-0">
+                      {r.lastMessage ? timeAgo(r.lastMessage.at) : timeAgo(r.startedAt)}
+                    </span>
+                  </div>
+                  {r.needsReply && r.waitingSinceMs != null && (
+                    <span className="inline-block mt-1 rounded-full bg-[#fef2f2] text-[#dc2626] px-2 py-0.5 text-[10px] font-bold">
+                      Waiting {timeAgo(new Date(r.waitingSinceMs).toISOString())}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
-          </>
-        )}
-      </div>
+          </div>
+
+          {/* Thread pane */}
+          <div
+            className={`flex-1 flex-col rounded-xl border border-[#e4e4e7] bg-white overflow-hidden ${
+              selectedId ? "flex" : "hidden lg:flex"
+            }`}
+          >
+            {!selectedId && (
+              <div className="flex-1 flex items-center justify-center text-[13px] text-[#71717a]">Pick a conversation.</div>
+            )}
+            {selectedId && thread === null && (
+              <div className="flex-1 flex items-center justify-center text-[13px] text-[#71717a]">Loading conversation...</div>
+            )}
+            {selectedId && thread && (
+              <>
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-[#f4f4f5] flex-wrap">
+                  <button onClick={() => setSelectedId(null)} className="lg:hidden text-[#71717a] text-[16px] mr-1" aria-label="Back">
+                    &#8592;
+                  </button>
+                  <span className="text-[14px] font-semibold text-[#18181b] truncate max-w-[200px]">
+                    {thread.session.subject}
+                  </span>
+                  {thread.session.online && <span className="h-2 w-2 rounded-full bg-[#15803d] shrink-0" />}
+                  <span className="text-[13px] text-[#71717a] shrink-0">{thread.session.name}</span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0 ${
+                      thread.session.mode === "human" ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f4f4f5] text-[#71717a]"
+                    }`}
+                  >
+                    {thread.session.mode === "human" ? "You are live, AI paused" : "AI answering"}
+                  </span>
+                  <div className="ml-auto flex items-center gap-2 flex-wrap">
+                    {thread.session.contactId && (
+                      <Link
+                        href={`/admin/contacts/${thread.session.contactId}`}
+                        className="text-[12px] text-[#2563eb] hover:underline"
+                      >
+                        Open contact
+                      </Link>
+                    )}
+                    {thread.session.mode === "human" && !thread.session.archived && (
+                      <button
+                        onClick={handBackToAI}
+                        className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]"
+                      >
+                        Hand back to AI
+                      </button>
+                    )}
+                    <button
+                      onClick={toggleArchive}
+                      className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]"
+                    >
+                      {thread.session.archived ? "Unarchive" : "Archive"}
+                    </button>
+                    {thread.session.handlingStatus !== "RESOLVED" ? (
+                      <button
+                        onClick={handleResolve}
+                        className="text-[12px] text-white rounded-lg px-2 py-1 font-medium"
+                        style={{ background: "#15803d" }}
+                      >
+                        Resolve
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleReopen}
+                        className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa]"
+                      >
+                        Reopen
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div ref={scrollBoxRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
+                  {thread.items.map((item, i) => {
+                    const prev = i > 0 ? thread.items[i - 1] : null;
+                    const newDay = !prev || dayLabel(prev.createdAt) !== dayLabel(item.createdAt);
+                    return (
+                      <div key={item.id}>
+                        {newDay && (
+                          <div className="text-center my-3">
+                            <span className="text-[11px] text-[#a1a1aa] bg-[#fafafa] rounded-full px-3 py-1">
+                              {dayLabel(item.createdAt)}
+                            </span>
+                          </div>
+                        )}
+                        {item.kind === "tool" ? <ToolLine item={item} /> : <MessageBubble item={item} />}
+                      </div>
+                    );
+                  })}
+                  <div ref={bottomRef} />
+                </div>
+
+                <div className="border-t border-[#f4f4f5] p-3">
+                  {thread.session.archived ? (
+                    <p className="text-[12px] text-[#71717a]">
+                      Archived conversation.{" "}
+                      <button onClick={toggleArchive} className="text-[#2563eb] hover:underline">
+                        Unarchive to reply
+                      </button>
+                    </p>
+                  ) : (
+                    <>
+                      {sendError && <p className="text-[12px] text-[#dc2626] mb-1">{sendError}</p>}
+                      <div className="flex items-end gap-2">
+                        <textarea
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              void send();
+                            }
+                          }}
+                          rows={Math.min(5, Math.max(1, draft.split("\n").length))}
+                          placeholder={thread.session.mode === "ai" ? "Reply (this takes over from the AI)..." : "Reply..."}
+                          className="flex-1 resize-none rounded-xl border border-[#e4e4e7] px-3 py-2 text-[14px]"
+                        />
+                        <button
+                          onClick={send}
+                          disabled={sending || !draft.trim()}
+                          className="rounded-xl bg-[#15803d] text-white px-4 py-2 text-[13px] font-semibold disabled:opacity-40"
+                        >
+                          {sending ? "..." : "Send"}
+                        </button>
+                      </div>
+                      {!thread.session.online && (
+                        <p className="text-[11px] text-[#a1a1aa] mt-1">
+                          Visitor is offline; your reply will also be emailed to them.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -331,7 +467,9 @@ function MessageBubble({ item }: { item: Extract<ChatThreadItem, { kind: "messag
                 : "bg-[#f4f4f5] text-[#18181b] rounded-bl-md"
           }`}
         >
-          {item.authoredBy === "ai" && <span className="block text-[10px] font-semibold text-[#a1a1aa] mb-0.5">AI</span>}
+          {item.authoredBy === "ai" && (
+            <span className="block text-[10px] font-semibold text-[#a1a1aa] mb-0.5">AI</span>
+          )}
           {item.text}
         </div>
         <p className={`text-[10px] text-[#a1a1aa] mt-0.5 ${mine ? "text-right" : ""}`}>
