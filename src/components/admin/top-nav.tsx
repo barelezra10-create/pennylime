@@ -182,6 +182,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
   });
   const seenContactIds = useRef<Set<string>>(new Set());
   const initialPollDone = useRef<boolean>(false);
+  const prevPendingChats = useRef<number>(-1);
   useEffect(() => {
     let cancelled = false;
     // Ask for desktop-notification permission once. Browser remembers
@@ -215,8 +216,27 @@ export function AdminTopNav({ userName }: { userName: string }) {
             }
           }
         }
+        // Fire a desktop notification when pendingChats goes UP (same
+        // guard as the email path: skip the baseline poll).
+        if (initialPollDone.current && typeof Notification !== "undefined" && Notification.permission === "granted") {
+          if (result.pendingChats > prevPendingChats.current) {
+            try {
+              const n = new Notification("New chat message", {
+                body: "A visitor is waiting in the chat inbox.",
+                tag: "pennylime-chats",
+              });
+              n.onclick = () => {
+                window.focus();
+                window.location.href = "/admin/chats";
+              };
+            } catch {
+              /* swallow */
+            }
+          }
+        }
         // Update the seen set to the current set of unreplied senders.
         seenContactIds.current = new Set(result.unrepliedSenders.map((s) => s.contactId));
+        prevPendingChats.current = result.pendingChats;
         initialPollDone.current = true;
         setBadges(result);
       } catch {
