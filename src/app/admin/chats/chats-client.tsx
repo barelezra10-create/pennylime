@@ -10,6 +10,7 @@ import {
   archiveChatSession,
   unarchiveChatSession,
   setChatHandlingStatus,
+  markChatRead,
   type ChatConversationRow,
   type ChatThreadItem,
 } from "@/actions/agent-chat";
@@ -149,6 +150,7 @@ export function ChatsClient() {
         if (appended.length) {
           lastItemIsoRef.current = appended[appended.length - 1].createdAt;
           if (isAtBottom()) setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" }), 30);
+          void markChatRead(id);
         }
       })
       .catch(() => {});
@@ -167,9 +169,11 @@ export function ChatsClient() {
         setThread(t);
         lastItemIsoRef.current = t.items.length ? t.items[t.items.length - 1].createdAt : null;
         setTimeout(() => bottomRef.current?.scrollIntoView(), 30);
+        void markChatRead(id);
+        loadList(filter);
       })
       .catch(() => {});
-  }, []);
+  }, [loadList, filter]);
 
   // Live thread poll every 3s.
   useEffect(() => {
@@ -263,6 +267,23 @@ export function ChatsClient() {
     }
   };
 
+  const handleKeepWorking = async () => {
+    if (!selectedId || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const res = await markChatRead(selectedId);
+      if (!res.ok) {
+        setActionError(res.error || "Action failed");
+        return;
+      }
+      setActionError(null);
+      loadList(filter);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {/* Segmented view switch */}
@@ -320,7 +341,8 @@ export function ChatsClient() {
                 >
                   {/* Line 1: subject + status chip */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold text-[#18181b] truncate flex-1">{r.subject}</span>
+                    {r.unread && <span className="h-2 w-2 rounded-full bg-[#2563eb] shrink-0" />}
+                    <span className={`text-[13px] truncate flex-1 ${r.unread ? "font-bold text-[#18181b]" : "font-semibold text-[#18181b]"}`}>{r.subject}</span>
                     <StatusChip handlingStatus={r.handlingStatus} needsReply={r.needsReply} />
                   </div>
                   {/* Line 2: name + online dot + mode chip */}
@@ -415,14 +437,22 @@ export function ChatsClient() {
                       {thread.session.archived ? "Unarchive" : "Archive"}
                     </button>
                     {thread.session.handlingStatus !== "RESOLVED" ? (
-                      <button
-                        onClick={handleResolve}
-                        disabled={actionBusy}
-                        className="text-[12px] text-white rounded-lg px-2 py-1 font-medium disabled:opacity-40"
-                        style={{ background: "#15803d" }}
-                      >
-                        Resolve
-                      </button>
+                      <>
+                        <button
+                          onClick={handleResolve}
+                          disabled={actionBusy}
+                          className="text-[12px] text-white bg-[#15803d] rounded-lg px-2 py-1 font-medium disabled:opacity-40"
+                        >
+                          Done
+                        </button>
+                        <button
+                          onClick={handleKeepWorking}
+                          disabled={actionBusy}
+                          className="text-[12px] text-[#3f3f46] border border-[#e4e4e7] rounded-lg px-2 py-1 hover:bg-[#fafafa] disabled:opacity-40"
+                        >
+                          Keep working
+                        </button>
+                      </>
                     ) : (
                       <button
                         onClick={handleReopen}
