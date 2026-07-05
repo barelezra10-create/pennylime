@@ -1392,3 +1392,30 @@ model AgentError {
   createdAt   DateTime @default(now())
   @@index([createdAt])
 }
+
+model KnowledgeEntry {
+  id         String   @id @default(uuid())
+  question   String
+  answer     String?
+  status     String   @default("PENDING") // PENDING | ANSWERED | DISABLED
+  timesSent  Int      @default(0)
+  answeredBy String?
+  answeredAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  waiters    KnowledgeWaiter[]
+
+  @@index([status, createdAt])
+}
+
+model KnowledgeWaiter {
+  id         String   @id @default(uuid())
+  entryId    String
+  entry      KnowledgeEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  sessionId  String
+  notifiedAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([entryId, sessionId])
+  @@index([sessionId])
+}
