@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getInboxBadges } from "@/actions/inbox-badges";
 import { ChatsClient } from "@/app/admin/chats/chats-client";
+import { EmailsPanel } from "@/app/support/emails-panel";
 
 type Tab = "chats" | "emails" | "tickets";
 
@@ -93,7 +94,7 @@ export function SupportShell() {
 
       {/* Tab content */}
       {activeTab === "chats" && <ChatsClient />}
-      {activeTab === "emails" && <PlaceholderCard label="Emails" />}
+      {activeTab === "emails" && <EmailsPanel />}
       {activeTab === "tickets" && <PlaceholderCard label="Tickets" />}
     </div>
   );

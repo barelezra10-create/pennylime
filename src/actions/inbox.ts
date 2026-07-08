@@ -4,8 +4,18 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { sendEmail } from "@/lib/emails/send";
 
-export type InboxFilter = "ALL" | "UNREAD" | "UNMATCHED" | "MATCHED" | "ARCHIVED";
+export type InboxFilter = "ALL" | "UNREAD" | "UNMATCHED" | "MATCHED" | "ARCHIVED" | "REPLIED";
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 export type InboxRow = {
   id: string;
@@ -34,6 +44,9 @@ export async function getInbox(filter: InboxFilter = "ALL"): Promise<InboxRow[]>
     case "MATCHED":
       where.contactId = { not: null };
       where.status = { not: "ARCHIVED" };
+      break;
+    case "REPLIED":
+      where.status = "REPLIED";
       break;
     case "ARCHIVED":
       where.status = "ARCHIVED";
@@ -211,4 +224,44 @@ export async function getInboxCounts(): Promise<{ unread: number; unmatched: num
     }),
   ]);
   return { unread, unmatched };
+}
+
+export async function replyToInboundEmail(
+  emailId: string,
+  body: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
+  const text = body.trim();
+  if (!text) return { ok: false as const, error: "Reply required" };
+  if (text.length > 10_000) return { ok: false as const, error: "Reply too long" };
+
+  const email = await prisma.inboundEmail.findUnique({ where: { id: emailId } });
+  if (!email) return { ok: false as const, error: "Email not found" };
+
+  const subject = /^re:/i.test(email.subject || "")
+    ? (email.subject as string)
+    : `Re: ${email.subject || "your message"}`;
+  const html = text
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+  const res = await sendEmail({ to: email.fromEmail, subject, html });
+  if (!res.success) return { ok: false as const, error: "Send failed" };
+
+  await prisma.inboundEmail.update({ where: { id: emailId }, data: { status: "REPLIED" } });
+  if (email.contactId) {
+    await prisma.activity
+      .create({
+        data: {
+          contactId: email.contactId,
+          type: "email",
+          title: "Support reply",
+          details: text.slice(0, 5000),
+          performedBy: session.user.email,
+        },
+      })
+      .catch(() => {});
+  }
+  return { ok: true as const };
 }
