@@ -130,9 +130,14 @@ export function ChatsClient() {
 
   const visibleRows = useMemo(() => {
     if (!rows) return null;
-    let out = unreadOnly ? rows.filter((r) => r.unread) : rows;
-    if (sortDir === "old") out = [...out].sort((a, b) => a.lastMessageAtMs - b.lastMessageAtMs);
-    return out;
+    const base = unreadOnly ? rows.filter((r) => r.unread) : rows;
+    // The sort toggle is authoritative for time order; needs-reply rows
+    // stay grouped on top so waiting clients are never buried.
+    const dir = sortDir === "new" ? -1 : 1;
+    const byTime = (a: SortedRow, b: SortedRow) => dir * (a.lastMessageAtMs - b.lastMessageAtMs);
+    const waiting = base.filter((r) => r.needsReply).sort(byTime);
+    const rest = base.filter((r) => !r.needsReply).sort(byTime);
+    return [...waiting, ...rest];
   }, [rows, unreadOnly, sortDir]);
 
   const isAtBottom = () => {
