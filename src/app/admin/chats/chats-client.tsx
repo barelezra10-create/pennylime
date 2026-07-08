@@ -30,6 +30,10 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "archived", label: "Archived" },
 ];
 
+function shortAgent(email: string): string {
+  return email.split("@")[0] || email;
+}
+
 function timeAgo(iso: string): string {
   const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
   if (s < 60) return `${s}s`;
@@ -398,7 +402,7 @@ export function ChatsClient() {
                   <div className="flex items-center gap-2 mt-0.5">
                     <p className="text-[12px] text-[#71717a] truncate flex-1">
                       {r.lastMessage
-                        ? `${r.lastMessage.authoredBy === "user" ? "" : r.lastMessage.authoredBy === "admin" ? "You: " : "AI: "}${r.lastMessage.text}`
+                        ? `${r.lastMessage.authoredBy === "user" ? "" : r.lastMessage.authoredBy === "admin" ? `${shortAgent(r.lastMessage.sender ?? "")}: ` : "AI: "}${r.lastMessage.text}`
                         : "No messages"}
                     </p>
                     <span className="text-[11px] text-[#a1a1aa] shrink-0">
@@ -592,7 +596,7 @@ function MessageBubble({ item }: { item: Extract<ChatThreadItem, { kind: "messag
           {item.text}
         </div>
         <p className={`text-[10px] text-[#a1a1aa] mt-0.5 ${mine ? "text-right" : ""}`}>
-          {hhmm(item.createdAt)}
+          {mine && item.sender ? `${shortAgent(item.sender)} - ` : ""}{hhmm(item.createdAt)}
           {item.emailed && " (also sent by email)"}
         </p>
       </div>

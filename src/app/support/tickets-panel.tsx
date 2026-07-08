@@ -8,6 +8,10 @@ import {
   type TicketRow,
 } from "@/actions/tickets";
 
+function shortAgent(email: string): string {
+  return email.split("@")[0] || email;
+}
+
 type Filter = "open" | "mine" | "unassigned" | "closed" | "all";
 
 const FILTERS: { key: Filter; label: string }[] = [
@@ -124,6 +128,13 @@ function TicketCard({
             {isAssignedToMe ? "you" : ticket.assignedTo}
           </span>
         </div>
+      )}
+
+      {/* Closed by */}
+      {ticket.status === "closed" && ticket.closedBy && (
+        <span className="inline-block rounded-full bg-[#f4f4f5] text-[#71717a] px-2 py-0.5 text-[10px] font-medium">
+          Closed by {shortAgent(ticket.closedBy)}
+        </span>
       )}
 
       {/* Action buttons */}

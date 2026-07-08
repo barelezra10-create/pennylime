@@ -896,6 +896,9 @@ model InboundEmail {
   // separately from replied so junk can be archived without sending a
   // reply.
   status       String   @default("UNREAD")    // UNREAD | READ | REPLIED | ARCHIVED
+  // Email address of the admin who sent the reply. Set when status flips
+  // to REPLIED via replyToInboundEmail(). Null until a human replies.
+  repliedBy    String?
   receivedAt   DateTime @default(now())
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -1379,6 +1382,9 @@ model SupportTicket {
   transcript      String
   status          String   @default("open")
   assignedTo      String?
+  // Admin who closed the ticket. Set when status flips to "closed";
+  // cleared back to null when a ticket is reopened.
+  closedBy        String?
   createdAt       DateTime @default(now())
   resolvedAt      DateTime?
   @@index([status, createdAt])

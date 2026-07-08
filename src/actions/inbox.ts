@@ -25,6 +25,7 @@ export type InboxRow = {
   preview: string;
   receivedAt: string;
   status: string;
+  repliedBy: string | null;
   contact: { id: string; firstName: string; lastName: string | null } | null;
 };
 
@@ -82,6 +83,7 @@ export async function getInbox(filter: InboxFilter = "ALL"): Promise<InboxRow[]>
     preview: r.bodyText.replace(/\s+/g, " ").trim().slice(0, 200),
     receivedAt: r.receivedAt.toISOString(),
     status: r.status,
+    repliedBy: r.repliedBy,
     contact: r.contactId ? byId.get(r.contactId) || null : null,
   }));
 }
@@ -96,6 +98,7 @@ export type InboxMessageDetail = {
   bodyHtml: string | null;
   receivedAt: string;
   status: string;
+  repliedBy: string | null;
   contact: { id: string; firstName: string; lastName: string | null; email: string } | null;
 };
 
@@ -132,6 +135,7 @@ export async function getInboxMessage(id: string): Promise<InboxMessageDetail | 
     bodyHtml: row.bodyHtml,
     receivedAt: row.receivedAt.toISOString(),
     status: row.status,
+    repliedBy: row.repliedBy,
     contact,
   };
 }
@@ -249,7 +253,7 @@ export async function replyToInboundEmail(
   const res = await sendEmail({ to: email.fromEmail, subject, html });
   if (!res.success) return { ok: false as const, error: "Send failed" };
 
-  await prisma.inboundEmail.update({ where: { id: emailId }, data: { status: "REPLIED" } });
+  await prisma.inboundEmail.update({ where: { id: emailId }, data: { status: "REPLIED", repliedBy: session.user.email } });
   if (email.contactId) {
     await prisma.activity
       .create({

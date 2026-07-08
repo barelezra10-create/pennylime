@@ -11,6 +11,7 @@ export type TicketRow = {
   transcript: string;
   status: string;
   assignedTo: string | null;
+  closedBy: string | null;
   createdAt: string;
 };
 
@@ -47,6 +48,7 @@ export async function listSupportTickets(
     transcript: t.transcript,
     status: t.status,
     assignedTo: t.assignedTo,
+    closedBy: t.closedBy,
     createdAt: t.createdAt.toISOString(),
   }));
 }
@@ -55,7 +57,13 @@ export async function setTicketStatus(id: string, status: "open" | "closed") {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email)
     return { ok: false as const, error: "Not authenticated" };
-  await prisma.supportTicket.update({ where: { id }, data: { status } });
+  await prisma.supportTicket.update({
+    where: { id },
+    data: {
+      status,
+      closedBy: status === "closed" ? session.user.email : null,
+    },
+  });
   return { ok: true as const };
 }
 

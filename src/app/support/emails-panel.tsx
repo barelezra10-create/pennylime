@@ -11,6 +11,10 @@ import {
   type InboxFilter,
 } from "@/actions/inbox";
 
+function shortAgent(email: string): string {
+  return email.split("@")[0] || email;
+}
+
 type UiFilter = "Unread" | "All" | "Replied" | "Archived";
 
 const UI_TO_API: Record<UiFilter, InboxFilter> = {
@@ -180,6 +184,11 @@ export function EmailsPanel() {
                 <div className="text-[11px] text-[#a1a1aa] mt-0.5">
                   {timeAgo(row.receivedAt)}
                 </div>
+                {row.repliedBy && (
+                  <span className="inline-block mt-1 rounded-full bg-[#f4f4f5] text-[#71717a] px-2 py-0.5 text-[10px] font-medium">
+                    Replied by {shortAgent(row.repliedBy)}
+                  </span>
+                )}
               </button>
             ))
           )}
@@ -217,6 +226,11 @@ export function EmailsPanel() {
                   minute: "2-digit",
                 })}
               </div>
+              {detail.repliedBy && (
+                <span className="inline-block mt-1 rounded-full bg-[#f4f4f5] text-[#71717a] px-2 py-0.5 text-[11px] font-medium">
+                  Replied by {shortAgent(detail.repliedBy)}
+                </span>
+              )}
               <div className="flex gap-3 mt-2">
                 <button
                   type="button"

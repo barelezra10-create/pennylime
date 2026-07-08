@@ -191,7 +191,7 @@ export type ChatConversationRow = {
   needsReply: boolean;
   unread: boolean;
   waitingSinceMs: number | null;
-  lastMessage: { text: string; at: string; authoredBy: "user" | "ai" | "admin" } | null;
+  lastMessage: { text: string; at: string; authoredBy: "user" | "ai" | "admin"; sender: string | null } | null;
 };
 
 export async function listChatConversations(
@@ -282,6 +282,7 @@ export async function listChatConversations(
             text: last.text.slice(0, 120),
             at: last.createdAt.toISOString(),
             authoredBy: last.senderEmail ? "admin" : last.role === "assistant" ? "ai" : "user",
+            sender: last.senderEmail ?? null,
           }
         : null,
     };
@@ -292,7 +293,7 @@ export async function listChatConversations(
 }
 
 export type ChatThreadItem =
-  | { kind: "message"; id: string; authoredBy: "user" | "ai" | "admin"; text: string; emailed: boolean; createdAt: string }
+  | { kind: "message"; id: string; authoredBy: "user" | "ai" | "admin"; text: string; emailed: boolean; sender: string | null; createdAt: string }
   | { kind: "tool"; id: string; name: string; status: string; summary: string | null; createdAt: string };
 
 export async function getChatConversation(sessionId: string, sinceIso?: string) {
@@ -344,6 +345,7 @@ export async function getChatConversation(sessionId: string, sinceIso?: string) 
       authoredBy: m.senderEmail ? ("admin" as const) : m.role === "assistant" ? ("ai" as const) : ("user" as const),
       text: m.text,
       emailed: !!m.emailedAt,
+      sender: m.senderEmail ?? null,
       createdAt: m.createdAt.toISOString(),
     })),
     ...tools.map((t): ChatThreadItem => ({
