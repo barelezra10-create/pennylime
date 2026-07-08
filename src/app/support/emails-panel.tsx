@@ -91,7 +91,9 @@ export function EmailsPanel() {
   async function handleMarkUnread(id: string) {
     await setInboxStatus(id, "UNREAD");
     await loadList();
-    if (selectedId === id) await loadDetail(id);
+    // Close the pane instead of reloading: getInboxMessage auto-flips an
+    // UNREAD email back to READ, which would undo the action.
+    if (selectedId === id) setSelectedId(null);
   }
 
   async function handleSendReply() {
