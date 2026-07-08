@@ -6,6 +6,7 @@ import { encrypt, hashSSN, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireNonSupportRole } from "@/lib/auth-helpers";
 import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { generateSchedule } from "@/lib/amortization";
@@ -485,8 +486,8 @@ export async function rejectApplication(applicationId: string, reason: string) {
 }
 
 export async function revealSSN(applicationId: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
 
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
@@ -501,7 +502,7 @@ export async function revealSSN(applicationId: string) {
     action: "VIEW_SSN",
     entityType: "APPLICATION",
     entityId: applicationId,
-    performedBy: session.user.email,
+    performedBy: auth.email,
   });
 
   const ssn = decrypt(application.ssnEncrypted);
@@ -509,8 +510,8 @@ export async function revealSSN(applicationId: string) {
 }
 
 export async function fundApplication(applicationId: string, fundedAmount: number) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
 
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
@@ -619,7 +620,7 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     action: "FUND",
     entityType: "APPLICATION",
     entityId: applicationId,
-    performedBy: session.user.email,
+    performedBy: auth.email,
     details: {
       fundedAmount,
       paymentsCreated,
