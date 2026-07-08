@@ -26,6 +26,9 @@ const ADMIN_PROTECTED = [
   "/admin/plaid-test",
   "/admin/increase-test",
   "/admin/funnel-preview",
+  "/admin/agent",
+  "/admin/social",
+  "/admin/tickets",
 ];
 
 function generatePennyClickId(): string {

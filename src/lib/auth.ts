@@ -79,6 +79,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    // NOTE: role changes take effect at next sign-in; the JWT is cached for up to 12 h.
     async jwt({ token, user }) {
       if (user) token.role = (user as { role?: string }).role ?? "ADMIN";
       return token;

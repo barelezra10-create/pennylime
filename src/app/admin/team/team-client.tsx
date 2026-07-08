@@ -36,16 +36,24 @@ export function TeamClient({ members }: { members: Member[] }) {
   }
 
   async function handleRoleChange(id: string, role: string) {
-    await updateTeamMemberRole(id, role);
-    toast.success("Role updated");
-    router.refresh();
+    try {
+      await updateTeamMemberRole(id, role);
+      toast.success("Role updated");
+      router.refresh();
+    } catch {
+      toast.error("Failed to update role");
+    }
   }
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Remove ${name} from the team?`)) return;
-    await deleteTeamMember(id);
-    toast.success("Member removed");
-    router.refresh();
+    try {
+      await deleteTeamMember(id);
+      toast.success("Member removed");
+      router.refresh();
+    } catch {
+      toast.error("Failed to remove member");
+    }
   }
 
   const inputClass = "w-full text-[13px] px-3.5 py-2.5 bg-[#f4f4f5] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#15803d]/20";
