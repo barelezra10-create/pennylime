@@ -188,13 +188,18 @@ export async function POST(req: NextRequest) {
     const msg = await prisma.agentMessage.create({
       data: { sessionId: session.id, role: "user", text },
     });
+    if (!session.contactId) await recognizePortalVisitor(session.id);
+    const humanSessionFresh = await prisma.agentSession.findUnique({
+      where: { id: session.id },
+      select: { contactId: true, leadEmail: true, leadFirstName: true },
+    });
     return Response.json({
       sessionId: session.id,
       mode: "human",
       reply: null,
       lastMessageId: msg.id,
-      identified: !!(session.contactId || session.leadEmail),
-      visitorName: session.leadFirstName ?? null,
+      identified: !!(humanSessionFresh?.contactId || humanSessionFresh?.leadEmail),
+      visitorName: humanSessionFresh?.leadFirstName ?? null,
     });
   }
 
@@ -254,14 +259,26 @@ async function recognizePortalVisitor(sessionId: string): Promise<void> {
       });
       contactId = c?.id ?? null;
     }
+    const current = await prisma.agentSession.findUnique({
+      where: { id: sessionId },
+      select: { contactId: true, leadFirstName: true, leadEmail: true },
+    });
+    if (!current) return;
+    // A session that already carries someone's identity keeps it; the portal
+    // cookie only fills gaps (shared-device protection).
+    if (current.contactId || current.leadEmail) {
+      // Only bump auth level when the cookie's application matches the session's existing identity by email.
+      if (current.leadEmail && app.email && current.leadEmail.toLowerCase() === app.email.toLowerCase()) {
+        await prisma.agentSession.update({
+          where: { id: sessionId },
+          data: { authLevel: "verified", ...(contactId && !current.contactId ? { contactId } : {}) },
+        });
+      }
+      return;
+    }
     await prisma.agentSession.update({
       where: { id: sessionId },
-      data: {
-        ...(contactId ? { contactId } : {}),
-        leadFirstName: app.firstName,
-        leadEmail: app.email,
-        authLevel: "verified",
-      },
+      data: { ...(contactId ? { contactId } : {}), leadFirstName: app.firstName, leadEmail: app.email, authLevel: "verified" },
     });
   } catch {}
 }
