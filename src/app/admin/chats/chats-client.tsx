@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   listChatConversations,
@@ -90,6 +90,8 @@ function StatusChip({ handlingStatus, needsReply }: { handlingStatus: string; ne
 export function ChatsClient() {
   const [view, setView] = useState<View>("conversations");
   const [filter, setFilter] = useState<Filter>("needs-reply");
+  const [sortDir, setSortDir] = useState<"new" | "old">("new");
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [rows, setRows] = useState<SortedRow[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [thread, setThread] = useState<Thread | null>(null);
@@ -125,6 +127,13 @@ export function ChatsClient() {
     const t = setInterval(() => loadList(filter), 10_000);
     return () => clearInterval(t);
   }, [filter, loadList]);
+
+  const visibleRows = useMemo(() => {
+    if (!rows) return null;
+    let out = unreadOnly ? rows.filter((r) => r.unread) : rows;
+    if (sortDir === "old") out = [...out].sort((a, b) => a.lastMessageAtMs - b.lastMessageAtMs);
+    return out;
+  }, [rows, unreadOnly, sortDir]);
 
   const isAtBottom = () => {
     const el = scrollBoxRef.current;
@@ -326,14 +335,37 @@ export function ChatsClient() {
                 </button>
               ))}
             </div>
+            <div className="flex gap-1.5 mb-3">
+              <button
+                onClick={() => setUnreadOnly((v) => !v)}
+                className={`rounded-full px-3 py-1 text-[12px] font-medium border ${
+                  unreadOnly
+                    ? "bg-[#2563eb] text-white border-[#2563eb]"
+                    : "bg-white text-[#3f3f46] border-[#e4e4e7]"
+                }`}
+              >
+                Unread only
+              </button>
+              <button
+                onClick={() => setSortDir((d) => (d === "new" ? "old" : "new"))}
+                className="rounded-full px-3 py-1 text-[12px] font-medium border bg-white text-[#3f3f46] border-[#e4e4e7]"
+                title="Toggle sort order"
+              >
+                {sortDir === "new" ? "Newest first ↓" : "Oldest first ↑"}
+              </button>
+            </div>
             <div className="flex-1 overflow-y-auto rounded-xl border border-[#e4e4e7] bg-white divide-y divide-[#f4f4f5]">
-              {rows === null && <p className="p-4 text-[13px] text-[#71717a]">Loading...</p>}
-              {rows?.length === 0 && (
+              {visibleRows === null && <p className="p-4 text-[13px] text-[#71717a]">Loading...</p>}
+              {visibleRows?.length === 0 && (
                 <p className="p-4 text-[13px] text-[#71717a]">
-                  {filter === "needs-reply" ? "No one is waiting. Nice." : "No conversations."}
+                  {unreadOnly
+                    ? "Nothing unread."
+                    : filter === "needs-reply"
+                      ? "No one is waiting. Nice."
+                      : "No conversations."}
                 </p>
               )}
-              {rows?.map((r) => (
+              {visibleRows?.map((r) => (
                 <button
                   key={r.id}
                   onClick={() => openThread(r.id)}
