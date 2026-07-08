@@ -54,8 +54,10 @@ export async function POST(req: NextRequest) {
   let session = sid
     ? await prisma.agentSession.findUnique({ where: { id: sid } })
     : null;
+  let isNewSession = false;
 
   if (!session) {
+    isNewSession = true;
     sid = sid ?? randomUUID();
     // Upsert contact by email (chat = new lead source).
     let contactId: string | null = null;
@@ -97,6 +99,7 @@ export async function POST(req: NextRequest) {
         metadata: { ip: ip ?? undefined, userAgent } as object,
       },
     });
+    await recognizePortalVisitor(session.id);
 
     // Fire admin notification (best-effort, never blocks chat start).
     if (leadFirstName && leadEmail) {
@@ -155,7 +158,17 @@ export async function POST(req: NextRequest) {
 
   // No text yet — just creating the session.
   if (!text) {
-    return Response.json({ sessionId: session.id, mode: session.mode, reply: null });
+    const fresh = await prisma.agentSession.findUnique({
+      where: { id: session.id },
+      select: { contactId: true, leadEmail: true, leadFirstName: true },
+    });
+    return Response.json({
+      sessionId: session.id,
+      mode: session.mode,
+      reply: null,
+      identified: !!(fresh?.contactId || fresh?.leadEmail),
+      visitorName: fresh?.leadFirstName ?? null,
+    });
   }
 
   if (text.length > 2000) {
@@ -180,10 +193,25 @@ export async function POST(req: NextRequest) {
       mode: "human",
       reply: null,
       lastMessageId: msg.id,
+      identified: !!(session.contactId || session.leadEmail),
+      visitorName: session.leadFirstName ?? null,
     });
   }
 
   // Normal AI turn.
+  // For existing sessions without a linked contact, try to recognise the
+  // visitor via their portal cookie (new sessions already ran recognition
+  // right after creation above).
+  if (!isNewSession && !session.contactId) {
+    await recognizePortalVisitor(session.id);
+  }
+  const aiSessionFresh = await prisma.agentSession.findUnique({
+    where: { id: session.id },
+    select: { contactId: true, leadEmail: true, leadFirstName: true },
+  });
+  const identified = !!(aiSessionFresh?.contactId || aiSessionFresh?.leadEmail);
+  const visitorName: string | null = aiSessionFresh?.leadFirstName ?? null;
+
   try {
     const out = await runTurn(text, {
       channel: "chat",
@@ -197,6 +225,8 @@ export async function POST(req: NextRequest) {
       mode: "ai",
       reply: out.reply,
       newAuthLevel: out.newAuthLevel ?? null,
+      identified,
+      visitorName,
     });
   } catch (err) {
     return Response.json(
@@ -204,6 +234,36 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+async function recognizePortalVisitor(sessionId: string): Promise<void> {
+  try {
+    const { getPortalApplicationId } = await import("@/lib/portal-auth");
+    const applicationId = await getPortalApplicationId();
+    if (!applicationId) return;
+    const app = await prisma.application.findUnique({
+      where: { id: applicationId },
+      select: { firstName: true, email: true, contact: { select: { id: true } } },
+    });
+    if (!app) return;
+    let contactId = app.contact?.id ?? null;
+    if (!contactId && app.email) {
+      const c = await prisma.contact.findFirst({
+        where: { email: { equals: app.email, mode: "insensitive" } },
+        select: { id: true },
+      });
+      contactId = c?.id ?? null;
+    }
+    await prisma.agentSession.update({
+      where: { id: sessionId },
+      data: {
+        ...(contactId ? { contactId } : {}),
+        leadFirstName: app.firstName,
+        leadEmail: app.email,
+        authLevel: "verified",
+      },
+    });
+  } catch {}
 }
 
 async function handlePoll(sessionId: string, sinceMessageId: string, passive = false) {
@@ -237,12 +297,14 @@ async function handlePoll(sessionId: string, sinceMessageId: string, passive = f
 
   const session = await prisma.agentSession.findUnique({
     where: { id: sessionId },
-    select: { mode: true },
+    select: { mode: true, contactId: true, leadEmail: true, leadFirstName: true },
   });
 
   return Response.json({
     sessionId,
     mode: session?.mode ?? "ai",
+    identified: !!(session?.contactId || session?.leadEmail),
+    visitorName: session?.leadFirstName ?? null,
     messages: newer.map((m) => ({
       id: m.id,
       role: m.role,

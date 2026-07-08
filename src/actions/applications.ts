@@ -128,6 +128,11 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
     },
   });
 
+  try {
+    const { signInPortal } = await import("@/lib/portal-auth");
+    await signInPortal(application.id);
+  } catch {}
+
   // Best-effort: pre-fetch verified income/balance and create the Increase
   // external account so admin gets a fully-prepped row when they review.
   // Each underlying action persists its own failure state on the row;
