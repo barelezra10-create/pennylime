@@ -30,7 +30,7 @@ export function ChatWidget() {
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [hydrating, setHydrating] = useState(false);
   const [unread, setUnread] = useState(0);
-  const [wantSaveContact, setWantSaveContact] = useState(false);
+  const [identified, setIdentified] = useState(false);
   const [leadFirst, setLeadFirst] = useState("");
   const [leadEmailVal, setLeadEmailVal] = useState("");
   const [leadErr, setLeadErr] = useState<string | null>(null);
@@ -60,7 +60,13 @@ export function ChatWidget() {
     const storedSid = localStorage.getItem(SESSION_KEY);
     const storedLead = localStorage.getItem(LEAD_KEY);
     if (storedSid) { setSessionId(storedSid); sessionIdRef.current = storedSid; }
-    if (storedLead) { try { setLead(JSON.parse(storedLead)); } catch {} }
+    if (storedLead) {
+      try {
+        const parsed = JSON.parse(storedLead) as Lead;
+        setLead(parsed);
+        if (parsed?.email) setIdentified(true);
+      } catch {}
+    }
   }, []);
 
   // Auto-scroll thread when messages or typing indicator changes
@@ -104,8 +110,11 @@ export function ChatWidget() {
       const data = (await res.json()) as {
         mode?: string;
         messages?: ChatMsg[];
+        identified?: boolean;
+        visitorName?: string | null;
       };
       if (data.mode) setMode(data.mode as "ai" | "human");
+      if (data.identified === true) setIdentified(true);
       const incoming: ChatMsg[] = Array.isArray(data.messages) ? data.messages : [];
       if (incoming.length > 0) {
         lastMsgIdRef.current = incoming[incoming.length - 1].id;
@@ -208,6 +217,8 @@ export function ChatWidget() {
         sessionId?: string;
         mode?: string;
         reply?: string | null;
+        identified?: boolean;
+        visitorName?: string | null;
       };
 
       // Persist new session id
@@ -218,6 +229,7 @@ export function ChatWidget() {
       }
       if (data.mode) setMode(data.mode as "ai" | "human");
       if (data.mode === "human" && !humanDelivered) setHumanDelivered(true);
+      if (data.identified === true) setIdentified(true);
 
       setIsAiTyping(false);
       // Fire an immediate poll: confirms user message + fetches AI reply
@@ -239,41 +251,39 @@ export function ChatWidget() {
     textareaRef.current?.focus();
   }
 
-  async function submitLead(e: React.FormEvent) {
+  // Intro gate submission: validate, save locally, reveal composer, then fire API best-effort
+  async function submitIntro(e: React.FormEvent) {
     e.preventDefault();
     setLeadErr(null);
-    if (!leadFirst.trim()) { setLeadErr("Please share your name."); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadEmailVal)) {
-      setLeadErr("Please enter a valid email.");
-      return;
-    }
+    const firstName = leadFirst.trim();
+    const email = leadEmailVal.trim();
+    if (!firstName) { setLeadErr("Please share your name."); return; }
+    if (!/^\S+@\S+\.\S+$/.test(email)) { setLeadErr("Please enter a valid email."); return; }
     setLeadBusy(true);
+    // Save locally and reveal composer immediately
+    const captured: Lead = { firstName, email };
+    setLead(captured);
+    try { localStorage.setItem(LEAD_KEY, JSON.stringify(captured)); } catch {}
+    setIdentified(true);
+    // Fire API (best-effort; next send() carries lead fields if this fails)
     try {
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           sessionId: sessionIdRef.current,
-          leadFirstName: leadFirst,
-          leadEmail: leadEmailVal,
+          leadFirstName: firstName,
+          leadEmail: email,
         }),
       });
-      const data = (await res.json()) as { sessionId?: string; error?: string };
-      if (data.sessionId) {
-        if (!sessionIdRef.current) {
-          setSessionId(data.sessionId);
-          sessionIdRef.current = data.sessionId;
-          try { localStorage.setItem(SESSION_KEY, data.sessionId); } catch {}
-        }
-        const captured: Lead = { firstName: leadFirst, email: leadEmailVal };
-        setLead(captured);
-        try { localStorage.setItem(LEAD_KEY, JSON.stringify(captured)); } catch {}
-        setWantSaveContact(false);
-      } else if (data.error) {
-        setLeadErr(data.error);
+      const data = (await res.json()) as { sessionId?: string; identified?: boolean };
+      if (data.sessionId && !sessionIdRef.current) {
+        setSessionId(data.sessionId);
+        sessionIdRef.current = data.sessionId;
+        try { localStorage.setItem(SESSION_KEY, data.sessionId); } catch {}
       }
     } catch {
-      setLeadErr("Network error. Please try again.");
+      // Local save already done; composer already revealed; next send carries fields
     } finally {
       setLeadBusy(false);
     }
@@ -293,7 +303,9 @@ export function ChatWidget() {
     isGroupEnd: i === messages.length - 1 || messages[i + 1].authoredBy !== m.authoredBy,
   }));
 
-  const needsLead = wantSaveContact && !lead;
+  // Button enabled only when both fields pass local validation
+  const isIntroValid =
+    leadFirst.trim().length > 0 && /^\S+@\S+\.\S+$/.test(leadEmailVal);
 
   return (
     <>
@@ -364,201 +376,179 @@ export function ChatWidget() {
             </button>
           </div>
 
-          {/* Lead capture form */}
-          {needsLead ? (
-            <form
-              onSubmit={submitLead}
-              className="flex flex-1 flex-col gap-3 overflow-y-auto bg-gray-50 p-5"
-            >
-              <p className="text-sm text-gray-600">
-                We will save the chat to your inbox if we get disconnected. Where should we reach
-                you?
+          {/* Message thread — always visible so history is readable above the gate */}
+          <div
+            ref={threadRef}
+            onScroll={handleScroll}
+            className="flex flex-1 flex-col overflow-y-auto bg-gray-50 px-3 py-3"
+          >
+            {/* Loading shimmer while hydrating existing session */}
+            {hydrating && (
+              <div className="flex flex-col gap-3">
+                {[72, 55, 80, 48].map((w, i) => (
+                  <div
+                    key={i}
+                    className={[
+                      "h-8 animate-pulse rounded-2xl bg-gray-200",
+                      i % 2 !== 0 ? "self-end" : "self-start",
+                    ].join(" ")}
+                    style={{ width: `${w}%` }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!hydrating && messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+                <div
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="h-6 w-6 text-green-700"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223 13.86 13.86 0 01-.001 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">
+                    Hi{lead ? ` ${lead.firstName}` : ""}! How can we help?
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Ask about how PennyLime works, eligibility, rates, or repayment.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Message bubbles */}
+            {!hydrating &&
+              grouped.map((m) => {
+                const isUser = m.authoredBy === "user";
+                const isAdmin = m.authoredBy === "admin";
+                return (
+                  <div
+                    key={m.id}
+                    className={[
+                      "flex flex-col",
+                      isUser ? "items-end" : "items-start",
+                      m.isGroupStart ? "mt-4" : "mt-0.5",
+                    ].join(" ")}
+                  >
+                    {/* "PennyLime team" label for first admin bubble in a run */}
+                    {isAdmin && m.isGroupStart && (
+                      <span className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                        PennyLime team
+                      </span>
+                    )}
+
+                    {/* Bubble — button so failed state is tappable */}
+                    <button
+                      type="button"
+                      onClick={m.failed ? () => retryMessage(m) : undefined}
+                      disabled={!m.failed}
+                      className={[
+                        "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-left text-sm leading-relaxed whitespace-pre-wrap",
+                        isUser
+                          ? "rounded-br-sm text-white"
+                          : isAdmin
+                          ? "rounded-bl-sm border border-green-200 bg-green-50 text-gray-900"
+                          : "rounded-bl-sm border border-gray-200 bg-white text-gray-900",
+                        m.failed ? "cursor-pointer opacity-50" : "cursor-default",
+                      ].join(" ")}
+                      style={isUser ? { backgroundColor: BRAND_GREEN } : undefined}
+                    >
+                      {m.text}
+                      {m.failed && (
+                        <span className="mt-1 block text-[10px] opacity-70">
+                          Failed. Tap to retry.
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Timestamp or status */}
+                    <span className="mt-0.5 text-[10px] text-gray-400">
+                      {m.pending && !m.failed
+                        ? "Sending..."
+                        : m.failed
+                        ? ""
+                        : fmtTime(m.createdAt)}
+                    </span>
+                  </div>
+                );
+              })}
+
+            {/* Three-dot typing indicator while AI is working */}
+            {isAiTyping && (
+              <div className="mt-4 flex items-start">
+                <div className="flex gap-1.5 rounded-2xl rounded-bl-sm border border-gray-200 bg-white px-4 py-3.5">
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
+                    style={{ animationDelay: "300ms" }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Required intro gate — shown when visitor is not yet identified */}
+          {!identified ? (
+            <div className="shrink-0 border-t border-gray-200 bg-gray-50 px-4 py-5">
+              <p className="mb-3 text-sm text-gray-600">
+                Before we start, tell us who you are so we can help with your file.
               </p>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Your name</span>
-                <input
-                  value={leadFirst}
-                  onChange={(e) => setLeadFirst(e.target.value)}
-                  placeholder="First name"
-                  className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-700 focus:ring-1 focus:ring-green-700"
-                />
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-gray-500">Email</span>
-                <input
-                  type="email"
-                  value={leadEmailVal}
-                  onChange={(e) => setLeadEmailVal(e.target.value)}
-                  placeholder="you@example.com"
-                  className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-700 focus:ring-1 focus:ring-green-700"
-                />
-              </label>
-              {leadErr && <p className="text-xs text-red-600">{leadErr}</p>}
-              <button
-                type="submit"
-                disabled={leadBusy}
-                className="mt-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
-                style={{ backgroundColor: BRAND_GREEN }}
-              >
-                {leadBusy ? "Saving..." : "Save and continue"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setWantSaveContact(false)}
-                className="text-xs text-gray-400 underline hover:text-gray-600"
-              >
-                Cancel
-              </button>
-            </form>
+              <form onSubmit={submitIntro} className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-gray-500">First name</span>
+                  <input
+                    value={leadFirst}
+                    onChange={(e) => setLeadFirst(e.target.value)}
+                    placeholder="First name"
+                    className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-700 focus:ring-1 focus:ring-green-700"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-gray-500">Email</span>
+                  <input
+                    type="email"
+                    value={leadEmailVal}
+                    onChange={(e) => setLeadEmailVal(e.target.value)}
+                    placeholder="you@example.com"
+                    className="rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-700 focus:ring-1 focus:ring-green-700"
+                  />
+                </label>
+                {leadErr && <p className="text-xs text-red-600">{leadErr}</p>}
+                <button
+                  type="submit"
+                  disabled={!isIntroValid || leadBusy}
+                  className="mt-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                  style={{ backgroundColor: BRAND_GREEN }}
+                >
+                  {leadBusy ? "Saving..." : "Start chat"}
+                </button>
+              </form>
+            </div>
           ) : (
             <>
-              {/* Message thread */}
-              <div
-                ref={threadRef}
-                onScroll={handleScroll}
-                className="flex flex-1 flex-col overflow-y-auto bg-gray-50 px-3 py-3"
-              >
-                {/* Loading shimmer while hydrating existing session */}
-                {hydrating && (
-                  <div className="flex flex-col gap-3">
-                    {[72, 55, 80, 48].map((w, i) => (
-                      <div
-                        key={i}
-                        className={[
-                          "h-8 animate-pulse rounded-2xl bg-gray-200",
-                          i % 2 !== 0 ? "self-end" : "self-start",
-                        ].join(" ")}
-                        style={{ width: `${w}%` }}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty state */}
-                {!hydrating && messages.length === 0 && (
-                  <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        className="h-6 w-6 text-green-700"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M4.804 21.644A6.707 6.707 0 006 21.75a6.721 6.721 0 003.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.587 2.674 6.192.232.226.277.428.254.543a3.73 3.73 0 01-.814 1.686.75.75 0 00.44 1.223 13.86 13.86 0 01-.001 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        Hi{lead ? ` ${lead.firstName}` : ""}! How can we help?
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        Ask about how PennyLime works, eligibility, rates, or repayment.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Message bubbles */}
-                {!hydrating &&
-                  grouped.map((m) => {
-                    const isUser = m.authoredBy === "user";
-                    const isAdmin = m.authoredBy === "admin";
-                    return (
-                      <div
-                        key={m.id}
-                        className={[
-                          "flex flex-col",
-                          isUser ? "items-end" : "items-start",
-                          m.isGroupStart ? "mt-4" : "mt-0.5",
-                        ].join(" ")}
-                      >
-                        {/* "PennyLime team" label for first admin bubble in a run */}
-                        {isAdmin && m.isGroupStart && (
-                          <span className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
-                            PennyLime team
-                          </span>
-                        )}
-
-                        {/* Bubble — button so failed state is tappable */}
-                        <button
-                          type="button"
-                          onClick={m.failed ? () => retryMessage(m) : undefined}
-                          disabled={!m.failed}
-                          className={[
-                            "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-left text-sm leading-relaxed whitespace-pre-wrap",
-                            isUser
-                              ? "rounded-br-sm text-white"
-                              : isAdmin
-                              ? "rounded-bl-sm border border-green-200 bg-green-50 text-gray-900"
-                              : "rounded-bl-sm border border-gray-200 bg-white text-gray-900",
-                            m.failed ? "cursor-pointer opacity-50" : "cursor-default",
-                          ].join(" ")}
-                          style={isUser ? { backgroundColor: BRAND_GREEN } : undefined}
-                        >
-                          {m.text}
-                          {m.failed && (
-                            <span className="mt-1 block text-[10px] opacity-70">
-                              Failed. Tap to retry.
-                            </span>
-                          )}
-                        </button>
-
-                        {/* Timestamp or status */}
-                        <span className="mt-0.5 text-[10px] text-gray-400">
-                          {m.pending && !m.failed
-                            ? "Sending..."
-                            : m.failed
-                            ? ""
-                            : fmtTime(m.createdAt)}
-                        </span>
-                      </div>
-                    );
-                  })}
-
-                {/* Three-dot typing indicator while AI is working */}
-                {isAiTyping && (
-                  <div className="mt-4 flex items-start">
-                    <div className="flex gap-1.5 rounded-2xl rounded-bl-sm border border-gray-200 bg-white px-4 py-3.5">
-                      <span
-                        className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-                        style={{ animationDelay: "0ms" }}
-                      />
-                      <span
-                        className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-                        style={{ animationDelay: "150ms" }}
-                      />
-                      <span
-                        className="h-2 w-2 animate-bounce rounded-full bg-gray-400"
-                        style={{ animationDelay: "300ms" }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* One-time "Delivered" note in human mode */}
               {humanDelivered && mode === "human" && (
                 <div className="shrink-0 border-t border-gray-100 bg-green-50 px-4 py-2 text-center text-xs text-green-700">
                   Delivered. The team replies right here.
-                </div>
-              )}
-
-              {/* Save-chat link — shown until lead is captured */}
-              {!lead && (
-                <div className="shrink-0 border-t border-gray-100 bg-gray-50 px-4 py-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setWantSaveContact(true)}
-                    className="text-xs text-green-700 underline hover:text-green-800"
-                  >
-                    Save this chat to your inbox
-                  </button>
                 </div>
               )}
 
