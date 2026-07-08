@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { getInboxBadges } from "@/actions/inbox-badges";
+import { countOpenTickets } from "@/actions/tickets";
 import { ChatsClient } from "@/app/admin/chats/chats-client";
 import { EmailsPanel } from "@/app/support/emails-panel";
+import { TicketsPanel } from "@/app/support/tickets-panel";
 
 type Tab = "chats" | "emails" | "tickets";
 
@@ -13,28 +15,25 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "tickets", label: "Tickets" },
 ];
 
-function PlaceholderCard({ label }: { label: string }) {
-  return (
-    <div className="rounded-xl border border-[#e4e4e7] bg-white p-8 text-center text-[14px] text-[#71717a]">
-      {label} — Coming in the next commit
-    </div>
-  );
-}
-
-export function SupportShell() {
+export function SupportShell({ me }: { me: string | null }) {
   const [activeTab, setActiveTab] = useState<Tab>("chats");
   const [pendingChats, setPendingChats] = useState(0);
   const [unrepliedEmails, setUnrepliedEmails] = useState(0);
+  const [openTickets, setOpenTickets] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     async function poll() {
       try {
-        const badges = await getInboxBadges();
+        const [badges, ticketCount] = await Promise.all([
+          getInboxBadges(),
+          countOpenTickets(),
+        ]);
         if (cancelled) return;
         setPendingChats(badges.pendingChats);
         setUnrepliedEmails(badges.unrepliedEmails);
+        setOpenTickets(ticketCount);
       } catch {
         /* swallow */
       }
@@ -72,6 +71,16 @@ export function SupportShell() {
           </span>
           Unread emails
         </span>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#e4e4e7] text-[12px] font-semibold text-[#0a0a0a]">
+          <span
+            className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none ${
+              openTickets > 0 ? "bg-[#dc2626] text-white" : "bg-[#e4e4e7] text-[#71717a]"
+            }`}
+          >
+            {openTickets}
+          </span>
+          Open tickets
+        </span>
       </div>
 
       {/* Tab pills */}
@@ -95,7 +104,7 @@ export function SupportShell() {
       {/* Tab content */}
       {activeTab === "chats" && <ChatsClient />}
       {activeTab === "emails" && <EmailsPanel />}
-      {activeTab === "tickets" && <PlaceholderCard label="Tickets" />}
+      {activeTab === "tickets" && <TicketsPanel me={me} />}
     </div>
   );
 }
