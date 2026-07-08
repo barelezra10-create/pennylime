@@ -33,6 +33,21 @@ export async function POST(req: NextRequest) {
   const sinceMessageId = typeof body.sinceMessageId === "string" ? body.sinceMessageId : null;
   const passive = body.passive === true;
 
+  // Probe — portal-cookie identity check without touching sessions.
+  // A portal visitor opening the panel for the first time sends this so
+  // we can skip the intro gate without creating an empty AgentSession.
+  if (body.probe === true) {
+    try {
+      const { getPortalApplicationId } = await import("@/lib/portal-auth");
+      const applicationId = await getPortalApplicationId();
+      if (applicationId) {
+        const app = await prisma.application.findUnique({ where: { id: applicationId }, select: { firstName: true } });
+        if (app) return Response.json({ identified: true, visitorName: app.firstName ?? null });
+      }
+    } catch {}
+    return Response.json({ identified: false, visitorName: null });
+  }
+
   // Long-poll path. Returns new messages since the last one the client saw.
   if (sessionId && sinceMessageId !== null) {
     return handlePoll(sessionId, sinceMessageId, passive);

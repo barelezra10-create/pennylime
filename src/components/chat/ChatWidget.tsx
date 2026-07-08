@@ -34,7 +34,6 @@ export function ChatWidget() {
   const [leadFirst, setLeadFirst] = useState("");
   const [leadEmailVal, setLeadEmailVal] = useState("");
   const [leadErr, setLeadErr] = useState<string | null>(null);
-  const [leadBusy, setLeadBusy] = useState(false);
   const [humanDelivered, setHumanDelivered] = useState(false);
 
   // Refs — mutated without re-renders
@@ -48,25 +47,55 @@ export function ChatWidget() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   // Set inside polling effect so post-send trigger can cancel+restart the timer
   const triggerPollRef = useRef<(() => void) | null>(null);
+  // Guards the one-per-open portal probe (resets when panel closes)
+  const probeFiredRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => { openRef.current = open; }, [open]);
   useEffect(() => { hasMessagesRef.current = messages.length > 0; }, [messages]);
 
+  // When the panel opens with no local-lead email and not yet identified,
+  // probe the portal cookie once. On a hit we skip the intro gate without
+  // creating an empty AgentSession in the admin inbox.
+  useEffect(() => {
+    if (!open) {
+      // Reset so the next open can probe again.
+      probeFiredRef.current = false;
+      return;
+    }
+    if (identified || lead?.email || probeFiredRef.current) return;
+    probeFiredRef.current = true;
+    let cancelled = false;
+    fetch("/api/agent/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ probe: true }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { identified?: boolean; visitorName?: string | null } | null) => {
+        if (cancelled || !data) return;
+        if (data.identified === true) setIdentified(true);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open, identified, lead]);
+
   // Hydrate from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedSid = localStorage.getItem(SESSION_KEY);
-    const storedLead = localStorage.getItem(LEAD_KEY);
-    if (storedSid) { setSessionId(storedSid); sessionIdRef.current = storedSid; }
-    if (storedLead) {
-      try {
-        const parsed = JSON.parse(storedLead) as Lead;
-        setLead(parsed);
-        if (parsed?.email) setIdentified(true);
-      } catch {}
-    }
+    try {
+      const storedSid = localStorage.getItem(SESSION_KEY);
+      const storedLead = localStorage.getItem(LEAD_KEY);
+      if (storedSid) { setSessionId(storedSid); sessionIdRef.current = storedSid; }
+      if (storedLead) {
+        try {
+          const parsed = JSON.parse(storedLead) as Lead;
+          setLead(parsed);
+          if (parsed?.email) setIdentified(true);
+        } catch {}
+      }
+    } catch {}
   }, []);
 
   // Auto-scroll thread when messages or typing indicator changes
@@ -259,13 +288,12 @@ export function ChatWidget() {
     const email = leadEmailVal.trim();
     if (!firstName) { setLeadErr("Please share your name."); return; }
     if (!/^\S+@\S+\.\S+$/.test(email)) { setLeadErr("Please enter a valid email."); return; }
-    setLeadBusy(true);
-    // Save locally and reveal composer immediately
+    // Save locally and reveal composer immediately; gate unmounts on next render.
     const captured: Lead = { firstName, email };
     setLead(captured);
     try { localStorage.setItem(LEAD_KEY, JSON.stringify(captured)); } catch {}
     setIdentified(true);
-    // Fire API (best-effort; next send() carries lead fields if this fails)
+    // Fire API best-effort; next send() carries lead fields if this fails.
     try {
       const res = await fetch("/api/agent/chat", {
         method: "POST",
@@ -283,9 +311,7 @@ export function ChatWidget() {
         try { localStorage.setItem(SESSION_KEY, data.sessionId); } catch {}
       }
     } catch {
-      // Local save already done; composer already revealed; next send carries fields
-    } finally {
-      setLeadBusy(false);
+      // Local save already done; composer already revealed; next send carries fields.
     }
   }
 
@@ -535,11 +561,11 @@ export function ChatWidget() {
                 {leadErr && <p className="text-xs text-red-600">{leadErr}</p>}
                 <button
                   type="submit"
-                  disabled={!isIntroValid || leadBusy}
+                  disabled={!isIntroValid}
                   className="mt-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
                   style={{ backgroundColor: BRAND_GREEN }}
                 >
-                  {leadBusy ? "Saving..." : "Start chat"}
+                  Start chat
                 </button>
               </form>
             </div>
