@@ -63,7 +63,7 @@ export function TeamClient({ members }: { members: Member[] }) {
             <div><label className={labelClass}>Name</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} placeholder="Jane Smith" /></div>
             <div><label className={labelClass}>Email</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} placeholder="jane@pennylime.com" type="email" /></div>
             <div><label className={labelClass}>Password</label><input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputClass} type="password" placeholder="Minimum 8 characters" /></div>
-            <div><label className={labelClass}>Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputClass}><option value="ADMIN">Admin</option><option value="REP">Rep</option></select></div>
+            <div><label className={labelClass}>Role</label><select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputClass}><option value="ADMIN">Admin</option><option value="REP">Rep</option><option value="SUPPORT">Support</option></select></div>
           </div>
           <div className="flex gap-2 mt-4">
             <button onClick={handleAdd} disabled={saving} className="bg-[#15803d] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl hover:bg-[#166534] disabled:opacity-50">{saving ? "Adding..." : "Add Member"}</button>
@@ -97,6 +97,7 @@ export function TeamClient({ members }: { members: Member[] }) {
                   >
                     <option value="ADMIN">Admin</option>
                     <option value="REP">Rep</option>
+                    <option value="SUPPORT">Support</option>
                   </select>
                 </td>
                 <td className="px-5 py-3.5 text-[13px] text-[#a1a1aa]">{new Date(m.createdAt).toLocaleDateString()}</td>

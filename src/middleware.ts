@@ -44,6 +44,19 @@ function isAdminProtected(pathname: string) {
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // Auth gate for /support workspace (any authenticated user; role restriction is enforced in the layout)
+  if (pathname.startsWith("/support")) {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      url.search = "";
+      url.searchParams.set("callbackUrl", "/support");
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
   // Auth gate for admin pages
   if (isAdminProtected(pathname)) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
@@ -51,6 +64,13 @@ export async function middleware(request: NextRequest) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("callbackUrl", request.url);
       return NextResponse.redirect(loginUrl);
+    }
+    // SUPPORT-role users may not access admin pages; redirect them to their workspace
+    if ((token as { role?: string }).role === "SUPPORT") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/support";
+      url.search = "";
+      return NextResponse.redirect(url);
     }
   }
 

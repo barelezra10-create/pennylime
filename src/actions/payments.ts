@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { requireNonSupportRole } from "@/lib/auth-helpers";
 import { selectMissedPayments } from "@/lib/missed-payments";
 
 export async function getPaymentsByApplicationId(applicationId: string) {
@@ -54,8 +55,8 @@ export async function getPaymentsSummary(applicationId: string) {
 }
 
 export async function retryPayment(paymentId: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
@@ -104,7 +105,7 @@ export async function retryPayment(paymentId: string) {
     const { recordAttemptStart } = await import("@/lib/payment-attempts");
     await recordAttemptStart({
       paymentId,
-      initiatedBy: `admin:${session.user.email}`,
+      initiatedBy: `admin:${auth.email}`,
       amount: Number(payment.amount) + Number(payment.lateFee),
       transferId: result.transferId,
     });
@@ -121,7 +122,7 @@ export async function retryPayment(paymentId: string) {
     action: "RETRY_PAYMENT",
     entityType: "PAYMENT",
     entityId: paymentId,
-    performedBy: session.user.email,
+    performedBy: auth.email,
     details: { applicationId: payment.applicationId, paymentNumber: payment.paymentNumber },
   });
 
@@ -136,8 +137,8 @@ export async function retryPayment(paymentId: string) {
  * "Charge now" button on the application detail page.
  */
 export async function chargePaymentNow(paymentId: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
 
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) return { success: false, error: "Payment not found" };
@@ -176,7 +177,7 @@ export async function chargePaymentNow(paymentId: string) {
   const { recordAttemptStart } = await import("@/lib/payment-attempts");
   await recordAttemptStart({
     paymentId,
-    initiatedBy: `admin:${session.user.email}`,
+    initiatedBy: `admin:${auth.email}`,
     amount: Number(payment.amount) + Number(payment.lateFee),
     transferId: result.transferId,
   });
@@ -185,7 +186,7 @@ export async function chargePaymentNow(paymentId: string) {
     action: "MANUAL_CHARGE_PAYMENT",
     entityType: "PAYMENT",
     entityId: paymentId,
-    performedBy: session.user.email,
+    performedBy: auth.email,
     details: { applicationId: payment.applicationId, paymentNumber: payment.paymentNumber, transferId: result.transferId },
   });
 
@@ -204,8 +205,8 @@ export async function chargePaymentNow(paymentId: string) {
  * an R01 / R09 NSF code on the file.
  */
 export async function chargePartialPayment(paymentId: string, amount: number) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
   if (!Number.isFinite(amount) || amount <= 0) {
     return { success: false, error: "Amount must be positive" };
   }
@@ -278,7 +279,7 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
   const { recordAttemptStart } = await import("@/lib/payment-attempts");
   await recordAttemptStart({
     paymentId,
-    initiatedBy: `admin:${session.user.email}`,
+    initiatedBy: `admin:${auth.email}`,
     amount,
     transferId: result.transferId,
   });
@@ -287,7 +288,7 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
     action: "MANUAL_CHARGE_PAYMENT",
     entityType: "PAYMENT",
     entityId: paymentId,
-    performedBy: session.user.email,
+    performedBy: auth.email,
     details: {
       kind: "MICRO_COLLECTION",
       amount,
@@ -300,8 +301,8 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
 }
 
 export async function waiveLateFee(paymentId: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
@@ -323,7 +324,7 @@ export async function waiveLateFee(paymentId: string) {
     action: "WAIVE_FEE",
     entityType: "PAYMENT",
     entityId: paymentId,
-    performedBy: session.user.email,
+    performedBy: auth.email,
     details: { waivedAmount, applicationId: payment.applicationId },
   });
 

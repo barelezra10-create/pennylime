@@ -74,10 +74,20 @@ export const authOptions: NextAuthOptions = {
           performedBy: email,
         }).catch(() => {});
 
-        return { id: user.id, email: user.email, name: user.name };
+        return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),
   ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) token.role = (user as { role?: string }).role ?? "ADMIN";
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) (session.user as { role?: string }).role = (token.role as string) ?? "ADMIN";
+      return session;
+    },
+  },
   session: {
     strategy: "jwt",
     maxAge: ADMIN_SESSION_HOURS * 60 * 60,
