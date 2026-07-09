@@ -25,7 +25,8 @@ export async function createTeamMember(data: {
   if (!auth.ok) throw new Error(auth.error);
   const passwordHash = await bcrypt.hash(data.password, 12);
   return prisma.adminUser.create({
-    data: { email: data.email, name: data.name, passwordHash, role: data.role },
+    // Lowercase to match the login lookup, which normalizes the typed email.
+    data: { email: data.email.trim().toLowerCase(), name: data.name, passwordHash, role: data.role },
   });
 }
 
