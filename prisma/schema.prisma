@@ -902,11 +902,23 @@ model InboundEmail {
   receivedAt   DateTime @default(now())
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  replies      InboundEmailReply[]
 
   @@index([status])
   @@index([receivedAt])
   @@index([contactId])
   @@index([fromEmail])
+}
+
+model InboundEmailReply {
+  id        String       @id @default(uuid())
+  emailId   String
+  email     InboundEmail @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  body      String
+  sentBy    String
+  createdAt DateTime     @default(now())
+
+  @@index([emailId, createdAt])
 }
 
 model AdvanceTopUpRequest {

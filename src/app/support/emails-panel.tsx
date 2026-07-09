@@ -261,6 +261,47 @@ export function EmailsPanel() {
                   {detail.bodyText || "(empty)"}
                 </pre>
               )}
+
+              {/* Sent replies */}
+              {detail.replies && detail.replies.length > 0 && (
+                <div className="mt-5 space-y-3">
+                  {detail.replies.map((reply) => (
+                    <div
+                      key={reply.id}
+                      style={{
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 8,
+                        padding: "10px 14px",
+                        marginLeft: "auto",
+                        maxWidth: "92%",
+                      }}
+                    >
+                      <div style={{ fontSize: 11, color: "#4b7a5a", marginBottom: 4 }}>
+                        {shortAgent(reply.sentBy)} replied &middot;{" "}
+                        {new Date(reply.createdAt).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                      <pre
+                        style={{
+                          whiteSpace: "pre-wrap",
+                          fontFamily: "inherit",
+                          fontSize: 13,
+                          color: "#166534",
+                          margin: 0,
+                        }}
+                      >
+                        {reply.body}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Reply composer */}

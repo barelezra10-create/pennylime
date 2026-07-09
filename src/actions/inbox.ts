@@ -100,13 +100,22 @@ export type InboxMessageDetail = {
   status: string;
   repliedBy: string | null;
   contact: { id: string; firstName: string; lastName: string | null; email: string } | null;
+  replies: { id: string; body: string; sentBy: string; createdAt: string }[];
 };
 
 export async function getInboxMessage(id: string): Promise<InboxMessageDetail | null> {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return null;
 
-  const row = await prisma.inboundEmail.findUnique({ where: { id } });
+  const row = await prisma.inboundEmail.findUnique({
+    where: { id },
+    include: {
+      replies: {
+        orderBy: { createdAt: "asc" },
+        select: { id: true, body: true, sentBy: true, createdAt: true },
+      },
+    },
+  });
   if (!row) return null;
 
   // Auto-mark as READ on open. Saves a click.
@@ -137,6 +146,12 @@ export async function getInboxMessage(id: string): Promise<InboxMessageDetail | 
     status: row.status,
     repliedBy: row.repliedBy,
     contact,
+    replies: row.replies.map((r) => ({
+      id: r.id,
+      body: r.body,
+      sentBy: r.sentBy,
+      createdAt: r.createdAt.toISOString(),
+    })),
   };
 }
 
@@ -254,6 +269,9 @@ export async function replyToInboundEmail(
   if (!res.success) return { ok: false as const, error: "Send failed" };
 
   await prisma.inboundEmail.update({ where: { id: emailId }, data: { status: "REPLIED", repliedBy: session.user.email } });
+  await prisma.inboundEmailReply.create({
+    data: { emailId, body: text, sentBy: session.user.email },
+  });
   if (email.contactId) {
     await prisma.activity
       .create({
