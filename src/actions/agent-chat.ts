@@ -9,6 +9,27 @@ import { sendEmail } from "@/lib/emails/send";
 const OFFLINE_THRESHOLD_SECONDS = 30;
 const ONLINE_THRESHOLD_MS = OFFLINE_THRESHOLD_SECONDS * 1000;
 
+// The apply funnel creates contacts as "Applicant" before the borrower
+// types their name; never show that placeholder when the chat captured
+// a real name.
+const PLACEHOLDER_NAMES = new Set(["Applicant", "Visitor"]);
+
+function displayName(
+  contact: { firstName: string; lastName: string | null } | null,
+  leadFirstName: string | null,
+  leadEmail: string | null
+): string {
+  const contactName = contact ? `${contact.firstName} ${contact.lastName || ""}`.trim() : "";
+  const contactIsPlaceholder = !!contact && PLACEHOLDER_NAMES.has(contact.firstName) && !contact.lastName;
+  return (
+    (contactIsPlaceholder ? "" : contactName) ||
+    leadFirstName ||
+    contactName ||
+    leadEmail ||
+    "Anonymous"
+  );
+}
+
 /**
  * Admin takes over an AI chat session. Future user messages do not
  * trigger an AI turn — they sit in the message log waiting for a
@@ -257,11 +278,7 @@ export async function listChatConversations(
   const rows: ChatConversationRow[] = sessions.map((s) => {
     const last = s.messages[0] ?? null;
     const needsReply = !!last && last.role === "user";
-    const name =
-      (s.contact ? `${s.contact.firstName} ${s.contact.lastName || ""}`.trim() : "") ||
-      s.leadFirstName ||
-      s.leadEmail ||
-      "Anonymous";
+    const name = displayName(s.contact, s.leadFirstName, s.leadEmail);
     const rawSubject = firstMsgMap.get(s.id);
     const subject = rawSubject ? rawSubject.trim().slice(0, 80) : "New conversation";
     return {
@@ -358,11 +375,7 @@ export async function getChatConversation(sessionId: string, sinceIso?: string) 
     })),
   ].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
-  const name =
-    (ag.contact ? `${ag.contact.firstName} ${ag.contact.lastName || ""}`.trim() : "") ||
-    ag.leadFirstName ||
-    ag.leadEmail ||
-    "Anonymous";
+  const name = displayName(ag.contact, ag.leadFirstName, ag.leadEmail);
 
   const subject = firstUserMsg ? firstUserMsg.text.trim().slice(0, 80) : "New conversation";
 

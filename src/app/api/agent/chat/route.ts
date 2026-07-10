@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       const existing = await prisma.contact.findUnique({ where: { email: leadEmail } });
       if (existing) {
         contactId = existing.id;
+        await healPlaceholderName(existing, leadFirstName, leadLastName);
       } else {
         const created = await prisma.contact.create({
           data: {
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
       const existing = await prisma.contact.findUnique({ where: { email: leadEmail } });
       if (existing) {
         contactIdUpdate = existing.id;
+        await healPlaceholderName(existing, leadFirstName, leadLastName);
       } else {
         const created = await prisma.contact.create({
           data: {
@@ -254,6 +256,26 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * The apply funnel creates contacts as "Applicant" before the borrower
+ * types their name. When the chat later captures a real name for the
+ * same email, repair the contact record so the CRM shows the person.
+ */
+async function healPlaceholderName(
+  contact: { id: string; firstName: string; lastName: string | null },
+  leadFirstName: string | null,
+  leadLastName: string | null
+): Promise<void> {
+  const isPlaceholder = (contact.firstName === "Applicant" || contact.firstName === "Visitor") && !contact.lastName;
+  if (!isPlaceholder || !leadFirstName || leadFirstName === "Applicant" || leadFirstName === "Visitor") return;
+  await prisma.contact
+    .update({
+      where: { id: contact.id },
+      data: { firstName: leadFirstName, ...(leadLastName ? { lastName: leadLastName } : {}) },
+    })
+    .catch(() => {});
 }
 
 async function recognizePortalVisitor(sessionId: string): Promise<void> {
