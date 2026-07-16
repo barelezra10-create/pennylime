@@ -391,7 +391,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Create: `src/lib/debit-writeback.ts`
 - Modify: `src/app/api/cron/payment-processor/route.ts`, `src/app/api/cron/payment-retry/route.ts`, `src/actions/payments.ts` (chargePaymentNow, retryPayment, chargePartialPayment)
 
-- [ ] **Step 1: initiateACHDebit branch** — after `amountCents` is computed and BEFORE the Increase-specific `ensureIncreaseExternalAccount` block, add:
+- [ ] **Step 1: initiateACHDebit branch** - after `amountCents` is computed and BEFORE the Increase-specific `ensureIncreaseExternalAccount` block, add:
 
 ```typescript
   const { getPaymentProcessor } = await import("@/lib/payment-processor");
@@ -411,7 +411,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 The returned `transferId` is the GoACH tx uuid in this branch.
 
-- [ ] **Step 2: Shared write-back helper** — the 4 initiateACHDebit callers currently write `{achTransferId, increaseTransferId, increaseTransferStatus}` identically. Centralize so the GoACH id lands in the right column:
+- [ ] **Step 2: Shared write-back helper** - the 4 initiateACHDebit callers currently write `{achTransferId, increaseTransferId, increaseTransferStatus}` identically. Centralize so the GoACH id lands in the right column:
 
 ```typescript
 // src/lib/debit-writeback.ts
@@ -440,7 +440,7 @@ export async function applyDebitInitiation(paymentId: string, transferId: string
 }
 ```
 
-- [ ] **Step 3: Swap the 4 callers' write-back block** — in payment-processor cron, payment-retry cron, `chargePaymentNow`, `retryPayment`, replace the `await prisma.payment.update({ where..., data: { achTransferId: result.transferId, increaseTransferId: result.transferId, increaseTransferStatus: "pending_submission" } })` block with:
+- [ ] **Step 3: Swap the 4 callers' write-back block** - in payment-processor cron, payment-retry cron, `chargePaymentNow`, `retryPayment`, replace the `await prisma.payment.update({ where..., data: { achTransferId: result.transferId, increaseTransferId: result.transferId, increaseTransferStatus: "pending_submission" } })` block with:
 
 ```typescript
       const { applyDebitInitiation } = await import("@/lib/debit-writeback");
@@ -469,7 +469,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 **Files:**
 - Modify: `src/actions/applications.ts` (fundApplication)
 
-- [ ] **Step 1: Branch fundApplication** — READ fundApplication fully (src/actions/applications.ts:512). After the APPROVED-status guard and amount computation, before the `ensureIncreaseExternalAccount` + `safeDisburse` block, add:
+- [ ] **Step 1: Branch fundApplication** - READ fundApplication fully (src/actions/applications.ts:512). After the APPROVED-status guard and amount computation, before the `ensureIncreaseExternalAccount` + `safeDisburse` block, add:
 
 ```typescript
   const { getPaymentProcessor } = await import("@/lib/payment-processor");
@@ -520,7 +520,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `src/app/api/cron/payment-status/route.ts`
 - Modify: `src/actions/refresh-payment-status.ts` (single-payment admin refresh, if it exists; else skip)
 
-- [ ] **Step 1: Add a GoACH sync pass** — READ payment-status route fully. Add, before or after the Increase repayment poll, a GoACH pass:
+- [ ] **Step 1: Add a GoACH sync pass** - READ payment-status route fully. Add, before or after the Increase repayment poll, a GoACH pass:
 
 ```typescript
   // --- GoACH status sync via the daily_update cursor feed ---
@@ -586,7 +586,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Adapt the final `refreshApplicationStatusFromPayments` import to however it is defined/exported in this file today (it is currently an in-file function in payment-status/route.ts; call it directly, do not invent a module). Keep the existing Increase branches untouched.
 
-- [ ] **Step 2: Single-payment admin refresh** — if `src/actions/refresh-payment-status.ts` exists and is used by the dialer money panel "Refresh", add a GoACH branch: when the payment has `goachTransactionUuid`, call `getTransaction` + `mapGoachStatus` and write the same fields; else keep Increase. If the file does not exist, skip this step.
+- [ ] **Step 2: Single-payment admin refresh** - if `src/actions/refresh-payment-status.ts` exists and is used by the dialer money panel "Refresh", add a GoACH branch: when the payment has `goachTransactionUuid`, call `getTransaction` + `mapGoachStatus` and write the same fields; else keep Increase. If the file does not exist, skip this step.
 
 - [ ] **Step 3: Verify** `npx tsc --noEmit` zero; `npm test`; `npm run build`.
 
@@ -607,7 +607,7 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Modify: `src/actions/tracking.ts` (allow paymentProcessor in the save allowlist), `src/app/admin/settings/tracking/tracking-client.tsx` (a processor selector)
 - Create: `scripts/goach-smoke.mjs`
 
-- [ ] **Step 1: Admin toggle** — add `"paymentProcessor"` to the ALLOWED_FIELDS array in src/actions/tracking.ts, and in tracking-client.tsx add a small card "Payment processor" with a select (Increase / GoACH) bound to `config.paymentProcessor` (extend the config prop type). Follow the exact Card/Field pattern already in that file. This is the reversible switch.
+- [ ] **Step 1: Admin toggle** - add `"paymentProcessor"` to the ALLOWED_FIELDS array in src/actions/tracking.ts, and in tracking-client.tsx add a small card "Payment processor" with a select (Increase / GoACH) bound to `config.paymentProcessor` (extend the config prop type). Follow the exact Card/Field pattern already in that file. This is the reversible switch.
 
 - [ ] **Step 2: Staging smoke script**
 
