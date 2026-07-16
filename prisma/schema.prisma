@@ -59,6 +59,9 @@ model Application {
   increaseTransferId       String?
   increaseTransferStatus   String?
   increaseDisburseError    String?
+  goachReceiverUuid        String?
+  goachBankAccountUuid     String?
+  goachDisburseUuid        String?
   // Times the borrower used the "skip one payment" feature in /portal.
   // Each skip charges a 5%-of-advance fee + shifts the next pending
   // payment to the end of the schedule. Capped to 1 per advance for now.
@@ -200,6 +203,8 @@ model Payment {
   status          String    @default("PENDING")
   paymentNumber   Int
   achTransferId   String?
+  processor              String?
+  goachTransactionUuid   String?   @unique
   increaseTransferId     String?
   increaseTransferStatus String?
   increaseLastError      String?
@@ -790,6 +795,9 @@ model TrackingConfig {
   twilioTwimlAppSid             String?
   twilioApiKeySid               String?
   twilioApiKeySecret            String?
+  // Payment processor
+  paymentProcessor              String   @default("increase")
+  goachDailyUpdatePointer       String?
   // Toggles
   enabled                       Boolean  @default(true)
   testMode                      Boolean  @default(false)
