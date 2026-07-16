@@ -1,0 +1,2029 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "GoACH",
+    "description": "Connect to the GoACH platform via API/",
+    "termsOfService": "",
+    "contact": {
+      "name": "GoACH API Team"
+    },
+    "license": {
+      "name": "Custom"
+    }
+  },
+  "tags": [
+    {
+      "name": "ACH Transactions",
+      "description": "Everything to do with actual ACH Transactions"
+    },
+    {
+      "name": "ACH Recurrences",
+      "description": "Everything to do with recurring transaction schedules"
+    },
+    {
+      "name": "Bank Accounts",
+      "description": "Managing the receiving bank accounts i.e. Clients Accounts"
+    },
+    {
+      "name": "Originator ACH Accounts",
+      "description": "Viewing info on the originating bank accounts i.e. Your Accounts"
+    },
+    {
+      "name": "Receivers",
+      "description": "Managing the info about the receiving account i.e. Your Clients"
+    },
+    {
+      "name": "Reports",
+      "description": "Reporting Information "
+    }
+  ],
+  "host": "staging.goach.com",
+  "schemes": [
+    "https"
+  ],
+  "basePath": "/api/v1/",
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "securityDefinitions": {
+    "bearer_token": {
+      "name": "Authorization",
+      "type": "apiKey",
+      "scheme": "bearer"
+    }
+  },
+  "parameters": {
+    "limit": {
+      "name": "limit",
+      "in": "query",
+      "description": "maximum number of results to return at a time- max 100",
+      "required": false,
+      "type": "integer"
+    },
+    "pointer": {
+      "name": "pointer",
+      "in": "query",
+      "description": "When more results are available than the limit - a pointer is the UUID of the first returned object",
+      "required": false,
+      "type": "string"
+    },
+    "start_date": {
+      "name": "start_date",
+      "in": "query",
+      "description": "Start Date to search by - mm/dd/yyyy",
+      "required": false,
+      "type": "string"
+    },
+    "end_date": {
+      "name": "end_date",
+      "in": "query",
+      "description": "End Date to search by - mm/dd/yyyy",
+      "required": false,
+      "type": "string"
+    },
+    "date": {
+      "name": "date",
+      "in": "query",
+      "description": "Specific Date to search by - mm/dd/yyyy",
+      "required": false,
+      "type": "string"
+    }
+  },
+  "paths": {
+    "/ach_transactions": {
+      "get": {
+        "summary": "View all ACH Transactions",
+        "description": "All ACH Transactions the user has access to",
+        "operationId": "achTransactionsIndex",
+        "tags": [
+          "ACH Transactions"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          },
+          {
+            "$ref": "#/parameters/start_date"
+          },
+          {
+            "$ref": "#/parameters/end_date"
+          },
+          {
+            "name": "originator_ach_account_id",
+            "in": "query",
+            "description": "UUID of Originator ACH Account to filter by",
+            "required": false,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transactions Response",
+            "schema": {
+              "$ref": "#/definitions/AchTransaction"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an ACH Transaction",
+        "description": "Create an ACH Transaction.",
+        "operationId": "achTransactionCreate",
+        "tags": [
+          "ACH Transactions"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transaction response",
+            "schema": {
+              "$ref": "#/definitions/AchTransaction"
+            }
+          },
+          "400": {
+            "description": "Error occured while creating ACH Transaction - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Not Found - Unable to find related record."
+          }
+        },
+        "parameters": [
+          {
+            "name": "originator_ach_account_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Originating ACH Account UUID",
+            "required": true
+          },
+          {
+            "name": "bank_account_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Receiving Bank Account UUID",
+            "required": true
+          },
+          {
+            "name": "amount",
+            "in": "formData",
+            "type": "string",
+            "description": "Monetary amount of transaction",
+            "required": true
+          },
+          {
+            "name": "transaction_type",
+            "in": "formData",
+            "type": "string",
+            "enum": [
+              "Debit",
+              "Credit"
+            ],
+            "description": "Transaction Type",
+            "required": false,
+            "default": "Debit"
+          },
+          {
+            "name": "poa_file",
+            "in": "formData",
+            "type": "file",
+            "description": "POA file, can be an image(png|jpg|jpeg|webp) or a PDF. Required if amount exceeds POA required amount from settings.",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/ach_transactions/{id}": {
+      "get": {
+        "summary": "Find ACH Transaction by UUID",
+        "description": "Returns a single ACH Transaction if the user has access",
+        "operationId": "findAchTransactionByUUId",
+        "tags": [
+          "ACH Transactions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH Transaction to fetch",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transaction response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "ACH Transaction was not found"
+          }
+        }
+      }
+    },
+    "/ach_transactions/{id}/cancel": {
+      "post": {
+        "summary": "Cancel ACH Transaction",
+        "description": "Cancels a single ACH Transaction",
+        "operationId": "cancelAchTransactionByUUId",
+        "tags": [
+          "ACH Transactions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH Transaction to Cancel",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transaction response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "400": {
+            "description": "Transaction was unable to be cancelled. (Is it too late or was it already cancelled?)"
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct."
+          },
+          "404": {
+            "description": "ACH Transaction was not found."
+          }
+        }
+      }
+    },
+    "/ach_transactions/daily_update": {
+      "get": {
+        "summary": "View daily update report",
+        "description": "All changes to ACH Transactions that occurred on a specific date.",
+        "operationId": "achTransactionsDailyUpdates",
+        "tags": [
+          "ACH Transactions"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          },
+          {
+            "$ref": "#/parameters/date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transactions Response",
+            "schema": {
+              "$ref": "#/definitions/AchTransaction"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      }
+    },
+    "/ach_recurrences": {
+      "get": {
+        "summary": "View all ACH Recurrences",
+        "description": "All ACH Recurrences the user has access to",
+        "operationId": "achRecurrencesIndex",
+        "tags": [
+          "ACH Recurrences"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence Response",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create an ACH Recurrence",
+        "description": "Create an ACH Recurrence.",
+        "operationId": "achRecurrenceCreate",
+        "tags": [
+          "ACH Recurrences"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence response",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "400": {
+            "description": "Error occured while creating ACH Transaction - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Not Found - Unable to find related record."
+          }
+        },
+        "parameters": [
+          {
+            "name": "originator_ach_account_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Originating ACH Account UUID",
+            "required": true
+          },
+          {
+            "name": "bank_account_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Receiving Bank Account UUID",
+            "required": true
+          },
+          {
+            "name": "description",
+            "in": "formData",
+            "type": "string",
+            "description": "Description of Recurrence",
+            "required": true
+          },
+          {
+            "name": "amount",
+            "in": "formData",
+            "type": "string",
+            "description": "Amount of transaction",
+            "required": true
+          },
+          {
+            "name": "start_date",
+            "in": "formData",
+            "type": "string",
+            "description": "Schedule start date",
+            "required": true
+          },
+          {
+            "name": "end_type",
+            "in": "formData",
+            "type": "string",
+            "enum": [
+              "no_end",
+              "total_amount_paid_on_receiver",
+              "end_after_occurrences",
+              "end_date",
+              "total_amount_paid_on_recurrence"
+            ],
+            "description": "Transaction Type",
+            "required": true
+          },
+          {
+            "name": "interval",
+            "in": "formData",
+            "type": "integer",
+            "description": "Schedule modifier - i.e. every 1st day || every 2nd day",
+            "required": true
+          },
+          {
+            "name": "unit",
+            "in": "formData",
+            "type": "string",
+            "enum": [
+              "Daily",
+              "Weekly",
+              "Monthly"
+            ],
+            "description": "Daily will create a transaction every INTERVAL day including weekends.\n          Weekly will create a transaction every INTERVAL week on every day in the day_array.\n          Monthly will create a transaction every INTERVAL month on every day contained in the day_array.",
+            "required": true
+          },
+          {
+            "name": "days",
+            "in": "formData",
+            "type": "string",
+            "description": "0 - 6 for Weekly -- 1-31 for Monthly -- For Last day of the month can add -1\n          Required if unit is Weekly or Monthly. List of days of UNIT to create transactions on.",
+            "required": false
+          },
+          {
+            "name": "total_paid",
+            "in": "formData",
+            "type": "string",
+            "description": "Required if end_type is set to total_amount_paid_on_recurrence or total_amount_paid_on_receiver.\n          Total amount the recurrence should debit.",
+            "required": false
+          },
+          {
+            "name": "number_of_occurrences",
+            "in": "formData",
+            "type": "integer",
+            "description": "Required if end_type is set to end_after_occurrences.\n          Total times transactions should be created on receiving account",
+            "required": false
+          },
+          {
+            "name": "end_date",
+            "in": "formData",
+            "type": "string",
+            "description": "Schedule end date - Only needed when end_type == \"end_date\"",
+            "required": false
+          },
+          {
+            "name": "is_active",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Is the schedule active or disabled?",
+            "required": false
+          },
+          {
+            "name": "include_bank_holidays",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Should the schedule create a transaction on a bank holiday?\n        Note it will not actually be originated until the following business day.",
+            "required": false
+          },
+          {
+            "name": "poa_file",
+            "in": "formData",
+            "type": "file",
+            "description": "POA file, can be an image(png|jpg|jpeg|webp) or a PDF. Required if amount exceeds POA required amount from settings.",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/ach_recurrences/{id}": {
+      "get": {
+        "summary": "Find ACH Recurrences by UUID",
+        "description": "Returns a single ACH Recurrences",
+        "operationId": "findAchRecurrenceByUUId",
+        "tags": [
+          "ACH Recurrences"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH Recurrence to fetch",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "ACH Recurrence was not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update an ACH recurrence",
+        "description": "Update an existing ACH Recurrence. By default will not effect any transactions already created by this scheduler.",
+        "operationId": "achRecurrenceUpdate",
+        "tags": [
+          "ACH Recurrences"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence response",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "400": {
+            "description": "Error occurred while modifying the ACH Recurrence - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Not Found - Unable to find record with that ID."
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH Recurrence to update",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "create_transaction",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Create a new transaction immediately on this new schedule?",
+            "required": false
+          },
+          {
+            "name": "cancel_last",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Cancel Last transaction created by this recurrence?",
+            "required": false
+          },
+          {
+            "name": "originator_ach_account_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Originating ACH Account UUID",
+            "required": false
+          },
+          {
+            "name": "bank_account_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Receiving Bank Account UUID",
+            "required": false
+          },
+          {
+            "name": "description",
+            "in": "formData",
+            "type": "string",
+            "description": "Description of Recurrence",
+            "required": true
+          },
+          {
+            "name": "amount",
+            "in": "formData",
+            "type": "string",
+            "description": "Amount of transaction",
+            "required": true
+          },
+          {
+            "name": "start_date",
+            "in": "formData",
+            "type": "string",
+            "description": "Schedule start date",
+            "required": false
+          },
+          {
+            "name": "end_type",
+            "in": "formData",
+            "type": "string",
+            "enum": [
+              "no_end",
+              "total_amount_paid_on_receiver",
+              "end_after_occurrences",
+              "end_date",
+              "total_amount_paid_on_recurrence"
+            ],
+            "description": "When should the Recurrence end?",
+            "required": false
+          },
+          {
+            "name": "interval",
+            "in": "formData",
+            "type": "integer",
+            "description": "Schedule modifier - i.e. every 1st day || every 2nd day",
+            "required": false
+          },
+          {
+            "name": "unit",
+            "in": "formData",
+            "type": "string",
+            "enum": [
+              "Daily",
+              "Weekly",
+              "Monthly"
+            ],
+            "description": "Daily will create a transaction every INTERVAL day including weekends.\n          Weekly will create a transaction every INTERVAL week on every day in the day_array.\n          Monthly will create a transaction every INTERVAL month every day in the day_array.",
+            "required": false
+          },
+          {
+            "name": "days",
+            "in": "formData",
+            "type": "string",
+            "description": "0 - 6 for Weekly -- 1-31 for Monthly -- For Last day of the month can add -1\n          Required if unit is Weekly or Monthly. List of days of UNIT to create transactions on.",
+            "required": false
+          },
+          {
+            "name": "total_paid",
+            "in": "formData",
+            "type": "string",
+            "description": "Required if end_type is set to total_amount_paid_on_recurrence or total_amount_paid_on_receiver.\n          Total amount the recurrence should debit.",
+            "required": false
+          },
+          {
+            "name": "number_of_occurrences",
+            "in": "formData",
+            "type": "integer",
+            "description": "Required if end_type is set to end_after_occurrences.\n          Total times transactions should be created on receiving account",
+            "required": false
+          },
+          {
+            "name": "end_date",
+            "in": "formData",
+            "type": "string",
+            "description": "Schedule end date - Only needed when end_type == \"end_date\"",
+            "required": false
+          },
+          {
+            "name": "is_active",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Is the schedule active or disabled?",
+            "required": false
+          },
+          {
+            "name": "include_bank_holidays",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Should the schedule create a transaction on a bank holiday?\n        Note it will not actually be originated until the following business day.",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/ach_recurrences/{id}/ach_transactions": {
+      "get": {
+        "summary": "Find ACH Transactions on an ACH Recurrence",
+        "description": "Returns a list of all ACH Transactions linked to an ACH Recurrence",
+        "operationId": "findAchRecurrenceAchTransactions",
+        "tags": [
+          "ACH Recurrences"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH Recurrence to base the search on",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transactions List",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "ACH Recurrence was not found"
+          }
+        }
+      }
+    },
+    "/ach_recurrences/{id}/disable": {
+      "post": {
+        "summary": "Disables an ACH Recurrence",
+        "description": "Disable an ACH Recurrence. By default, the disable action does not cancel existing ACH Transactions created by Recurrence.",
+        "operationId": "disableAchRecurrenceByUUId",
+        "tags": [
+          "ACH Recurrences"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH Recurrence to Disable",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          },
+          {
+            "name": "cancel_last",
+            "in": "query",
+            "description": "Attempt to cancel last transaction created by Recurrence",
+            "required": false,
+            "type": "boolean",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence response",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct."
+          },
+          "404": {
+            "description": "ACH Recurrence was not found."
+          }
+        }
+      }
+    },
+    "/bank_accounts": {
+      "get": {
+        "summary": "View all Bank Accounts",
+        "description": "All Bank Accounts the user has access to",
+        "operationId": "bank_accountsIndex",
+        "tags": [
+          "Bank Accounts"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "bank_accounts response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add new bank account",
+        "description": "Create a Bank Account. Duplicates are allowed",
+        "operationId": "bankAccountCreate",
+        "tags": [
+          "Bank Accounts"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank Account response",
+            "schema": {
+              "$ref": "#/definitions/BankAccount"
+            }
+          },
+          "400": {
+            "description": "Error occured while creating Bank Account - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Not Found - Unable to find a receiver with that ID."
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "formData",
+            "type": "string",
+            "description": "Bank Account name",
+            "required": true
+          },
+          {
+            "name": "routing_number",
+            "in": "formData",
+            "type": "integer",
+            "description": "Routing Number",
+            "required": false
+          },
+          {
+            "name": "account_number",
+            "in": "formData",
+            "type": "integer",
+            "description": "Account Number",
+            "required": false
+          },
+          {
+            "name": "receiver_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Receiver UUID",
+            "required": true
+          },
+          {
+            "name": "business",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Is this a Business Account",
+            "required": false
+          },
+          {
+            "name": "checking",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Is this a Checking Account",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/bank_accounts/{id}": {
+      "get": {
+        "summary": "Find a Bank Account by UUID",
+        "description": "Returns a single Bank Account if the user has access",
+        "operationId": "findBankAccountsByUUId",
+        "tags": [
+          "Bank Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Bank Account to fetch",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank Account response",
+            "schema": {
+              "$ref": "#/definitions/BankAccount"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Bank Account was not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a bank account",
+        "description": "Update an existing Bank Account",
+        "operationId": "bankAccountUpdate",
+        "tags": [
+          "Bank Accounts"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank Account response",
+            "schema": {
+              "$ref": "#/definitions/BankAccount"
+            }
+          },
+          "400": {
+            "description": "Error occured while creating Bank Account - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Not Found - Unable to find a receiver with that ID."
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Bank Account to update",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "in": "formData",
+            "type": "string",
+            "description": "Bank Account name",
+            "required": false
+          },
+          {
+            "name": "routing_number",
+            "in": "formData",
+            "type": "integer",
+            "description": "Routing Number",
+            "required": false
+          },
+          {
+            "name": "account_number",
+            "in": "formData",
+            "type": "integer",
+            "description": "Account Number",
+            "required": false
+          },
+          {
+            "name": "receiver_id",
+            "in": "formData",
+            "type": "string",
+            "description": "Recevier UUID",
+            "required": false
+          },
+          {
+            "name": "business",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Is this a Business Account",
+            "required": false
+          },
+          {
+            "name": "checking",
+            "in": "formData",
+            "type": "boolean",
+            "description": "Is this a Checking Account",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/bank_accounts/{id}/ach_recurrences": {
+      "get": {
+        "summary": "Find ACH Recurrences on a Bank Account",
+        "description": "Returns a list of all ACH Recurrences linked to a Bank Account",
+        "operationId": "findBankAccountsAchRecurrences",
+        "tags": [
+          "Bank Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Bank Account to search on",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence List",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Bank Account was not found"
+          }
+        }
+      }
+    },
+    "/bank_accounts/{id}/ach_transactions": {
+      "get": {
+        "summary": "Find ACH Transactions on a Bank Account",
+        "description": "Returns a list of all ACH Transactions linked to a Bank Account",
+        "operationId": "findBankAccountsAchTransactions",
+        "tags": [
+          "Bank Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Bank Account to search on",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transactions List",
+            "schema": {
+              "$ref": "#/definitions/AchTransaction"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Bank Account was not found"
+          }
+        }
+      }
+    },
+    "/originator_ach_accounts": {
+      "get": {
+        "summary": "View all ACH Accounts",
+        "description": "All originator ach account the user has access to",
+        "operationId": "originatorAchAccountIndex",
+        "tags": [
+          "Originator ACH Accounts"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "originator ach accounts response",
+            "schema": {
+              "$ref": "#/definitions/OriginatorAchAccount"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      }
+    },
+    "/originator_ach_accounts/{id}": {
+      "get": {
+        "summary": "Find Originator ACH Account by UUID",
+        "description": "Returns a single ACH account",
+        "operationId": "findOriginatorAchAccountByUUID",
+        "tags": [
+          "Originator ACH Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH account to fetch",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Originator ACH Account response",
+            "schema": {
+              "$ref": "#/definitions/OriginatorAchAccount"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Originator ACH Account was not found"
+          }
+        }
+      }
+    },
+    "/originator_ach_accounts/{id}/ach_recurrences": {
+      "get": {
+        "summary": "Find ACH Recurrences on Originator ACH Account",
+        "description": "Returns all Recurrences on a single ACH account",
+        "operationId": "findOriginatorAchAccountAchRecurrences",
+        "tags": [
+          "Originator ACH Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH account to use",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence response",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Originator ACH Account was not found"
+          }
+        }
+      }
+    },
+    "/originator_ach_accounts/{id}/ach_transactions": {
+      "get": {
+        "summary": "Find ACH Transactions on Originator ACH Account",
+        "description": "Returns all Transactions on a single ACH account",
+        "operationId": "findOriginatorAchAccountAchTransactions",
+        "tags": [
+          "Originator ACH Accounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of ACH account to use",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transactions response",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Originator ACH Account was not found"
+          }
+        }
+      }
+    },
+    "/receivers": {
+      "get": {
+        "summary": "View all Clients",
+        "description": "All clients the user has access to",
+        "operationId": "receiverIndex",
+        "tags": [
+          "Receivers"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "receivers response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      },
+      "post": {
+        "summary": "Add new client",
+        "description": "Create a receiver. Duplicates are allowed",
+        "operationId": "receiverCreate",
+        "tags": [
+          "Receivers"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "receivers response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "400": {
+            "description": "Error occured while creating receiver - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        },
+        "parameters": [
+          {
+            "name": "name",
+            "in": "formData",
+            "type": "string",
+            "description": "Client name",
+            "required": true
+          },
+          {
+            "name": "dba",
+            "in": "formData",
+            "type": "string",
+            "description": "Client DBA",
+            "required": false
+          },
+          {
+            "name": "email",
+            "in": "formData",
+            "type": "string",
+            "description": "Client email address",
+            "required": false
+          },
+          {
+            "name": "custom_1",
+            "in": "formData",
+            "type": "string",
+            "description": "Custom Field 1",
+            "required": false
+          },
+          {
+            "name": "custom_2",
+            "in": "formData",
+            "type": "string",
+            "description": "Custom Field 2",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/receivers/{id}": {
+      "get": {
+        "summary": "Find Client by UUID",
+        "description": "Returns a single Client if the user has access",
+        "operationId": "findReceiverByUUId",
+        "tags": [
+          "Receivers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Client to fetch",
+            "required": true,
+            "type": "string",
+            "format": "byte"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "receiver response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Receiver was not found"
+          }
+        }
+      },
+      "put": {
+        "summary": "Update existing client",
+        "description": "Update a receiver.",
+        "operationId": "receiverUpdate",
+        "tags": [
+          "Receivers"
+        ],
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "receivers response",
+            "schema": {
+              "$ref": "#/definitions/Receiver"
+            }
+          },
+          "400": {
+            "description": "Error occured while updating receiver - correct the errors in the response and resubmit."
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct."
+          },
+          "404": {
+            "description": "Not Found - Unable to find a receiver with that ID."
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Client to update",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "name",
+            "in": "formData",
+            "type": "string",
+            "description": "Client name",
+            "required": true
+          },
+          {
+            "name": "dba",
+            "in": "formData",
+            "type": "string",
+            "description": "Client DBA",
+            "required": false
+          },
+          {
+            "name": "email",
+            "in": "formData",
+            "type": "string",
+            "description": "Client email address",
+            "required": false
+          },
+          {
+            "name": "custom_1",
+            "in": "formData",
+            "type": "string",
+            "description": "Custom Field 1",
+            "required": false
+          },
+          {
+            "name": "custom_2",
+            "in": "formData",
+            "type": "string",
+            "description": "Custom Field 2",
+            "required": false
+          }
+        ]
+      }
+    },
+    "/receivers/{id}/bank_accounts": {
+      "get": {
+        "summary": "Find Bank Accounts on a Client",
+        "description": "Returns a list of all bank accounts linked to a Client",
+        "operationId": "findReceiverBankAccounts",
+        "tags": [
+          "Receivers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Client to search on",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank Accounts List",
+            "schema": {
+              "$ref": "#/definitions/BankAccount"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Receiver was not found"
+          }
+        }
+      }
+    },
+    "/receivers/{id}/ach_recurrences": {
+      "get": {
+        "summary": "Find ACH Recurrences on a Client",
+        "description": "Returns a list of all ACH Recurrences linked to a Client",
+        "operationId": "findReceiverAchRecurrences",
+        "tags": [
+          "Receivers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Client to search on",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Recurrence List",
+            "schema": {
+              "$ref": "#/definitions/AchRecurrence"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Receiver was not found"
+          }
+        }
+      }
+    },
+    "/receivers/{id}/ach_transactions": {
+      "get": {
+        "summary": "Find ACH Transactions on a Client",
+        "description": "Returns a list of all ACH Transactions linked to a Client",
+        "operationId": "findReceiverAchTransactions",
+        "tags": [
+          "Receivers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "UUID of Client to to search on",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          }
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ACH Transactions List",
+            "schema": {
+              "$ref": "#/definitions/AchTransaction"
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          },
+          "404": {
+            "description": "Receiver was not found"
+          }
+        }
+      }
+    },
+    "/reports/returns_breakdown": {
+      "get": {
+        "summary": "View breakdown of all returns",
+        "description": "All transactions which returned during during a selected date range",
+        "operationId": "reportsReturnsBreakdown",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          },
+          {
+            "$ref": "#/parameters/start_date"
+          },
+          {
+            "$ref": "#/parameters/end_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "report breakdown response"
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      }
+    },
+    "/reports/returns_daily": {
+      "get": {
+        "summary": "View all returns by day",
+        "description": "All transactions which returned during during a selected date range - grouped by day - max 31 days",
+        "operationId": "reportsReturnsDaily",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/start_date"
+          },
+          {
+            "$ref": "#/parameters/end_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "report daily returns response"
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      }
+    },
+    "/reports/deposits_breakdown": {
+      "get": {
+        "summary": "View breakdown of all deposits",
+        "description": "All transactions which were deposited during a selected date range",
+        "operationId": "reportsDepositsBreakdown",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/pointer"
+          },
+          {
+            "$ref": "#/parameters/start_date"
+          },
+          {
+            "$ref": "#/parameters/end_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "deposits breakdown response"
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      }
+    },
+    "/reports/deposits_daily": {
+      "get": {
+        "summary": "View all deposits by day",
+        "description": "All transactions which were deposited during a selected date range - grouped by day - max 31 days",
+        "operationId": "reportsDepositsDaily",
+        "tags": [
+          "Reports"
+        ],
+        "security": [
+          {
+            "bearer_token": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/start_date"
+          },
+          {
+            "$ref": "#/parameters/end_date"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "report daily deposits response"
+          },
+          "401": {
+            "description": "Unauthorized - Confirm your API Key is correct"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "AchRecurrence": {
+      "required": [
+        "uuid",
+        "description",
+        "amount",
+        "end_type",
+        "originator_ach_account_uuid",
+        "bank_account_uuid",
+        "start_date"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "example": "2cc75eb0-5479-4918-a8e3-9780221c7fdb"
+        },
+        "description": {
+          "type": "string",
+          "example": "Schedule for modified debits. 150 per weekday until 30000."
+        },
+        "amount": {
+          "type": "string",
+          "example": "150.00"
+        },
+        "total_paid": {
+          "type": "string",
+          "example": "30000.00"
+        },
+        "recurrence_hash": {
+          "type": "string",
+          "example": "---\n:start_time: &1\n  :time: 2016-05-11 04:00:00.000000000 Z\n  :zone: UTC\n:start_date: *1\n:rrules:\n- :validations:\n    :day:\n    - 1\n    - 2\n    - 3\n    - 4\n    - 5\n  :rule_type: IceCube::WeeklyRule\n  :interval: 1\n  :week_start: 0\n:rtimes: []\n:extimes: []\n"
+        },
+        "is_active": {
+          "type": "boolean",
+          "example": true
+        },
+        "include_bank_holidays": {
+          "type": "boolean",
+          "example": false
+        },
+        "end_type": {
+          "type": "string",
+          "example": "total_amount_paid_on_recurrence"
+        },
+        "number_of_occurrences": {
+          "type": "integer",
+          "example": ""
+        },
+        "originator_ach_account_uuid": {
+          "type": "string",
+          "example": "345fd320-5479-4918-a8e3-9780221c7fdb"
+        },
+        "bank_account_uuid": {
+          "type": "string",
+          "example": "445fd320-5479-4918-a8e3-9780221c7fdb"
+        },
+        "schedule_start_date": {
+          "type": "string",
+          "example": "04/18/2026"
+        },
+        "schedule_in_words": {
+          "type": "string",
+          "example": "Weekly on Weekdays"
+        },
+        "current_transaction_count": {
+          "type": "integer",
+          "example": "46"
+        }
+      }
+    },
+    "AchTransaction": {
+      "required": [
+        "uuid",
+        "descriptor",
+        "amount",
+        "originator_ach_account_uuid",
+        "bank_account_uuid"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "example": "2cc75eb0-5479-4918-a8e3-9780221c7fdb"
+        },
+        "transaction_type": {
+          "type": "string",
+          "example": "Debit"
+        },
+        "descriptor": {
+          "type": "string",
+          "example": "Debit for Final Payoff Amount"
+        },
+        "originate_date": {
+          "type": "string",
+          "example": "2026-06-16"
+        },
+        "current_status": {
+          "type": "string",
+          "example": "Funded"
+        },
+        "amount": {
+          "type": "string",
+          "example": "1500.75"
+        },
+        "transaction_id": {
+          "type": "string",
+          "example": "FI100122136"
+        },
+        "notes": {
+          "type": "text",
+          "example": "SYS GENERATED INFO"
+        },
+        "effective_date": {
+          "type": "string",
+          "example": "2026-06-17"
+        },
+        "return_date": {
+          "type": "string",
+          "example": "2026-06-18"
+        },
+        "return_code": {
+          "type": "string",
+          "example": "R01"
+        },
+        "deposit_date": {
+          "type": "string",
+          "example": "2026-06-18"
+        },
+        "noc_date": {
+          "type": "string",
+          "example": "2026-06-19"
+        },
+        "noc_code": {
+          "type": "string",
+          "example": "C01"
+        },
+        "noc_history": {
+          "type": "string",
+          "example": "INCORRECT ACCOUNT NUMBER"
+        },
+        "originator_ach_account_uuid": {
+          "type": "string",
+          "example": "45c75eb0-5479-4918-a8e3-9780221c7fdb"
+        },
+        "bank_account_uuid": {
+          "type": "string",
+          "example": "r7c75eb0-5479-4918-a8e3-9780221c7fdb"
+        },
+        "ach_recurrence_uuid": {
+          "type": "string",
+          "example": "z7c75e83-5479-4918-a8e3-9780221c7fdb"
+        },
+        "account_vendor_name": {
+          "type": "string",
+          "example": "ABC Funding"
+        }
+      }
+    },
+    "BankAccount": {
+      "required": [
+        "uuid",
+        "name"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "example": "z7c75e83-5479-4918-a8e3-9780221c7fdb"
+        },
+        "name": {
+          "type": "string",
+          "example": "Tim Main Account"
+        },
+        "receiver_uuid": {
+          "type": "string",
+          "example": "4ds33e83-5479-4918-a8e3-9780221c7fdb"
+        },
+        "business": {
+          "type": "boolean",
+          "example": true
+        },
+        "checking": {
+          "type": "boolean",
+          "example": true
+        },
+        "account_number_last_four": {
+          "type": "string",
+          "example": "4566"
+        },
+        "routing_number_last_four": {
+          "type": "string",
+          "example": "3345"
+        }
+      }
+    },
+    "Receiver": {
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "example": "2cc75eb0-5479-4918-a8e3-9780221c7fdb"
+        },
+        "name": {
+          "type": "string",
+          "example": "Tim Pizzeria INC"
+        },
+        "dba": {
+          "type": "string",
+          "example": "Tim's Pizzeria"
+        },
+        "email": {
+          "type": "string",
+          "example": "timpizza@swipebms.com"
+        },
+        "is_active": {
+          "type": "boolean",
+          "example": true
+        },
+        "custom_1": {
+          "type": "string",
+          "example": "MXII"
+        },
+        "custom_2": {
+          "type": "string",
+          "example": "NO"
+        }
+      }
+    },
+    "OriginatorAchAccount": {
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "example": "2cc75eb0-5479-4918-a8e3-9780221c7fdb"
+        },
+        "vendor_name": {
+          "type": "string",
+          "example": "ABC FUNDER MAIN"
+        },
+        "current_transactions": {
+          "type": "integer",
+          "example": "3201"
+        },
+        "current_returns": {
+          "type": "integer",
+          "example": "22"
+        }
+      }
+    }
+  }
+}
