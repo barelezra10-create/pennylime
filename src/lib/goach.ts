@@ -125,7 +125,9 @@ export async function cancelTransaction(uuid: string): Promise<{ ok: true; statu
 export async function dailyUpdate(pointer?: string | null): Promise<{ ok: true; changes: DailyUpdateChange[]; newPointer: string | null; remaining: number } | { ok: false; error: string }> {
   const { apiKey, baseUrl } = cfg();
   const url = new URL(`${baseUrl}/ach_transactions/daily_update`);
-  if (pointer) url.searchParams.set("pointer", pointer);
+  // GoACH's cursor query param is "after" (confirmed against staging;
+  // "pointer" 500s). The response echoes the cursor as details.new_pointer.
+  if (pointer) url.searchParams.set("after", pointer);
   try {
     const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" } });
     const json = (await res.json().catch(() => ({}))) as { errors?: unknown; status?: string };
