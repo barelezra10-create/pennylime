@@ -34,6 +34,7 @@ const ALLOWED_FIELDS = [
   "eventMappings",
   "customHeadHtml",
   "customBodyHtml",
+  "paymentProcessor",
 ] as const;
 
 const BOOL_FIELDS = ["enabled", "testMode"] as const;

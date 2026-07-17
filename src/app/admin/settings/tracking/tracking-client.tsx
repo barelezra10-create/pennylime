@@ -38,6 +38,7 @@ type Config = {
   eventMappings: string;
   customHeadHtml: string | null;
   customBodyHtml: string | null;
+  paymentProcessor: string | null;
 };
 
 type RecentEvent = {
@@ -164,6 +165,20 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                 <Field name="twilioApiKeySid" label="API Key SID (voice)" placeholder="SK..." defaultValue={config.twilioApiKeySid} />
                 <Field name="twilioApiKeySecret" label="API Key secret (voice)" defaultValue={config.twilioApiKeySecret} secret />
               </Grid>
+            </Card>
+
+            <Card title="Payment processor" subtitle="Select which ACH processor to use for loan disbursements and repayments.">
+              <div>
+                <label className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#71717a] block mb-1">Processor</label>
+                <select
+                  name="paymentProcessor"
+                  defaultValue={config.paymentProcessor ?? "increase"}
+                  className="w-full text-[13px] border border-[#e4e4e7] rounded-lg px-3 py-2 outline-none focus:border-[#15803d] bg-white"
+                >
+                  <option value="increase">Increase</option>
+                  <option value="goach">GoACH</option>
+                </select>
+              </div>
             </Card>
           </div>
         )}
