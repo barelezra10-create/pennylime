@@ -22,9 +22,51 @@ export async function refreshPaymentStatus(paymentId: string): Promise<
 
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
-    select: { id: true, increaseTransferId: true, status: true },
+    select: { id: true, increaseTransferId: true, status: true, goachTransactionUuid: true, paidAt: true },
   });
   if (!payment) return { ok: false, error: "Payment not found" };
+
+  // --- GoACH branch: if this payment was processed via GoACH, use their API ---
+  if (payment.goachTransactionUuid) {
+    const { goachConfigured, getTransaction, mapGoachStatus } = await import("@/lib/goach");
+    if (!goachConfigured()) return { ok: false, error: "GoACH not configured" };
+    const { explainReturnCode } = await import("@/lib/ach-return-codes");
+    const { updateAttemptStatus } = await import("@/lib/payment-attempts");
+
+    const t = await getTransaction(payment.goachTransactionUuid);
+    if (!t.ok) return { ok: false, error: t.error };
+
+    let returnCode: string | null = null;
+    if (mapGoachStatus(t.status, null).isReturned) {
+      returnCode = t.returnCode;
+    }
+    const mapped = mapGoachStatus(t.status, returnCode);
+
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: {
+        increaseTransferStatus: t.status,
+        status: mapped.paymentStatus,
+        paidAt: mapped.isSettled ? new Date() : payment.paidAt,
+        ...(returnCode ? { increaseReturnReason: explainReturnCode(returnCode) } : {}),
+      },
+    });
+    try {
+      await updateAttemptStatus({
+        transferId: payment.goachTransactionUuid,
+        transferStatus: t.status,
+        finalStatus: mapped.isSettled ? "PAID" : mapped.isReturned ? "RETURNED" : mapped.paymentStatus === "FAILED" ? "FAILED" : undefined,
+        settledAt: mapped.isSettled ? new Date() : undefined,
+        returnReason: returnCode ? explainReturnCode(returnCode) : undefined,
+      });
+    } catch (err) {
+      console.error(`[refresh-payment-status] goach attempt update failed for ${paymentId}:`, err);
+    }
+
+    return { ok: true, status: mapped.paymentStatus, transferStatus: t.status };
+  }
+
+  // --- Increase branch (original path) ---
   if (!payment.increaseTransferId) {
     return { ok: false, error: "No Increase transfer attached yet" };
   }

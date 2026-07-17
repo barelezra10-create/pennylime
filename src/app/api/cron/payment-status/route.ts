@@ -381,6 +381,64 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // --- GoACH status sync via the daily_update cursor feed ---
+  {
+    const { goachConfigured, dailyUpdate, mapGoachStatus, getTransaction } = await import("@/lib/goach");
+    if (goachConfigured()) {
+      const { getTrackingConfig, updateTrackingConfig } = await import("@/lib/tracking/config");
+      const { explainReturnCode } = await import("@/lib/ach-return-codes");
+      const { updateAttemptStatus } = await import("@/lib/payment-attempts");
+      const cfg = await getTrackingConfig();
+      let pointer = cfg.goachDailyUpdatePointer;
+      let guard = 0;
+      while (guard++ < 50) {
+        const upd = await dailyUpdate(pointer);
+        if (!upd.ok || upd.changes.length === 0) break;
+        for (const ch of upd.changes) {
+          try {
+            const payment = await prisma.payment.findUnique({ where: { goachTransactionUuid: ch.transactionUuid }, select: { id: true, applicationId: true, paidAt: true } });
+            if (payment) {
+              let returnCode: string | null = null;
+              if (mapGoachStatus(ch.to, null).isReturned) {
+                const t = await getTransaction(ch.transactionUuid);
+                if (t.ok) returnCode = t.returnCode;
+              }
+              const mapped = mapGoachStatus(ch.to, returnCode);
+              await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                  increaseTransferStatus: ch.to,
+                  status: mapped.paymentStatus,
+                  paidAt: mapped.isSettled ? new Date() : payment.paidAt,
+                  increaseReturnReason: returnCode ? explainReturnCode(returnCode) : undefined,
+                },
+              });
+              await updateAttemptStatus({
+                transferId: ch.transactionUuid,
+                transferStatus: ch.to,
+                finalStatus: mapped.isSettled ? "PAID" : mapped.isReturned ? "RETURNED" : mapped.paymentStatus === "FAILED" ? "FAILED" : undefined,
+                settledAt: mapped.isSettled ? new Date() : undefined,
+                returnReason: returnCode ? explainReturnCode(returnCode) : undefined,
+              });
+              dirtyApplicationIds.add(payment.applicationId);
+            } else {
+              const appRow = await prisma.application.findFirst({ where: { goachDisburseUuid: ch.transactionUuid }, select: { id: true } });
+              if (appRow) {
+                await prisma.application.update({ where: { id: appRow.id }, data: { increaseTransferStatus: ch.to } });
+                dirtyApplicationIds.add(appRow.id);
+              }
+            }
+          } catch (err) {
+            console.error(`[payment-status] goach sync failed for ${ch.transactionUuid}:`, err);
+          }
+        }
+        pointer = upd.newPointer;
+        await updateTrackingConfig({ goachDailyUpdatePointer: pointer });
+        if (upd.remaining === 0) break;
+      }
+    }
+  }
+
   // Cascade payment-level changes onto each touched application so the
   // FUNDED -> REPAYING -> LATE -> PAID_OFF transitions land without a
   // separate cron pass.
