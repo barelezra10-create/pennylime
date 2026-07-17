@@ -535,40 +535,46 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
   let goachDisburseUuid: string | null = null;
 
   if (processor === "goach") {
-    const { goachConfigured, createTransaction } = await import("@/lib/goach");
-    const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
-    if (!goachConfigured()) {
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: { increaseDisburseError: "GoACH not configured" },
+    try {
+      const { goachConfigured, createTransaction } = await import("@/lib/goach");
+      const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+      if (!goachConfigured()) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: { increaseDisburseError: "GoACH not configured" },
+        });
+        return { success: false, error: "GoACH not configured" };
+      }
+      const ba = await ensureGoachBankAccount(applicationId);
+      if (!ba.ok) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: { increaseDisburseError: ba.error },
+        });
+        return { success: false, error: `Couldn't set up GoACH bank account: ${ba.error}` };
+      }
+      const tx = await createTransaction({
+        bankAccountUuid: ba.bankAccountUuid,
+        amountCents: Math.round(fundedAmount * 100),
+        type: "Credit",
+        descriptor: "PENNYLIME ADV",
       });
-      return { success: false, error: "GoACH not configured" };
+      if (!tx.ok) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: { increaseDisburseError: tx.error },
+        });
+        return { success: false, error: `Disbursement failed: ${tx.error}` };
+      }
+      transferId = tx.uuid;
+      transferStatus = tx.status;
+      goachDisburseUuid = tx.uuid;
+      console.log(`[disburse] app ${application.applicationCode} funded via GoACH credit ${tx.uuid}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "goach error";
+      await prisma.application.update({ where: { id: applicationId }, data: { increaseDisburseError: message } }).catch(() => {});
+      return { success: false, error: `GoACH error: ${message}` };
     }
-    const ba = await ensureGoachBankAccount(applicationId);
-    if (!ba.ok) {
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: { increaseDisburseError: ba.error },
-      });
-      return { success: false, error: `Couldn't set up GoACH bank account: ${ba.error}` };
-    }
-    const tx = await createTransaction({
-      bankAccountUuid: ba.bankAccountUuid,
-      amountCents: Math.round(fundedAmount * 100),
-      type: "Credit",
-      descriptor: "PENNYLIME ADV",
-    });
-    if (!tx.ok) {
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: { increaseDisburseError: tx.error },
-      });
-      return { success: false, error: `Disbursement failed: ${tx.error}` };
-    }
-    transferId = tx.uuid;
-    transferStatus = tx.status;
-    goachDisburseUuid = tx.uuid;
-    console.log(`[disburse] app ${application.applicationCode} funded via GoACH credit ${tx.uuid}`);
   } else {
     if (!process.env.INCREASE_API_KEY) {
       return { success: false, error: "Increase is not configured (INCREASE_API_KEY missing)." };
@@ -614,7 +620,7 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     }
   }
 
-  // ── Increase credit succeeded. Now flip status to ACTIVE and ensure
+  // ── ACH credit succeeded. Now flip status to ACTIVE and ensure
   // a payment schedule exists. Don't duplicate: if the offer-accept
   // flow already created payments, we skip schedule generation.
   const existingPayments = await prisma.payment.count({ where: { applicationId } });
@@ -668,7 +674,9 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
       fundedAmount,
       paymentsCreated,
       existingPayments,
-      increaseTransferId: transferId,
+      processor,
+      disbursementId: transferId,
+      ...(goachDisburseUuid ? { goachDisburseUuid } : { increaseTransferId: transferId }),
     },
   });
 
