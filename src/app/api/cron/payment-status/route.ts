@@ -267,11 +267,18 @@ export async function POST(request: NextRequest) {
   const pendingRepayments = await prisma.payment.findMany({
     where: {
       increaseTransferId: { not: null },
-      processor: { not: "goach" }, // exclude GoACH rows — Prisma's `not` includes NULL, so legacy Increase rows (processor = null) are still selected
-      OR: [
-        { status: { in: ["PROCESSING", "FAILED", "RETURNED"] } },
-        { increaseTransferStatus: null },
-        { increaseTransferStatus: { notIn: TERMINAL } },
+      // Exclude GoACH rows (they sync via the goach branch below). Prisma's
+      // scalar `not` compiles to `<>` which drops NULLs, so use an explicit
+      // OR to keep legacy Increase rows where processor is null.
+      AND: [
+        { OR: [{ processor: null }, { processor: { not: "goach" } }] },
+        {
+          OR: [
+            { status: { in: ["PROCESSING", "FAILED", "RETURNED"] } },
+            { increaseTransferStatus: null },
+            { increaseTransferStatus: { notIn: TERMINAL } },
+          ],
+        },
       ],
     },
     select: {
