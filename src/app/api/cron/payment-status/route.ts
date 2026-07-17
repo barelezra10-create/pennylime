@@ -394,6 +394,8 @@ export async function POST(request: NextRequest) {
       while (guard++ < 50) {
         const upd = await dailyUpdate(pointer);
         if (!upd.ok || upd.changes.length === 0) break;
+        // Fix 1: collect uuids whose DB write threw so we can hold the pointer.
+        const failed: string[] = [];
         for (const ch of upd.changes) {
           try {
             const payment = await prisma.payment.findUnique({ where: { goachTransactionUuid: ch.transactionUuid }, select: { id: true, applicationId: true, paidAt: true } });
@@ -404,6 +406,7 @@ export async function POST(request: NextRequest) {
                 if (t.ok) returnCode = t.returnCode;
               }
               const mapped = mapGoachStatus(ch.to, returnCode);
+              // This is the retryable write — failure holds the cursor.
               await prisma.payment.update({
                 where: { id: payment.id },
                 data: {
@@ -413,25 +416,40 @@ export async function POST(request: NextRequest) {
                   increaseReturnReason: returnCode ? explainReturnCode(returnCode) : undefined,
                 },
               });
-              await updateAttemptStatus({
-                transferId: ch.transactionUuid,
-                transferStatus: ch.to,
-                finalStatus: mapped.isSettled ? "PAID" : mapped.isReturned ? "RETURNED" : mapped.paymentStatus === "FAILED" ? "FAILED" : undefined,
-                settledAt: mapped.isSettled ? new Date() : undefined,
-                returnReason: returnCode ? explainReturnCode(returnCode) : undefined,
-              });
+              // Fix 3: attempt sync is best-effort; failure does NOT mark the change as failed.
+              try {
+                await updateAttemptStatus({
+                  transferId: ch.transactionUuid,
+                  transferStatus: ch.to,
+                  finalStatus: mapped.isSettled ? "PAID" : mapped.isReturned ? "RETURNED" : mapped.paymentStatus === "FAILED" ? "FAILED" : undefined,
+                  settledAt: mapped.isSettled ? new Date() : undefined,
+                  returnReason: returnCode ? explainReturnCode(returnCode) : undefined,
+                });
+              } catch (attemptErr) {
+                console.error(`[payment-status] goach: attempt update failed (best-effort) for ${ch.transactionUuid}:`, attemptErr);
+              }
               dirtyApplicationIds.add(payment.applicationId);
             } else {
               const appRow = await prisma.application.findFirst({ where: { goachDisburseUuid: ch.transactionUuid }, select: { id: true } });
               if (appRow) {
+                // This is the retryable write — failure holds the cursor.
                 await prisma.application.update({ where: { id: appRow.id }, data: { increaseTransferStatus: ch.to } });
                 dirtyApplicationIds.add(appRow.id);
               }
+              // No match in Payment or Application — not our record; let pointer advance.
             }
           } catch (err) {
             console.error(`[payment-status] goach sync failed for ${ch.transactionUuid}:`, err);
+            failed.push(ch.transactionUuid);
           }
         }
+        // Fix 1: if any write failed, hold the cursor so the same page is retried next run.
+        if (failed.length > 0) {
+          console.error(`[payment-status] goach: ${failed.length} changes failed, holding pointer for retry`, failed);
+          break;
+        }
+        // Fix 2: guard against null or echoed pointer to prevent re-processing the same page.
+        if (upd.newPointer == null || upd.newPointer === pointer) break;
         pointer = upd.newPointer;
         await updateTrackingConfig({ goachDailyUpdatePointer: pointer });
         if (upd.remaining === 0) break;
