@@ -197,6 +197,7 @@ export async function POST(request: NextRequest) {
   const pendingDisbursements = await prisma.application.findMany({
     where: {
       increaseTransferId: { not: null },
+      goachDisburseUuid: null, // exclude GoACH disbursements — they write their uuid here and are synced by the GoACH branch
       OR: [
         { increaseTransferStatus: null },
         { increaseTransferStatus: { notIn: TERMINAL } },
@@ -266,6 +267,7 @@ export async function POST(request: NextRequest) {
   const pendingRepayments = await prisma.payment.findMany({
     where: {
       increaseTransferId: { not: null },
+      processor: { not: "goach" }, // exclude GoACH rows — Prisma's `not` includes NULL, so legacy Increase rows (processor = null) are still selected
       OR: [
         { status: { in: ["PROCESSING", "FAILED", "RETURNED"] } },
         { increaseTransferStatus: null },

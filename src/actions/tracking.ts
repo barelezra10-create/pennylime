@@ -53,6 +53,15 @@ export async function saveTrackingConfig(formData: FormData) {
     data[f] = formData.get(f) === "on";
   }
 
+  // Safety guard: if GoACH is requested but env is not configured, silently
+  // fall back to "increase" so the daily cron never marks all due payments FAILED.
+  if (data.paymentProcessor === "goach") {
+    const { goachEnv } = await import("@/lib/payment-processor");
+    if (!goachEnv()) {
+      data.paymentProcessor = "increase";
+    }
+  }
+
   await updateTrackingConfig(data);
   revalidatePath("/admin/settings/tracking");
   revalidatePath("/", "layout");
