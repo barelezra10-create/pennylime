@@ -13,7 +13,7 @@ import { prisma } from "@/lib/db";
  * Returns the Increase ach_transfer.id on success.
  */
 export async function initiateACHDebit(paymentId: string): Promise<
-  { success: true; transferId: string } | { success: false; error: string }
+  { success: true; transferId: string; processor: "increase" | "goach" } | { success: false; error: string }
 > {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
@@ -38,7 +38,7 @@ export async function initiateACHDebit(paymentId: string): Promise<
     if (!prov.ok) return { success: false, error: prov.error };
     const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents, type: "Debit", descriptor: "PENNYLIME PMT" });
     if (!tx.ok) return { success: false, error: tx.error };
-    return { success: true, transferId: tx.uuid };
+    return { success: true, transferId: tx.uuid, processor: "goach" as const };
   }
 
   // Resolve or create the Increase ExternalAccount for this application.
@@ -68,7 +68,7 @@ export async function initiateACHDebit(paymentId: string): Promise<
   } else {
     console.log(`[debit] payment ${paymentId} via ${result.rail}`);
   }
-  return { success: true, transferId: result.transferId };
+  return { success: true, transferId: result.transferId, processor: "increase" as const };
 }
 
 /**

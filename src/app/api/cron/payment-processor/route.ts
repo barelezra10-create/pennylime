@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       // Set BOTH columns: achTransferId is legacy (Plaid Transfer era);
       // increaseTransferId is what the Increase webhook handler matches on.
       const { applyDebitInitiation } = await import("@/lib/debit-writeback");
-      await applyDebitInitiation(payment.id, result.transferId);
+      await applyDebitInitiation(payment.id, result.transferId, result.processor);
 
       await logAudit({
         action: "INITIATE_ACH",

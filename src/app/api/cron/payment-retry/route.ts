@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (result.success) {
       const { applyDebitInitiation } = await import("@/lib/debit-writeback");
-      await applyDebitInitiation(payment.id, result.transferId);
+      await applyDebitInitiation(payment.id, result.transferId, result.processor);
       await prisma.payment.update({
         where: { id: payment.id },
         data: {
