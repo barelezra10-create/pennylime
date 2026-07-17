@@ -30,6 +30,7 @@ export type DailyUpdateChange = { transactionUuid: string; from: string; to: str
 /** Pure parser: pull current_status changes and the cursor out of a daily_update body. */
 export function parseDailyUpdate(body: unknown): { changes: DailyUpdateChange[]; newPointer: string | null; remaining: number } {
   const b = body as { data?: Array<{ ach_transaction_uuid?: string; updates?: { current_status?: [string, string] } }>; details?: { new_pointer?: string | null; remaining_count?: number } };
+  if (!Array.isArray(b.data)) return { changes: [], newPointer: b.details?.new_pointer ?? null, remaining: b.details?.remaining_count ?? 0 };
   const changes: DailyUpdateChange[] = [];
   for (const row of b.data ?? []) {
     const cs = row.updates?.current_status;
@@ -113,7 +114,7 @@ export async function createTransaction(input: { bankAccountUuid: string; amount
 
 export async function getTransaction(uuid: string): Promise<{ ok: true; status: string; returnCode: string | null } | { ok: false; error: string }> {
   const r = await req("GET", `/ach_transactions/${uuid}`);
-  return r.ok ? { ok: true, status: String(r.data.current_status ?? ""), returnCode: (r.data.return_code as string) ?? null } : r;
+  return r.ok ? { ok: true, status: String(r.data.current_status ?? ""), returnCode: r.data.return_code != null ? String(r.data.return_code) : null } : r;
 }
 
 export async function cancelTransaction(uuid: string): Promise<{ ok: true; status: string } | { ok: false; error: string }> {
@@ -127,8 +128,11 @@ export async function dailyUpdate(pointer?: string | null): Promise<{ ok: true; 
   if (pointer) url.searchParams.set("pointer", pointer);
   try {
     const res = await fetch(url.toString(), { headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" } });
-    if (!res.ok) return { ok: false, error: `GoACH ${res.status}` };
-    const parsed = parseDailyUpdate(await res.json());
+    const json = (await res.json().catch(() => ({}))) as { errors?: unknown; status?: string };
+    if (!res.ok || (json.errors && json.status !== "success")) {
+      return { ok: false, error: typeof json.errors === "string" ? json.errors : `GoACH ${res.status}` };
+    }
+    const parsed = parseDailyUpdate(json);
     return { ok: true, ...parsed };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "GoACH network error" };

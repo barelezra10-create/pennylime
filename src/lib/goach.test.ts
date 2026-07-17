@@ -6,7 +6,7 @@ import { mapGoachStatus, parseDailyUpdate } from "./goach";
 
 describe("mapGoachStatus", () => {
   it("maps success statuses to PAID", () => {
-    for (const s of ["Funded", "Deposited"]) {
+    for (const s of ["Funded", "Deposited", "Settled"]) {
       expect(mapGoachStatus(s, null)).toEqual({ paymentStatus: "PAID", isSettled: true, isReturned: false });
     }
   });
