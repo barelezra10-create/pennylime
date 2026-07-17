@@ -522,54 +522,96 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     return { success: false, error: "Application must be APPROVED to fund" };
   }
 
-  // ── Try the Increase ACH credit FIRST. If it fails (NSF, account
-  // suspended, etc.) we want to surface the error and stay in APPROVED —
-  // not mark the app as ACTIVE with a phantom transfer that never went
-  // out. The old flow flipped status optimistically, which silently
-  // hid Increase errors and left the borrower thinking they were funded.
-  if (!process.env.INCREASE_API_KEY) {
-    return { success: false, error: "Increase is not configured (INCREASE_API_KEY missing)." };
-  }
+  const { getPaymentProcessor } = await import("@/lib/payment-processor");
+  const processor = await getPaymentProcessor();
+
+  // ── Try the ACH credit FIRST. If it fails (NSF, account suspended, etc.)
+  // we want to surface the error and stay in APPROVED — not mark the app as
+  // ACTIVE with a phantom transfer that never went out. The old flow flipped
+  // status optimistically, which silently hid errors and left the borrower
+  // thinking they were funded.
   let transferId: string;
   let transferStatus: string;
-  try {
-    const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-    const { safeDisburse } = await import("@/lib/increase");
-    const ext = await ensureIncreaseExternalAccount(applicationId);
-    if (!ext.ok) {
+  let goachDisburseUuid: string | null = null;
+
+  if (processor === "goach") {
+    const { goachConfigured, createTransaction } = await import("@/lib/goach");
+    const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+    if (!goachConfigured()) {
       await prisma.application.update({
         where: { id: applicationId },
-        data: { increaseDisburseError: ext.error },
+        data: { increaseDisburseError: "GoACH not configured" },
       });
-      return { success: false, error: `Couldn't set up Increase external account: ${ext.error}` };
+      return { success: false, error: "GoACH not configured" };
     }
-    // safeDisburse: try RTP (instant) -> Same-Day ACH -> standard ACH.
-    // Borrower gets cash in seconds if their bank supports RTP, in hours
-    // if it supports Same-Day ACH, otherwise next business day.
-    const transfer = await safeDisburse({
-      externalAccountId: ext.externalAccountId,
+    const ba = await ensureGoachBankAccount(applicationId);
+    if (!ba.ok) {
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { increaseDisburseError: ba.error },
+      });
+      return { success: false, error: `Couldn't set up GoACH bank account: ${ba.error}` };
+    }
+    const tx = await createTransaction({
+      bankAccountUuid: ba.bankAccountUuid,
       amountCents: Math.round(fundedAmount * 100),
-      statementDescriptor: "PENNYLIME ADV",
-      individualName: `${application.firstName} ${application.lastName}`.slice(0, 22),
-      remittanceInformation: `PennyLime advance - ${application.applicationCode}`,
+      type: "Credit",
+      descriptor: "PENNYLIME ADV",
     });
-    if (!transfer.ok) {
+    if (!tx.ok) {
       await prisma.application.update({
         where: { id: applicationId },
-        data: { increaseDisburseError: transfer.error },
+        data: { increaseDisburseError: tx.error },
       });
-      return { success: false, error: `Disbursement failed: ${transfer.error}` };
+      return { success: false, error: `Disbursement failed: ${tx.error}` };
     }
-    transferId = transfer.transferId;
-    transferStatus = transfer.status;
-    console.log(`[disburse] app ${application.applicationCode} funded via ${transfer.rail}`);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "increase error";
-    await prisma.application.update({
-      where: { id: applicationId },
-      data: { increaseDisburseError: message },
-    }).catch(() => {});
-    return { success: false, error: `Increase error: ${message}` };
+    transferId = tx.uuid;
+    transferStatus = tx.status;
+    goachDisburseUuid = tx.uuid;
+    console.log(`[disburse] app ${application.applicationCode} funded via GoACH credit ${tx.uuid}`);
+  } else {
+    if (!process.env.INCREASE_API_KEY) {
+      return { success: false, error: "Increase is not configured (INCREASE_API_KEY missing)." };
+    }
+    try {
+      const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
+      const { safeDisburse } = await import("@/lib/increase");
+      const ext = await ensureIncreaseExternalAccount(applicationId);
+      if (!ext.ok) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: { increaseDisburseError: ext.error },
+        });
+        return { success: false, error: `Couldn't set up Increase external account: ${ext.error}` };
+      }
+      // safeDisburse: try RTP (instant) -> Same-Day ACH -> standard ACH.
+      // Borrower gets cash in seconds if their bank supports RTP, in hours
+      // if it supports Same-Day ACH, otherwise next business day.
+      const transfer = await safeDisburse({
+        externalAccountId: ext.externalAccountId,
+        amountCents: Math.round(fundedAmount * 100),
+        statementDescriptor: "PENNYLIME ADV",
+        individualName: `${application.firstName} ${application.lastName}`.slice(0, 22),
+        remittanceInformation: `PennyLime advance - ${application.applicationCode}`,
+      });
+      if (!transfer.ok) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: { increaseDisburseError: transfer.error },
+        });
+        return { success: false, error: `Disbursement failed: ${transfer.error}` };
+      }
+      transferId = transfer.transferId;
+      transferStatus = transfer.status;
+      console.log(`[disburse] app ${application.applicationCode} funded via ${transfer.rail}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "increase error";
+      await prisma.application.update({
+        where: { id: applicationId },
+        data: { increaseDisburseError: message },
+      }).catch(() => {});
+      return { success: false, error: `Increase error: ${message}` };
+    }
   }
 
   // ── Increase credit succeeded. Now flip status to ACTIVE and ensure
@@ -613,6 +655,7 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
       increaseTransferId: transferId,
       increaseTransferStatus: transferStatus,
       increaseDisburseError: null,
+      ...(goachDisburseUuid ? { goachDisburseUuid } : {}),
     },
   });
 
