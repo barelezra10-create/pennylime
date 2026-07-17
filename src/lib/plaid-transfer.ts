@@ -28,6 +28,19 @@ export async function initiateACHDebit(paymentId: string): Promise<
   const totalAmount = Number(payment.amount) + Number(payment.lateFee);
   const amountCents = Math.round(totalAmount * 100);
 
+  const { getPaymentProcessor } = await import("@/lib/payment-processor");
+  const processor = await getPaymentProcessor();
+  if (processor === "goach") {
+    const { goachConfigured, createTransaction } = await import("@/lib/goach");
+    if (!goachConfigured()) return { success: false, error: "GoACH not configured" };
+    const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+    const prov = await ensureGoachBankAccount(payment.applicationId);
+    if (!prov.ok) return { success: false, error: prov.error };
+    const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents, type: "Debit", descriptor: "PENNYLIME PMT" });
+    if (!tx.ok) return { success: false, error: tx.error };
+    return { success: true, transferId: tx.uuid };
+  }
+
   // Resolve or create the Increase ExternalAccount for this application.
   const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
   const ext = await ensureIncreaseExternalAccount(payment.applicationId);

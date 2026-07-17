@@ -94,14 +94,8 @@ export async function retryPayment(paymentId: string) {
   const result = await initiateACHDebit(paymentId);
 
   if (result.success) {
-    await prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        achTransferId: result.transferId,
-        increaseTransferId: result.transferId,
-        increaseTransferStatus: "pending_submission",
-      },
-    });
+    const { applyDebitInitiation } = await import("@/lib/debit-writeback");
+    await applyDebitInitiation(paymentId, result.transferId);
     const { recordAttemptStart } = await import("@/lib/payment-attempts");
     await recordAttemptStart({
       paymentId,
@@ -165,14 +159,8 @@ export async function chargePaymentNow(paymentId: string) {
     return { success: false, error: result.error };
   }
 
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      achTransferId: result.transferId,
-      increaseTransferId: result.transferId,
-      increaseTransferStatus: "pending_submission",
-    },
-  });
+  const { applyDebitInitiation } = await import("@/lib/debit-writeback");
+  await applyDebitInitiation(paymentId, result.transferId);
 
   const { recordAttemptStart } = await import("@/lib/payment-attempts");
   await recordAttemptStart({
@@ -241,6 +229,34 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
     where: { id: paymentId },
     data: { status: "PROCESSING" },
   });
+
+  const { getPaymentProcessor } = await import("@/lib/payment-processor");
+  if ((await getPaymentProcessor()) === "goach") {
+    const { goachConfigured, createTransaction } = await import("@/lib/goach");
+    if (!goachConfigured()) {
+      await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+      return { success: false, error: "GoACH not configured" };
+    }
+    const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+    const prov = await ensureGoachBankAccount(payment.application.id);
+    if (!prov.ok) {
+      await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+      return { success: false, error: prov.error };
+    }
+    const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents: Math.round(amount * 100), type: "Debit", descriptor: "PENNYLIME COLLECT" });
+    if (!tx.ok) {
+      await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+      return { success: false, error: tx.error };
+    }
+    await prisma.payment.update({
+      where: { id: paymentId },
+      data: { processor: "goach", achTransferId: tx.uuid, increaseTransferId: tx.uuid, increaseTransferStatus: "pending_submission", goachTransactionUuid: tx.uuid },
+    });
+    const { recordAttemptStart } = await import("@/lib/payment-attempts");
+    await recordAttemptStart({ paymentId, initiatedBy: `admin:${auth.email}`, amount, transferId: tx.uuid });
+    await logAudit({ action: "MANUAL_CHARGE_PAYMENT", entityType: "PAYMENT", entityId: paymentId, performedBy: auth.email, details: { kind: "MICRO_COLLECTION", amount, paymentNumber: payment.paymentNumber, transferId: tx.uuid, processor: "goach" } });
+    return { success: true, transferId: tx.uuid };
+  }
 
   const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
   const ext = await ensureIncreaseExternalAccount(payment.application.id);

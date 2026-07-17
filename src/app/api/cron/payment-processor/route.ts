@@ -44,14 +44,8 @@ export async function POST(request: NextRequest) {
     if (result.success) {
       // Set BOTH columns: achTransferId is legacy (Plaid Transfer era);
       // increaseTransferId is what the Increase webhook handler matches on.
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          achTransferId: result.transferId,
-          increaseTransferId: result.transferId,
-          increaseTransferStatus: "pending_submission",
-        },
-      });
+      const { applyDebitInitiation } = await import("@/lib/debit-writeback");
+      await applyDebitInitiation(payment.id, result.transferId);
 
       await logAudit({
         action: "INITIATE_ACH",

@@ -58,12 +58,11 @@ export async function POST(request: NextRequest) {
     const result = await initiateACHDebit(payment.id);
 
     if (result.success) {
+      const { applyDebitInitiation } = await import("@/lib/debit-writeback");
+      await applyDebitInitiation(payment.id, result.transferId);
       await prisma.payment.update({
         where: { id: payment.id },
         data: {
-          achTransferId: result.transferId,
-          increaseTransferId: result.transferId,
-          increaseTransferStatus: "pending_submission",
           retryCount: { increment: 1 },
           lastRetryAt: new Date(),
         },
