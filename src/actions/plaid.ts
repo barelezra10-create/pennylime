@@ -225,6 +225,32 @@ export async function getPlaidIncomeData(applicationId: string) {
 }
 
 /**
+ * Extract the ACH routing and account numbers for an application from Plaid Auth.
+ * Shared by ensureIncreaseExternalAccount and ensureGoachBankAccount so the
+ * decrypt + authGet logic is not duplicated.
+ */
+export async function getPlaidAchNumbers(applicationId: string): Promise<
+  { ok: true; routingNumber: string; accountNumber: string } | { ok: false; error: string }
+> {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { plaidAccessToken: true, plaidAccountId: true },
+  });
+  if (!application?.plaidAccessToken) return { ok: false, error: "no plaid connection" };
+  let accessToken: string;
+  try { accessToken = decrypt(application.plaidAccessToken); }
+  catch (err) { return { ok: false, error: err instanceof Error ? err.message : "decrypt failed" }; }
+  let authResp;
+  try { authResp = await plaidClient.authGet({ access_token: accessToken }); }
+  catch (err) { return { ok: false, error: err instanceof Error ? err.message : "plaid auth failed" }; }
+  const targetAccount = application.plaidAccountId
+    ? authResp.data.numbers.ach.find((n) => n.account_id === application.plaidAccountId)
+    : authResp.data.numbers.ach[0];
+  if (!targetAccount) return { ok: false, error: "no ACH account on Plaid item" };
+  return { ok: true, routingNumber: targetAccount.routing, accountNumber: targetAccount.account };
+}
+
+/**
  * Fetch the merchant's account & routing numbers from Plaid Auth and create
  * an Increase ExternalAccount we can later use to push/pull ACH.
  * Returns the Increase external_account_id (cached on the Application).
@@ -238,29 +264,12 @@ export async function ensureIncreaseExternalAccount(applicationId: string) {
 
   const { createExternalAccount } = await import("@/lib/increase");
 
-  let accessToken: string;
-  try {
-    accessToken = decrypt(application.plaidAccessToken);
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "decrypt failed" } as const;
-  }
-
-  let authResp;
-  try {
-    authResp = await plaidClient.authGet({ access_token: accessToken });
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "plaid auth failed" } as const;
-  }
-
-  const targetAccount = application.plaidAccountId
-    ? authResp.data.numbers.ach.find((n) => n.account_id === application.plaidAccountId)
-    : authResp.data.numbers.ach[0];
-
-  if (!targetAccount) return { ok: false, error: "no ACH account on Plaid item" } as const;
+  const auth = await getPlaidAchNumbers(applicationId);
+  if (!auth.ok) return { ok: false, error: auth.error } as const;
 
   const create = await createExternalAccount({
-    routingNumber: targetAccount.routing,
-    accountNumber: targetAccount.account,
+    routingNumber: auth.routingNumber,
+    accountNumber: auth.accountNumber,
     description: `${application.firstName} ${application.lastName} (${application.applicationCode})`,
     accountHolder: "individual",
     funding: "checking",
