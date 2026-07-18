@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import {
-  provisionGoachTest,
+  provisionGoachTestManual,
+  resetGoachTest,
   fireGoachTestDebit,
   fireGoachTestCredit,
   getGoachTestStatus,
@@ -25,11 +26,13 @@ export function GoachTestClient({ initialState }: { initialState: GoachTestState
   const [firedTxs, setFiredTxs] = useState<FiredTx[]>([]);
   const [statusUuid, setStatusUuid] = useState("");
   const [lastResult, setLastResult] = useState<unknown>(null);
+  const [routingNumber, setRoutingNumber] = useState("021000021");
+  const [accountNumber, setAccountNumber] = useState("123456789");
 
   async function handleProvision() {
     setBusy(true);
     try {
-      const r = await provisionGoachTest();
+      const r = await provisionGoachTestManual({ routingNumber, accountNumber });
       setLastResult({ phase: "provision", result: r });
       if (r.ok) {
         setState((s) => ({
@@ -41,6 +44,20 @@ export function GoachTestClient({ initialState }: { initialState: GoachTestState
       } else {
         toast.error(r.error);
       }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReset() {
+    setBusy(true);
+    try {
+      await resetGoachTest();
+      setState((s) => ({ ...s, goachReceiverUuid: null, goachBankAccountUuid: null }));
+      setLastResult({ phase: "reset", result: { ok: true } });
+      toast.success("Test reset — receiver/bank uuids cleared");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : String(err));
     } finally {
@@ -127,7 +144,7 @@ export function GoachTestClient({ initialState }: { initialState: GoachTestState
     }
   }
 
-  const canFire = state.plaidLinked && state.goachConfigured;
+  const canFire = state.goachConfigured && !!state.goachBankAccountUuid;
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,24 +179,41 @@ export function GoachTestClient({ initialState }: { initialState: GoachTestState
       <section className="rounded-xl border border-[#e4e4e7] bg-white p-5">
         <h2 className="text-sm font-bold uppercase tracking-wide text-[#52525b] mb-3">Actions</h2>
         <div className="flex flex-col gap-4">
-          {!state.plaidLinked && (
-            <p className="text-sm text-[#b91c1c] bg-[#fef2f2] rounded-lg px-3 py-2">
-              The test app has no Plaid link yet. Go to{" "}
-              <a href="/admin/plaid-test" className="underline font-semibold">
-                /admin/plaid-test
-              </a>{" "}
-              to link it first.
+          <div className="rounded-lg border border-[#e4e4e7] bg-[#fafafa] p-4 flex flex-col gap-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="text-xs text-[#52525b] flex flex-col gap-1">
+                <span>Routing number</span>
+                <input
+                  type="text"
+                  value={routingNumber}
+                  onChange={(e) => setRoutingNumber(e.target.value)}
+                  placeholder="021000021"
+                  className="w-40 rounded border border-gray-200 px-2 py-1 text-sm font-mono"
+                />
+              </label>
+              <label className="text-xs text-[#52525b] flex flex-col gap-1">
+                <span>Account number</span>
+                <input
+                  type="text"
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  placeholder="123456789"
+                  className="w-40 rounded border border-gray-200 px-2 py-1 text-sm font-mono"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy || !state.goachConfigured}
+                onClick={handleProvision}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-[#fafafa] disabled:opacity-50"
+              >
+                1. Provision GoACH receiver + bank
+              </button>
+            </div>
+            <p className="text-xs text-[#71717a]">
+              GoACH staging is simulated; these are standard ACH test numbers, no real bank needed.
             </p>
-          )}
-
-          <button
-            type="button"
-            disabled={busy || !state.plaidLinked}
-            onClick={handleProvision}
-            className="self-start rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-[#fafafa] disabled:opacity-50"
-          >
-            1. Provision GoACH receiver + bank account
-          </button>
+          </div>
           {state.goachReceiverUuid && (
             <p className="text-xs text-[#52525b]">
               Receiver: <code className="bg-[#f4f4f5] px-1 rounded">{state.goachReceiverUuid}</code>
@@ -216,6 +250,14 @@ export function GoachTestClient({ initialState }: { initialState: GoachTestState
               className="rounded-lg bg-[#15803d] text-white px-4 py-2 text-sm font-semibold hover:bg-[#166534] disabled:opacity-50"
             >
               3. Fire test credit (push)
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={handleReset}
+              className="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-[#b91c1c] hover:bg-[#fef2f2] disabled:opacity-50"
+            >
+              Reset test
             </button>
           </div>
         </div>
