@@ -24,7 +24,7 @@ const TABS: TopTab[] = [
     id: "loans",
     label: "Loan Portal",
     icon: "$",
-    prefixes: ["/admin/dashboard", "/admin/applications", "/admin/payments", "/admin/audit", "/admin/settings", "/admin/plaid-test", "/admin/increase-test", "/admin/funnel-preview"],
+    prefixes: ["/admin/dashboard", "/admin/applications", "/admin/payments", "/admin/audit", "/admin/settings", "/admin/plaid-test", "/admin/increase-test", "/admin/goach-test", "/admin/funnel-preview"],
     href: "/admin/dashboard",
     subnav: [
       { href: "/admin/dashboard", label: "Overview" },
@@ -36,6 +36,7 @@ const TABS: TopTab[] = [
       { href: "/admin/funnel-preview", label: "Funnel preview" },
       { href: "/admin/plaid-test", label: "Plaid test" },
       { href: "/admin/increase-test", label: "Increase test" },
+      { href: "/admin/goach-test", label: "GoACH test" },
     ],
   },
   {
