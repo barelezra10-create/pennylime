@@ -24,7 +24,6 @@ const ADMIN_PROTECTED = [
   "/admin/chats",
   "/admin/compliance",
   "/admin/plaid-test",
-  "/admin/increase-test",
   "/admin/goach-test",
   "/admin/funnel-preview",
   "/admin/agent",

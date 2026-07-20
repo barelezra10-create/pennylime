@@ -56,7 +56,7 @@ type RecentEvent = {
 
 type Tab = "platforms" | "events" | "scripts" | "log";
 
-export function TrackingClient({ config, goachConfigured, recentEvents }: { config: Config; goachConfigured: boolean; recentEvents: RecentEvent[] }) {
+export function TrackingClient({ config, recentEvents }: { config: Config; recentEvents: RecentEvent[] }) {
   const [tab, setTab] = useState<Tab>("platforms");
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -167,26 +167,6 @@ export function TrackingClient({ config, goachConfigured, recentEvents }: { conf
               </Grid>
             </Card>
 
-            <Card title="Payment processor" subtitle="Select which ACH processor to use for loan disbursements and repayments.">
-              <div>
-                <label className="text-[11px] font-semibold uppercase tracking-[0.04em] text-[#71717a] block mb-1">Processor</label>
-                <select
-                  name="paymentProcessor"
-                  defaultValue={config.paymentProcessor ?? "increase"}
-                  className="w-full text-[13px] border border-[#e4e4e7] rounded-lg px-3 py-2 outline-none focus:border-[#15803d] bg-white"
-                >
-                  <option value="increase">Increase</option>
-                  <option value="goach" disabled={!goachConfigured}>
-                    {`GoACH${goachConfigured ? "" : " (env not configured)"}`}
-                  </option>
-                </select>
-                {!goachConfigured && (
-                  <p className="text-[11px] text-[#71717a] mt-1.5">
-                    GoACH requires <code className="bg-[#fafafa] px-1 py-0.5 rounded">GOACH_API_KEY</code> and <code className="bg-[#fafafa] px-1 py-0.5 rounded">GOACH_ORIGINATOR_UUID</code> env vars.
-                  </p>
-                )}
-              </div>
-            </Card>
           </div>
         )}
 

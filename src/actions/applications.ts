@@ -134,17 +134,16 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
     await signInPortal(application.id);
   } catch {}
 
-  // Best-effort: pre-fetch verified income/balance and create the Increase
-  // external account so admin gets a fully-prepped row when they review.
+  // Best-effort: pre-fetch verified income/balance. GoACH provisions its bank
+  // account lazily at charge time, so no pre-provision is needed here.
   // Each underlying action persists its own failure state on the row;
   // exceptions here are swallowed so they don't block the applicant.
   try {
-    const { fetchAndStoreIncome, ensureIncreaseExternalAccount, createAssetReport } =
+    const { fetchAndStoreIncome, createAssetReport } =
       await import("@/actions/plaid");
     const { screenApplicantSanctions } = await import("@/actions/sanctions-screening");
     await Promise.allSettled([
       fetchAndStoreIncome(application.id),
-      ensureIncreaseExternalAccount(application.id),
       // Kick off the Plaid Asset Report build. Returns immediately —
       // the actual transactions/balances get populated later when
       // ASSETS:PRODUCT_READY webhook fires (typically 10-60s later).

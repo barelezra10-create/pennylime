@@ -34,7 +34,6 @@ const ALLOWED_FIELDS = [
   "eventMappings",
   "customHeadHtml",
   "customBodyHtml",
-  "paymentProcessor",
 ] as const;
 
 const BOOL_FIELDS = ["enabled", "testMode"] as const;
@@ -51,15 +50,6 @@ export async function saveTrackingConfig(formData: FormData) {
 
   for (const f of BOOL_FIELDS) {
     data[f] = formData.get(f) === "on";
-  }
-
-  // Safety guard: if GoACH is requested but env is not configured, silently
-  // fall back to "increase" so the daily cron never marks all due payments FAILED.
-  if (data.paymentProcessor === "goach") {
-    const { goachEnv } = await import("@/lib/payment-processor");
-    if (!goachEnv()) {
-      data.paymentProcessor = "increase";
-    }
   }
 
   await updateTrackingConfig(data);

@@ -97,7 +97,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
           <div className="flex items-center gap-3">
             <span className="text-[11px] text-[#71717a]">
               {syncingNow
-                ? "Syncing with Increase…"
+                ? "Syncing…"
                 : lastSyncAt
                 ? `Last synced ${Math.max(1, Math.round((Date.now() - lastSyncAt) / 1000))}s ago · auto-syncs every 20s`
                 : "Auto-sync every 20s"}
@@ -109,7 +109,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                 if (r.updated > 0) {
                   toast.success(`Synced — ${r.updated} of ${r.total} now updated`);
                 } else if (r.total > 0) {
-                  toast.info(`Synced — Increase still says submitted for all ${r.total}`);
+                  toast.info(`Synced — still processing for all ${r.total}`);
                 }
               }}
               disabled={syncingNow}
@@ -118,7 +118,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
               <svg className={`h-3.5 w-3.5 ${syncingNow ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
               </svg>
-              {syncingNow ? "Syncing" : "Sync from Increase"}
+              {syncingNow ? "Syncing" : "Sync status"}
             </button>
           </div>
         )}
