@@ -681,135 +681,140 @@ export async function acceptOffer(input: {
     if (goachProductionReady()) {
       const { goachConfigured, createTransaction } = await import("@/lib/goach");
       const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
-      void goachConfigured; // imported for type-safety; goachProductionReady is the gate
-      const prov = await ensureGoachBankAccount(app.id);
-      if (prov.ok) {
-        const tx = await createTransaction({
-          bankAccountUuid: prov.bankAccountUuid,
-          amountCents: Math.round(input.selectedAmount * 100),
-          type: "Credit",
-          descriptor: "PENNYLIME ADV",
-        });
-        if (tx.ok) {
-          await prisma.application.update({
-            where: { id: app.id },
-            data: {
-              status: "FUNDED",
-              fundedAt: new Date(),
-              fundedAmount: input.selectedAmount,
-              increaseTransferId: tx.uuid,
-              increaseTransferStatus: tx.status,
-              goachDisburseUuid: tx.uuid,
-            },
+      if (!goachConfigured()) {
+        console.error(`[disburse] app ${app.applicationCode} skipped: GoACH not configured`);
+      } else {
+        const prov = await ensureGoachBankAccount(app.id);
+        if (prov.ok) {
+          const tx = await createTransaction({
+            bankAccountUuid: prov.bankAccountUuid,
+            amountCents: Math.round(input.selectedAmount * 100),
+            type: "Credit",
+            descriptor: "PENNYLIME ADV",
           });
-          console.log(`[disburse] app ${app.applicationCode} funded via GoACH`);
-          // Move linked contact to FUNDED stage (drives stage-tracking).
-          const linkedContact = await prisma.contact.findFirst({
-            where: { applicationId: app.id },
-          });
-          if (linkedContact) {
-            const { updateContactStage } = await import("@/actions/contacts");
-            updateContactStage(linkedContact.id, "FUNDED").catch((err) =>
-              console.error("[stage] funded stage update failed:", err),
-            );
-          }
-
-          // Send the 'funds on the way' email + SMS so the borrower
-          // knows the ACH credit is going out. The fundApplication
-          // path (legacy admin Fund button) does this; the auto-fund
-          // path inside acceptOffer was missing it, so customers
-          // funded via auto-accept got no confirmation. Best-effort —
-          // failures don't block the rest of the flow.
-          try {
-            const { sendEmail } = await import("@/lib/emails/send");
-            const { sendSms } = await import("@/lib/sms/twilio");
-            const { advanceFundedEmail } = await import("@/lib/emails/advance-funded");
-            const { advanceFundedSms } = await import("@/lib/sms/transactional");
-
-            // Pull the schedule we just created so the email shows
-            // the borrower's real debit dates + amounts.
-            const persistedSchedule = await prisma.payment.findMany({
-              where: { applicationId: app.id },
-              orderBy: { paymentNumber: "asc" },
-              select: {
-                paymentNumber: true,
-                amount: true,
-                principal: true,
-                interest: true,
-                dueDate: true,
+          if (tx.ok) {
+            await prisma.application.update({
+              where: { id: app.id },
+              data: {
+                status: "FUNDED",
+                fundedAt: new Date(),
+                fundedAmount: input.selectedAmount,
+                increaseTransferId: tx.uuid,
+                increaseTransferStatus: tx.status,
+                goachDisburseUuid: tx.uuid,
               },
             });
-            const scheduleForEmail = persistedSchedule.map((p) => ({
-              paymentNumber: p.paymentNumber,
-              amount: Number(p.amount),
-              principal: Number(p.principal),
-              interest: Number(p.interest),
-              dueDate: p.dueDate,
-              lateFee: 0,
-            }));
-
-            // Back-derive a rate/term so the email template (which
-            // expects them) renders cleanly. The accepted term has
-            // the source of truth.
-            const acceptedTerm = term;
-            const termWeeks = acceptedTerm.durationWeeks;
-            // Display interestRate as the effective weekly cost
-            // percentage (per-payment cost over disbursed). Email
-            // template just shows it as a number on the receipt.
-            const totalRepay = scheduleForEmail.reduce((s, p) => s + p.amount, 0);
-            const interestPct =
-              input.selectedAmount > 0
-                ? Math.round(((totalRepay - input.selectedAmount) / input.selectedAmount) * 1000) / 10
-                : 0;
-
-            if (scheduleForEmail.length > 0) {
-              sendEmail({
-                to: app.email,
-                ...advanceFundedEmail({
-                  firstName: app.firstName,
-                  applicationCode: app.applicationCode,
-                  fundedAmount: input.selectedAmount,
-                  interestRate: interestPct,
-                  loanTermMonths: termWeeks,
-                  monthlyPayment: scheduleForEmail[0].amount,
-                  firstDueDate: scheduleForEmail[0].dueDate,
-                  schedule: scheduleForEmail,
-                  frequency,
-                }),
-                contactId: linkedContact?.id,
-                templateId: "advance-funded",
-              }).catch((err) =>
-                console.error("[email] advance-funded send failed:", err),
-              );
-
-              sendSms({
-                to: app.phone,
-                body: advanceFundedSms({
-                  firstName: app.firstName,
-                  fundedAmount: input.selectedAmount,
-                  firstDueDate: scheduleForEmail[0].dueDate,
-                }),
-                contactId: linkedContact?.id,
-                templateId: "advance-funded",
-              }).catch((err) =>
-                console.error("[sms] advance-funded send failed:", err),
+            console.log(`[disburse] app ${app.applicationCode} funded via GoACH credit ${tx.uuid}`);
+            // Move linked contact to FUNDED stage (drives stage-tracking).
+            const linkedContact = await prisma.contact.findFirst({
+              where: { applicationId: app.id },
+            });
+            if (linkedContact) {
+              const { updateContactStage } = await import("@/actions/contacts");
+              updateContactStage(linkedContact.id, "FUNDED").catch((err) =>
+                console.error("[stage] funded stage update failed:", err),
               );
             }
-          } catch (err) {
-            console.error("[advance-funded] notification pipeline failed:", err);
+
+            // Send the 'funds on the way' email + SMS so the borrower
+            // knows the ACH credit is going out. The fundApplication
+            // path (legacy admin Fund button) does this; the auto-fund
+            // path inside acceptOffer was missing it, so customers
+            // funded via auto-accept got no confirmation. Best-effort --
+            // failures don't block the rest of the flow.
+            try {
+              const { sendEmail } = await import("@/lib/emails/send");
+              const { sendSms } = await import("@/lib/sms/twilio");
+              const { advanceFundedEmail } = await import("@/lib/emails/advance-funded");
+              const { advanceFundedSms } = await import("@/lib/sms/transactional");
+
+              // Pull the schedule we just created so the email shows
+              // the borrower's real debit dates + amounts.
+              const persistedSchedule = await prisma.payment.findMany({
+                where: { applicationId: app.id },
+                orderBy: { paymentNumber: "asc" },
+                select: {
+                  paymentNumber: true,
+                  amount: true,
+                  principal: true,
+                  interest: true,
+                  dueDate: true,
+                },
+              });
+              const scheduleForEmail = persistedSchedule.map((p) => ({
+                paymentNumber: p.paymentNumber,
+                amount: Number(p.amount),
+                principal: Number(p.principal),
+                interest: Number(p.interest),
+                dueDate: p.dueDate,
+                lateFee: 0,
+              }));
+
+              // Back-derive a rate/term so the email template (which
+              // expects them) renders cleanly. The accepted term has
+              // the source of truth.
+              const acceptedTerm = term;
+              const termWeeks = acceptedTerm.durationWeeks;
+              // Display interestRate as the effective weekly cost
+              // percentage (per-payment cost over disbursed). Email
+              // template just shows it as a number on the receipt.
+              const totalRepay = scheduleForEmail.reduce((s, p) => s + p.amount, 0);
+              const interestPct =
+                input.selectedAmount > 0
+                  ? Math.round(((totalRepay - input.selectedAmount) / input.selectedAmount) * 1000) / 10
+                  : 0;
+
+              if (scheduleForEmail.length > 0) {
+                sendEmail({
+                  to: app.email,
+                  ...advanceFundedEmail({
+                    firstName: app.firstName,
+                    applicationCode: app.applicationCode,
+                    fundedAmount: input.selectedAmount,
+                    interestRate: interestPct,
+                    loanTermMonths: termWeeks,
+                    monthlyPayment: scheduleForEmail[0].amount,
+                    firstDueDate: scheduleForEmail[0].dueDate,
+                    schedule: scheduleForEmail,
+                    frequency,
+                  }),
+                  contactId: linkedContact?.id,
+                  templateId: "advance-funded",
+                }).catch((err) =>
+                  console.error("[email] advance-funded send failed:", err),
+                );
+
+                sendSms({
+                  to: app.phone,
+                  body: advanceFundedSms({
+                    firstName: app.firstName,
+                    fundedAmount: input.selectedAmount,
+                    firstDueDate: scheduleForEmail[0].dueDate,
+                  }),
+                  contactId: linkedContact?.id,
+                  templateId: "advance-funded",
+                }).catch((err) =>
+                  console.error("[sms] advance-funded send failed:", err),
+                );
+              }
+            } catch (err) {
+              console.error("[advance-funded] notification pipeline failed:", err);
+            }
+          } else {
+            console.error(`[disburse] app ${app.applicationCode} createTransaction failed: ${tx.error}`);
+            await prisma.application.update({
+              where: { id: app.id },
+              data: { increaseDisburseError: tx.error },
+            });
           }
         } else {
+          console.error(`[disburse] app ${app.applicationCode} ensureGoachBankAccount failed: ${prov.error}`);
           await prisma.application.update({
             where: { id: app.id },
-            data: { increaseDisburseError: tx.error },
+            data: { increaseDisburseError: prov.error },
           });
         }
-      } else {
-        await prisma.application.update({
-          where: { id: app.id },
-          data: { increaseDisburseError: prov.error },
-        });
-      }
+      } // end goachConfigured
     }
   } catch (err) {
     console.error("Disbursement on accept failed:", err);
