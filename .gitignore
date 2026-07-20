@@ -56,3 +56,6 @@ uploads/
 
 # worktrees
 /.worktrees/
+
+# Local borrower export - never commit (contains PII)
+.pl_recipients.json
