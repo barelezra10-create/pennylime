@@ -230,96 +230,41 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
     data: { status: "PROCESSING" },
   });
 
-  const { getPaymentProcessor } = await import("@/lib/payment-processor");
-  if ((await getPaymentProcessor()) === "goach") {
-    const { goachConfigured, createTransaction } = await import("@/lib/goach");
-    if (!goachConfigured()) {
-      await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
-      return { success: false, error: "GoACH not configured" };
-    }
-    const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
-    const prov = await ensureGoachBankAccount(payment.application.id);
-    if (!prov.ok) {
-      await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
-      return { success: false, error: prov.error };
-    }
-    const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents: Math.round(amount * 100), type: "Debit", descriptor: "PENNYLIME COLLECT" });
-    if (!tx.ok) {
-      await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
-      return { success: false, error: tx.error };
-    }
-    // DEBIT HAS FIRED beyond this point — never revert to PENDING on write failure.
-    try {
-      await prisma.payment.update({
-        where: { id: paymentId },
-        data: { processor: "goach", achTransferId: tx.uuid, increaseTransferId: tx.uuid, increaseTransferStatus: "pending_submission", goachTransactionUuid: tx.uuid },
-      });
-      const { recordAttemptStart } = await import("@/lib/payment-attempts");
-      await recordAttemptStart({ paymentId, initiatedBy: `admin:${auth.email}`, amount, transferId: tx.uuid });
-      await logAudit({ action: "MANUAL_CHARGE_PAYMENT", entityType: "PAYMENT", entityId: paymentId, performedBy: auth.email, details: { kind: "MICRO_COLLECTION", amount, paymentNumber: payment.paymentNumber, transferId: tx.uuid, processor: "goach" } });
-    } catch (writeErr) {
-      console.error(`[chargePartialPayment] DEBIT FIRED but writeback failed. GoACH uuid=${tx.uuid} paymentId=${paymentId}`, writeErr);
-      throw writeErr; // leave PROCESSING for manual review; never revert to PENDING post-charge
-    }
-    return { success: true, transferId: tx.uuid };
+  const { goachProductionReady } = await import("@/lib/payment-processor");
+  if (!goachProductionReady()) {
+    await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+    return { success: false, error: "GoACH production not configured" };
   }
-
-  const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-  const ext = await ensureIncreaseExternalAccount(payment.application.id);
-  if (!ext.ok) {
+  const { goachConfigured, createTransaction } = await import("@/lib/goach");
+  if (!goachConfigured()) {
+    await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+    return { success: false, error: "GoACH not configured" };
+  }
+  const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+  const prov = await ensureGoachBankAccount(payment.application.id);
+  if (!prov.ok) {
+    await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+    return { success: false, error: prov.error };
+  }
+  const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents: Math.round(amount * 100), type: "Debit", descriptor: "PENNYLIME COLLECT" });
+  if (!tx.ok) {
+    await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+    return { success: false, error: tx.error };
+  }
+  // DEBIT HAS FIRED beyond this point — never revert to PENDING on write failure.
+  try {
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { status: "PENDING" },
+      data: { processor: "goach", achTransferId: tx.uuid, increaseTransferId: tx.uuid, increaseTransferStatus: "pending_submission", goachTransactionUuid: tx.uuid },
     });
-    return { success: false, error: ext.error };
+    const { recordAttemptStart } = await import("@/lib/payment-attempts");
+    await recordAttemptStart({ paymentId, initiatedBy: `admin:${auth.email}`, amount, transferId: tx.uuid });
+    await logAudit({ action: "MANUAL_CHARGE_PAYMENT", entityType: "PAYMENT", entityId: paymentId, performedBy: auth.email, details: { kind: "MICRO_COLLECTION", amount, paymentNumber: payment.paymentNumber, transferId: tx.uuid, processor: "goach" } });
+  } catch (writeErr) {
+    console.error(`[chargePartialPayment] DEBIT FIRED but writeback failed. GoACH uuid=${tx.uuid} paymentId=${paymentId}`, writeErr);
+    throw writeErr; // leave PROCESSING for manual review; never revert to PENDING post-charge
   }
-
-  const { safeDebit } = await import("@/lib/increase");
-  const result = await safeDebit({
-    externalAccountId: ext.externalAccountId,
-    amountCents: Math.round(amount * 100),
-    statementDescriptor: "PENNYLIME COLLECT",
-    individualName: `${payment.application.firstName} ${payment.application.lastName}`.slice(0, 22),
-  });
-  if (!result.ok) {
-    await prisma.payment.update({
-      where: { id: paymentId },
-      data: { status: "PENDING" },
-    });
-    return { success: false, error: result.error };
-  }
-
-  await prisma.payment.update({
-    where: { id: paymentId },
-    data: {
-      achTransferId: result.transferId,
-      increaseTransferId: result.transferId,
-      increaseTransferStatus: "pending_submission",
-    },
-  });
-
-  const { recordAttemptStart } = await import("@/lib/payment-attempts");
-  await recordAttemptStart({
-    paymentId,
-    initiatedBy: `admin:${auth.email}`,
-    amount,
-    transferId: result.transferId,
-  });
-
-  await logAudit({
-    action: "MANUAL_CHARGE_PAYMENT",
-    entityType: "PAYMENT",
-    entityId: paymentId,
-    performedBy: auth.email,
-    details: {
-      kind: "MICRO_COLLECTION",
-      amount,
-      paymentNumber: payment.paymentNumber,
-      transferId: result.transferId,
-    },
-  });
-
-  return { success: true, transferId: result.transferId };
+  return { success: true, transferId: tx.uuid };
 }
 
 export async function waiveLateFee(paymentId: string) {

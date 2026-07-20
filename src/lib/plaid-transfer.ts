@@ -28,47 +28,16 @@ export async function initiateACHDebit(paymentId: string): Promise<
   const totalAmount = Number(payment.amount) + Number(payment.lateFee);
   const amountCents = Math.round(totalAmount * 100);
 
-  const { getPaymentProcessor } = await import("@/lib/payment-processor");
-  const processor = await getPaymentProcessor();
-  if (processor === "goach") {
-    const { goachConfigured, createTransaction } = await import("@/lib/goach");
-    if (!goachConfigured()) return { success: false, error: "GoACH not configured" };
-    const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
-    const prov = await ensureGoachBankAccount(payment.applicationId);
-    if (!prov.ok) return { success: false, error: prov.error };
-    const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents, type: "Debit", descriptor: "PENNYLIME PMT" });
-    if (!tx.ok) return { success: false, error: tx.error };
-    return { success: true, transferId: tx.uuid, processor: "goach" as const };
-  }
-
-  // Resolve or create the Increase ExternalAccount for this application.
-  const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-  const ext = await ensureIncreaseExternalAccount(payment.applicationId);
-  if (!ext.ok) {
-    return { success: false, error: ext.error };
-  }
-
-  const { safeDebit } = await import("@/lib/increase");
-  // safeDebit tries Same-Day ACH first (money in our account by EOD)
-  // and falls back to standard ACH on 400s (past the ~2:45pm ET cutoff,
-  // destination doesn't support same-day, etc).
-  const result = await safeDebit({
-    externalAccountId: ext.externalAccountId,
-    amountCents,
-    statementDescriptor: "PENNYLIME PMT",
-    individualName: `${payment.application.firstName} ${payment.application.lastName}`.slice(0, 22),
-  });
-
-  if (!result.ok) {
-    return { success: false, error: result.error };
-  }
-
-  if (result.rail === "ach") {
-    console.log(`[debit] payment ${paymentId} via standard ACH (same-day rejected)`);
-  } else {
-    console.log(`[debit] payment ${paymentId} via ${result.rail}`);
-  }
-  return { success: true, transferId: result.transferId, processor: "increase" as const };
+  const { goachProductionReady } = await import("@/lib/payment-processor");
+  if (!goachProductionReady()) return { success: false, error: "GoACH production not configured" };
+  const { goachConfigured, createTransaction } = await import("@/lib/goach");
+  if (!goachConfigured()) return { success: false, error: "GoACH not configured" };
+  const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+  const prov = await ensureGoachBankAccount(payment.applicationId);
+  if (!prov.ok) return { success: false, error: prov.error };
+  const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents, type: "Debit", descriptor: "PENNYLIME PMT" });
+  if (!tx.ok) return { success: false, error: tx.error };
+  return { success: true, transferId: tx.uuid, processor: "goach" as const };
 }
 
 /**
