@@ -674,35 +674,35 @@ export async function acceptOffer(input: {
     console.error("[contacts] OFFER_ACCEPTED stage update failed:", err);
   }
 
-  // Best-effort disbursement using the fastest rail the borrower's bank
-  // supports. safeDisburse tries RTP first (instant), falls back to
-  // Same-Day ACH, then standard ACH. Failures here don't block
+  // Best-effort disbursement via GoACH. Failures here don't block
   // acceptance - admin can retry from the detail page.
   try {
-    if (process.env.INCREASE_API_KEY) {
-      const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-      const { safeDisburse } = await import("@/lib/increase");
-      const ext = await ensureIncreaseExternalAccount(app.id);
-      if (ext.ok) {
-        const transfer = await safeDisburse({
-          externalAccountId: ext.externalAccountId,
+    const { goachProductionReady } = await import("@/lib/payment-processor");
+    if (goachProductionReady()) {
+      const { goachConfigured, createTransaction } = await import("@/lib/goach");
+      const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+      void goachConfigured; // imported for type-safety; goachProductionReady is the gate
+      const prov = await ensureGoachBankAccount(app.id);
+      if (prov.ok) {
+        const tx = await createTransaction({
+          bankAccountUuid: prov.bankAccountUuid,
           amountCents: Math.round(input.selectedAmount * 100),
-          statementDescriptor: "PENNYLIME ADV",
-          individualName: `${app.firstName} ${app.lastName}`.slice(0, 22),
-          remittanceInformation: `PennyLime advance - ${app.applicationCode}`,
+          type: "Credit",
+          descriptor: "PENNYLIME ADV",
         });
-        if (transfer.ok) {
+        if (tx.ok) {
           await prisma.application.update({
             where: { id: app.id },
             data: {
               status: "FUNDED",
               fundedAt: new Date(),
               fundedAmount: input.selectedAmount,
-              increaseTransferId: transfer.transferId,
-              increaseTransferStatus: transfer.status,
+              increaseTransferId: tx.uuid,
+              increaseTransferStatus: tx.status,
+              goachDisburseUuid: tx.uuid,
             },
           });
-          console.log(`[disburse] app ${app.applicationCode} funded via ${transfer.rail}`);
+          console.log(`[disburse] app ${app.applicationCode} funded via GoACH`);
           // Move linked contact to FUNDED stage (drives stage-tracking).
           const linkedContact = await prisma.contact.findFirst({
             where: { applicationId: app.id },
@@ -801,13 +801,13 @@ export async function acceptOffer(input: {
         } else {
           await prisma.application.update({
             where: { id: app.id },
-            data: { increaseDisburseError: transfer.error },
+            data: { increaseDisburseError: tx.error },
           });
         }
       } else {
         await prisma.application.update({
           where: { id: app.id },
-          data: { increaseDisburseError: ext.error },
+          data: { increaseDisburseError: prov.error },
         });
       }
     }

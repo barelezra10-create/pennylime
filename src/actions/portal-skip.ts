@@ -178,22 +178,24 @@ export async function executeSkip(): Promise<
     return { ok: false, error: "No bank account linked to charge the fee." };
   }
 
-  const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-  const ext = await ensureIncreaseExternalAccount(app.id);
-  if (!ext.ok) return { ok: false, error: ext.error };
+  const { goachProductionReady } = await import("@/lib/payment-processor");
+  if (!goachProductionReady()) return { ok: false, error: "GoACH production not configured" };
 
-  const { safeDebit } = await import("@/lib/increase");
-  // safeDebit tries Same-Day first, falls back to standard ACH if past
-  // the cutoff. Skip is contingent on the fee actually clearing.
-  const result = await safeDebit({
-    externalAccountId: ext.externalAccountId,
+  const { createTransaction } = await import("@/lib/goach");
+  const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+
+  const prov = await ensureGoachBankAccount(app.id);
+  if (!prov.ok) return { ok: false, error: prov.error };
+
+  const tx = await createTransaction({
+    bankAccountUuid: prov.bankAccountUuid,
     amountCents: Math.round(quote.feeAmount * 100),
-    statementDescriptor: "PENNYLIME SKIP",
-    individualName: `${app.firstName} ${app.lastName}`.slice(0, 22),
+    type: "Debit",
+    descriptor: "PENNYLIME SKIP",
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!tx.ok) return { ok: false, error: tx.error };
 
-  const transferId = result.transferId;
+  const transferId = tx.uuid;
   const nextPaymentNumber = (app.payments[app.payments.length - 1]?.paymentNumber || 0) + 1;
 
   await prisma.$transaction([
@@ -217,6 +219,8 @@ export async function executeSkip(): Promise<
         status: "PROCESSING",
         increaseTransferId: transferId,
         increaseTransferStatus: "pending_submission",
+        goachTransactionUuid: transferId,
+        processor: "goach",
       },
     }),
     prisma.application.update({

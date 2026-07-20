@@ -201,23 +201,24 @@ export async function executePayoff(): Promise<
     return { ok: false, error: "No bank account linked to charge." };
   }
 
-  // Resolve the Increase external account (reuses existing ACH auth scope)
-  const { ensureIncreaseExternalAccount } = await import("@/actions/plaid");
-  const ext = await ensureIncreaseExternalAccount(app.id);
-  if (!ext.ok) return { ok: false, error: ext.error };
+  const { goachProductionReady } = await import("@/lib/payment-processor");
+  if (!goachProductionReady()) return { ok: false, error: "GoACH production not configured" };
 
-  const { safeDebit } = await import("@/lib/increase");
-  // safeDebit tries Same-Day first, falls back to standard ACH if past
-  // the same-day cutoff or destination doesn't support it.
-  const result = await safeDebit({
-    externalAccountId: ext.externalAccountId,
+  const { createTransaction } = await import("@/lib/goach");
+  const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
+
+  const prov = await ensureGoachBankAccount(app.id);
+  if (!prov.ok) return { ok: false, error: prov.error };
+
+  const tx = await createTransaction({
+    bankAccountUuid: prov.bankAccountUuid,
     amountCents: Math.round(quote.payoffAmount * 100),
-    statementDescriptor: "PENNYLIME PAYOFF",
-    individualName: `${app.firstName} ${app.lastName}`.slice(0, 22),
+    type: "Debit",
+    descriptor: "PENNYLIME PAYOFF",
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!tx.ok) return { ok: false, error: tx.error };
 
-  const transferId = result.transferId;
+  const transferId = tx.uuid;
   const now = new Date();
   // Repurpose the next unpaid payment as the payoff line rather than
   // creating a brand-new row + waiving the original. This keeps the
@@ -256,6 +257,8 @@ export async function executePayoff(): Promise<
           status: "PROCESSING",
           increaseTransferId: transferId,
           increaseTransferStatus: "pending_submission",
+          goachTransactionUuid: transferId,
+          processor: "goach",
         },
       });
     } else {
@@ -275,6 +278,8 @@ export async function executePayoff(): Promise<
           status: "PROCESSING",
           increaseTransferId: transferId,
           increaseTransferStatus: "pending_submission",
+          goachTransactionUuid: transferId,
+          processor: "goach",
         },
       });
     }
