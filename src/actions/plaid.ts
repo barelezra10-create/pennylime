@@ -306,6 +306,144 @@ export async function getRecentTransactions(applicationId: string) {
   }
 }
 
+export type StatementTx = {
+  id: string;
+  date: string;
+  name: string;
+  merchantName: string | null;
+  amount: number; // Plaid convention: positive = money out, negative = money in
+  category: string | null;
+  pending: boolean;
+  balanceAfter: number | null; // estimated running balance after this tx
+};
+
+export type TransactionStatement = {
+  ok: true;
+  transactions: StatementTx[];
+  currentBalance: number | null;
+  totalIn: number;
+  totalOut: number;
+  net: number;
+  count: number;
+} | { ok: false; error: string };
+
+/**
+ * Full transaction statement for the linked Plaid account over a date range.
+ * Unlike getRecentTransactions (30 most recent), this paginates the entire
+ * window so reviewers get a complete underwriting statement. Running balance
+ * is estimated by walking backwards from the account's current balance
+ * (Plaid does not return a per-transaction balance), so it is approximate for
+ * pending items but accurate for settled history. Read-only, not persisted.
+ */
+export async function getTransactionStatement(
+  applicationId: string,
+  startDate: string,
+  endDate: string,
+): Promise<TransactionStatement> {
+  const application = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { plaidAccessToken: true, plaidAccountId: true },
+  });
+  if (!application?.plaidAccessToken) return { ok: false, error: "No Plaid connection" };
+
+  let accessToken: string;
+  try {
+    accessToken = decrypt(application.plaidAccessToken);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "decrypt failed" };
+  }
+
+  try {
+    // Seed the running balance from the account's current balance.
+    let currentBalance: number | null = null;
+    try {
+      const balResp = await plaidClient.accountsBalanceGet({ access_token: accessToken });
+      const acct = application.plaidAccountId
+        ? balResp.data.accounts.find((a) => a.account_id === application.plaidAccountId)
+        : balResp.data.accounts[0];
+      currentBalance = acct?.balances?.current ?? null;
+    } catch {
+      currentBalance = null;
+    }
+
+    // Paginate the full window (Plaid caps at 500 per page). Cap total pages
+    // so an unusually busy account can't run unbounded.
+    const pageSize = 500;
+    const maxPages = 12; // up to 6,000 transactions
+    let offset = 0;
+    let total = Infinity;
+    const raw: Array<{
+      transaction_id: string;
+      date: string;
+      name: string;
+      merchant_name?: string | null;
+      amount: number;
+      personal_finance_category?: { primary?: string } | null;
+      category?: string[] | null;
+      pending: boolean;
+      account_id: string;
+    }> = [];
+    for (let page = 0; page < maxPages && offset < total; page++) {
+      const resp = await plaidClient.transactionsGet({
+        access_token: accessToken,
+        start_date: startDate,
+        end_date: endDate,
+        options: { count: pageSize, offset },
+      });
+      total = resp.data.total_transactions;
+      for (const tx of resp.data.transactions) raw.push(tx as (typeof raw)[number]);
+      offset += resp.data.transactions.length;
+      if (resp.data.transactions.length === 0) break;
+    }
+
+    // Filter to the linked account, newest first.
+    const filtered = raw
+      .filter((tx) => !application.plaidAccountId || tx.account_id === application.plaidAccountId)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+
+    // Walk newest -> oldest, seeding from current balance. balanceAfter for
+    // the newest tx is the current balance; each older tx's balanceAfter is
+    // the running value before the newer tx was applied (+ amount, since a
+    // positive amount = money that left the account).
+    let running = currentBalance;
+    const transactions: StatementTx[] = filtered.map((tx) => {
+      const balanceAfter = running;
+      if (running != null) running = Math.round((running + tx.amount) * 100) / 100;
+      return {
+        id: tx.transaction_id,
+        date: tx.date,
+        name: tx.name,
+        merchantName: tx.merchant_name ?? null,
+        amount: tx.amount,
+        category: tx.personal_finance_category?.primary ?? tx.category?.[0] ?? null,
+        pending: tx.pending,
+        balanceAfter,
+      };
+    });
+
+    let totalIn = 0;
+    let totalOut = 0;
+    for (const tx of transactions) {
+      if (tx.amount < 0) totalIn += -tx.amount;
+      else totalOut += tx.amount;
+    }
+    totalIn = Math.round(totalIn * 100) / 100;
+    totalOut = Math.round(totalOut * 100) / 100;
+
+    return {
+      ok: true,
+      transactions,
+      currentBalance,
+      totalIn,
+      totalOut,
+      net: Math.round((totalIn - totalOut) * 100) / 100,
+      count: transactions.length,
+    };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to fetch statement" };
+  }
+}
+
 /**
  * Verify the applicant's identity against the names Plaid Identity returned
  * for the just-linked bank account. Run client-side from the apply funnel

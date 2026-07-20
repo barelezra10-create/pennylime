@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { fetchAndStoreIncome, getRecentTransactions, triggerPlaidAssetReport, parsePlaidAssetReportWithAI } from "@/actions/plaid";
+import { TransactionStatement } from "@/components/admin/transaction-statement";
 
 type Tx = {
   id: string;
@@ -367,6 +368,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
             )}
           </>
         )}
+        {hasConnection && <TransactionStatement applicationId={application.id} />}
       </div>
     </div>
   );
