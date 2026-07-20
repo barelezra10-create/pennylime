@@ -226,8 +226,7 @@ export async function getPlaidIncomeData(applicationId: string) {
 
 /**
  * Extract the ACH routing and account numbers for an application from Plaid Auth.
- * Shared by ensureIncreaseExternalAccount and ensureGoachBankAccount so the
- * decrypt + authGet logic is not duplicated.
+ * Shared by ensureGoachBankAccount so the decrypt + authGet logic is not duplicated.
  */
 export async function getPlaidAchNumbers(applicationId: string): Promise<
   { ok: true; routingNumber: string; accountNumber: string } | { ok: false; error: string }
@@ -248,35 +247,6 @@ export async function getPlaidAchNumbers(applicationId: string): Promise<
     : authResp.data.numbers.ach[0];
   if (!targetAccount) return { ok: false, error: "no ACH account on Plaid item" };
   return { ok: true, routingNumber: targetAccount.routing, accountNumber: targetAccount.account };
-}
-
-/**
- * Fetch the merchant's account & routing numbers from Plaid Auth and create
- * an Increase ExternalAccount we can later use to push/pull ACH.
- * Returns the Increase external_account_id (cached on the Application).
- */
-export async function ensureIncreaseExternalAccount(applicationId: string) {
-  const application = await prisma.application.findUnique({
-    where: { id: applicationId },
-    include: { contact: true },
-  });
-  if (!application?.plaidAccessToken) return { ok: false, error: "no plaid connection" } as const;
-
-  const { createExternalAccount } = await import("@/lib/increase");
-
-  const auth = await getPlaidAchNumbers(applicationId);
-  if (!auth.ok) return { ok: false, error: auth.error } as const;
-
-  const create = await createExternalAccount({
-    routingNumber: auth.routingNumber,
-    accountNumber: auth.accountNumber,
-    description: `${application.firstName} ${application.lastName} (${application.applicationCode})`,
-    accountHolder: "individual",
-    funding: "checking",
-  });
-
-  if (!create.ok) return { ok: false, error: create.error } as const;
-  return { ok: true, externalAccountId: create.data.id } as const;
 }
 
 /**

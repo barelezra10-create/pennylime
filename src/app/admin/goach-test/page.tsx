@@ -12,11 +12,7 @@ export default async function GoachTestPage() {
         <p className="mt-1 text-sm text-[#52525b]">
           End-to-end ACH debit + credit using the seeded test application (
           <code className="text-xs bg-[#f4f4f5] px-1 py-0.5 rounded">plaid-smoke-test</code>). The
-          test app must be Plaid-linked first via{" "}
-          <a className="text-[#15803d] hover:underline" href="/admin/plaid-test">
-            /admin/plaid-test
-          </a>
-          . This path calls the GoACH client directly and does not flip the global{" "}
+          test app must be Plaid-linked first (connect a bank via the apply funnel). This path calls the GoACH client directly and does not flip the global{" "}
           <code className="text-xs bg-[#f4f4f5] px-1 py-0.5 rounded">paymentProcessor</code> switch.
         </p>
       </header>

@@ -158,7 +158,7 @@ export function GoachTestClient({ initialState }: { initialState: GoachTestState
           />
           <Field
             label="Plaid linked"
-            value={state.plaidLinked ? "yes" : "no — link via /admin/plaid-test first"}
+            value={state.plaidLinked ? "yes" : "no — link a bank via the apply funnel first"}
             warn={!state.plaidLinked}
           />
           <Field

@@ -3,14 +3,11 @@ import { prisma } from "@/lib/db";
 /**
  * Initiate an ACH debit for a scheduled payment via Increase.
  *
- * Disbursement credits and repayment debits both run through Increase
+ * Disbursement credits and repayment debits both run through GoACH or Increase
  * (despite this file being named plaid-transfer.ts — the name predates
- * the migration off Plaid Transfer). The Increase ExternalAccount is
- * lazily created from Plaid Auth's routing/account numbers via
- * ensureIncreaseExternalAccount; it returns the same id on repeat calls
- * so we don't accumulate ExternalAccount rows.
+ * the migration off Plaid Transfer).
  *
- * Returns the Increase ach_transfer.id on success.
+ * Returns the transfer id on success.
  */
 export async function initiateACHDebit(paymentId: string): Promise<
   { success: true; transferId: string; processor: "increase" | "goach" } | { success: false; error: string }
