@@ -30,10 +30,14 @@ function toNum(v: number | string | { toString(): string } | null | undefined): 
 
 export function ApplicationTable({
   applications,
+  fromTab,
 }: {
   applications: ApplicationWithDocuments[];
+  fromTab?: string;
 }) {
   const router = useRouter();
+  const detailHref = (id: string) =>
+    `/admin/applications/${id}${fromTab ? `?from=${encodeURIComponent(fromTab)}` : ""}`;
 
   if (applications.length === 0) {
     return (
@@ -108,7 +112,7 @@ export function ApplicationTable({
             return (
             <tr
               key={app.id}
-              onClick={() => router.push(`/admin/applications/${app.id}`)}
+              onClick={() => router.push(detailHref(app.id))}
               className="cursor-pointer hover:bg-[#f0f5f0] transition-colors duration-100"
             >
               <td className="px-4 py-3.5 text-sm text-stone-500 whitespace-nowrap">

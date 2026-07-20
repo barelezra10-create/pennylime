@@ -130,11 +130,21 @@ type AchAuthSnapshot = {
 export function DetailClient({
   application,
   achAuth,
+  fromTab = null,
+  prevId = null,
+  nextId = null,
+  position = null,
 }: {
   application: ApplicationWithDocuments;
   achAuth?: AchAuthSnapshot | null;
+  fromTab?: string | null;
+  prevId?: string | null;
+  nextId?: string | null;
+  position?: { index: number; total: number } | null;
 }) {
   const router = useRouter();
+  const fromQs = fromTab ? `?from=${encodeURIComponent(fromTab)}` : "";
+  const backHref = `/admin/applications${fromQs}`;
 
   /* evaluation */
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -394,14 +404,42 @@ export function DetailClient({
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
-              href="/admin/dashboard"
+              href={backHref}
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
               </svg>
-              Back
+              {fromTab && fromTab !== "All" ? `Back to ${fromTab}` : "Back to list"}
             </Link>
+            {/* Step through the list without returning to it */}
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={prevId ? `/admin/applications/${prevId}${fromQs}` : "#"}
+                aria-disabled={!prevId}
+                className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 bg-white transition-colors ${prevId ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 pointer-events-none"}`}
+                title="Previous"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+              </Link>
+              {position && (
+                <span className="text-xs font-medium text-[#a1a1aa] tabular-nums px-1 min-w-[52px] text-center">
+                  {position.index} / {position.total}
+                </span>
+              )}
+              <Link
+                href={nextId ? `/admin/applications/${nextId}${fromQs}` : "#"}
+                aria-disabled={!nextId}
+                className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 bg-white transition-colors ${nextId ? "text-gray-700 hover:bg-gray-50" : "text-gray-300 pointer-events-none"}`}
+                title="Next"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </Link>
+            </div>
             <div>
               <h1 className="text-[22px] font-extrabold tracking-[-0.03em] text-black">
                 {application.firstName} {application.lastName}

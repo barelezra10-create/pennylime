@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ApplicationTable } from "@/components/application-table";
 import { PageHeader } from "@/components/admin/page-header";
 import { AuditReturnsButton } from "./audit-returns-button";
@@ -27,7 +28,12 @@ export function ApplicationsClient({
 }: {
   applications: ApplicationWithDocuments[];
 }) {
-  const [activeTab, setActiveTab] = useState<FilterTab>("All");
+  const searchParams = useSearchParams();
+  const fromParam = searchParams.get("from");
+  const initialTab: FilterTab = TABS.includes(fromParam as FilterTab)
+    ? (fromParam as FilterTab)
+    : "All";
+  const [activeTab, setActiveTab] = useState<FilterTab>(initialTab);
   const [search, setSearch] = useState("");
 
   const filtered =
@@ -82,7 +88,7 @@ export function ApplicationsClient({
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
-        <ApplicationTable applications={searched} />
+        <ApplicationTable applications={searched} fromTab={activeTab} />
       </div>
     </div>
   );
