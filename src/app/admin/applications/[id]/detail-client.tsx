@@ -26,6 +26,7 @@ import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 import { CustomerCrmPanel } from "@/components/admin/customer-crm-panel";
 import type { CustomerCrm } from "@/components/admin/customer-crm-panel";
+import { CustomerCommunication } from "@/components/admin/customer-communication";
 
 /* ── helpers ── */
 
@@ -144,7 +145,7 @@ export function DetailClient({
   prevId?: string | null;
   nextId?: string | null;
   position?: { index: number; total: number } | null;
-  crm?: CustomerCrm | null;
+  crm?: (CustomerCrm & { email: string | null; phone: string | null }) | null;
 }) {
   const router = useRouter();
   const fromQs = fromTab ? `?from=${encodeURIComponent(fromTab)}` : "";
@@ -481,6 +482,13 @@ export function DetailClient({
         <div className="space-y-6">
           {/* ── Customer CRM (manage the person right here) ── */}
           {crm && <CustomerCrmPanel crm={crm} />}
+          {crm && (
+            <CustomerCommunication
+              contactId={crm.contactId}
+              email={crm.email}
+              phone={crm.phone}
+            />
+          )}
 
           {/* ── Evaluation Card ── */}
           {evaluation && (
