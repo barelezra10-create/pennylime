@@ -53,10 +53,20 @@ export type AdSpendBreakdown = {
   byPlatform: Array<{ platform: string; spend: number; impressions: number; clicks: number; conversions: number }>;
 };
 
+export type LoanPipeline = {
+  requestedPending: number; // cash asked for, awaiting review
+  countPending: number;
+  requestedApproved: number; // cash approved, awaiting funding
+  countApproved: number;
+  requestedTotalOpen: number; // pending + approved
+  outstandingToCollect: number; // total still owed across live loans
+};
+
 export type FinancialSummary = {
   period: FinancialsPeriod;
   loanOps: LoanOps;
   moneyFlow: MoneyFlow;
+  pipeline: LoanPipeline;
   adSpend: AdSpendBreakdown;
   newContacts: number;
   fundedThisPeriod: number;
@@ -100,7 +110,7 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
     prisma.application.count(),
     prisma.application.findMany({
       where: { status: { in: ["ACTIVE", "FUNDED", "REPAYING", "LATE"] } },
-      select: { fundedAmount: true, loanAmount: true, payments: { select: { principal: true, interest: true, paidAt: true, status: true } } },
+      select: { fundedAmount: true, loanAmount: true, payments: { select: { principal: true, interest: true, amount: true, lateFee: true, paidAt: true, status: true } } },
     }),
     prisma.payment.findMany({
       where: { paidAt: { gte: period.startDate } },
@@ -134,6 +144,25 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
     select: { fundedAmount: true, loanAmount: true },
   });
   const totalDisbursed = allFundedApps.reduce((sum, a) => sum + (num(a.fundedAmount) || num(a.loanAmount)), 0);
+
+  // Cash applicants are asking for, by stage. "Requested" uses loanAmount
+  // (the amount they applied for / were offered) so operators can see how
+  // much cash is waiting on a decision vs waiting to be funded.
+  const [pendingSum, approvedSum] = await Promise.all([
+    prisma.application.aggregate({ where: { status: "PENDING" }, _sum: { loanAmount: true } }),
+    prisma.application.aggregate({ where: { status: "APPROVED" }, _sum: { loanAmount: true } }),
+  ]);
+  const requestedPending = num(pendingSum._sum.loanAmount);
+  const requestedApproved = num(approvedSum._sum.loanAmount);
+
+  // Total still owed to us across live loans: every unpaid scheduled payment
+  // (principal + interest + late fee), including in-flight PROCESSING ones.
+  const outstandingToCollect = fundedNotPaidOff.reduce((sum, app) => {
+    const owed = app.payments
+      .filter((p) => p.status !== "PAID" && !p.paidAt)
+      .reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
+    return sum + owed;
+  }, 0);
 
   // Outstanding principal = sum across active loans of (funded - principal_recovered)
   const outstandingPrincipal = fundedNotPaidOff.reduce((sum, app) => {
@@ -205,6 +234,14 @@ export async function getFinancialSummary(periodDays = 30): Promise<FinancialSum
         clicks: r._sum.clicks || 0,
         conversions: r._sum.conversions || 0,
       })),
+    },
+    pipeline: {
+      requestedPending,
+      countPending: pendingReview,
+      requestedApproved,
+      countApproved: approvedNotFunded,
+      requestedTotalOpen: requestedPending + requestedApproved,
+      outstandingToCollect,
     },
     newContacts,
     fundedThisPeriod,

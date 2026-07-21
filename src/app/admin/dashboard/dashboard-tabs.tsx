@@ -31,6 +31,14 @@ type FinancialSummary = {
     cashCollectedPeriod: number;
     cashCollectedLifetime: number;
   };
+  pipeline: {
+    requestedPending: number;
+    countPending: number;
+    requestedApproved: number;
+    countApproved: number;
+    requestedTotalOpen: number;
+    outstandingToCollect: number;
+  };
   adSpend: {
     totalSpend: number;
     byPlatform: Array<{ platform: string; spend: number; impressions: number; clicks: number; conversions: number }>;
@@ -193,11 +201,42 @@ function LoanPortalTab({ f, pendingApps }: { f: FinancialSummary; pendingApps: P
 
       <PartnerShareCard />
 
+      <Section title="Cash requested by applicants">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <BigCard
+            label="Total requested (open)"
+            value={fmtMoney(f.pipeline.requestedTotalOpen)}
+            sub={`${f.pipeline.countPending + f.pipeline.countApproved} open applications`}
+            accent="text-[#15803d]"
+            href="/admin/applications"
+          />
+          <BigCard
+            label="Awaiting decision"
+            value={fmtMoney(f.pipeline.requestedPending)}
+            sub={`${f.pipeline.countPending} pending review`}
+            accent="text-[#f59e0b]"
+            href="/admin/applications?from=Pending"
+          />
+          <BigCard
+            label="Approved, to fund"
+            value={fmtMoney(f.pipeline.requestedApproved)}
+            sub={`${f.pipeline.countApproved} ready to fund`}
+            href="/admin/applications?from=Approved"
+          />
+          <BigCard
+            label="Outstanding to collect"
+            value={fmtMoney(f.pipeline.outstandingToCollect)}
+            sub="still owed on live loans"
+            href="/admin/applications?from=Active"
+          />
+        </div>
+      </Section>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Kpi label="Pending review" value={f.loanOps.pendingReview.toString()} sub="awaiting decision" accent="bg-[#f59e0b]" href="/admin/applications?status=PENDING" />
+        <Kpi label="Pending review" value={f.loanOps.pendingReview.toString()} sub="awaiting decision" accent="bg-[#f59e0b]" href="/admin/applications?from=Pending" />
         <Kpi label="Rejected" value={f.loanOps.rejected.toString()} sub="all-time" accent="bg-[#71717a]" href="/admin/applications?status=REJECTED" />
-        <Kpi label="Active" value={f.loanOps.active.toString()} sub={`${f.loanOps.late} late`} accent="bg-[#15803d]" href="/admin/applications?status=ACTIVE" />
-        <Kpi label="Paid off" value={f.loanOps.paidOff.toString()} sub="completed" accent="bg-[#0ea5e9]" href="/admin/applications?status=PAID_OFF" />
+        <Kpi label="Active" value={f.loanOps.active.toString()} sub={`${f.loanOps.late} late`} accent="bg-[#15803d]" href="/admin/applications?from=Active" />
+        <Kpi label="Paid off" value={f.loanOps.paidOff.toString()} sub="completed" accent="bg-[#0ea5e9]" href="/admin/applications?from=Paid%20Off" />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -667,14 +706,22 @@ function Kpi({ label, value, sub, accent, href }: { label: string; value: string
   );
 }
 
-function BigCard({ label, value, sub, accent }: { label: string; value: string; sub: string; accent?: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-[#e4e4e7] p-5">
+function BigCard({ label, value, sub, accent, href }: { label: string; value: string; sub: string; accent?: string; href?: string }) {
+  const inner = (
+    <>
       <p className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">{label}</p>
       <p className={`text-[26px] font-extrabold tracking-[-0.02em] tabular-nums leading-none ${accent || "text-black"}`}>{value}</p>
       <p className="text-[11px] text-[#a1a1aa] mt-2">{sub}</p>
-    </div>
+    </>
   );
+  if (href) {
+    return (
+      <Link href={href} className="block bg-white rounded-xl border border-[#e4e4e7] p-5 hover:border-[#15803d] hover:shadow-sm transition-all">
+        {inner}
+      </Link>
+    );
+  }
+  return <div className="bg-white rounded-xl border border-[#e4e4e7] p-5">{inner}</div>;
 }
 
 function ProfitStat({ label, value, positive, negative }: { label: string; value: string; positive?: boolean; negative?: boolean }) {

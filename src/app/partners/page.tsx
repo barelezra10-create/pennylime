@@ -107,6 +107,7 @@ async function renderDashboard() {
         period: { startDate: new Date(), endDate: new Date(), days: 30 },
         loanOps: { pendingReview: 0, approvedNotFunded: 0, rejected: 0, active: 0, late: 0, paidOff: 0, defaulted: 0, totalApplications: 0 },
         moneyFlow: { totalDisbursed: 0, outstandingPrincipal: 0, principalRecovered: 0, revenueLifetime: 0, revenuePeriod: 0, defaultLossesLifetime: 0, expectedRevenueOutstanding: 0, cashCollectedPeriod: 0, cashCollectedLifetime: 0 },
+        pipeline: { requestedPending: 0, countPending: 0, requestedApproved: 0, countApproved: 0, requestedTotalOpen: 0, outstandingToCollect: 0 },
         adSpend: { totalSpend: 0, byPlatform: [] },
         newContacts: 0,
         fundedThisPeriod: 0,
