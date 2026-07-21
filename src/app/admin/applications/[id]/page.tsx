@@ -35,6 +35,8 @@ export default async function ApplicationDetailPage({
       where: { applicationId: id },
       select: {
         id: true,
+        email: true,
+        phone: true,
         stage: true,
         assignedRepId: true,
         assignedRep: { select: { name: true } },
@@ -60,6 +62,8 @@ export default async function ApplicationDetailPage({
   const crm = linkedContactRaw
     ? {
         contactId: linkedContactRaw.id,
+        email: linkedContactRaw.email,
+        phone: linkedContactRaw.phone,
         stage: linkedContactRaw.stage,
         assignedRepId: linkedContactRaw.assignedRepId,
         assignedRepName: linkedContactRaw.assignedRep?.name ?? null,
