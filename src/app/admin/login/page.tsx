@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +26,12 @@ export default function AdminLoginPage() {
         setError("Invalid email or password");
         toast.error("Invalid email or password");
       } else {
-        router.push("/admin/dashboard");
+        // Full navigation (not router.push) so the shared /admin layout
+        // re-runs server-side and picks up the new session — otherwise the
+        // dashboard renders without the header/nav chrome until a manual
+        // refresh (the layout doesn't re-render on client-side nav).
+        window.location.href = "/admin/dashboard";
+        return;
       }
     } catch {
       setError("An unexpected error occurred");
