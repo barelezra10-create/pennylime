@@ -3,6 +3,8 @@ import { getApplicationById, getApplications } from "@/actions/applications";
 import { getAchAuthorization } from "@/actions/ach-authorization";
 import { DetailClient } from "./detail-client";
 import type { ApplicationWithDocuments } from "@/types";
+import { prisma } from "@/lib/db";
+import { getTeamMembers } from "@/actions/team";
 
 const TAB_STATUS: Record<string, string | null> = {
   All: null,
@@ -25,11 +27,54 @@ export default async function ApplicationDetailPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const [application, achAuth, all] = await Promise.all([
+  const [application, achAuth, all, linkedContactRaw] = await Promise.all([
     getApplicationById(id),
     getAchAuthorization(id),
     getApplications() as Promise<ApplicationWithDocuments[]>,
+    prisma.contact.findUnique({
+      where: { applicationId: id },
+      select: {
+        id: true,
+        stage: true,
+        assignedRepId: true,
+        assignedRep: { select: { name: true } },
+        tags: { select: { tag: true } },
+        activities: {
+          orderBy: { createdAt: "desc" },
+          take: 30,
+          select: {
+            id: true,
+            type: true,
+            title: true,
+            details: true,
+            performedBy: true,
+            createdAt: true,
+          },
+        },
+      },
+    }),
   ]);
+
+  const team = linkedContactRaw ? await getTeamMembers() : [];
+
+  const crm = linkedContactRaw
+    ? {
+        contactId: linkedContactRaw.id,
+        stage: linkedContactRaw.stage,
+        assignedRepId: linkedContactRaw.assignedRepId,
+        assignedRepName: linkedContactRaw.assignedRep?.name ?? null,
+        tags: linkedContactRaw.tags.map((t) => t.tag),
+        activities: linkedContactRaw.activities.map((a) => ({
+          id: a.id,
+          type: a.type,
+          title: a.title,
+          details: a.details,
+          performedBy: a.performedBy,
+          createdAt: a.createdAt.toISOString(),
+        })),
+        team: team.map((m) => ({ id: m.id, name: m.name })),
+      }
+    : null;
 
   if (!application) {
     notFound();
@@ -54,6 +99,7 @@ export default async function ApplicationDetailPage({
       prevId={prevId}
       nextId={nextId}
       position={idx >= 0 ? { index: idx + 1, total: siblings.length } : null}
+      crm={crm}
     />
   );
 }

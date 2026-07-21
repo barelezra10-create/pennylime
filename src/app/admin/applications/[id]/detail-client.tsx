@@ -24,6 +24,8 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { previewPortalAs } from "@/actions/portal-preview";
 import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
+import { CustomerCrmPanel } from "@/components/admin/customer-crm-panel";
+import type { CustomerCrm } from "@/components/admin/customer-crm-panel";
 
 /* ── helpers ── */
 
@@ -134,6 +136,7 @@ export function DetailClient({
   prevId = null,
   nextId = null,
   position = null,
+  crm = null,
 }: {
   application: ApplicationWithDocuments;
   achAuth?: AchAuthSnapshot | null;
@@ -141,6 +144,7 @@ export function DetailClient({
   prevId?: string | null;
   nextId?: string | null;
   position?: { index: number; total: number } | null;
+  crm?: CustomerCrm | null;
 }) {
   const router = useRouter();
   const fromQs = fromTab ? `?from=${encodeURIComponent(fromTab)}` : "";
@@ -642,6 +646,9 @@ export function DetailClient({
               </div>
             )}
           </div>
+
+          {/* ── Customer CRM ── */}
+          {crm && <CustomerCrmPanel crm={crm} />}
 
           {/* ── Traffic Source ── */}
           <TrafficSourceCard contact={(application as any).contact} />
