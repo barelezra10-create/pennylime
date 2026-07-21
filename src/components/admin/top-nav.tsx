@@ -28,7 +28,7 @@ const TABS: TopTab[] = [
     href: "/admin/dashboard",
     subnav: [
       { href: "/admin/dashboard", label: "Overview" },
-      { href: "/admin/applications", label: "Applications" },
+      { href: "/admin/applications", label: "Pipeline" },
       { href: "/admin/payments", label: "Payments" },
       { href: "/admin/audit", label: "Audit log" },
       { href: "/admin/settings", label: "Settings" },
@@ -46,14 +46,6 @@ const TABS: TopTab[] = [
     subnav: [
       { href: "/admin/advances", label: "All advances" },
     ],
-  },
-  {
-    id: "pipeline",
-    label: "Pipeline",
-    icon: "≡",
-    prefixes: ["/admin/pipeline-list"],
-    href: "/admin/pipeline-list",
-    subnav: [{ href: "/admin/pipeline-list", label: "All stages" }],
   },
   {
     id: "marketing",
