@@ -7,21 +7,21 @@ import { PageHeader } from "@/components/admin/page-header";
 import { AuditReturnsButton } from "./audit-returns-button";
 import type { ApplicationWithDocuments } from "@/types";
 
-type FilterTab = "All" | "Pending" | "Approved" | "Funded" | "Active" | "Late" | "Collections" | "Defaulted" | "Paid Off";
+type FilterTab = "All" | "Pending" | "Approved" | "Active" | "Paid" | "Default";
 
-const STATUS_MAP: Record<FilterTab, string | null> = {
+// One stage tab can cover several underlying statuses. "Approved" = offer out
+// but not taken yet; "Active" = funded and repaying (incl. behind/late);
+// "Default" = defaulted or in collections.
+const STAGE_STATUSES: Record<FilterTab, string[] | null> = {
   All: null,
-  Pending: "PENDING",
-  Approved: "APPROVED",
-  Funded: "FUNDED",
-  Active: "ACTIVE",
-  Late: "LATE",
-  Collections: "COLLECTIONS",
-  Defaulted: "DEFAULTED",
-  "Paid Off": "PAID_OFF",
+  Pending: ["PENDING", "APPLICANT"],
+  Approved: ["APPROVED", "OFFER_ACCEPTED"],
+  Active: ["FUNDED", "ACTIVE", "REPAYING", "LATE"],
+  Paid: ["PAID_OFF"],
+  Default: ["DEFAULTED", "COLLECTIONS"],
 };
 
-const TABS: FilterTab[] = ["All", "Pending", "Approved", "Funded", "Active", "Late", "Collections", "Defaulted", "Paid Off"];
+const TABS: FilterTab[] = ["All", "Pending", "Approved", "Active", "Paid", "Default"];
 
 export function ApplicationsClient({
   applications,
@@ -36,10 +36,10 @@ export function ApplicationsClient({
   const [activeTab, setActiveTab] = useState<FilterTab>(initialTab);
   const [search, setSearch] = useState("");
 
-  const filtered =
-    STATUS_MAP[activeTab] === null
-      ? applications
-      : applications.filter((a) => a.status === STATUS_MAP[activeTab]);
+  const stageStatuses = STAGE_STATUSES[activeTab];
+  const filtered = stageStatuses
+    ? applications.filter((a) => stageStatuses.includes(a.status))
+    : applications;
 
   const searched = search.trim()
     ? filtered.filter((a) => {
