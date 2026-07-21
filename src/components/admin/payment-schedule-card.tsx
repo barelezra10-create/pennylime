@@ -218,7 +218,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                     )}
                     {payment.status === "RETURNED" && !(payment as any).increaseReturnReason && (payment as any).increaseTransferStatus && (
                       <p className="mt-1 text-[10px] text-[#71717a] leading-tight">
-                        Increase: {(payment as any).increaseTransferStatus}
+                        {(payment as any).increaseTransferStatus}
                       </p>
                     )}
                     {(payment as any).attempts && (payment as any).attempts.length > 1 && (
@@ -253,14 +253,14 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                             const { refreshPaymentStatus } = await import("@/actions/refresh-payment-status");
                             const r = await refreshPaymentStatus(payment.id);
                             if (r.ok) {
-                              toast.success(`Increase says: ${r.transferStatus}`);
+                              toast.success(`Status: ${r.transferStatus}`);
                               getPaymentsSummary(applicationId).then(setPaymentSummary);
                             } else {
                               toast.error(r.error);
                             }
                           }}
                           className="inline-flex items-center gap-1 rounded-lg border border-[#15803d] bg-white text-[#15803d] px-2.5 py-1 text-xs font-semibold hover:bg-[#f0fdf4]"
-                          title="Pull live status from Increase right now"
+                          title="Pull live status right now"
                         >
                           Refresh
                         </button>
@@ -279,7 +279,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                               }
                             }}
                             className="inline-flex items-center gap-1 rounded-lg border border-[#2563eb] bg-white px-2.5 py-1 text-xs font-semibold text-[#2563eb] hover:bg-[#eef4ff] transition-colors"
-                            title="Re-attempt the ACH debit through Increase right now"
+                            title="Re-attempt the ACH debit right now"
                           >
                             Recharge now
                           </button>
