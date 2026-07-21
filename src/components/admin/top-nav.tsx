@@ -48,6 +48,14 @@ const TABS: TopTab[] = [
     ],
   },
   {
+    id: "pipeline",
+    label: "Pipeline",
+    icon: "≡",
+    prefixes: ["/admin/pipeline-list"],
+    href: "/admin/pipeline-list",
+    subnav: [{ href: "/admin/pipeline-list", label: "All stages" }],
+  },
+  {
     id: "marketing",
     label: "Email & SMS",
     icon: "✉",
