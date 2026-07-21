@@ -28,7 +28,7 @@ const TABS: TopTab[] = [
     href: "/admin/dashboard",
     subnav: [
       { href: "/admin/dashboard", label: "Overview" },
-      { href: "/admin/applications", label: "Pipeline" },
+      { href: "/admin/applications", label: "Applications" },
       { href: "/admin/payments", label: "Payments" },
       { href: "/admin/audit", label: "Audit log" },
       { href: "/admin/settings", label: "Settings" },
