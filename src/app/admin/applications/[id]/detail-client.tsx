@@ -479,6 +479,9 @@ export function DetailClient({
         </div>
 
         <div className="space-y-6">
+          {/* ── Customer CRM (manage the person right here) ── */}
+          {crm && <CustomerCrmPanel crm={crm} />}
+
           {/* ── Evaluation Card ── */}
           {evaluation && (
             <div className="bg-white rounded-[10px] p-6">
@@ -646,9 +649,6 @@ export function DetailClient({
               </div>
             )}
           </div>
-
-          {/* ── Customer CRM ── */}
-          {crm && <CustomerCrmPanel crm={crm} />}
 
           {/* ── Traffic Source ── */}
           <TrafficSourceCard contact={(application as any).contact} />
