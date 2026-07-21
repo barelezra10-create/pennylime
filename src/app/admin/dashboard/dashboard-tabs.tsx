@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { addAdSpend, syncAllAdSpend } from "@/actions/ad-spend";
@@ -113,29 +114,16 @@ export function DashboardTabs(props: {
   recentEvents: EventRow[];
   articleStats: { total: number; published: number };
 }) {
-  const [tab, setTab] = useState<TabId>("loans");
+  // The dashboard is the Loan Portal overview. The other analytics views
+  // (marketing/media/content/crm) live under their own top-nav sections and
+  // are reached here only via ?focus= (e.g. Paid Media → Spend & ROI), so we
+  // don't render a duplicate tab row that mirrors the global top nav.
+  const focus = useSearchParams().get("focus");
+  const tab: TabId = (TABS.some((t) => t.id === focus) ? focus : "loans") as TabId;
 
   return (
     <div>
       <PageHeader title="Dashboard" />
-
-      <div className="border-b border-[#e4e4e7] mb-6 -mx-2 px-2 overflow-x-auto">
-        <div className="flex items-center gap-1">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative px-4 py-3 text-[13px] font-semibold transition-colors whitespace-nowrap ${
-                tab === t.id ? "text-black" : "text-[#71717a] hover:text-black"
-              }`}
-            >
-              <span className="mr-1.5 text-[#15803d]">{t.icon}</span>
-              {t.label}
-              {tab === t.id && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#15803d]" />}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {tab === "loans" && <LoanPortalTab f={props.financials} pendingApps={props.pendingApps} />}
       {tab === "marketing" && (

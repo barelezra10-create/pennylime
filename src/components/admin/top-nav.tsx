@@ -38,6 +38,16 @@ const TABS: TopTab[] = [
     ],
   },
   {
+    id: "advances",
+    label: "Advances",
+    icon: "◆",
+    prefixes: ["/admin/advances"],
+    href: "/admin/advances",
+    subnav: [
+      { href: "/admin/advances", label: "All advances" },
+    ],
+  },
+  {
     id: "marketing",
     label: "Email & SMS",
     icon: "✉",
