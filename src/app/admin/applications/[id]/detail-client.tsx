@@ -24,9 +24,8 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { previewPortalAs } from "@/actions/portal-preview";
 import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
-import { CustomerCrmPanel } from "@/components/admin/customer-crm-panel";
 import type { CustomerCrm } from "@/components/admin/customer-crm-panel";
-import { CustomerCommunication } from "@/components/admin/customer-communication";
+import { SalesforceRecord } from "@/components/admin/sf-record";
 
 /* ── helpers ── */
 
@@ -480,13 +479,21 @@ export function DetailClient({
         </div>
 
         <div className="space-y-6">
-          {/* ── Customer CRM (manage the person right here) ── */}
-          {crm && <CustomerCrmPanel crm={crm} />}
+          {/* ── Customer CRM — Salesforce Lightning-style record ── */}
           {crm && (
-            <CustomerCommunication
-              contactId={crm.contactId}
-              email={crm.email}
-              phone={crm.phone}
+            <SalesforceRecord
+              crm={crm}
+              applicant={{
+                firstName: application.firstName,
+                lastName: application.lastName,
+                applicationCode: application.applicationCode,
+                status: application.status,
+                loanAmount: Number(application.loanAmount),
+                fundedAmount:
+                  application.fundedAmount != null
+                    ? Number(application.fundedAmount)
+                    : null,
+              }}
             />
           )}
 
