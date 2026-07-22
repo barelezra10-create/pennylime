@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -57,6 +57,7 @@ export function AdvancesClient({
   const [chargingId, setChargingId] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Servicing metrics + bulk charge only make sense on funded stages.
   const showServicing = ["Active", "Paid", "Default"].includes(filter);
@@ -292,7 +293,8 @@ export function AdvancesClient({
                 const isFunded = ["Active", "Default"].includes(a.stageTab);
                 const showCharge = ["Active", "Default"].includes(a.stageTab);
                 return (
-                <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
+                <Fragment key={a.id}>
+                <tr className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                   <td className="px-4 py-3">
                     <div className="font-semibold text-black">{a.borrowerName}</div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
@@ -338,6 +340,14 @@ export function AdvancesClient({
                           {chargingId === a.id ? "…" : "Charge now"}
                         </button>
                       )}
+                      {a.totalCount > 0 && (
+                        <button
+                          onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                          className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                        >
+                          {expandedId === a.id ? "Hide" : "Schedule"}
+                        </button>
+                      )}
                       <Link
                         href={`/admin/applications/${a.id}?from=Active`}
                         className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 transition-colors"
@@ -347,6 +357,38 @@ export function AdvancesClient({
                     </div>
                   </td>
                 </tr>
+                {expandedId === a.id && (
+                  <tr className="bg-[#fafafa]">
+                    <td colSpan={8} className="px-6 py-4">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">Payment schedule · {a.borrowerName}</div>
+                      <div className="overflow-hidden rounded-lg border border-[#e4e4e7] bg-white">
+                        <table className="w-full text-[12px]">
+                          <thead className="bg-[#f4f4f5] text-[#71717a] text-left">
+                            <tr>
+                              <th className="font-semibold px-3 py-1.5">#</th>
+                              <th className="font-semibold px-3 py-1.5">Due date</th>
+                              <th className="font-semibold px-3 py-1.5 text-right">Amount</th>
+                              <th className="font-semibold px-3 py-1.5">Status</th>
+                              <th className="font-semibold px-3 py-1.5">Paid</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {a.schedule.map((s) => (
+                              <tr key={s.n} className="border-t border-[#f4f4f5]">
+                                <td className="px-3 py-1.5 text-[#a1a1aa]">{s.n}</td>
+                                <td className="px-3 py-1.5 font-mono text-[#52525b]">{fmtDate(s.dueDate)}</td>
+                                <td className="px-3 py-1.5 text-right tabular-nums">{money2(s.amount)}</td>
+                                <td className="px-3 py-1.5"><span className={lastPayStyle(s.status)}>{s.status}</span></td>
+                                <td className="px-3 py-1.5 text-[#a1a1aa] font-mono">{s.paidAt ? fmtDate(s.paidAt) : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               )})}
             </tbody>
           </table>

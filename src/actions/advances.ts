@@ -72,6 +72,7 @@ export type AdvanceRow = {
   lastResult: string | null; // last settled/attempted payment status
   paidCount: number; // payments paid
   totalCount: number; // total scheduled payments
+  schedule: { n: number; amount: number; dueDate: string; status: string; paidAt: string | null }[];
 };
 
 export type AdvancesSummary = {
@@ -229,6 +230,13 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       lastResult,
       paidCount,
       totalCount,
+      schedule: app.payments.map((p) => ({
+        n: p.paymentNumber,
+        amount: num(p.amount) + num(p.lateFee),
+        dueDate: new Date(p.dueDate).toISOString(),
+        status: p.status,
+        paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : null,
+      })),
     };
   });
 
