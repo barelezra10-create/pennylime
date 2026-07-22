@@ -1,5 +1,4 @@
 import { getAdvances } from "@/actions/advances";
-import { getApplicantStats } from "@/actions/applicant-stats";
 import { AdvancesClient } from "../advances/advances-client";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +14,25 @@ export default async function ApplicationsPage({
   const { stage } = await searchParams;
   const isPending = stage === "Pending";
 
-  const [{ advances, summary }, stats] = await Promise.all([
-    getAdvances(),
-    isPending ? getApplicantStats() : Promise.resolve(null),
-  ]);
+  const { advances, summary } = await getAdvances();
 
-  const pendingCount = advances.filter((a) => a.stageTab === "Pending").length;
+  // Everything on the Pending tab is about pending applicants only.
+  const pendingRows = advances.filter((a) => a.stageTab === "Pending");
+  const pendingCount = pendingRows.length;
+  const pendingTotalAsk = pendingRows.reduce((s, a) => s + a.requestedAmount, 0);
+  const pendingAvgAsk = pendingCount ? pendingTotalAsk / pendingCount : 0;
+  const pendingAvgTerm = pendingCount ? pendingRows.reduce((s, a) => s + a.termMonths, 0) / pendingCount : 0;
+
+  const profCounts = new Map<string, number>();
+  for (const a of pendingRows) {
+    if (!a.platform) continue;
+    for (const raw of a.platform.split(",").map((s) => s.trim()).filter(Boolean)) {
+      const k = raw.toLowerCase();
+      profCounts.set(k, (profCounts.get(k) || 0) + 1);
+    }
+  }
+  const topProfessions = [...profCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count }));
+
   const title = stage ?? "Customers";
 
   return (
@@ -32,22 +44,21 @@ export default async function ApplicationsPage({
         </p>
       </div>
 
-      {/* Applicant analytics — Pending tab only */}
-      {isPending && stats && (
+      {/* Pending analytics — pending applicants only */}
+      {isPending && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <Stat label="Pending" value={`${pendingCount}`} sub="awaiting review" accent />
-            <Stat label="Total ask" value={money(stats.totalAsk)} sub="all loan requests" />
-            <Stat label="Advances" value={`${stats.advancesCount}`} sub="funded" accent />
-            <Stat label="Avg advance" value={money(stats.avgAdvance)} sub="avg funded amount" />
-            <Stat label="Avg payment time" value={stats.avgPaymentDays == null ? "No payoffs yet" : `${stats.avgPaymentDays} days`} sub="funded to paid off" />
+            <Stat label="Total ask" value={money(pendingTotalAsk)} sub="pending advances requested" accent />
+            <Stat label="Avg ask" value={money(pendingAvgAsk)} sub="avg requested per applicant" />
+            <Stat label="Avg requested time" value={`${pendingAvgTerm.toFixed(1)} mo`} sub="repayment term requested" />
           </div>
 
-          {stats.topProfessions.length > 0 && (
+          {topProfessions.length > 0 && (
             <div className="bg-white rounded-xl border border-[#e4e4e7] p-4 mb-6">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-3">Top professions</h3>
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-3">Top professions (pending)</h3>
               <ol className="grid grid-cols-1 sm:grid-cols-5 gap-3">
-                {stats.topProfessions.map((p, i) => (
+                {topProfessions.map((p, i) => (
                   <li key={p.name} className="flex items-center gap-2">
                     <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-[#15803d] text-white text-[11px] font-bold shrink-0">{i + 1}</span>
                     <div className="min-w-0">

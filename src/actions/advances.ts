@@ -32,6 +32,8 @@ export type AdvanceRow = {
   borrowerName: string;
   status: string;
   stageTab: string;
+  platform: string | null;
+  termMonths: number;
   requestedAmount: number;
   fundedAmount: number;
   nextPaymentId: string | null;
@@ -76,6 +78,8 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       status: true,
       fundedAmount: true,
       loanAmount: true,
+      platform: true,
+      loanTermMonths: true,
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
@@ -154,6 +158,8 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       borrowerName: `${app.firstName} ${app.lastName}`.trim(),
       status: app.status,
       stageTab: STAGE_OF[app.status] ?? "Active",
+      platform: app.platform ?? null,
+      termMonths: app.loanTermMonths,
       requestedAmount: num(app.loanAmount),
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
       nextPaymentId: nextPending?.id ?? null,
