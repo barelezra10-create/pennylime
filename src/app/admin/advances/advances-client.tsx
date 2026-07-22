@@ -296,8 +296,20 @@ export function AdvancesClient({
                 <Fragment key={a.id}>
                 <tr className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-black">{a.borrowerName}</div>
-                    <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                    {a.totalCount > 0 ? (
+                      <button onClick={() => setExpandedId(expandedId === a.id ? null : a.id)} className="flex items-center gap-2 text-left group">
+                        <span className={`text-[#a1a1aa] text-[10px] transition-transform ${expandedId === a.id ? "rotate-90" : ""}`}>▶</span>
+                        <span>
+                          <span className="block font-semibold text-black group-hover:text-[#15803d]">{a.borrowerName}</span>
+                          <span className="block text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</span>
+                        </span>
+                      </button>
+                    ) : (
+                      <>
+                        <div className="font-semibold text-black">{a.borrowerName}</div>
+                        <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                      </>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[a.status] || "bg-[#f4f4f5] text-[#71717a]"}`}>
@@ -338,14 +350,6 @@ export function AdvancesClient({
                           className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           {chargingId === a.id ? "…" : "Charge now"}
-                        </button>
-                      )}
-                      {a.totalCount > 0 && (
-                        <button
-                          onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-                          className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 transition-colors"
-                        >
-                          {expandedId === a.id ? "Hide" : "Schedule"}
                         </button>
                       )}
                       <Link
