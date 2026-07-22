@@ -101,13 +101,15 @@ export function AdvancesClient({
 
   return (
     <div>
-      {/* Ops metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} payments`} accent="text-[#15803d]" />
-        <Metric label="Overdue" value={money(summary.overdueAmount)} sub={`${summary.overdueCount} payments`} accent={summary.overdueAmount > 0 ? "text-[#b91c1c]" : ""} />
-        <Metric label="Outstanding" value={money(summary.totalOutstanding)} sub={`${summary.totalAdvances} live advances`} />
-        <Metric label="Collected (7d)" value={money(summary.collected7dAmount)} sub="settled last 7 days" />
-      </div>
+      {/* Ops metrics — hidden on Pending (not relevant before funding) */}
+      {filter !== "Pending" && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} payments`} accent="text-[#15803d]" />
+          <Metric label="Overdue" value={money(summary.overdueAmount)} sub={`${summary.overdueCount} payments`} accent={summary.overdueAmount > 0 ? "text-[#b91c1c]" : ""} />
+          <Metric label="Outstanding" value={money(summary.totalOutstanding)} sub={`${summary.totalAdvances} live advances`} />
+          <Metric label="Collected (7d)" value={money(summary.collected7dAmount)} sub="settled last 7 days" />
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -117,13 +119,15 @@ export function AdvancesClient({
           placeholder="Search borrower or code"
           className="flex-1 min-w-[180px] text-xs border border-[#e4e4e7] rounded-lg px-3 py-1.5 outline-none focus:border-[#15803d]"
         />
-        <button
-          onClick={chargeAll}
-          disabled={bulkRunning || summary.dueTodayCount === 0}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] text-white text-xs font-semibold px-3.5 py-2 hover:bg-[#166534] disabled:opacity-50 transition-colors"
-        >
-          {bulkRunning ? "Charging…" : `Charge all due (${summary.dueTodayCount})`}
-        </button>
+        {filter !== "Pending" && (
+          <button
+            onClick={chargeAll}
+            disabled={bulkRunning || summary.dueTodayCount === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] text-white text-xs font-semibold px-3.5 py-2 hover:bg-[#166534] disabled:opacity-50 transition-colors"
+          >
+            {bulkRunning ? "Charging…" : `Charge all due (${summary.dueTodayCount})`}
+          </button>
+        )}
       </div>
 
       {/* Table */}

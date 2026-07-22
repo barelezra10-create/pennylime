@@ -20,19 +20,24 @@ export default async function ApplicationsPage({
     isPending ? getApplicantStats() : Promise.resolve(null),
   ]);
 
+  const pendingCount = advances.filter((a) => a.stageTab === "Pending").length;
+  const title = stage ?? "Customers";
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight text-black">Customers</h1>
-        <p className="text-sm text-[#71717a] mt-1">Manage your advances - payments, status, and contact, all in one place.</p>
+        <h1 className="text-2xl font-extrabold tracking-tight text-black">{title}</h1>
+        <p className="text-sm text-[#71717a] mt-1">
+          {isPending ? "New applicants awaiting a decision." : "Manage your advances - payments, status, and contact, all in one place."}
+        </p>
       </div>
 
       {/* Applicant analytics — Pending tab only */}
       {isPending && stats && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-            <Stat label="Total ask" value={money(stats.totalAsk)} sub="all loan requests" accent />
-            <Stat label="Requested" value={`${stats.requestedCount}`} sub="applicants" />
+            <Stat label="Pending" value={`${pendingCount}`} sub="awaiting review" accent />
+            <Stat label="Total ask" value={money(stats.totalAsk)} sub="all loan requests" />
             <Stat label="Advances" value={`${stats.advancesCount}`} sub="funded" accent />
             <Stat label="Avg advance" value={money(stats.avgAdvance)} sub="avg funded amount" />
             <Stat label="Avg payment time" value={stats.avgPaymentDays == null ? "No payoffs yet" : `${stats.avgPaymentDays} days`} sub="funded to paid off" />
