@@ -21,7 +21,7 @@ export default async function ApplicationsPage({
   const pendingCount = pendingRows.length;
   const pendingTotalAsk = pendingRows.reduce((s, a) => s + a.requestedAmount, 0);
   const pendingAvgAsk = pendingCount ? pendingTotalAsk / pendingCount : 0;
-  const pendingAvgTerm = pendingCount ? pendingRows.reduce((s, a) => s + a.termMonths, 0) / pendingCount : 0;
+  const pendingLargestAsk = pendingRows.reduce((m, a) => Math.max(m, a.requestedAmount), 0);
 
   const profCounts = new Map<string, number>();
   for (const a of pendingRows) {
@@ -51,7 +51,7 @@ export default async function ApplicationsPage({
             <Stat label="Pending" value={`${pendingCount}`} sub="awaiting review" accent />
             <Stat label="Total ask" value={money(pendingTotalAsk)} sub="pending advances requested" accent />
             <Stat label="Avg ask" value={money(pendingAvgAsk)} sub="avg requested per applicant" />
-            <Stat label="Avg requested time" value={`${pendingAvgTerm.toFixed(1)} mo`} sub="repayment term requested" />
+            <Stat label="Largest ask" value={money(pendingLargestAsk)} sub="biggest pending request" />
           </div>
 
           {topProfessions.length > 0 && (
