@@ -8,6 +8,7 @@ import { addAdSpend, syncAllAdSpend } from "@/actions/ad-spend";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { fmtMoney } from "@/lib/loan-summary";
+import type { ApplicantStats } from "@/actions/applicant-stats";
 
 type FinancialSummary = {
   period: { startDate: string; endDate: string; days: number };
@@ -113,6 +114,7 @@ export function DashboardTabs(props: {
   emailTemplateCount: number;
   recentEvents: EventRow[];
   articleStats: { total: number; published: number };
+  applicantStats: ApplicantStats;
 }) {
   // The dashboard is the Loan Portal overview. The other analytics views
   // (marketing/media/content/crm) live under their own top-nav sections and
@@ -125,7 +127,7 @@ export function DashboardTabs(props: {
     <div>
       <PageHeader title="Dashboard" />
 
-      {tab === "loans" && <LoanPortalTab f={props.financials} pendingApps={props.pendingApps} />}
+      {tab === "loans" && <LoanPortalTab f={props.financials} pendingApps={props.pendingApps} applicantStats={props.applicantStats} />}
       {tab === "marketing" && (
         <MarketingTab campaigns={props.emailCampaigns} sequences={props.emailSequences} templateCount={props.emailTemplateCount} />
       )}
@@ -150,9 +152,68 @@ export function DashboardTabs(props: {
 
 /* ─── TAB 1: LOAN PORTAL ─────────────────────────────────────────── */
 
-function LoanPortalTab({ f, pendingApps }: { f: FinancialSummary; pendingApps: PendingApp[] }) {
+function titleCase(str: string): string {
+  return str.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function LoanPortalTab({ f, pendingApps, applicantStats }: { f: FinancialSummary; pendingApps: PendingApp[]; applicantStats: ApplicantStats }) {
+  const { totalAsk, requestedCount, advancesCount, avgAdvance, avgPaymentDays, topProfessions } = applicantStats;
   return (
     <div className="space-y-6">
+
+      <Section title="Applicants">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <BigCard
+              label="Total ask"
+              value={fmtMoney(totalAsk)}
+              sub="sum of all loan requests"
+              accent="text-[#15803d]"
+            />
+            <BigCard
+              label="Requested"
+              value={`${requestedCount} applicants`}
+              sub="all applications"
+            />
+            <BigCard
+              label="Advances"
+              value={`${advancesCount} funded`}
+              sub="disbursed loans"
+              accent="text-[#15803d]"
+            />
+            <BigCard
+              label="Avg advance"
+              value={fmtMoney(avgAdvance)}
+              sub="average funded amount"
+            />
+            <BigCard
+              label="Avg payment time"
+              value={avgPaymentDays == null ? "No payoffs yet" : `${avgPaymentDays} days`}
+              sub="funded to paid off"
+            />
+          </div>
+
+          <div className="bg-white rounded-xl border border-[#e4e4e7] p-5">
+            <h3 className="text-[13px] font-bold text-black mb-4">Top professions</h3>
+            {topProfessions.length === 0 ? (
+              <p className="text-[13px] text-[#71717a]">No data yet.</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {topProfessions.map((item, i) => (
+                  <li key={item.name} className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-full bg-[#f0fdf4] text-[#15803d] text-[11px] font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 text-[13px] font-medium text-black">{titleCase(item.name)}</span>
+                    <span className="text-[12px] text-[#71717a] tabular-nums">{item.count} applicants</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </Section>
+
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-[12px] text-[#71717a]">Loan operations · last {f.period.days} days</p>
         <div className="flex items-center gap-2">
