@@ -12,7 +12,7 @@
     "deploy:db": "prisma migrate deploy && npx tsx prisma/seed.ts && npx tsx scripts/seed-content.ts && npx tsx scripts/seed-landing-pages.ts && npx tsx scripts/seed-form-templates.ts && npx tsx scripts/seed-email-sequences.ts && npx tsx scripts/seed-demo-data.ts && npx tsx scripts/seed-plaid-test-app.ts",
     "seed:social-topics": "tsx scripts/seed-social-topics.ts",
     "seed:social-accounts": "tsx scripts/seed-social-accounts.ts",
-    "start": "npm run deploy:db && next start",
+    "start": "prisma migrate deploy && next start",
     "lint": "eslint",
     "test": "vitest run"
   },
