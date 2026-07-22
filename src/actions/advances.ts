@@ -12,11 +12,27 @@ const num = (v: number | string | { toString(): string } | null | undefined) => 
 
 const LIVE_STATUSES = ["ACTIVE", "FUNDED", "REPAYING", "LATE", "COLLECTIONS"];
 
+const STAGE_OF: Record<string, string> = {
+  PENDING: "Pending",
+  APPLICANT: "Pending",
+  APPROVED: "Approved",
+  OFFER_ACCEPTED: "Approved",
+  FUNDED: "Active",
+  ACTIVE: "Active",
+  REPAYING: "Active",
+  LATE: "Active",
+  COLLECTIONS: "Default",
+  DEFAULTED: "Default",
+  PAID_OFF: "Paid",
+};
+
 export type AdvanceRow = {
   id: string;
   applicationCode: string;
   borrowerName: string;
   status: string;
+  stageTab: string;
+  requestedAmount: number;
   fundedAmount: number;
   nextPaymentId: string | null;
   nextDueDate: string | null;
@@ -51,7 +67,7 @@ function endOfToday(): Date {
 
 export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: AdvancesSummary }> {
   const apps = await prisma.application.findMany({
-    where: { status: { in: LIVE_STATUSES } },
+    where: { status: { in: Object.keys(STAGE_OF) } },
     select: {
       id: true,
       applicationCode: true,
@@ -109,30 +125,36 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       .sort((a, b) => b.paymentNumber - a.paymentNumber);
     const lastResult = attempted[0]?.status ?? null;
 
-    // Roll up the summary metrics.
-    for (const p of app.payments) {
-      if (p.status === "PENDING") {
-        const due = new Date(p.dueDate);
-        if (due <= todayEnd) {
-          dueTodayCount += 1;
-          dueTodayAmount += num(p.amount) + num(p.lateFee);
-          if (due < today0) {
-            overdueCount += 1;
-            overdueAmount += num(p.amount) + num(p.lateFee);
+    const isFunded = LIVE_STATUSES.includes(app.status);
+
+    // Roll up the summary metrics — funded rows only.
+    if (isFunded) {
+      for (const p of app.payments) {
+        if (p.status === "PENDING") {
+          const due = new Date(p.dueDate);
+          if (due <= todayEnd) {
+            dueTodayCount += 1;
+            dueTodayAmount += num(p.amount) + num(p.lateFee);
+            if (due < today0) {
+              overdueCount += 1;
+              overdueAmount += num(p.amount) + num(p.lateFee);
+            }
           }
         }
+        if ((p.status === "PAID" || p.paidAt) && p.paidAt && new Date(p.paidAt) >= weekAgo) {
+          collected7dAmount += num(p.amount) + num(p.lateFee);
+        }
       }
-      if ((p.status === "PAID" || p.paidAt) && p.paidAt && new Date(p.paidAt) >= weekAgo) {
-        collected7dAmount += num(p.amount) + num(p.lateFee);
-      }
+      totalOutstanding += outstanding;
     }
-    totalOutstanding += outstanding;
 
     return {
       id: app.id,
       applicationCode: app.applicationCode,
       borrowerName: `${app.firstName} ${app.lastName}`.trim(),
       status: app.status,
+      stageTab: STAGE_OF[app.status] ?? "Active",
+      requestedAmount: num(app.loanAmount),
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
       nextPaymentId: nextPending?.id ?? null,
       nextDueDate: nextPending ? new Date(nextPending.dueDate).toISOString() : null,

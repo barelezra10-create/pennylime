@@ -14,7 +14,7 @@ const money2 = (n: number) =>
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 
-type Filter = "all" | "due" | "overdue" | "late" | "collections";
+type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default";
 
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE: "bg-[#f0fdf4] text-[#15803d]",
@@ -22,6 +22,12 @@ const STATUS_STYLE: Record<string, string> = {
   REPAYING: "bg-[#f0fdf4] text-[#15803d]",
   LATE: "bg-[#fffbeb] text-[#b45309]",
   COLLECTIONS: "bg-[#fef2f2] text-[#b91c1c]",
+  PENDING: "bg-[#f4f4f5] text-[#52525b]",
+  APPLICANT: "bg-[#f4f4f5] text-[#52525b]",
+  APPROVED: "bg-[#eff6ff] text-[#1d4ed8]",
+  OFFER_ACCEPTED: "bg-[#eff6ff] text-[#1d4ed8]",
+  DEFAULTED: "bg-[#fef2f2] text-[#b91c1c]",
+  PAID_OFF: "bg-[#f0fdf4] text-[#15803d]",
 };
 
 export function AdvancesClient({
@@ -32,21 +38,15 @@ export function AdvancesClient({
   summary: AdvancesSummary;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("Active");
   const [search, setSearch] = useState("");
   const [chargingId, setChargingId] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const endToday = new Date();
-    endToday.setHours(23, 59, 59, 999);
     return advances.filter((a) => {
-      // "Due now" = has a pending payment due today or earlier, ready to charge.
-      if (filter === "due" && !(a.nextPaymentId && a.nextDueDate && new Date(a.nextDueDate) <= endToday)) return false;
-      if (filter === "overdue" && a.daysOverdue <= 0) return false;
-      if (filter === "late" && a.status !== "LATE") return false;
-      if (filter === "collections" && a.status !== "COLLECTIONS") return false;
+      if (a.stageTab !== filter) return false;
       if (q) {
         const hay = `${a.borrowerName} ${a.applicationCode}`.toLowerCase();
         if (!hay.includes(q)) return false;
@@ -95,13 +95,8 @@ export function AdvancesClient({
     }
   }
 
-  const FILTERS: { id: Filter; label: string; count?: number }[] = [
-    { id: "all", label: "All", count: summary.totalAdvances },
-    { id: "due", label: "Due now", count: summary.dueTodayCount },
-    { id: "overdue", label: "Overdue", count: summary.overdueCount },
-    { id: "late", label: "Late" },
-    { id: "collections", label: "Collections" },
-  ];
+  const STAGE_TABS: Filter[] = ["Pending", "Approved", "Active", "Paid", "Default"];
+  const tabCount = (tab: Filter) => advances.filter((a) => a.stageTab === tab).length;
 
   return (
     <div>
@@ -116,16 +111,16 @@ export function AdvancesClient({
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <div className="flex rounded-lg border border-[#e4e4e7] overflow-hidden">
-          {FILTERS.map((f) => (
+          {STAGE_TABS.map((tab) => (
             <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
+              key={tab}
+              onClick={() => setFilter(tab)}
               className={`px-3 py-1.5 text-xs font-medium border-r border-[#e4e4e7] last:border-r-0 ${
-                filter === f.id ? "bg-[#18181b] text-white" : "bg-white text-[#52525b] hover:bg-[#fafafa]"
+                filter === tab ? "bg-[#18181b] text-white" : "bg-white text-[#52525b] hover:bg-[#fafafa]"
               }`}
             >
-              {f.label}
-              {f.count != null && <span className="ml-1.5 opacity-70">{f.count}</span>}
+              {tab}
+              <span className="ml-1.5 opacity-70">{tabCount(tab)}</span>
             </button>
           ))}
         </div>
@@ -149,18 +144,20 @@ export function AdvancesClient({
         <table className="w-full text-[13px]">
           <thead className="bg-[#fafafa] text-[#71717a] text-left">
             <tr>
-              <th className="font-semibold px-4 py-2.5">Borrower</th>
+              <th className="font-semibold px-4 py-2.5">Customer</th>
               <th className="font-semibold px-4 py-2.5">Status</th>
-              <th className="font-semibold px-4 py-2.5">Next payment</th>
+              <th className="font-semibold px-4 py-2.5 text-right">Amount</th>
               <th className="font-semibold px-4 py-2.5 text-right">Outstanding</th>
-              <th className="font-semibold px-4 py-2.5">Last result</th>
+              <th className="font-semibold px-4 py-2.5">Next payment</th>
               <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
-            ) : rows.map((a) => (
+            ) : rows.map((a) => {
+              const isFunded = ["Active", "Default"].includes(a.stageTab);
+              return (
               <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                 <td className="px-4 py-3">
                   <div className="font-semibold text-black">{a.borrowerName}</div>
@@ -174,22 +171,18 @@ export function AdvancesClient({
                     <span className="ml-1.5 text-[10px] font-semibold text-[#b91c1c]">{a.daysOverdue}d overdue</span>
                   )}
                 </td>
+                <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                  {money(isFunded ? a.fundedAmount : a.requestedAmount)}
+                </td>
+                <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                  {isFunded && a.outstanding > 0 ? money2(a.outstanding) : <span className="text-[#a1a1aa]">—</span>}
+                </td>
                 <td className="px-4 py-3">
                   {a.nextPaymentId ? (
                     <>
                       <span className="font-semibold text-black tabular-nums">{money2(a.nextDueAmount)}</span>
                       <span className="text-[#a1a1aa]"> · {fmtDate(a.nextDueDate)}</span>
                     </>
-                  ) : (
-                    <span className="text-[#a1a1aa]">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right font-semibold tabular-nums">{money2(a.outstanding)}</td>
-                <td className="px-4 py-3">
-                  {a.isProcessing ? (
-                    <span className="text-[#1d4ed8]">Processing</span>
-                  ) : a.lastResult ? (
-                    <span className={a.lastResult === "PAID" ? "text-[#15803d]" : a.lastResult === "FAILED" || a.lastResult === "RETURNED" ? "text-[#b91c1c]" : "text-[#71717a]"}>{a.lastResult}</span>
                   ) : (
                     <span className="text-[#a1a1aa]">—</span>
                   )}
@@ -212,7 +205,7 @@ export function AdvancesClient({
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
