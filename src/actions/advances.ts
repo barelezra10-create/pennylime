@@ -12,6 +12,27 @@ const num = (v: number | string | { toString(): string } | null | undefined) => 
 
 const LIVE_STATUSES = ["ACTIVE", "FUNDED", "REPAYING", "LATE", "COLLECTIONS"];
 
+// The `source` field on Contact is almost always "direct" (a default); the
+// real acquisition channel is in the referrer URL. Map it to a clean name.
+function friendlySource(referrer: string | null, source: string | null): string {
+  const r = (referrer || "").toLowerCase();
+  if (r.includes("chatgpt") || r.includes("openai")) return "ChatGPT";
+  if (r.includes("google")) return "Google";
+  if (r.includes("bing")) return "Bing";
+  if (r.includes("duckduckgo")) return "DuckDuckGo";
+  if (r.includes("facebook") || r.includes("fb.")) return "Facebook";
+  if (r.includes("instagram")) return "Instagram";
+  if (r.includes("tiktok")) return "TikTok";
+  if (r.includes("reddit")) return "Reddit";
+  if (r.includes("teams") || r.includes("office")) return "Microsoft Teams";
+  if (r.includes("pennylime.com")) return "Direct"; // internal nav / returning
+  if (referrer) {
+    try { return new URL(referrer).hostname.replace(/^www\./, ""); } catch { return referrer; }
+  }
+  if (source && source.toLowerCase() !== "direct") return source;
+  return "Direct";
+}
+
 const STAGE_OF: Record<string, string> = {
   PENDING: "Pending",
   APPLICANT: "Pending",
@@ -85,7 +106,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       loanTermMonths: true,
       monthlyIncome: true,
       bankBalance: true,
-      contact: { select: { source: true, utmSource: true, referrer: true } },
+      contact: { select: { source: true, referrer: true } },
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
@@ -168,7 +189,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       termMonths: app.loanTermMonths,
       monthlyIncome: app.monthlyIncome != null ? num(app.monthlyIncome) : null,
       bankBalance: app.bankBalance != null ? num(app.bankBalance) : null,
-      referral: app.contact?.source ?? app.contact?.utmSource ?? app.contact?.referrer ?? null,
+      referral: friendlySource(app.contact?.referrer ?? null, app.contact?.source ?? null),
       requestedAmount: num(app.loanAmount),
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
       nextPaymentId: nextPending?.id ?? null,
