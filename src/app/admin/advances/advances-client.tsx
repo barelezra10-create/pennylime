@@ -141,11 +141,12 @@ export function AdvancesClient({
     <div>
       {/* Ops metrics — only on funded stages */}
       {showServicing && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
           <Metric label="Money out" value={money(summary.moneyOut)} sub="principal still out" />
           <Metric label="Paid back" value={money(summary.paidBack)} sub="collected to date" accent="text-[#15803d]" />
-          <Metric label="Profit" value={money(summary.profit)} sub="interest + fees earned" accent="text-[#15803d]" />
-          <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} due today · ${summary.overdueCount} overdue`} accent={summary.overdueCount > 0 ? "text-[#b91c1c]" : ""} />
+          <Metric label="Profit" value={money(summary.profit)} sub="realized, paid-off only" accent="text-[#15803d]" />
+          <Metric label="Potential profit" value={money(summary.potentialProfit)} sub="if active pay in full" />
+          <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} due · ${summary.overdueCount} overdue`} accent={summary.overdueCount > 0 ? "text-[#b91c1c]" : ""} />
         </div>
       )}
 

@@ -84,7 +84,8 @@ export type AdvancesSummary = {
   collected7dAmount: number;
   moneyOut: number; // principal still out on funded advances
   paidBack: number; // total cash collected on funded advances
-  profit: number; // interest + fees collected on funded advances
+  profit: number; // realized interest + fees, only from advances paid in full
+  potentialProfit: number; // expected interest on active advances if paid in full
 };
 
 function startOfToday(): Date {
@@ -144,7 +145,8 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
   let collected7dAmount = 0;
   let moneyOut = 0;
   let paidBack = 0;
-  let profit = 0;
+  let profit = 0; // realized: only from advances paid back in full
+  let potentialProfit = 0; // expected interest on active advances if paid in full
 
   const advances: AdvanceRow[] = apps.map((app) => {
     const unpaid = app.payments.filter((p) => p.status !== "PAID" && !p.paidAt);
@@ -153,6 +155,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
     const paidToDate = paidPayments.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
     const paidPrincipal = paidPayments.reduce((s, p) => s + num(p.principal), 0);
     const paidInterest = paidPayments.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
+    const scheduledInterest = app.payments.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
     const paidCount = paidPayments.length;
     const totalCount = app.payments.length;
 
@@ -195,6 +198,10 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       totalOutstanding += outstanding;
       moneyOut += Math.max((num(app.fundedAmount) || num(app.loanAmount)) - paidPrincipal, 0);
       paidBack += paidToDate;
+      potentialProfit += scheduledInterest;
+    }
+    // Realized profit is only booked once the advance is fully paid off.
+    if (app.status === "PAID_OFF") {
       profit += paidInterest;
     }
 
@@ -247,6 +254,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       moneyOut,
       paidBack,
       profit,
+      potentialProfit,
     },
   };
 }
