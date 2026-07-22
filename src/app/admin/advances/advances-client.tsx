@@ -177,6 +177,7 @@ export function AdvancesClient({
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>
                 <th className="font-semibold px-4 py-2.5">Applicant</th>
+                <th className="font-semibold px-4 py-2.5">Applied</th>
                 <th className="font-semibold px-4 py-2.5">Where they work</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Requested</th>
@@ -188,13 +189,14 @@ export function AdvancesClient({
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#a1a1aa]">No pending applicants.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No pending applicants.</td></tr>
               ) : rows.map((a) => (
                 <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                   <td className="px-4 py-3">
                     <div className="font-semibold text-black">{a.borrowerName}</div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
                   </td>
+                  <td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{fmtDate(a.appliedAt)}</td>
                   <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">{money(a.requestedAmount)}</td>

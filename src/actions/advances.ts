@@ -62,6 +62,7 @@ export type AdvanceRow = {
   requestedAmount: number;
   approvedAmount: number | null;
   fundedAmount: number;
+  appliedAt: string;
   nextPaymentId: string | null;
   nextDueDate: string | null;
   nextDueAmount: number;
@@ -116,6 +117,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       monthlyIncome: true,
       bankBalance: true,
       offeredMaxAmount: true,
+      createdAt: true,
       contact: { select: { source: true, referrer: true } },
       payments: {
         orderBy: { paymentNumber: "asc" },
@@ -220,6 +222,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       requestedAmount: num(app.loanAmount),
       approvedAmount: app.offeredMaxAmount != null ? num(app.offeredMaxAmount) : null,
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
+      appliedAt: new Date(app.createdAt).toISOString(),
       nextPaymentId: nextPending?.id ?? null,
       nextDueDate: nextPending ? new Date(nextPending.dueDate).toISOString() : null,
       nextDueAmount: nextPending ? num(nextPending.amount) + num(nextPending.lateFee) : 0,
