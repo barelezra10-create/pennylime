@@ -34,6 +34,9 @@ export type AdvanceRow = {
   stageTab: string;
   platform: string | null;
   termMonths: number;
+  monthlyIncome: number | null;
+  bankBalance: number | null;
+  referral: string | null;
   requestedAmount: number;
   fundedAmount: number;
   nextPaymentId: string | null;
@@ -80,6 +83,9 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       loanAmount: true,
       platform: true,
       loanTermMonths: true,
+      monthlyIncome: true,
+      bankBalance: true,
+      contact: { select: { source: true, utmSource: true, referrer: true } },
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
@@ -160,6 +166,9 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       stageTab: STAGE_OF[app.status] ?? "Active",
       platform: app.platform ?? null,
       termMonths: app.loanTermMonths,
+      monthlyIncome: app.monthlyIncome != null ? num(app.monthlyIncome) : null,
+      bankBalance: app.bankBalance != null ? num(app.bankBalance) : null,
+      referral: app.contact?.source ?? app.contact?.utmSource ?? app.contact?.referrer ?? null,
       requestedAmount: num(app.loanAmount),
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
       nextPaymentId: nextPending?.id ?? null,

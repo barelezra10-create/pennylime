@@ -13,6 +13,8 @@ const money2 = (n: number) =>
   `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+const fmtPlatforms = (p: string) =>
+  p.split(",").map((s) => s.trim().replace(/\b\w/g, (c) => c.toUpperCase())).filter(Boolean).join(", ");
 
 type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default";
 
@@ -132,73 +134,116 @@ export function AdvancesClient({
 
       {/* Table */}
       <div className="overflow-auto rounded-xl border border-[#e4e4e7] bg-white">
-        <table className="w-full text-[13px]">
-          <thead className="bg-[#fafafa] text-[#71717a] text-left">
-            <tr>
-              <th className="font-semibold px-4 py-2.5">Customer</th>
-              <th className="font-semibold px-4 py-2.5">Status</th>
-              <th className="font-semibold px-4 py-2.5 text-right">Amount</th>
-              <th className="font-semibold px-4 py-2.5 text-right">Outstanding</th>
-              <th className="font-semibold px-4 py-2.5">Next payment</th>
-              <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
-            ) : rows.map((a) => {
-              const isFunded = ["Active", "Default"].includes(a.stageTab);
-              return (
-              <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
-                <td className="px-4 py-3">
-                  <div className="font-semibold text-black">{a.borrowerName}</div>
-                  <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[a.status] || "bg-[#f4f4f5] text-[#71717a]"}`}>
-                    {a.status}
-                  </span>
-                  {a.daysOverdue > 0 && (
-                    <span className="ml-1.5 text-[10px] font-semibold text-[#b91c1c]">{a.daysOverdue}d overdue</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                  {money(isFunded ? a.fundedAmount : a.requestedAmount)}
-                </td>
-                <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                  {isFunded && a.outstanding > 0 ? money2(a.outstanding) : <span className="text-[#a1a1aa]">—</span>}
-                </td>
-                <td className="px-4 py-3">
-                  {a.nextPaymentId ? (
-                    <>
-                      <span className="font-semibold text-black tabular-nums">{money2(a.nextDueAmount)}</span>
-                      <span className="text-[#a1a1aa]"> · {fmtDate(a.nextDueDate)}</span>
-                    </>
-                  ) : (
-                    <span className="text-[#a1a1aa]">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => chargeOne(a)}
-                      disabled={!a.nextPaymentId || a.isProcessing || chargingId === a.id}
-                      className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {chargingId === a.id ? "…" : "Charge now"}
-                    </button>
-                    <Link
-                      href={`/admin/applications/${a.id}?from=Active`}
-                      className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 transition-colors"
-                    >
-                      Open
-                    </Link>
-                  </div>
-                </td>
+        {filter === "Pending" ? (
+          <table className="w-full text-[13px]">
+            <thead className="bg-[#fafafa] text-[#71717a] text-left">
+              <tr>
+                <th className="font-semibold px-4 py-2.5">Applicant</th>
+                <th className="font-semibold px-4 py-2.5">Where they work</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Requested</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Length</th>
+                <th className="font-semibold px-4 py-2.5">How they found us</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Plaid balance</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
               </tr>
-            )})}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#a1a1aa]">No pending applicants.</td></tr>
+              ) : rows.map((a) => (
+                <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-black">{a.borrowerName}</div>
+                    <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                  </td>
+                  <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">—</span>}</td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">{money(a.requestedAmount)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{a.termMonths} wks</td>
+                  <td className="px-4 py-3 text-[#52525b]">{a.referral || <span className="text-[#a1a1aa]">—</span>}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/admin/applications/${a.id}?from=Pending`}
+                      className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                    >
+                      Review
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <table className="w-full text-[13px]">
+            <thead className="bg-[#fafafa] text-[#71717a] text-left">
+              <tr>
+                <th className="font-semibold px-4 py-2.5">Customer</th>
+                <th className="font-semibold px-4 py-2.5">Status</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Amount</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Outstanding</th>
+                <th className="font-semibold px-4 py-2.5">Next payment</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr><td colSpan={6} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
+              ) : rows.map((a) => {
+                const isFunded = ["Active", "Default"].includes(a.stageTab);
+                return (
+                <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-black">{a.borrowerName}</div>
+                    <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[a.status] || "bg-[#f4f4f5] text-[#71717a]"}`}>
+                      {a.status}
+                    </span>
+                    {a.daysOverdue > 0 && (
+                      <span className="ml-1.5 text-[10px] font-semibold text-[#b91c1c]">{a.daysOverdue}d overdue</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    {money(isFunded ? a.fundedAmount : a.requestedAmount)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    {isFunded && a.outstanding > 0 ? money2(a.outstanding) : <span className="text-[#a1a1aa]">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.nextPaymentId ? (
+                      <>
+                        <span className="font-semibold text-black tabular-nums">{money2(a.nextDueAmount)}</span>
+                        <span className="text-[#a1a1aa]"> · {fmtDate(a.nextDueDate)}</span>
+                      </>
+                    ) : (
+                      <span className="text-[#a1a1aa]">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => chargeOne(a)}
+                        disabled={!a.nextPaymentId || a.isProcessing || chargingId === a.id}
+                        className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {chargingId === a.id ? "…" : "Charge now"}
+                      </button>
+                      <Link
+                        href={`/admin/applications/${a.id}?from=Active`}
+                        className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                      >
+                        Open
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              )})}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
