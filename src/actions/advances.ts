@@ -60,6 +60,7 @@ export type AdvanceRow = {
   bankBalance: number | null;
   referral: string | null;
   requestedAmount: number;
+  approvedAmount: number | null;
   fundedAmount: number;
   nextPaymentId: string | null;
   nextDueDate: string | null;
@@ -107,6 +108,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       loanTermMonths: true,
       monthlyIncome: true,
       bankBalance: true,
+      offeredMaxAmount: true,
       contact: { select: { source: true, referrer: true } },
       payments: {
         orderBy: { paymentNumber: "asc" },
@@ -192,6 +194,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       bankBalance: app.bankBalance != null ? num(app.bankBalance) : null,
       referral: friendlySource(app.contact?.referrer ?? null, app.contact?.source ?? null),
       requestedAmount: num(app.loanAmount),
+      approvedAmount: app.offeredMaxAmount != null ? num(app.offeredMaxAmount) : null,
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
       nextPaymentId: nextPending?.id ?? null,
       nextDueDate: nextPending ? new Date(nextPending.dueDate).toISOString() : null,
