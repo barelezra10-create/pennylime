@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { getLoanRules } from "@/lib/rules-engine";
 import { evaluateWorkSignals } from "@/lib/risk/work-verification";
+import { incomeByPlatform } from "@/lib/income-by-platform";
 
 const ALLOWED_DOC_TYPES = new Set([
   "application/pdf",
@@ -40,7 +41,7 @@ export async function finalizeDocumentsAndVerify(
   try {
     const app = await prisma.application.findUnique({
       where: { id: applicationId },
-      select: { id: true, workerType: true },
+      select: { id: true, workerType: true, platform: true },
     });
     if (!app) return { ok: false as const, error: "Application not found" };
 
@@ -95,6 +96,9 @@ export async function finalizeDocumentsAndVerify(
           description: d.description,
           amount: d.amount,
         }));
+        const platformBreakdown = parsed.deposits && parsed.deposits.length > 0
+          ? incomeByPlatform(parsed.deposits, app.platform ?? null)
+          : null;
         await prisma.application.update({
           where: { id: applicationId },
           data: {
@@ -103,6 +107,7 @@ export async function finalizeDocumentsAndVerify(
             avgWeeklyIncome: parsed.avgWeeklyIncome,
             depositCount90d: parsed.depositCount,
             largestDeposit: parsed.largestDeposit,
+            ...(platformBreakdown ? { incomeByPlatformJson: JSON.stringify(platformBreakdown) } : {}),
           },
         });
       } catch (err) {
