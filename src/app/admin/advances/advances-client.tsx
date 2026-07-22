@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { chargePaymentNow } from "@/actions/payments";
 import { chargeAllDueToday, type AdvanceRow, type AdvancesSummary } from "@/actions/advances";
@@ -38,7 +38,11 @@ export function AdvancesClient({
   summary: AdvancesSummary;
 }) {
   const router = useRouter();
-  const [filter, setFilter] = useState<Filter>("Active");
+  const searchParams = useSearchParams();
+  const stageParam = searchParams.get("stage");
+  const filter: Filter = (["Pending", "Approved", "Active", "Paid", "Default"] as Filter[]).includes(stageParam as Filter)
+    ? (stageParam as Filter)
+    : "Active";
   const [search, setSearch] = useState("");
   const [chargingId, setChargingId] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
@@ -95,9 +99,6 @@ export function AdvancesClient({
     }
   }
 
-  const STAGE_TABS: Filter[] = ["Pending", "Approved", "Active", "Paid", "Default"];
-  const tabCount = (tab: Filter) => advances.filter((a) => a.stageTab === tab).length;
-
   return (
     <div>
       {/* Ops metrics */}
@@ -110,20 +111,6 @@ export function AdvancesClient({
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="flex rounded-lg border border-[#e4e4e7] overflow-hidden">
-          {STAGE_TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1.5 text-xs font-medium border-r border-[#e4e4e7] last:border-r-0 ${
-                filter === tab ? "bg-[#18181b] text-white" : "bg-white text-[#52525b] hover:bg-[#fafafa]"
-              }`}
-            >
-              {tab}
-              <span className="ml-1.5 opacity-70">{tabCount(tab)}</span>
-            </button>
-          ))}
-        </div>
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}

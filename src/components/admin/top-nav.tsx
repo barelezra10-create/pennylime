@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { getInboxBadges, type InboxBadges } from "@/actions/inbox-badges";
 
@@ -17,19 +17,16 @@ type TopTab = {
   // landing URL when the tab is clicked
   href: string;
   subnav: SubItem[];
+  // for the customer stage tabs: which ?stage= value this tab represents
+  stage?: string;
 };
 
 const TABS: TopTab[] = [
-  {
-    id: "customers",
-    label: "Customers",
-    icon: "◆",
-    prefixes: ["/admin/applications"],
-    href: "/admin/applications",
-    subnav: [
-      { href: "/admin/applications", label: "All customers" },
-    ],
-  },
+  { id: "stage-pending", label: "Pending", icon: "", stage: "Pending", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Pending", subnav: [] },
+  { id: "stage-approved", label: "Approved", icon: "", stage: "Approved", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Approved", subnav: [] },
+  { id: "stage-active", label: "Active", icon: "", stage: "Active", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Active", subnav: [] },
+  { id: "stage-paid", label: "Paid", icon: "", stage: "Paid", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Paid", subnav: [] },
+  { id: "stage-default", label: "Default", icon: "", stage: "Default", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Default", subnav: [] },
   {
     id: "loans",
     label: "Pipeline",
@@ -162,8 +159,12 @@ function findActiveSub(pathname: string, items: SubItem[]): string | null {
 
 export function AdminTopNav({ userName }: { userName: string }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const activeTab = findActiveTab(pathname);
   const activeSubHref = findActiveSub(pathname, activeTab.subnav);
+  // Customer stage tabs highlight off the ?stage= param (default Active).
+  const onCustomers = pathname === "/admin/applications";
+  const currentStage = searchParams.get("stage") ?? "Active";
 
   // Poll for inbox badges (pending chats + recent inbound emails) every
   // 30s. Triggers a tab title prefix + favicon badge when there's
@@ -379,7 +380,9 @@ export function AdminTopNav({ userName }: { userName: string }) {
         {/* Top tabs */}
         <nav className="-mb-px flex items-center gap-1 overflow-x-auto">
           {TABS.map((t) => {
-            const active = t.id === activeTab.id;
+            const active = t.stage
+              ? onCustomers && currentStage === t.stage
+              : t.id === activeTab.id;
             const badgeCount = tabBadges[t.id] ?? 0;
             return (
               <Link
@@ -403,7 +406,8 @@ export function AdminTopNav({ userName }: { userName: string }) {
         </nav>
       </div>
 
-      {/* Sub-nav for active tab */}
+      {/* Sub-nav for active tab (hidden for the customer stage tabs) */}
+      {activeTab.subnav.length > 0 && (
       <div className="border-t border-[#f4f4f5] bg-[#fafafa]">
         <div className="px-6 py-2 flex items-center gap-1 overflow-x-auto">
           {activeTab.subnav.map((s) => {
@@ -422,6 +426,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
           })}
         </div>
       </div>
+      )}
     </header>
   );
 }
