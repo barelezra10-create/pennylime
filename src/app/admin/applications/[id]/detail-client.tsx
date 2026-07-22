@@ -498,6 +498,12 @@ export function DetailClient({
             />
           )}
 
+          {/* ── Income by platform (from bank statement) ── */}
+          <IncomeByPlatformPanel
+            applicationId={application.id}
+            json={(application as any).incomeByPlatformJson ?? null}
+          />
+
           {/* ── Evaluation Card ── */}
           {evaluation && (
             <div className="bg-white rounded-[10px] p-6">
@@ -730,12 +736,6 @@ export function DetailClient({
               formEmail: application.email,
               formPhone: application.phone,
             }}
-          />
-
-          {/* ── Income by platform ── */}
-          <IncomeByPlatformPanel
-            applicationId={application.id}
-            json={(application as any).incomeByPlatformJson ?? null}
           />
 
           {/* ── Documents ── */}

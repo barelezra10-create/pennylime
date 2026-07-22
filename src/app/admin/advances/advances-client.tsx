@@ -65,7 +65,7 @@ export function AdvancesClient({
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return advances.filter((a) => {
+    const out = advances.filter((a) => {
       if (a.stageTab !== filter) return false;
       if (q) {
         const hay = `${a.borrowerName} ${a.applicationCode}`.toLowerCase();
@@ -73,6 +73,11 @@ export function AdvancesClient({
       }
       return true;
     });
+    // Pending: newest applications first.
+    if (filter === "Pending") {
+      out.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
+    }
+    return out;
   }, [advances, filter, search]);
 
   async function chargeOne(a: AdvanceRow) {
