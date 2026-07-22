@@ -3,7 +3,6 @@ import { getContactMetrics } from "@/actions/contacts";
 import { getRecentActivities } from "@/actions/activities";
 import { getFinancialSummary } from "@/lib/financials";
 import { getRecentAdSpend } from "@/actions/ad-spend";
-import { getApplicantStats } from "@/actions/applicant-stats";
 import { DashboardTabs } from "./dashboard-tabs";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +26,6 @@ export default async function AdminDashboardPage() {
     recentEvents,
     articles,
     publishedArticles,
-    applicantStats,
   ] = await Promise.all([
     getFinancialSummary(30),
     getContactMetrics(),
@@ -55,7 +53,6 @@ export default async function AdminDashboardPage() {
     prisma.trackingEvent.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
     prisma.article.count(),
     prisma.article.count({ where: { published: true } }),
-    getApplicantStats(),
   ]);
 
   const trackingBreakdown = (() => {
@@ -147,7 +144,6 @@ export default async function AdminDashboardPage() {
         createdAt: e.createdAt.toISOString(),
       }))}
       articleStats={{ total: articles, published: publishedArticles }}
-      applicantStats={applicantStats}
     />
   );
 }
