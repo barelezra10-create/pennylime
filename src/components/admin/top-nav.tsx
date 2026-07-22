@@ -21,13 +21,22 @@ type TopTab = {
 
 const TABS: TopTab[] = [
   {
+    id: "customers",
+    label: "Customers",
+    icon: "◆",
+    prefixes: ["/admin/applications"],
+    href: "/admin/applications",
+    subnav: [
+      { href: "/admin/applications", label: "All customers" },
+    ],
+  },
+  {
     id: "loans",
     label: "Pipeline",
     icon: "$",
-    prefixes: ["/admin/dashboard", "/admin/applications", "/admin/payments", "/admin/audit", "/admin/settings", "/admin/goach-test", "/admin/funnel-preview", "/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
-    href: "/admin/applications",
+    prefixes: ["/admin/dashboard", "/admin/payments", "/admin/audit", "/admin/settings", "/admin/goach-test", "/admin/funnel-preview", "/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
+    href: "/admin/dashboard",
     subnav: [
-      { href: "/admin/applications", label: "Applications" },
       { href: "/admin/dashboard", label: "Overview" },
       { href: "/admin/payments", label: "Payments" },
       { href: "/admin/contacts", label: "Contacts" },
