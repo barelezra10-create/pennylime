@@ -16,6 +16,13 @@ const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 const fmtPlatforms = (p: string) =>
   p.split(",").map((s) => s.trim().replace(/\b\w/g, (c) => c.toUpperCase())).filter(Boolean).join(", ");
+const lastPayStyle = (s: string) => {
+  const base = "inline-block text-[11px] font-semibold ";
+  if (s === "PAID") return base + "text-[#15803d]";
+  if (s === "FAILED" || s === "RETURNED") return base + "text-[#b91c1c]";
+  if (s === "PROCESSING") return base + "text-[#1d4ed8]";
+  return base + "text-[#71717a]";
+};
 
 type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default" | "Rejected";
 
@@ -135,10 +142,10 @@ export function AdvancesClient({
       {/* Ops metrics — only on funded stages */}
       {showServicing && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} payments`} accent="text-[#15803d]" />
-          <Metric label="Overdue" value={money(summary.overdueAmount)} sub={`${summary.overdueCount} payments`} accent={summary.overdueAmount > 0 ? "text-[#b91c1c]" : ""} />
-          <Metric label="Outstanding" value={money(summary.totalOutstanding)} sub={`${summary.totalAdvances} live advances`} />
-          <Metric label="Collected (7d)" value={money(summary.collected7dAmount)} sub="settled last 7 days" />
+          <Metric label="Money out" value={money(summary.moneyOut)} sub="principal still out" />
+          <Metric label="Paid back" value={money(summary.paidBack)} sub="collected to date" accent="text-[#15803d]" />
+          <Metric label="Profit" value={money(summary.profit)} sub="interest + fees earned" accent="text-[#15803d]" />
+          <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} due today · ${summary.overdueCount} overdue`} accent={summary.overdueCount > 0 ? "text-[#b91c1c]" : ""} />
         </div>
       )}
 
@@ -270,14 +277,16 @@ export function AdvancesClient({
                 <th className="font-semibold px-4 py-2.5">Customer</th>
                 <th className="font-semibold px-4 py-2.5">Status</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Amount</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Outstanding</th>
+                <th className="font-semibold px-4 py-2.5 text-center">Paid</th>
+                <th className="font-semibold px-4 py-2.5">Last payment</th>
                 <th className="font-semibold px-4 py-2.5">Next payment</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Outstanding</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
               ) : rows.map((a) => {
                 const isFunded = ["Active", "Default"].includes(a.stageTab);
                 const showCharge = ["Active", "Default"].includes(a.stageTab);
@@ -298,8 +307,11 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">
                     {money(isFunded ? a.fundedAmount : a.requestedAmount)}
                   </td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                    {isFunded && a.outstanding > 0 ? money2(a.outstanding) : <span className="text-[#a1a1aa]">—</span>}
+                  <td className="px-4 py-3 text-center tabular-nums text-[#52525b]">
+                    {a.paidCount}/{a.totalCount}
+                  </td>
+                  <td className="px-4 py-3">
+                    {a.lastResult ? <span className={lastPayStyle(a.lastResult)}>{a.lastResult}</span> : <span className="text-[#a1a1aa]">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     {a.nextPaymentId ? (
@@ -310,6 +322,9 @@ export function AdvancesClient({
                     ) : (
                       <span className="text-[#a1a1aa]">—</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    {isFunded && a.outstanding > 0 ? money2(a.outstanding) : <span className="text-[#a1a1aa]">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">

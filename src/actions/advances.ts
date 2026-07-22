@@ -70,6 +70,8 @@ export type AdvanceRow = {
   daysOverdue: number; // 0 if not overdue
   isProcessing: boolean; // a payment is mid-flight
   lastResult: string | null; // last settled/attempted payment status
+  paidCount: number; // payments paid
+  totalCount: number; // total scheduled payments
 };
 
 export type AdvancesSummary = {
@@ -80,6 +82,9 @@ export type AdvancesSummary = {
   overdueAmount: number;
   totalOutstanding: number;
   collected7dAmount: number;
+  moneyOut: number; // principal still out on funded advances
+  paidBack: number; // total cash collected on funded advances
+  profit: number; // interest + fees collected on funded advances
 };
 
 function startOfToday(): Date {
@@ -116,6 +121,8 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
           id: true,
           paymentNumber: true,
           amount: true,
+          principal: true,
+          interest: true,
           lateFee: true,
           status: true,
           dueDate: true,
@@ -135,13 +142,19 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
   let overdueAmount = 0;
   let totalOutstanding = 0;
   let collected7dAmount = 0;
+  let moneyOut = 0;
+  let paidBack = 0;
+  let profit = 0;
 
   const advances: AdvanceRow[] = apps.map((app) => {
     const unpaid = app.payments.filter((p) => p.status !== "PAID" && !p.paidAt);
     const outstanding = unpaid.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
-    const paidToDate = app.payments
-      .filter((p) => p.status === "PAID" || p.paidAt)
-      .reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
+    const paidPayments = app.payments.filter((p) => p.status === "PAID" || p.paidAt);
+    const paidToDate = paidPayments.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
+    const paidPrincipal = paidPayments.reduce((s, p) => s + num(p.principal), 0);
+    const paidInterest = paidPayments.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
+    const paidCount = paidPayments.length;
+    const totalCount = app.payments.length;
 
     const nextPending = app.payments.find((p) => p.status === "PENDING");
     const isProcessing = app.payments.some((p) => p.status === "PROCESSING");
@@ -180,6 +193,9 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
         }
       }
       totalOutstanding += outstanding;
+      moneyOut += Math.max((num(app.fundedAmount) || num(app.loanAmount)) - paidPrincipal, 0);
+      paidBack += paidToDate;
+      profit += paidInterest;
     }
 
     return {
@@ -204,6 +220,8 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       daysOverdue,
       isProcessing,
       lastResult,
+      paidCount,
+      totalCount,
     };
   });
 
@@ -226,6 +244,9 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       overdueAmount,
       totalOutstanding,
       collected7dAmount,
+      moneyOut,
+      paidBack,
+      profit,
     },
   };
 }
