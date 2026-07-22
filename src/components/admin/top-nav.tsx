@@ -22,6 +22,7 @@ type TopTab = {
 };
 
 const TABS: TopTab[] = [
+  { id: "dashboard", label: "Dashboard", icon: "▦", prefixes: ["/admin/home"], href: "/admin/home", subnav: [] },
   { id: "stage-pending", label: "Pending", icon: "", stage: "Pending", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Pending", subnav: [] },
   { id: "stage-approved", label: "Approved", icon: "", stage: "Approved", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Approved", subnav: [] },
   { id: "stage-active", label: "Active", icon: "", stage: "Active", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Active", subnav: [] },

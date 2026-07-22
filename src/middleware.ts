@@ -5,6 +5,7 @@ const PENNYCLICK_COOKIE = "_pl_clickid";
 const PENNYCLICK_TTL_SECONDS = 60 * 60 * 24 * 365; // 1 year
 
 const ADMIN_PROTECTED = [
+  "/admin/home",
   "/admin/dashboard",
   "/admin/advances",
   "/admin/applications",
