@@ -51,6 +51,10 @@ export function AdvancesClient({
   const [bulkRunning, setBulkRunning] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
 
+  // Servicing metrics + bulk charge only make sense on funded stages.
+  const showServicing = ["Active", "Paid", "Default"].includes(filter);
+  const showCharge = ["Active", "Default"].includes(filter);
+
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return advances.filter((a) => {
@@ -128,8 +132,8 @@ export function AdvancesClient({
 
   return (
     <div>
-      {/* Ops metrics — hidden on Pending (not relevant before funding) */}
-      {filter !== "Pending" && (
+      {/* Ops metrics — only on funded stages */}
+      {showServicing && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} payments`} accent="text-[#15803d]" />
           <Metric label="Overdue" value={money(summary.overdueAmount)} sub={`${summary.overdueCount} payments`} accent={summary.overdueAmount > 0 ? "text-[#b91c1c]" : ""} />
@@ -146,7 +150,7 @@ export function AdvancesClient({
           placeholder="Search borrower or code"
           className="flex-1 min-w-[180px] text-xs border border-[#e4e4e7] rounded-lg px-3 py-1.5 outline-none focus:border-[#15803d]"
         />
-        {filter !== "Pending" && (
+        {showCharge && (
           <button
             onClick={chargeAll}
             disabled={bulkRunning || summary.dueTodayCount === 0}
