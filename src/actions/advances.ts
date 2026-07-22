@@ -45,6 +45,7 @@ const STAGE_OF: Record<string, string> = {
   COLLECTIONS: "Default",
   DEFAULTED: "Default",
   PAID_OFF: "Paid",
+  REJECTED: "Rejected",
 };
 
 export type AdvanceRow = {
