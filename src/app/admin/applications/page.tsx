@@ -34,6 +34,14 @@ export default async function ApplicationsPage({
   }
   const topProfessions = [...profCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => ({ name, count }));
 
+  // Approved tab metrics.
+  const isApproved = stage === "Approved";
+  const approvedRows = advances.filter((a) => a.stageTab === "Approved");
+  const approvedCount = approvedRows.length;
+  const approvedTotal = approvedRows.reduce((s, a) => s + a.requestedAmount, 0);
+  const approvedAvg = approvedCount ? approvedTotal / approvedCount : 0;
+  const approvedAvgWeeks = approvedCount ? approvedRows.reduce((s, a) => s + a.termMonths, 0) / approvedCount : 0;
+
   const title = stage ?? "Customers";
 
   return (
@@ -41,7 +49,7 @@ export default async function ApplicationsPage({
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold tracking-tight text-black">{title}</h1>
         <p className="text-sm text-[#71717a] mt-1">
-          {isPending ? "New applicants awaiting a decision." : "Manage your advances - payments, status, and contact, all in one place."}
+          {isPending ? "New applicants awaiting a decision." : isApproved ? "Approved offers awaiting acceptance." : "Manage your advances - payments, status, and contact, all in one place."}
         </p>
       </div>
 
@@ -72,6 +80,16 @@ export default async function ApplicationsPage({
             </div>
           )}
         </>
+      )}
+
+      {/* Approved analytics */}
+      {isApproved && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Stat label="Approved" value={`${approvedCount}`} sub="offers out, not taken" accent />
+          <Stat label="Total approved" value={money(approvedTotal)} sub="sum of approved advances" accent />
+          <Stat label="Avg advance" value={money(approvedAvg)} sub="avg approved amount" />
+          <Stat label="Avg length" value={`${approvedAvgWeeks.toFixed(1)} weeks`} sub="repayment length" />
+        </div>
       )}
 
       <AdvancesClient advances={advances} summary={summary} />

@@ -208,13 +208,15 @@ export function AdvancesClient({
                 <th className="font-semibold px-4 py-2.5">Where they work</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Requested</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Length</th>
                 <th className="font-semibold px-4 py-2.5">How they found us</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Plaid balance</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-10 text-center text-[#a1a1aa]">No approved applicants.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#a1a1aa]">No approved applicants.</td></tr>
               ) : rows.map((a) => (
                 <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                   <td className="px-4 py-3">
@@ -224,7 +226,9 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">{money(a.requestedAmount)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{a.termMonths} wks</td>
                   <td className="px-4 py-3 text-[#52525b]">{a.referral || <span className="text-[#a1a1aa]">—</span>}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
                       <button
