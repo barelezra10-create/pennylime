@@ -28,6 +28,9 @@ import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 import type { CustomerCrm } from "@/components/admin/customer-crm-panel";
 import { SalesforceRecord } from "@/components/admin/sf-record";
+import { CallButton } from "@/components/admin/dialer/call-button";
+import { EmailPanel } from "@/components/admin/email-panel";
+import { SmsThread } from "@/components/admin/sms-thread";
 
 /* ── helpers ── */
 
@@ -146,7 +149,14 @@ export function DetailClient({
   prevId?: string | null;
   nextId?: string | null;
   position?: { index: number; total: number } | null;
-  crm?: (CustomerCrm & { email: string | null; phone: string | null }) | null;
+  crm?:
+    | (CustomerCrm & {
+        email: string | null;
+        phone: string | null;
+        smsOptIn: boolean;
+        smsOptOutAt: string | null;
+      })
+    | null;
 }) {
   const router = useRouter();
   const fromQs = fromTab ? `?from=${encodeURIComponent(fromTab)}` : "";
@@ -454,6 +464,11 @@ export function DetailClient({
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <CallButton
+              phone={crm?.phone ?? application.phone}
+              name={`${application.firstName} ${application.lastName}`.trim()}
+              contactId={crm?.contactId}
+            />
             <button
               type="button"
               onClick={async () => {
@@ -497,6 +512,25 @@ export function DetailClient({
                     : null,
               }}
             />
+          )}
+
+          {/* ── Communication — email + SMS with the customer ── */}
+          {crm && (
+            <div className="space-y-4">
+              <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black flex items-center gap-2">
+                <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
+                </svg>
+                Communication
+              </h2>
+              <EmailPanel contactId={crm.contactId} contactEmail={crm.email ?? application.email} />
+              <SmsThread
+                contactId={crm.contactId}
+                contactPhone={crm.phone ?? application.phone}
+                smsOptIn={crm.smsOptIn}
+                smsOptOutAt={crm.smsOptOutAt}
+              />
+            </div>
           )}
 
           {/* ── Income by platform (from bank statement) ── */}

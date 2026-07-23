@@ -511,6 +511,8 @@ export function SalesforceRecord({
   /* local state */
   const [stage, setStage] = useState(crm.stage);
   const [repId, setRepId] = useState(crm.assignedRepId ?? "");
+  const [tags, setTags] = useState<string[]>(crm.tags);
+  const [newTag, setNewTag] = useState("");
   const [activities, setActivities] = useState<Activity[]>(crm.activities);
   const [activeTab, setActiveTab] = useState<ComposerTab>("email");
 
@@ -554,6 +556,33 @@ export function SalesforceRecord({
       router.refresh();
     } catch {
       toast.error("Failed to assign rep");
+    }
+  }
+
+  async function handleAddTag() {
+    const tag = newTag.trim();
+    if (!tag || tags.includes(tag)) return;
+    setNewTag("");
+    setTags((t) => [...t, tag]);
+    try {
+      await addContactTag(crm.contactId, tag);
+      toast.success("Tag added");
+      router.refresh();
+    } catch {
+      toast.error("Failed to add tag");
+      setTags((t) => t.filter((x) => x !== tag));
+    }
+  }
+
+  async function handleRemoveTag(tag: string) {
+    setTags((t) => t.filter((x) => x !== tag));
+    try {
+      await removeContactTag(crm.contactId, tag);
+      toast.success("Tag removed");
+      router.refresh();
+    } catch {
+      toast.error("Failed to remove tag");
+      setTags((t) => [...t, tag]);
     }
   }
 
@@ -687,18 +716,31 @@ export function SalesforceRecord({
         </div>
 
         {/* Tags row */}
-        {crm.tags.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {crm.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-full bg-[#f3f2f3] px-2.5 py-0.5 text-[11px] font-medium text-[#706e6b]"
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          {tags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 rounded-full bg-[#f3f2f3] px-2.5 py-0.5 text-[11px] font-medium text-[#706e6b]"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => handleRemoveTag(tag)}
+                className="text-[#aeabab] hover:text-[#dc2626] leading-none"
+                title={`Remove tag "${tag}"`}
               >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+                ×
+              </button>
+            </span>
+          ))}
+          <input
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+            placeholder="+ Add tag"
+            className="w-24 rounded-full border border-dashed border-[#dddbda] bg-white px-2.5 py-0.5 text-[11px] text-[#080707] placeholder:text-[#aeabab] focus:outline-none focus:border-[#0176d3]"
+          />
+        </div>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import Link from "next/link";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { ContactCalls } from "@/components/admin/dialer/contact-calls";
+import { PlaidMiniPanel } from "@/components/admin/dialer/plaid-mini-panel";
 import { useDialer } from "@/components/admin/dialer/dialer-provider";
 import { KANBAN_STAGES, STAGE_COLORS } from "@/lib/contact-helpers";
 import { dialedDigits, formatDialed, dialedToE164 } from "@/lib/voice/dialpad";
@@ -393,6 +394,8 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
               </div>
               <CallButton phone={selected.phone} name={selected.name} contactId={selected.id} />
             </div>
+
+            <PlaidMiniPanel contactId={selected.id} />
 
             <MoneyPanel contactId={selected.id} />
 
