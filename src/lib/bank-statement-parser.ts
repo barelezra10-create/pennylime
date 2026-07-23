@@ -85,6 +85,87 @@ const RESPONSE_SCHEMA = `{
   "notes": string | null
 }`;
 
+// Walk a (possibly truncated) JSON response and pull out every COMPLETE
+// object inside the "deposits" array. Used to recover data when Gemini hits
+// its output-token limit mid-array and returns invalid JSON.
+function salvageDeposits(text: string): ParsedDeposit[] {
+  const key = text.indexOf('"deposits"');
+  if (key === -1) return [];
+  const arrStart = text.indexOf("[", key);
+  if (arrStart === -1) return [];
+
+  const out: ParsedDeposit[] = [];
+  let depth = 0;
+  let objStart = -1;
+  let inStr = false;
+  let esc = false;
+
+  for (let i = arrStart + 1; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0 && objStart !== -1) {
+        try {
+          const obj = JSON.parse(text.slice(objStart, i + 1)) as ParsedDeposit;
+          if (obj && typeof obj.amount !== "undefined") out.push(obj);
+        } catch {
+          /* skip a malformed object */
+        }
+        objStart = -1;
+      }
+    } else if (c === "]" && depth === 0) {
+      break; // end of the deposits array
+    }
+  }
+  return out;
+}
+
+// Pull a top-level string field out of a raw (possibly truncated) response.
+function extractTopLevelString(text: string, field: string): string | null {
+  const m = new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`).exec(text);
+  return m ? m[1] : null;
+}
+
+// Recompute the income summary from salvaged deposits when the AI truncated.
+function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): ParsedStatementSummary {
+  const income = deposits.filter(
+    (d) => (d.classification ?? "income") === "income" && Number(d.amount) > 0,
+  );
+  const total = income.reduce((s, d) => s + (Number(d.amount) || 0), 0);
+  const dates = income.map((d) => d.date).filter(Boolean).sort();
+  const months = new Set(dates.map((d) => d.slice(0, 7)));
+  const monthsCount = Math.max(1, months.size);
+  const first = dates[0] ? new Date(dates[0]) : null;
+  const last = dates[dates.length - 1] ? new Date(dates[dates.length - 1]) : null;
+  const weeks =
+    first && last ? Math.max(1, (last.getTime() - first.getTime()) / (7 * 86400000)) : monthsCount * 4.345;
+
+  return {
+    accountHolderName: extractTopLevelString(text, "accountHolderName"),
+    bankName: extractTopLevelString(text, "bankName"),
+    statementPeriodStart: dates[0] ?? null,
+    statementPeriodEnd: dates[dates.length - 1] ?? null,
+    deposits,
+    monthlyIncome: total / monthsCount,
+    avgWeeklyIncome: total / weeks,
+    depositCount: income.length,
+    largestDeposit: income.reduce((m, d) => Math.max(m, Number(d.amount) || 0), 0),
+    estimatedCadence: "unknown",
+    confidence: "low",
+    notes: "Recovered from a truncated AI response; summary recomputed from the deposits that parsed.",
+  };
+}
+
 export async function parseStatementsWithAI(
   pdfs: Array<{ filename: string; buffer: Buffer; mimeType: string }>,
 ): Promise<ParsedStatementSummary> {
@@ -115,6 +196,10 @@ export async function parseStatementsWithAI(
       systemInstruction: SYSTEM_PROMPT,
       temperature: 0,
       responseMimeType: "application/json",
+      // Statements with many small daily gig payouts produce a long deposit
+      // array. Give the model plenty of room so the JSON isn't cut off
+      // mid-array (which yields "Unterminated string" parse errors).
+      maxOutputTokens: 65536,
     },
   });
 
@@ -124,8 +209,15 @@ export async function parseStatementsWithAI(
   let parsed: ParsedStatementSummary;
   try {
     parsed = JSON.parse(text) as ParsedStatementSummary;
-  } catch (err) {
-    throw new Error(`Failed to parse Gemini response as JSON: ${err instanceof Error ? err.message : "unknown"}`);
+  } catch {
+    // The response was truncated (model hit the output-token ceiling), so
+    // the JSON is incomplete. Salvage every complete deposit object we can
+    // and recompute the summary from them rather than losing everything.
+    const deposits = salvageDeposits(text);
+    if (deposits.length === 0) {
+      throw new Error("Failed to parse Gemini response as JSON and no deposits could be salvaged");
+    }
+    parsed = buildSummaryFromDeposits(text, deposits);
   }
 
   // Defensive normalization — Gemini might return strings, missing fields, etc.
