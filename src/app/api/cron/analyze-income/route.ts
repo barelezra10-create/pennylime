@@ -14,11 +14,15 @@ export const maxDuration = 300;
 // Underwriting stages only — no point analyzing funded/rejected records.
 const PENDING_STATUSES = ["PENDING", "APPLICANT", "APPROVED", "OFFER_ACCEPTED"];
 
-// Cap per run so a single invocation stays fast; the backlog drains over
-// successive runs. Analyses run sequentially to stay gentle on Gemini limits.
-const BATCH = 8;
+// Pull a generous candidate set but stop starting new analyses once we near
+// the time budget, so a single invocation always returns cleanly (heavy,
+// deposit-dense statements can each take tens of seconds). The backlog drains
+// over successive runs; whatever finished is persisted per-app.
+const BATCH = 20;
+const DEADLINE_MS = 240_000;
 
 async function runSweep() {
+  const started = Date.now();
   const candidates = await prisma.application.findMany({
     where: {
       status: { in: PENDING_STATUSES },
@@ -33,6 +37,7 @@ async function runSweep() {
 
   const results: Array<{ id: string; code: string | null; ok: boolean; info: string }> = [];
   for (const app of candidates) {
+    if (Date.now() - started > DEADLINE_MS) break; // stay under the request budget
     try {
       const r = await analyzeAndStoreIncome(app.id);
       results.push({
