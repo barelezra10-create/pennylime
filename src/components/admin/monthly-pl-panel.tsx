@@ -41,7 +41,9 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
           Monthly P&amp;L (from bank statement)
         </h2>
         <p className="text-[11px] text-[#71717a] mt-0.5">
-          Revenue minus expenses by category, per month. Use the Re-analyze button above to refresh from the statement.
+          {data?.revenueSource
+            ? `Revenue counts only ${data.revenueSource} (the applicant's listed income), minus expenses by category, per month.`
+            : "Revenue minus expenses by category, per month. Use the Re-analyze button above to refresh from the statement."}
         </p>
       </div>
 
@@ -72,7 +74,9 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
             <tbody>
               {/* Revenue */}
               <tr className="border-b border-[#f4f4f5] bg-green-50">
-                <td className="py-2 px-3 font-semibold text-[#166534] whitespace-nowrap">Revenue</td>
+                <td className="py-2 px-3 font-semibold text-[#166534] whitespace-nowrap">
+                  Revenue{data!.revenueSource ? ` (${data!.revenueSource})` : ""}
+                </td>
                 {data!.revenueByMonth.map((bm) => (
                   <td key={bm.month} className="py-2 px-3 text-right text-[#166534] tabular-nums whitespace-nowrap">
                     {fmtMoney(bm.amount)}

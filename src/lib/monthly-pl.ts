@@ -1,4 +1,5 @@
-import type { ParsedDeposit, ParsedExpense } from "@/lib/bank-statement-parser";
+import type { ParsedExpense } from "@/lib/bank-statement-parser";
+import type { IncomeByPlatform } from "@/lib/income-by-platform";
 
 // Fixed expense taxonomy for the monthly P&L. Order here is the display order.
 // Gemini tags each debit into one of these; anything it can't place lands in
@@ -47,6 +48,7 @@ export type PLMonthValue = { month: string; amount: number }; // month = "YYYY-M
 export type PLCategoryRow = { category: ExpenseCategory; total: number; byMonth: PLMonthValue[] };
 export type MonthlyPL = {
   months: string[]; // sorted "YYYY-MM"
+  revenueSource: string | null; // the listed platform(s) revenue is counted from
   revenueByMonth: PLMonthValue[];
   expenseCategories: PLCategoryRow[]; // only categories with any spend, in taxonomy order
   expenseTotalByMonth: PLMonthValue[];
@@ -62,22 +64,29 @@ function monthOf(dateIso: string): string | null {
 }
 
 /**
- * Build a monthly profit-and-loss from parsed income deposits and categorized
- * expenses. Revenue = income deposits; Expenses = categorized debits; Net =
- * revenue - expenses, per calendar month.
+ * Build a monthly profit-and-loss from the income-by-platform breakdown and
+ * categorized expenses. Revenue counts ONLY the platform the applicant listed
+ * as their main income (the "listed" rows in the breakdown); if none is
+ * listed/matched we fall back to all income sources so the P&L isn't empty.
+ * Expenses = categorized debits. Net = revenue - expenses, per calendar month.
  */
-export function buildMonthlyPL(deposits: ParsedDeposit[], expenses: ParsedExpense[]): MonthlyPL {
-  const income = (deposits || []).filter(
-    (d) => (d.classification ?? "income") === "income" && Number(d.amount) > 0,
-  );
+export function buildMonthlyPL(
+  breakdown: IncomeByPlatform | null,
+  expenses: ParsedExpense[],
+): MonthlyPL {
+  const platforms = breakdown?.platforms ?? [];
+  const listed = platforms.filter((p) => p.isListed);
+  const revenueSources = listed.length > 0 ? listed : platforms;
+  const revenueSource = listed.length > 0 ? listed.map((p) => p.platform).join(", ") : null;
 
   const monthSet = new Set<string>();
   const revenue: Record<string, number> = {};
-  for (const d of income) {
-    const m = monthOf(d.date);
-    if (!m) continue;
-    monthSet.add(m);
-    revenue[m] = (revenue[m] || 0) + Number(d.amount);
+  for (const p of revenueSources) {
+    for (const bm of p.byMonth) {
+      if (bm.amount <= 0) continue;
+      monthSet.add(bm.month);
+      revenue[bm.month] = (revenue[bm.month] || 0) + bm.amount;
+    }
   }
 
   // category -> month -> amount
@@ -121,6 +130,7 @@ export function buildMonthlyPL(deposits: ParsedDeposit[], expenses: ParsedExpens
 
   return {
     months,
+    revenueSource,
     revenueByMonth,
     expenseCategories,
     expenseTotalByMonth,

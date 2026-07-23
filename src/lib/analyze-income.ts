@@ -46,7 +46,7 @@ export async function analyzeAndStoreIncome(
   }
 
   const breakdown = incomeByPlatform(parsed.deposits, application.platform ?? null);
-  const pnl = buildMonthlyPL(parsed.deposits, parsed.expenses ?? []);
+  const pnl = buildMonthlyPL(breakdown, parsed.expenses ?? []);
 
   await prisma.application.update({
     where: { id: applicationId },

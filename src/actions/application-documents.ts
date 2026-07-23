@@ -101,7 +101,7 @@ export async function finalizeDocumentsAndVerify(
           ? incomeByPlatform(parsed.deposits, app.platform ?? null)
           : null;
         const pnl = (parsed.deposits?.length || parsed.expenses?.length)
-          ? buildMonthlyPL(parsed.deposits ?? [], parsed.expenses ?? [])
+          ? buildMonthlyPL(platformBreakdown, parsed.expenses ?? [])
           : null;
         await prisma.application.update({
           where: { id: applicationId },
