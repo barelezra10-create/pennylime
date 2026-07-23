@@ -284,14 +284,15 @@ export async function parseStatementsWithAI(
   // month shows up in the income-by-platform breakdown.
   if (pdfs.length === 1) return parseOneBatch(ai, pdfs);
 
+  // Parse all statements concurrently. Sequential calls tripled the wall time
+  // and tripped the gateway request timeout ("unexpected response from the
+  // server"); running them in parallel keeps total time near a single call.
+  const settled = await Promise.allSettled(pdfs.map((pdf) => parseOneBatch(ai, [pdf])));
   const summaries: ParsedStatementSummary[] = [];
-  for (const pdf of pdfs) {
-    try {
-      summaries.push(await parseOneBatch(ai, [pdf]));
-    } catch (err) {
-      console.error("[parseStatementsWithAI] a statement failed to parse:", pdf.filename, err);
-    }
-  }
+  settled.forEach((r, i) => {
+    if (r.status === "fulfilled") summaries.push(r.value);
+    else console.error("[parseStatementsWithAI] a statement failed to parse:", pdfs[i].filename, r.reason);
+  });
   if (summaries.length === 0) throw new Error("All statements failed to parse");
 
   return mergeSummaries(summaries);
