@@ -98,6 +98,9 @@ model Application {
   // Deposits grouped by gig platform and month, derived from the 90-day
   // bank statement. JSON matching IncomeByPlatform in src/lib/income-by-platform.
   incomeByPlatformJson     String?
+  // Monthly profit-and-loss (revenue, expenses by category, net) derived from
+  // the 90-day bank statement. JSON matching MonthlyPL in src/lib/monthly-pl.
+  monthlyPnlJson           String?
   workNeedsReview          Boolean   @default(false)
   workStartMonth           Int?
   workStartYear            Int?

@@ -12,6 +12,7 @@ import {
 import { evaluateApplicationAction } from "@/actions/evaluation";
 import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
 import { IncomeByPlatformPanel } from "@/components/admin/income-by-platform-panel";
+import { MonthlyPLPanel } from "@/components/admin/monthly-pl-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
 import { PaymentScheduleCard } from "@/components/admin/payment-schedule-card";
 import type { OfferTerm } from "@/actions/offers";
@@ -503,6 +504,9 @@ export function DetailClient({
             applicationId={application.id}
             json={(application as any).incomeByPlatformJson ?? null}
           />
+
+          {/* ── Monthly P&L (from bank statement) ── */}
+          <MonthlyPLPanel json={(application as any).monthlyPnlJson ?? null} />
 
           {/* ── Evaluation Card ── */}
           {evaluation && (

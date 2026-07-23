@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { incomeByPlatform } from "@/lib/income-by-platform";
+import { buildMonthlyPL } from "@/lib/monthly-pl";
 
 /**
  * Read the stored 90-day bank statements for an application, parse them with
@@ -45,6 +46,7 @@ export async function analyzeAndStoreIncome(
   }
 
   const breakdown = incomeByPlatform(parsed.deposits, application.platform ?? null);
+  const pnl = buildMonthlyPL(parsed.deposits, parsed.expenses ?? []);
 
   await prisma.application.update({
     where: { id: applicationId },
@@ -55,6 +57,7 @@ export async function analyzeAndStoreIncome(
       depositCount90d: parsed.depositCount,
       largestDeposit: parsed.largestDeposit,
       incomeByPlatformJson: JSON.stringify(breakdown),
+      monthlyPnlJson: JSON.stringify(pnl),
     },
   });
 

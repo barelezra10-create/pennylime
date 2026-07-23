@@ -22,7 +22,8 @@ async function runSweep() {
   const candidates = await prisma.application.findMany({
     where: {
       status: { in: PENDING_STATUSES },
-      incomeByPlatformJson: null,
+      // Missing either the income breakdown or the monthly P&L.
+      OR: [{ incomeByPlatformJson: null }, { monthlyPnlJson: null }],
       documents: { some: { documentType: "BANK_STATEMENT_90D" } },
     },
     select: { id: true, applicationCode: true },

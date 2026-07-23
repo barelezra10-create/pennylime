@@ -5,6 +5,7 @@ import { storage } from "@/lib/storage";
 import { getLoanRules } from "@/lib/rules-engine";
 import { evaluateWorkSignals } from "@/lib/risk/work-verification";
 import { incomeByPlatform } from "@/lib/income-by-platform";
+import { buildMonthlyPL } from "@/lib/monthly-pl";
 
 const ALLOWED_DOC_TYPES = new Set([
   "application/pdf",
@@ -99,6 +100,9 @@ export async function finalizeDocumentsAndVerify(
         const platformBreakdown = parsed.deposits && parsed.deposits.length > 0
           ? incomeByPlatform(parsed.deposits, app.platform ?? null)
           : null;
+        const pnl = (parsed.deposits?.length || parsed.expenses?.length)
+          ? buildMonthlyPL(parsed.deposits ?? [], parsed.expenses ?? [])
+          : null;
         await prisma.application.update({
           where: { id: applicationId },
           data: {
@@ -108,6 +112,7 @@ export async function finalizeDocumentsAndVerify(
             depositCount90d: parsed.depositCount,
             largestDeposit: parsed.largestDeposit,
             ...(platformBreakdown ? { incomeByPlatformJson: JSON.stringify(platformBreakdown) } : {}),
+            ...(pnl ? { monthlyPnlJson: JSON.stringify(pnl) } : {}),
           },
         });
       } catch (err) {

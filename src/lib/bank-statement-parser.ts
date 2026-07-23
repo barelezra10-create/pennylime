@@ -33,12 +33,20 @@ export type ParsedDeposit = {
   platform?: string; // gig platform / income source, e.g. "Uber", "DoorDash", "Other"
 };
 
+export type ParsedExpense = {
+  date: string; // ISO yyyy-mm-dd
+  amount: number; // positive dollars out
+  description: string;
+  category?: string; // one of the fixed expense categories (see monthly-pl.ts)
+};
+
 export type ParsedStatementSummary = {
   accountHolderName: string | null;
   bankName: string | null;
   statementPeriodStart: string | null; // ISO yyyy-mm-dd
   statementPeriodEnd: string | null; // ISO yyyy-mm-dd
   deposits: ParsedDeposit[];
+  expenses: ParsedExpense[];
   monthlyIncome: number;
   avgWeeklyIncome: number;
   depositCount: number;
@@ -60,6 +68,11 @@ Rules:
 - Return ALL deposits you identified as income, sorted oldest first.
 - For EVERY income deposit, set "platform" to the NAME OF THE PAYER / source that sent the money, exactly as a person would recognize it from the statement line. Read the transaction description / originator name and extract the real sender: e.g. "ACH DEPOSIT UBER TECHNOLOGIES 800-..." -> "Uber", "DOORDASH INC DES:..." -> "DoorDash", "INSTACART / MAPLEBEAR" -> "Instacart", "STRIPE TRANSFER" -> "Stripe", "PAYROLL ACME LLC" -> "Acme LLC", "ZELLE FROM JOHN SMITH" -> "John Smith". Also use the statement's account type as a strong clue (an "Uber Pro Card" statement means the deposits are Uber; a "DasherDirect" card means DoorDash). CONSOLIDATE variants of the same payer into ONE clean name (e.g. "UBER EATS", "UBER BV 8005928996" both -> "Uber"). NEVER return "Other", "Unknown", "Deposit", "Credit", or any generic label - always give the real payer/source name pulled from the statement. This is used to show the applicant's TOP EARNING SOURCES, so accuracy of the name matters.
 
+Expenses (money OUT):
+- Also extract EVERY withdrawal / debit / money-out transaction into "expenses" with a POSITIVE dollar amount: card purchases, ACH debits, bill payments, loan/advance payments, subscriptions, transfers out (Zelle/Venmo/CashApp out), and ATM/cash withdrawals.
+- Tag each expense with "category", which MUST be EXACTLY one of this fixed list: "Fuel / Gas", "Vehicle & Transport", "Groceries", "Food & Dining", "Housing / Rent", "Utilities & Phone", "Insurance", "Loan & Debt Payments", "Subscriptions", "Shopping / Retail", "Transfers", "ATM / Cash", "Other". Use the merchant/description to choose (e.g. "SHELL OIL" -> "Fuel / Gas", "GEICO" -> "Insurance", "AFFIRM PAYMENT" or "CASH ADVANCE" -> "Loan & Debt Payments", "NETFLIX" -> "Subscriptions", "WALMART" -> "Groceries", "ZELLE TO ..." -> "Transfers", "ATM WITHDRAWAL" -> "ATM / Cash"). Only use "Other" when nothing else fits.
+- Do NOT put income in "expenses" and do NOT put money-out in "deposits". Return expenses sorted oldest first.
+
 Return ONLY valid JSON matching the schema below. No prose, no markdown fences.`;
 
 const RESPONSE_SCHEMA = `{
@@ -76,6 +89,14 @@ const RESPONSE_SCHEMA = `{
       "platform": string
     }
   ],
+  "expenses": [
+    {
+      "date": "YYYY-MM-DD",
+      "amount": number,
+      "description": string,
+      "category": "Fuel / Gas" | "Vehicle & Transport" | "Groceries" | "Food & Dining" | "Housing / Rent" | "Utilities & Phone" | "Insurance" | "Loan & Debt Payments" | "Subscriptions" | "Shopping / Retail" | "Transfers" | "ATM / Cash" | "Other"
+    }
+  ],
   "monthlyIncome": number,
   "avgWeeklyIncome": number,
   "depositCount": number,
@@ -86,15 +107,16 @@ const RESPONSE_SCHEMA = `{
 }`;
 
 // Walk a (possibly truncated) JSON response and pull out every COMPLETE
-// object inside the "deposits" array. Used to recover data when Gemini hits
-// its output-token limit mid-array and returns invalid JSON.
-function salvageDeposits(text: string): ParsedDeposit[] {
-  const key = text.indexOf('"deposits"');
+// object inside the named array (e.g. "deposits" or "expenses"). Used to
+// recover data when Gemini hits its output-token limit mid-array and returns
+// invalid JSON.
+function salvageArray<T>(text: string, arrayKey: string): T[] {
+  const key = text.indexOf(`"${arrayKey}"`);
   if (key === -1) return [];
   const arrStart = text.indexOf("[", key);
   if (arrStart === -1) return [];
 
-  const out: ParsedDeposit[] = [];
+  const out: T[] = [];
   let depth = 0;
   let objStart = -1;
   let inStr = false;
@@ -116,7 +138,7 @@ function salvageDeposits(text: string): ParsedDeposit[] {
       depth--;
       if (depth === 0 && objStart !== -1) {
         try {
-          const obj = JSON.parse(text.slice(objStart, i + 1)) as ParsedDeposit;
+          const obj = JSON.parse(text.slice(objStart, i + 1)) as T & { amount?: unknown };
           if (obj && typeof obj.amount !== "undefined") out.push(obj);
         } catch {
           /* skip a malformed object */
@@ -124,7 +146,7 @@ function salvageDeposits(text: string): ParsedDeposit[] {
         objStart = -1;
       }
     } else if (c === "]" && depth === 0) {
-      break; // end of the deposits array
+      break; // end of this array
     }
   }
   return out;
@@ -169,7 +191,11 @@ function computeIncomeFields(deposits: ParsedDeposit[]): {
 }
 
 // Recompute the income summary from salvaged deposits when the AI truncated.
-function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): ParsedStatementSummary {
+function buildSummaryFromDeposits(
+  text: string,
+  deposits: ParsedDeposit[],
+  expenses: ParsedExpense[],
+): ParsedStatementSummary {
   const f = computeIncomeFields(deposits);
   return {
     accountHolderName: extractTopLevelString(text, "accountHolderName"),
@@ -177,6 +203,7 @@ function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): Pars
     statementPeriodStart: f.periodStart,
     statementPeriodEnd: f.periodEnd,
     deposits,
+    expenses,
     monthlyIncome: f.monthlyIncome,
     avgWeeklyIncome: f.avgWeeklyIncome,
     depositCount: f.depositCount,
@@ -191,6 +218,7 @@ function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): Pars
 // income figures across the full deposit set.
 function mergeSummaries(summaries: ParsedStatementSummary[]): ParsedStatementSummary {
   const deposits = summaries.flatMap((s) => s.deposits);
+  const expenses = summaries.flatMap((s) => s.expenses ?? []);
   const f = computeIncomeFields(deposits);
   const truncated = summaries.some((s) => s.confidence === "low" && (s.notes ?? "").includes("truncated"));
   return {
@@ -199,6 +227,7 @@ function mergeSummaries(summaries: ParsedStatementSummary[]): ParsedStatementSum
     statementPeriodStart: f.periodStart,
     statementPeriodEnd: f.periodEnd,
     deposits,
+    expenses,
     monthlyIncome: f.monthlyIncome,
     avgWeeklyIncome: f.avgWeeklyIncome,
     depositCount: f.depositCount,
@@ -252,13 +281,14 @@ async function parseOneBatch(
     parsed = JSON.parse(text) as ParsedStatementSummary;
   } catch {
     // The response was truncated (model hit the output-token ceiling), so
-    // the JSON is incomplete. Salvage every complete deposit object we can
-    // and recompute the summary from them rather than losing everything.
-    const deposits = salvageDeposits(text);
-    if (deposits.length === 0) {
-      throw new Error("Failed to parse Gemini response as JSON and no deposits could be salvaged");
+    // the JSON is incomplete. Salvage every complete deposit + expense object
+    // we can and recompute the summary rather than losing everything.
+    const deposits = salvageArray<ParsedDeposit>(text, "deposits");
+    const expenses = salvageArray<ParsedExpense>(text, "expenses");
+    if (deposits.length === 0 && expenses.length === 0) {
+      throw new Error("Failed to parse Gemini response as JSON and nothing could be salvaged");
     }
-    parsed = buildSummaryFromDeposits(text, deposits);
+    parsed = buildSummaryFromDeposits(text, deposits, expenses);
   }
 
   // Defensive normalization — Gemini might return strings, missing fields, etc.
@@ -267,6 +297,7 @@ async function parseOneBatch(
   parsed.depositCount = Number(parsed.depositCount) || 0;
   parsed.largestDeposit = Number(parsed.largestDeposit) || 0;
   parsed.deposits = Array.isArray(parsed.deposits) ? parsed.deposits : [];
+  parsed.expenses = Array.isArray(parsed.expenses) ? parsed.expenses : [];
 
   return parsed;
 }
