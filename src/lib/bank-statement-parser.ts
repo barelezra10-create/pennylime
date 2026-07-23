@@ -136,8 +136,16 @@ function extractTopLevelString(text: string, field: string): string | null {
   return m ? m[1] : null;
 }
 
-// Recompute the income summary from salvaged deposits when the AI truncated.
-function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): ParsedStatementSummary {
+// Recompute the numeric income fields from a set of deposits. Shared by the
+// truncation-salvage path and the multi-statement merge path.
+function computeIncomeFields(deposits: ParsedDeposit[]): {
+  monthlyIncome: number;
+  avgWeeklyIncome: number;
+  depositCount: number;
+  largestDeposit: number;
+  periodStart: string | null;
+  periodEnd: string | null;
+} {
   const income = deposits.filter(
     (d) => (d.classification ?? "income") === "income" && Number(d.amount) > 0,
   );
@@ -151,28 +159,61 @@ function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): Pars
     first && last ? Math.max(1, (last.getTime() - first.getTime()) / (7 * 86400000)) : monthsCount * 4.345;
 
   return {
-    accountHolderName: extractTopLevelString(text, "accountHolderName"),
-    bankName: extractTopLevelString(text, "bankName"),
-    statementPeriodStart: dates[0] ?? null,
-    statementPeriodEnd: dates[dates.length - 1] ?? null,
-    deposits,
     monthlyIncome: total / monthsCount,
     avgWeeklyIncome: total / weeks,
     depositCount: income.length,
     largestDeposit: income.reduce((m, d) => Math.max(m, Number(d.amount) || 0), 0),
+    periodStart: dates[0] ?? null,
+    periodEnd: dates[dates.length - 1] ?? null,
+  };
+}
+
+// Recompute the income summary from salvaged deposits when the AI truncated.
+function buildSummaryFromDeposits(text: string, deposits: ParsedDeposit[]): ParsedStatementSummary {
+  const f = computeIncomeFields(deposits);
+  return {
+    accountHolderName: extractTopLevelString(text, "accountHolderName"),
+    bankName: extractTopLevelString(text, "bankName"),
+    statementPeriodStart: f.periodStart,
+    statementPeriodEnd: f.periodEnd,
+    deposits,
+    monthlyIncome: f.monthlyIncome,
+    avgWeeklyIncome: f.avgWeeklyIncome,
+    depositCount: f.depositCount,
+    largestDeposit: f.largestDeposit,
     estimatedCadence: "unknown",
     confidence: "low",
     notes: "Recovered from a truncated AI response; summary recomputed from the deposits that parsed.",
   };
 }
 
-export async function parseStatementsWithAI(
+// Merge several per-statement summaries into one, recomputing the aggregate
+// income figures across the full deposit set.
+function mergeSummaries(summaries: ParsedStatementSummary[]): ParsedStatementSummary {
+  const deposits = summaries.flatMap((s) => s.deposits);
+  const f = computeIncomeFields(deposits);
+  const truncated = summaries.some((s) => s.confidence === "low" && (s.notes ?? "").includes("truncated"));
+  return {
+    accountHolderName: summaries.find((s) => s.accountHolderName)?.accountHolderName ?? null,
+    bankName: summaries.find((s) => s.bankName)?.bankName ?? null,
+    statementPeriodStart: f.periodStart,
+    statementPeriodEnd: f.periodEnd,
+    deposits,
+    monthlyIncome: f.monthlyIncome,
+    avgWeeklyIncome: f.avgWeeklyIncome,
+    depositCount: f.depositCount,
+    largestDeposit: f.largestDeposit,
+    estimatedCadence: summaries.find((s) => s.estimatedCadence !== "unknown")?.estimatedCadence ?? "unknown",
+    confidence: truncated ? "low" : summaries[0]?.confidence ?? "medium",
+    notes: truncated ? "One or more statements were very deposit-heavy; some deposits may be omitted." : null,
+  };
+}
+
+// Parse a single Gemini call over one or more PDFs and normalize the result.
+async function parseOneBatch(
+  ai: GoogleGenAI,
   pdfs: Array<{ filename: string; buffer: Buffer; mimeType: string }>,
 ): Promise<ParsedStatementSummary> {
-  if (pdfs.length === 0) throw new Error("No statements provided");
-
-  const ai = getClient();
-
   const parts: Array<
     | { inlineData: { mimeType: string; data: string } }
     | { text: string }
@@ -228,4 +269,30 @@ export async function parseStatementsWithAI(
   parsed.deposits = Array.isArray(parsed.deposits) ? parsed.deposits : [];
 
   return parsed;
+}
+
+export async function parseStatementsWithAI(
+  pdfs: Array<{ filename: string; buffer: Buffer; mimeType: string }>,
+): Promise<ParsedStatementSummary> {
+  if (pdfs.length === 0) throw new Error("No statements provided");
+
+  const ai = getClient();
+
+  // A single call over many statements can overflow the output-token limit
+  // (dropping whole months of deposits). Parse each statement in its own call
+  // so no single response can truncate, then merge. This guarantees every
+  // month shows up in the income-by-platform breakdown.
+  if (pdfs.length === 1) return parseOneBatch(ai, pdfs);
+
+  const summaries: ParsedStatementSummary[] = [];
+  for (const pdf of pdfs) {
+    try {
+      summaries.push(await parseOneBatch(ai, [pdf]));
+    } catch (err) {
+      console.error("[parseStatementsWithAI] a statement failed to parse:", pdf.filename, err);
+    }
+  }
+  if (summaries.length === 0) throw new Error("All statements failed to parse");
+
+  return mergeSummaries(summaries);
 }
