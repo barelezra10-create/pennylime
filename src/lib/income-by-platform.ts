@@ -35,7 +35,10 @@ export function incomeByPlatform(deposits: ParsedDeposit[], listedPlatformsRaw: 
     const month = (dep.date || "").slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(month)) continue;
     monthsSet.add(month);
-    const platform = matchPlatform(dep.description);
+    // Prefer the platform the AI attributed (it can read the account type,
+    // e.g. an Uber Pro Card statement); fall back to keyword-matching the line.
+    const aiPlatform = dep.platform?.trim();
+    const platform = aiPlatform && aiPlatform.toLowerCase() !== "other" ? aiPlatform : matchPlatform(dep.description);
     if (!map.has(platform)) map.set(platform, new Map());
     const mm = map.get(platform)!;
     const cur = mm.get(month) || { amount: 0, count: 0 };

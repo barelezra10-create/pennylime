@@ -30,6 +30,7 @@ export type ParsedDeposit = {
   amount: number;
   description: string;
   classification?: "income" | "transfer" | "refund" | "unknown";
+  platform?: string; // gig platform / income source, e.g. "Uber", "DoorDash", "Other"
 };
 
 export type ParsedStatementSummary = {
@@ -57,6 +58,7 @@ Rules:
 - If multiple statements are provided, treat them as one continuous period.
 - If the statements don't cover at least 30 days, set confidence to "low" and explain in notes.
 - Return ALL deposits you identified as income, sorted oldest first.
+- For EVERY income deposit, set "platform" to the gig platform / income source it came from: one of "Uber", "Uber Eats", "Lyft", "DoorDash", "Instacart", "Amazon Flex", "Grubhub", "Walmart Spark", "Veho", "Shipt", "Roadie", "Gopuff", or the employer/payer name for payroll. Use every clue: the transaction description/originator, AND the statement's account type (for example, an "Uber Pro Card" or "Uber Pro" statement means the deposits ARE Uber earnings even if the line item just says "instant pay" or "payout"; a "DasherDirect" card means DoorDash). Only use "Other" when you genuinely cannot attribute it to any source.
 
 Return ONLY valid JSON matching the schema below. No prose, no markdown fences.`;
 
@@ -70,7 +72,8 @@ const RESPONSE_SCHEMA = `{
       "date": "YYYY-MM-DD",
       "amount": number,
       "description": string,
-      "classification": "income" | "transfer" | "refund" | "unknown"
+      "classification": "income" | "transfer" | "refund" | "unknown",
+      "platform": string
     }
   ],
   "monthlyIncome": number,
