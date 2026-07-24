@@ -29,11 +29,12 @@ const TABS: TopTab[] = [
   { id: "stage-paid", label: "Paid", icon: "", stage: "Paid", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Paid", subnav: [] },
   { id: "stage-default", label: "Default", icon: "", stage: "Default", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Default", subnav: [] },
   { id: "stage-rejected", label: "Rejected", icon: "", stage: "Rejected", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Rejected", subnav: [] },
+  { id: "funnel-test", label: "Test application", icon: "", prefixes: ["/admin/funnel-preview"], href: "/admin/funnel-preview", subnav: [] },
   {
     id: "loans",
     label: "Pipeline",
     icon: "$",
-    prefixes: ["/admin/dashboard", "/admin/payments", "/admin/audit", "/admin/settings", "/admin/goach-test", "/admin/funnel-preview", "/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
+    prefixes: ["/admin/dashboard", "/admin/payments", "/admin/audit", "/admin/settings", "/admin/goach-test", "/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
     href: "/admin/dashboard",
     subnav: [
       { href: "/admin/dashboard", label: "Overview" },
