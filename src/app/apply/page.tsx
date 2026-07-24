@@ -1338,6 +1338,7 @@ const formatEin = (d: string) =>
 
 function StepDocuments({
   workerType,
+  platforms,
   statementFiles,
   setStatementFiles,
   ein,
@@ -1347,6 +1348,7 @@ function StepDocuments({
   onBack,
 }: {
   workerType: string;
+  platforms: string[];
   statementFiles: File[];
   setStatementFiles: (f: File[]) => void;
   ein: string;
@@ -1356,6 +1358,8 @@ function StepDocuments({
   onBack: () => void;
 }) {
   const isBusiness = workerType === "BUSINESS_OWNER";
+  const [checking, setChecking] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -1372,7 +1376,7 @@ function StepDocuments({
   const removeFile = (i: number) =>
     setStatementFiles(statementFiles.filter((_, idx) => idx !== i));
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (statementFiles.length === 0 && !previewMode) {
       toast.error("Please upload your last 90 days of bank statements");
       return;
@@ -1384,6 +1388,33 @@ function StepDocuments({
         return;
       }
     }
+
+    // Verify the uploaded statements before letting them finish: they must
+    // cover the last 90 days, and (gig workers) earn >= $1,500/mo on their
+    // listed platform. Skipped in admin preview. Fails open on network errors.
+    if (!previewMode && statementFiles.length > 0) {
+      setChecking(true);
+      setGateError(null);
+      try {
+        const fd = new FormData();
+        statementFiles.forEach((f) => fd.append("files", f));
+        fd.append("platforms", platforms.join(","));
+        fd.append("workerType", workerType);
+        const res = await fetch("/api/apply/validate-statements", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({ ok: true }));
+        if (res.ok && data && data.ok === false) {
+          const msg = data.message || "We couldn't verify your statements. Please check your upload.";
+          setGateError(msg);
+          toast.error(msg);
+          setChecking(false);
+          return;
+        }
+      } catch {
+        // Fail open on network/parse errors so a real applicant isn't blocked.
+      }
+      setChecking(false);
+    }
+
     onNext();
   };
 
@@ -1476,21 +1507,32 @@ function StepDocuments({
         </p>
       </div>
 
+      {gateError && (
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-4 py-4">
+          <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#dc2626]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <p className="text-[13px] leading-relaxed text-[#b91c1c]">{gateError}</p>
+        </div>
+      )}
+
       <div className="mt-8 grid grid-cols-2 gap-3">
         <button
           type="button"
           onClick={onBack}
-          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7]"
+          disabled={checking}
+          className="rounded-xl bg-[#f0fdf4] min-h-[52px] py-3 text-[15px] font-semibold text-[#15803d] transition-all hover:bg-[#dcfce7] disabled:opacity-50"
         >
           &larr; Back
         </button>
         <motion.button
           type="button"
           onClick={handleNext}
-          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+          disabled={checking}
+          className="rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)] disabled:opacity-60"
           whileTap={{ scale: 0.97 }}
         >
-          Continue &rarr;
+          {checking ? "Verifying your income…" : "Continue →"}
         </motion.button>
       </div>
     </motion.div>
@@ -3799,6 +3841,7 @@ function ApplyPageInner() {
                       <StepDocuments
                         key="documents"
                         workerType={workerType}
+                        platforms={platforms}
                         statementFiles={statementFiles}
                         setStatementFiles={setStatementFiles}
                         ein={ein}
@@ -3993,6 +4036,7 @@ function ApplyPageInner() {
                 <StepDocuments
                   key="documents"
                   workerType={workerType}
+                  platforms={platforms}
                   statementFiles={statementFiles}
                   setStatementFiles={setStatementFiles}
                   ein={ein}
