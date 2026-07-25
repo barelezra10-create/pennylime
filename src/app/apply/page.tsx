@@ -1377,7 +1377,7 @@ function StepDocuments({
     setStatementFiles(statementFiles.filter((_, idx) => idx !== i));
 
   const handleNext = async () => {
-    if (statementFiles.length === 0 && !previewMode) {
+    if (statementFiles.length === 0) {
       toast.error("Please upload your last 90 days of bank statements");
       return;
     }
@@ -1391,8 +1391,10 @@ function StepDocuments({
 
     // Verify the uploaded statements before letting them finish: they must
     // cover the last 90 days, and (gig workers) earn >= $1,500/mo on their
-    // listed platform. Skipped in admin preview. Fails open on network errors.
-    if (!previewMode && statementFiles.length > 0) {
+    // listed platform. Runs whenever statements are uploaded — including admin
+    // preview, so the Test application flow exercises the gate. Fails open on
+    // network errors.
+    if (statementFiles.length > 0) {
       setChecking(true);
       setGateError(null);
       try {
@@ -3642,7 +3644,7 @@ function ApplyPageInner() {
             statements,
             preview: previewMode,
           });
-          if (fin && "blocked" in fin && fin.blocked && !previewMode) {
+          if (fin && "blocked" in fin && fin.blocked) {
             const msg = fin.message || "We couldn't approve your application based on your bank statements.";
             setDeclineMsg(msg);
             toast.error(msg);

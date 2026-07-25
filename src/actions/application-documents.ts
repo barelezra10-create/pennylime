@@ -132,28 +132,31 @@ export async function finalizeDocumentsAndVerify(
     }
 
     // If the statements fail a hard gate, decline the application server-side
-    // and stop — do not let it proceed to underwriting. Skipped in admin
-    // preview so test submissions aren't auto-rejected.
-    if (gate && gate.ok === false && !input.preview) {
-      await prisma.application.update({
-        where: { id: applicationId },
-        data: {
-          status: "REJECTED",
-          workVerificationStatus: "UNVERIFIED",
-          workVerificationJson: JSON.stringify({ status: "UNVERIFIED", reason: gate.message }),
-          workVerificationAt: new Date(),
-          workNeedsReview: true,
-        },
-      });
-      await prisma.auditLog.create({
-        data: {
-          action: "APPLICATION_AUTO_DECLINED",
-          entityType: "APPLICATION",
-          entityId: applicationId,
-          performedBy: "system",
-          details: JSON.stringify({ reason: gate.reason, message: gate.message }),
-        },
-      });
+    // and stop — do not let it proceed to underwriting. In admin preview we
+    // still return the block (so the Test application flow shows the decline
+    // screen) but skip the DB write so test submissions aren't auto-rejected.
+    if (gate && gate.ok === false) {
+      if (!input.preview) {
+        await prisma.application.update({
+          where: { id: applicationId },
+          data: {
+            status: "REJECTED",
+            workVerificationStatus: "UNVERIFIED",
+            workVerificationJson: JSON.stringify({ status: "UNVERIFIED", reason: gate.message }),
+            workVerificationAt: new Date(),
+            workNeedsReview: true,
+          },
+        });
+        await prisma.auditLog.create({
+          data: {
+            action: "APPLICATION_AUTO_DECLINED",
+            entityType: "APPLICATION",
+            entityId: applicationId,
+            performedBy: "system",
+            details: JSON.stringify({ reason: gate.reason, message: gate.message }),
+          },
+        });
+      }
       return { ok: false as const, blocked: true as const, reason: gate.reason, message: gate.message };
     }
 
