@@ -2799,6 +2799,7 @@ function StepVerified({
   lastName,
   setIdentityResult,
   identityResult,
+  previewMode,
   onNext,
   onBack,
 }: {
@@ -2807,12 +2808,19 @@ function StepVerified({
   lastName: string;
   setIdentityResult: (r: { needsReview: boolean; matchedName: string | null }) => void;
   identityResult: { needsReview: boolean; matchedName: string | null } | null;
+  previewMode: boolean;
   onNext: () => void;
   onBack: () => void;
 }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Admin preview has no linked Plaid bank, so skip the identity check
+    // (which would otherwise spin forever) and mark it verified.
+    if (previewMode) {
+      if (!identityResult) setIdentityResult({ needsReview: false, matchedName: `${firstName} ${lastName}`.trim() || "Preview User" });
+      return;
+    }
     if (!plaidAccessToken || identityResult) return;
     let cancelled = false;
     setLoading(true);
@@ -2836,7 +2844,7 @@ function StepVerified({
     return () => {
       cancelled = true;
     };
-  }, [plaidAccessToken, firstName, lastName, identityResult, setIdentityResult]);
+  }, [plaidAccessToken, firstName, lastName, identityResult, setIdentityResult, previewMode]);
 
   const verified = identityResult && !identityResult.needsReview;
   const needsReview = identityResult && identityResult.needsReview;
@@ -3926,6 +3934,7 @@ function ApplyPageInner() {
                         lastName={form.lastName}
                         identityResult={identityResult}
                         setIdentityResult={setIdentityResult}
+                        previewMode={previewMode}
                         onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, step + 1); } catch {} setStep(step + 1); }}
                         onBack={() => setStep(step - 1)}
                       />
@@ -4118,6 +4127,7 @@ function ApplyPageInner() {
                   lastName={form.lastName}
                   identityResult={identityResult}
                   setIdentityResult={setIdentityResult}
+                  previewMode={previewMode}
                   onNext={async () => { try { if (form.email) await updateContactLastStep(form.email, 11); } catch {} setStep(11); }}
                   onBack={() => setStep(9)}
                 />
