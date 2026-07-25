@@ -3249,6 +3249,46 @@ function SuccessScreen({ code }: { code: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  DECLINE SCREEN — shown when a hard funnel gate rejects the applicant */
+/* ------------------------------------------------------------------ */
+function DeclineScreen({ message }: { message: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="flex flex-col items-center text-center w-full"
+    >
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-[#fef2f2] border border-[#fecaca]">
+        <svg className="h-10 w-10 text-[#dc2626]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      </div>
+
+      <h2 className="mt-6 text-[30px] font-extrabold tracking-[-0.03em] text-[#0a0a0a]">
+        We can&apos;t approve this yet
+      </h2>
+      <p className="mt-3 max-w-md text-[15px] text-[#52525b]">{message}</p>
+
+      <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row w-full">
+        <Link
+          href="/apply"
+          className="w-full inline-flex items-center justify-center rounded-xl bg-[#15803d] px-5 min-h-[52px] py-3 text-center text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
+        >
+          Start over
+        </Link>
+        <Link
+          href="/"
+          className="w-full inline-flex items-center justify-center rounded-xl border-2 border-[#0a0a0a] bg-white px-5 min-h-[52px] py-3 text-center text-[14px] font-semibold text-[#0a0a0a] transition-all hover:bg-[#fafaf7]"
+        >
+          Back to home
+        </Link>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  MAIN PAGE                                                           */
 /* ------------------------------------------------------------------ */
 export default function ApplyPage() {
@@ -3392,6 +3432,7 @@ function ApplyPageInner() {
   const [submitting, setSubmitting] = useState(false);
   const [applicationCode, setApplicationCode] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [declineMsg, setDeclineMsg] = useState<string | null>(null);
   const [templateSteps, setTemplateSteps] = useState<FormStep[] | null>(null);
   const [customStepData, setCustomStepData] = useState<Record<string, string>>({});
   const [pendingPhoneVerification, setPendingPhoneVerification] = useState<{ contactId: string; nextStep: number } | null>(null);
@@ -3564,14 +3605,7 @@ function ApplyPageInner() {
       });
 
       if (result.error) throw new Error(result.error);
-      // Stash the application code, then show the verifying screen first.
-      // VerifyingScreen calls onDone after its progress bar completes, which
-      // unsets `verifying` and the SuccessScreen takes over (it renders when
-      // applicationCode is non-null and verifying is false).
-      if (result.applicationCode) {
-        setApplicationCode(result.applicationCode);
-        setVerifying(true);
-      }
+
       if (result.applicationId) {
         try { if (form.email) await linkContactApplication(form.email, result.applicationId); } catch {}
         // Persist transaction classifications collected during the funnel
@@ -3587,11 +3621,11 @@ function ApplyPageInner() {
           } catch {}
         }
         // Persist the uploaded 90-day statement + EIN and run work
-        // verification. The files go through the /api/upload multipart
-        // route (no Server Action 1MB body limit, which was silently
-        // dropping multi-MB statement PDFs); finalize then gets only the
-        // lightweight storage refs. Best-effort so a slow parse never
-        // blocks the confirmation screen; the result is admin-facing.
+        // verification + the funnel gates. The files go through the
+        // /api/upload multipart route (no Server Action 1MB body limit).
+        // We AWAIT this before showing success so a server-side decline
+        // (statements don't cover 90 days, or income too low) stops the
+        // applicant here instead of confirming a doomed application.
         try {
           let statements: Array<{ fileName: string; mimeType: string; fileSize: number; storagePath: string }> = [];
           if (statementFiles.length > 0) {
@@ -3603,11 +3637,25 @@ function ApplyPageInner() {
               statements = j.files ?? [];
             }
           }
-          await finalizeDocumentsAndVerify(result.applicationId, {
+          const fin = await finalizeDocumentsAndVerify(result.applicationId, {
             ein: ein || undefined,
             statements,
+            preview: previewMode,
           });
+          if (fin && "blocked" in fin && fin.blocked && !previewMode) {
+            const msg = fin.message || "We couldn't approve your application based on your bank statements.";
+            setDeclineMsg(msg);
+            toast.error(msg);
+            setSubmitting(false);
+            return;
+          }
         } catch {}
+      }
+
+      // Passed the gates — show the verifying screen, then SuccessScreen.
+      if (result.applicationCode) {
+        setApplicationCode(result.applicationCode);
+        setVerifying(true);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
@@ -3629,7 +3677,7 @@ function ApplyPageInner() {
         {/* Left: Form */}
         <div className="flex-1 flex flex-col justify-center px-5 md:px-16 py-8 md:py-12 min-w-0">
           <div className="w-full max-w-xl mx-auto">
-            {!applicationCode && (
+            {!applicationCode && !declineMsg && (
               <StepIndicator current={step} stepNames={activeStepNames} />
             )}
 
@@ -3649,7 +3697,9 @@ function ApplyPageInner() {
             )}
 
             <AnimatePresence mode="wait">
-              {applicationCode && verifying ? (
+              {declineMsg ? (
+                <DeclineScreen key="declined" message={declineMsg} />
+              ) : applicationCode && verifying ? (
                 <VerifyingScreen key="verifying" onDone={() => setVerifying(false)} />
               ) : applicationCode ? (
                 <SuccessScreen key="success" code={applicationCode} />
@@ -4088,7 +4138,7 @@ function ApplyPageInner() {
         </div>
 
         {/* Right: Branded sidebar */}
-        {!applicationCode && (
+        {!applicationCode && !declineMsg && (
           <div className="hidden lg:flex w-[420px] flex-shrink-0 bg-gradient-to-br from-[#15803d] to-[#166534] flex-col justify-center px-10 py-12 text-white relative overflow-hidden">
             {/* Decorative circles */}
             <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/5" />
