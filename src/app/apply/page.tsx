@@ -3378,7 +3378,15 @@ function ApplyPageInner() {
     new URLSearchParams(window.location.search).has("oauth_state_id");
   const persisted = oauthReturning ? readPersistedFunnelState() : null;
 
-  const [step, setStep] = useState(persisted?.step ?? 0);
+  // Admin preview shortcut: /apply?preview=1&step=docs jumps straight to the
+  // Documents (bank statement) step so the income/coverage gate can be tested
+  // without clicking through the whole funnel. Documents is step 9 in the
+  // default (non-template) sequence.
+  const previewJumpDocs =
+    searchParams.get("preview") === "1" &&
+    (searchParams.get("step") === "docs" || searchParams.get("step") === "documents");
+
+  const [step, setStep] = useState(persisted?.step ?? (previewJumpDocs ? 9 : 0));
   const [loanAmount, setLoanAmount] = useState(() => {
     if (persisted) return persisted.loanAmount;
     const a = Number(searchParams.get("amount"));
@@ -3407,11 +3415,16 @@ function ApplyPageInner() {
     if (p === "Uber") return ["uber"];
     if (p === "Lyft") return ["lyft"];
     if (p === "Both") return ["uber", "lyft"];
+    // Preview testing: accept an arbitrary comma list, e.g. ?platform=uber,doordash
+    if (p && p.includes(",")) return p.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    if (p) return [p.trim().toLowerCase()];
     return [];
   });
   const [otherPlatform, setOtherPlatform] = useState(persisted?.otherPlatform ?? "");
   const [weeklyEarnings, setWeeklyEarnings] = useState(persisted?.weeklyEarnings ?? "");
-  const [workerType, setWorkerType] = useState(persisted?.workerType ?? "INDEPENDENT_CONTRACTOR");
+  const [workerType, setWorkerType] = useState(
+    persisted?.workerType ?? (searchParams.get("worker") === "BUSINESS_OWNER" ? "BUSINESS_OWNER" : "INDEPENDENT_CONTRACTOR"),
+  );
   const [businessType, setBusinessType] = useState<string>(persisted?.businessType ?? "");
   const [businessTypeOther, setBusinessTypeOther] = useState<string>(persisted?.businessTypeOther ?? "");
   const [workStartMonth, setWorkStartMonth] = useState(() => persisted?.workStartMonth ?? new Date().getMonth() + 1);
