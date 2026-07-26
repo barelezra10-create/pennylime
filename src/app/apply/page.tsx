@@ -2813,12 +2813,17 @@ function StepVerified({
   onBack: () => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const previewSkipped = useRef(false);
 
   useEffect(() => {
     // Admin preview has no linked Plaid bank, so skip the identity check
-    // (which would otherwise spin forever) and mark it verified.
+    // entirely (mark verified + advance) so it never interrupts testing.
     if (previewMode) {
-      if (!identityResult) setIdentityResult({ needsReview: false, matchedName: `${firstName} ${lastName}`.trim() || "Preview User" });
+      if (!previewSkipped.current) {
+        previewSkipped.current = true;
+        setIdentityResult({ needsReview: false, matchedName: `${firstName} ${lastName}`.trim() || "Preview User" });
+        onNext();
+      }
       return;
     }
     if (!plaidAccessToken || identityResult) return;
