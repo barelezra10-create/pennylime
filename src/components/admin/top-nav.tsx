@@ -29,6 +29,7 @@ const TABS: TopTab[] = [
   { id: "stage-paid", label: "Paid", icon: "", stage: "Paid", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Paid", subnav: [] },
   { id: "stage-default", label: "Default", icon: "", stage: "Default", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Default", subnav: [] },
   { id: "stage-rejected", label: "Rejected", icon: "", stage: "Rejected", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Rejected", subnav: [] },
+  { id: "stage-unqualified", label: "Unqualified", icon: "", stage: "Unqualified", prefixes: ["/admin/applications"], href: "/admin/applications?stage=Unqualified", subnav: [] },
   { id: "funnel-test", label: "Test application", icon: "", prefixes: ["/admin/funnel-preview"], href: "/admin/funnel-preview", subnav: [] },
   {
     id: "loans",

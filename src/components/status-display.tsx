@@ -31,6 +31,7 @@ function StatusBadge({ status }: { status: string }) {
     PENDING: { bg: "bg-[#fef9ec]", text: "text-[#b45309]", label: "Under Review" },
     APPROVED: { bg: "bg-[#f0f5f0]", text: "text-[#15803d]", label: "Approved" },
     REJECTED: { bg: "bg-[#fff1f2]", text: "text-[#dc2626]", label: "Rejected" },
+    UNQUALIFIED: { bg: "bg-[#fef9ec]", text: "text-[#b45309]", label: "Not Eligible" },
     ACTIVE: { bg: "bg-[#eef4ff]", text: "text-[#2563eb]", label: "Active" },
     LATE: { bg: "bg-[#fff1f2]", text: "text-[#dc2626]", label: "Late" },
     COLLECTIONS: { bg: "bg-[#fff1f2]", text: "text-[#dc2626]", label: "Collections" },

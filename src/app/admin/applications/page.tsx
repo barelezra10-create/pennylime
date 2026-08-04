@@ -42,6 +42,16 @@ export default async function ApplicationsPage({
   const approvedAvg = approvedCount ? approvedTotal / approvedCount : 0;
   const approvedAvgWeeks = approvedCount ? approvedRows.reduce((s, a) => s + a.termMonths, 0) / approvedCount : 0;
 
+  // Unqualified tab metrics — applicants auto-flagged (income too low / short
+  // statement coverage). Kept visible for review instead of hard-rejected.
+  const isUnqualified = stage === "Unqualified";
+  const unqualifiedRows = advances.filter((a) => a.stageTab === "Unqualified");
+  const unqualifiedCount = unqualifiedRows.length;
+  const unqualifiedTotalAsk = unqualifiedRows.reduce((s, a) => s + a.requestedAmount, 0);
+  const unqualifiedAvgIncome = unqualifiedCount
+    ? unqualifiedRows.reduce((s, a) => s + (a.monthlyIncome || 0), 0) / unqualifiedCount
+    : 0;
+
   const title = stage ?? "Customers";
 
   return (
@@ -49,9 +59,24 @@ export default async function ApplicationsPage({
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold tracking-tight text-black">{title}</h1>
         <p className="text-sm text-[#71717a] mt-1">
-          {isPending ? "New applicants awaiting a decision." : isApproved ? "Approved offers awaiting acceptance." : "Manage your advances - payments, status, and contact, all in one place."}
+          {isPending
+            ? "New applicants awaiting a decision."
+            : isApproved
+            ? "Approved offers awaiting acceptance."
+            : isUnqualified
+            ? "Applicants who did not meet the income or 90-day statement rule. Review to override if warranted."
+            : "Manage your advances - payments, status, and contact, all in one place."}
         </p>
       </div>
+
+      {/* Unqualified analytics */}
+      {isUnqualified && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <Stat label="Unqualified" value={`${unqualifiedCount}`} sub="flagged applicants" accent />
+          <Stat label="Total requested" value={money(unqualifiedTotalAsk)} sub="advance asked" />
+          <Stat label="Avg monthly income" value={money(unqualifiedAvgIncome)} sub="from their statements" />
+        </div>
+      )}
 
       {/* Pending analytics — pending applicants only */}
       {isPending && (

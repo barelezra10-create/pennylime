@@ -24,7 +24,7 @@ const lastPayStyle = (s: string) => {
   return base + "text-[#71717a]";
 };
 
-type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default" | "Rejected";
+type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default" | "Rejected" | "Unqualified";
 
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE: "bg-[#f0fdf4] text-[#15803d]",
@@ -38,6 +38,8 @@ const STATUS_STYLE: Record<string, string> = {
   OFFER_ACCEPTED: "bg-[#eff6ff] text-[#1d4ed8]",
   DEFAULTED: "bg-[#fef2f2] text-[#b91c1c]",
   PAID_OFF: "bg-[#f0fdf4] text-[#15803d]",
+  REJECTED: "bg-[#fef2f2] text-[#b91c1c]",
+  UNQUALIFIED: "bg-[#fffbeb] text-[#b45309]",
 };
 
 export function AdvancesClient({
@@ -50,7 +52,7 @@ export function AdvancesClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const stageParam = searchParams.get("stage");
-  const filter: Filter = (["Pending", "Approved", "Active", "Paid", "Default", "Rejected"] as Filter[]).includes(stageParam as Filter)
+  const filter: Filter = (["Pending", "Approved", "Active", "Paid", "Default", "Rejected", "Unqualified"] as Filter[]).includes(stageParam as Filter)
     ? (stageParam as Filter)
     : "Active";
   const [search, setSearch] = useState("");
@@ -73,8 +75,8 @@ export function AdvancesClient({
       }
       return true;
     });
-    // Pending: newest applications first.
-    if (filter === "Pending") {
+    // Pending/Unqualified: newest applications first.
+    if (filter === "Pending" || filter === "Unqualified") {
       out.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
     }
     return out;
@@ -177,7 +179,7 @@ export function AdvancesClient({
 
       {/* Table */}
       <div className="overflow-auto rounded-xl border border-[#e4e4e7] bg-white">
-        {filter === "Pending" ? (
+        {filter === "Pending" || filter === "Unqualified" ? (
           <table className="w-full text-[13px]">
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>

@@ -131,16 +131,17 @@ export async function finalizeDocumentsAndVerify(
       }
     }
 
-    // If the statements fail a hard gate, decline the application server-side
-    // and stop — do not let it proceed to underwriting. In admin preview we
-    // still return the block (so the Test application flow shows the decline
-    // screen) but skip the DB write so test submissions aren't auto-rejected.
+    // If the statements fail a hard gate, classify the application as
+    // UNQUALIFIED server-side (its own bucket next to Rejected) so the lead is
+    // still visible for review instead of proceeding to underwriting. In admin
+    // preview we still return the block (so the Test application flow shows the
+    // decline screen) but skip the DB write so test submissions aren't touched.
     if (gate && gate.ok === false) {
       if (!input.preview) {
         await prisma.application.update({
           where: { id: applicationId },
           data: {
-            status: "REJECTED",
+            status: "UNQUALIFIED",
             workVerificationStatus: "UNVERIFIED",
             workVerificationJson: JSON.stringify({ status: "UNVERIFIED", reason: gate.message }),
             workVerificationAt: new Date(),
@@ -149,7 +150,7 @@ export async function finalizeDocumentsAndVerify(
         });
         await prisma.auditLog.create({
           data: {
-            action: "APPLICATION_AUTO_DECLINED",
+            action: "APPLICATION_UNQUALIFIED",
             entityType: "APPLICATION",
             entityId: applicationId,
             performedBy: "system",

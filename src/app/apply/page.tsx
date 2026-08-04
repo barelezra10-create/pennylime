@@ -1404,8 +1404,12 @@ function StepDocuments({
         fd.append("workerType", workerType);
         const res = await fetch("/api/apply/validate-statements", { method: "POST", body: fd });
         const data = await res.json().catch(() => ({ ok: true }));
-        if (res.ok && data && data.ok === false) {
-          const msg = data.message || "We couldn't verify your statements. Please check your upload.";
+        // Only hard-stop here for a fixable upload problem (statements don't
+        // cover 90 days). Low income is NOT blocked at this step — we let the
+        // applicant finish so the application is captured as UNQUALIFIED for
+        // review, and they're told at the final decline screen.
+        if (res.ok && data && data.ok === false && (data.reason === "coverage" || data.reason === "missing")) {
+          const msg = data.message || "Please upload bank statements covering the last 90 days.";
           setGateError(msg);
           toast.error(msg);
           setChecking(false);
