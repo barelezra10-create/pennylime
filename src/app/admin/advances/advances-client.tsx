@@ -200,7 +200,17 @@ export function AdvancesClient({
               ) : rows.map((a) => (
                 <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-black">{a.borrowerName}</div>
+                    <div className="font-semibold text-black flex items-center gap-1.5">
+                      {a.borrowerName}
+                      {a.newEmailCount > 0 && (
+                        <span
+                          title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
+                          className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
                   </td>
                   <td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{fmtDate(a.appliedAt)}</td>
@@ -243,7 +253,17 @@ export function AdvancesClient({
               ) : rows.map((a) => (
                 <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-black">{a.borrowerName}</div>
+                    <div className="font-semibold text-black flex items-center gap-1.5">
+                      {a.borrowerName}
+                      {a.newEmailCount > 0 && (
+                        <span
+                          title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
+                          className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
                   </td>
                   <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
@@ -315,7 +335,17 @@ export function AdvancesClient({
                       </button>
                     ) : (
                       <>
-                        <div className="font-semibold text-black">{a.borrowerName}</div>
+                        <div className="font-semibold text-black flex items-center gap-1.5">
+                      {a.borrowerName}
+                      {a.newEmailCount > 0 && (
+                        <span
+                          title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
+                          className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
+                        </span>
+                      )}
+                    </div>
                         <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
                       </>
                     )}

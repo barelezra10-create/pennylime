@@ -75,6 +75,7 @@ export type AdvanceRow = {
   paidCount: number; // payments paid
   totalCount: number; // total scheduled payments
   schedule: { n: number; amount: number; dueDate: string; status: string; paidAt: string | null }[];
+  newEmailCount: number; // unread inbound emails from this applicant — "they replied"
 };
 
 export type AdvancesSummary = {
@@ -119,7 +120,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       bankBalance: true,
       offeredMaxAmount: true,
       createdAt: true,
-      contact: { select: { source: true, referrer: true } },
+      contact: { select: { id: true, source: true, referrer: true } },
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
@@ -151,6 +152,21 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
   let paidBack = 0;
   let profit = 0; // realized: only from advances paid back in full
   let potentialProfit = 0; // expected interest on active advances if paid in full
+
+  // Unread inbound emails per applicant, so the list can flag "they replied /
+  // sent something new" (e.g. an applicant answering a docs request).
+  const contactIds = apps.map((a) => a.contact?.id).filter((v): v is string => Boolean(v));
+  const unreadByContact = new Map<string, number>();
+  if (contactIds.length) {
+    const grouped = await prisma.inboundEmail.groupBy({
+      by: ["contactId"],
+      where: { contactId: { in: contactIds }, status: "UNREAD" },
+      _count: { _all: true },
+    });
+    for (const g of grouped) {
+      if (g.contactId) unreadByContact.set(g.contactId, g._count._all);
+    }
+  }
 
   const advances: AdvanceRow[] = apps.map((app) => {
     // REPLACED rows are rolled-away originals — the replacement payment carries
@@ -244,6 +260,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
         status: p.status,
         paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : null,
       })),
+      newEmailCount: app.contact?.id ? unreadByContact.get(app.contact.id) ?? 0 : 0,
     };
   });
 

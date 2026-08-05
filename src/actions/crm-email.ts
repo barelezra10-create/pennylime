@@ -235,65 +235,57 @@ export async function getEmailThread(contactId: string) {
     data: { status: "READ" },
   }).catch(() => null);
 
-  const [activities, inboundEmails] = await Promise.all([
+  // Inbound comes straight from InboundEmail (source of truth — carries the
+  // Message-ID we need to thread a reply). Outbound comes from Activity
+  // (email_sent). Merged + newest-first.
+  const [inbound, outbound] = await Promise.all([
+    prisma.inboundEmail.findMany({
+      where: { contactId },
+      orderBy: { receivedAt: "desc" },
+      take: 30,
+      select: { id: true, subject: true, bodyText: true, bodyHtml: true, messageId: true, receivedAt: true },
+    }),
     prisma.activity.findMany({
-      where: {
-        contactId,
-        type: { in: ["email_received", "email_sent"] },
-      },
+      where: { contactId, type: "email_sent" },
       orderBy: { createdAt: "desc" },
       take: 30,
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        details: true,
-        performedBy: true,
-        createdAt: true,
-      },
-    }),
-    // Pull the raw inbound rows so we can attach each inbound activity its
-    // Message-ID, which the reply needs to thread back into the customer's
-    // inbox. Matched by nearest received time (the inbound webhook writes the
-    // Activity + InboundEmail together).
-    prisma.inboundEmail.findMany({
-      where: { contactId, messageId: { not: null } },
-      orderBy: { receivedAt: "desc" },
-      take: 50,
-      select: { messageId: true, receivedAt: true, createdAt: true },
+      select: { id: true, title: true, details: true, performedBy: true, createdAt: true },
     }),
   ]);
 
-  function messageIdFor(activityCreatedAt: Date): string | null {
-    let best: { id: string; diff: number } | null = null;
-    for (const ie of inboundEmails) {
-      if (!ie.messageId) continue;
-      const ref = ie.receivedAt ?? ie.createdAt;
-      const diff = Math.abs(ref.getTime() - activityCreatedAt.getTime());
-      if (!best || diff < best.diff) best = { id: ie.messageId, diff };
-    }
-    // Only trust the match if it's within a couple of minutes of the activity.
-    return best && best.diff < 120_000 ? best.id : null;
-  }
+  type ThreadItem = {
+    id: string;
+    direction: "inbound" | "outbound";
+    subject: string;
+    body: string;
+    performedBy: string | null;
+    createdAt: string;
+    messageId: string | null;
+  };
 
-  return activities.map((a) => {
-    const isInbound = a.type === "email_received";
-    return {
+  const items: ThreadItem[] = [
+    ...inbound.map((e) => ({
+      id: e.id,
+      direction: "inbound" as const,
+      subject: (e.subject || "(no subject)").trim(),
+      body: e.bodyHtml || e.bodyText || "",
+      performedBy: null,
+      createdAt: e.receivedAt.toISOString(),
+      messageId: e.messageId,
+    })),
+    ...outbound.map((a) => ({
       id: a.id,
-      direction: isInbound ? ("inbound" as const) : ("outbound" as const),
-      // Title comes in as "Email: Re: …" or "Email sent: Subject" —
-      // strip the prefix so the UI shows just the subject.
-      subject: a.title
-        ?.replace(/^Email(?:\s+sent)?:\s*/i, "")
-        // Some inbound messages tack on " (1 attachment: foo.pdf)"; keep that.
-        .trim() ?? "(no subject)",
+      direction: "outbound" as const,
+      subject: a.title?.replace(/^Email(?:\s+sent)?:\s*/i, "").trim() ?? "(no subject)",
       body: a.details ?? "",
       performedBy: a.performedBy,
       createdAt: a.createdAt.toISOString(),
-      // The customer's original Message-ID (inbound only) for threaded replies.
-      messageId: isInbound ? messageIdFor(a.createdAt) : null,
-    };
-  });
+      messageId: null,
+    })),
+  ];
+
+  items.sort((x, y) => new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime());
+  return items.slice(0, 40);
 }
 
 /**
