@@ -153,22 +153,39 @@ export async function sendCrmEmail(input: {
   const subject = interpolate(input.subject, vars);
   const body = interpolate(input.body, vars);
 
+  // Thread the send back into the customer's conversation. Prefer an explicit
+  // inReplyTo (the "Reply" button passes the exact message). Otherwise, if the
+  // customer wrote in recently, auto-thread to their latest message so replies
+  // land in the same email thread no matter which compose box was used.
+  let inReplyTo = input.inReplyTo;
+  if (!inReplyTo) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+    // Thread onto the RFC Message-ID (inReplyTo = our prior email the customer
+    // replied to), NOT the Gmail-internal messageId which can't thread.
+    const latestInbound = await prisma.inboundEmail.findFirst({
+      where: { contactId: contact.id, inReplyTo: { not: null }, receivedAt: { gte: thirtyDaysAgo } },
+      orderBy: { receivedAt: "desc" },
+      select: { inReplyTo: true },
+    });
+    inReplyTo = latestInbound?.inReplyTo ?? undefined;
+  }
+
   const result = await sendEmail({
     to: contact.email,
     subject,
     html: body,
-    inReplyTo: input.inReplyTo,
-    references: input.references,
+    inReplyTo,
+    references: input.references || inReplyTo,
   });
   if (!result.success) {
     return { ok: false as const, error: "Email send failed" };
   }
 
-  // If this was a reply to an inbound email, mark that thread REPLIED.
-  if (input.inReplyTo) {
+  // If this threaded onto an inbound email, mark those inbound rows REPLIED.
+  if (inReplyTo) {
     await prisma.inboundEmail
       .updateMany({
-        where: { contactId: contact.id, messageId: input.inReplyTo },
+        where: { contactId: contact.id, inReplyTo, status: { in: ["UNREAD", "READ"] } },
         data: { status: "REPLIED", repliedBy: session.user.email },
       })
       .catch(() => null);
@@ -243,7 +260,11 @@ export async function getEmailThread(contactId: string) {
       where: { contactId },
       orderBy: { receivedAt: "desc" },
       take: 30,
-      select: { id: true, subject: true, bodyText: true, bodyHtml: true, messageId: true, receivedAt: true },
+      // `messageId` is the Gmail-internal id (not an RFC Message-ID, so useless
+      // for threading). `inReplyTo` is a REAL RFC Message-ID — our original
+      // email that the customer replied to. Replying to that id threads our
+      // response back into the customer's Gmail conversation.
+      select: { id: true, subject: true, bodyText: true, bodyHtml: true, inReplyTo: true, receivedAt: true },
     }),
     prisma.activity.findMany({
       where: { contactId, type: "email_sent" },
@@ -271,7 +292,8 @@ export async function getEmailThread(contactId: string) {
       body: e.bodyHtml || e.bodyText || "",
       performedBy: null,
       createdAt: e.receivedAt.toISOString(),
-      messageId: e.messageId,
+      // RFC Message-ID to thread a reply onto (our prior email in this thread).
+      messageId: e.inReplyTo,
     })),
     ...outbound.map((a) => ({
       id: a.id,

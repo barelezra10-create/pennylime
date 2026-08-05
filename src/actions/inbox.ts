@@ -269,9 +269,10 @@ export async function replyToInboundEmail(
     to: email.fromEmail,
     subject,
     html,
-    // Thread the reply back into the customer's inbox conversation.
-    inReplyTo: email.messageId ?? undefined,
-    references: email.messageId ?? undefined,
+    // Thread onto the RFC Message-ID (our prior email the customer replied to);
+    // email.messageId is a Gmail-internal id that can't thread.
+    inReplyTo: email.inReplyTo ?? undefined,
+    references: email.inReplyTo ?? undefined,
   });
   if (!res.success) return { ok: false as const, error: "Send failed" };
 
