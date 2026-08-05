@@ -119,6 +119,10 @@ export async function sendCrmEmail(input: {
   contactId: string;
   subject: string;
   body: string;
+  // When replying to a customer's inbound email, the original Message-ID so
+  // the reply threads in their inbox instead of arriving as a new email.
+  inReplyTo?: string;
+  references?: string;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { ok: false as const, error: "Not authenticated" };
@@ -149,9 +153,25 @@ export async function sendCrmEmail(input: {
   const subject = interpolate(input.subject, vars);
   const body = interpolate(input.body, vars);
 
-  const result = await sendEmail({ to: contact.email, subject, html: body });
+  const result = await sendEmail({
+    to: contact.email,
+    subject,
+    html: body,
+    inReplyTo: input.inReplyTo,
+    references: input.references,
+  });
   if (!result.success) {
     return { ok: false as const, error: "Email send failed" };
+  }
+
+  // If this was a reply to an inbound email, mark that thread REPLIED.
+  if (input.inReplyTo) {
+    await prisma.inboundEmail
+      .updateMany({
+        where: { contactId: contact.id, messageId: input.inReplyTo },
+        data: { status: "REPLIED", repliedBy: session.user.email },
+      })
+      .catch(() => null);
   }
 
   await prisma.emailEvent.create({
@@ -215,36 +235,65 @@ export async function getEmailThread(contactId: string) {
     data: { status: "READ" },
   }).catch(() => null);
 
-  const activities = await prisma.activity.findMany({
-    where: {
-      contactId,
-      type: { in: ["email_received", "email_sent"] },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 30,
-    select: {
-      id: true,
-      type: true,
-      title: true,
-      details: true,
-      performedBy: true,
-      createdAt: true,
-    },
-  });
+  const [activities, inboundEmails] = await Promise.all([
+    prisma.activity.findMany({
+      where: {
+        contactId,
+        type: { in: ["email_received", "email_sent"] },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        details: true,
+        performedBy: true,
+        createdAt: true,
+      },
+    }),
+    // Pull the raw inbound rows so we can attach each inbound activity its
+    // Message-ID, which the reply needs to thread back into the customer's
+    // inbox. Matched by nearest received time (the inbound webhook writes the
+    // Activity + InboundEmail together).
+    prisma.inboundEmail.findMany({
+      where: { contactId, messageId: { not: null } },
+      orderBy: { receivedAt: "desc" },
+      take: 50,
+      select: { messageId: true, receivedAt: true, createdAt: true },
+    }),
+  ]);
 
-  return activities.map((a) => ({
-    id: a.id,
-    direction: a.type === "email_received" ? ("inbound" as const) : ("outbound" as const),
-    // Title comes in as "Email: Re: …" or "Email sent: Subject" —
-    // strip the prefix so the UI shows just the subject.
-    subject: a.title
-      ?.replace(/^Email(?:\s+sent)?:\s*/i, "")
-      // Some inbound messages tack on " (1 attachment: foo.pdf)"; keep that.
-      .trim() ?? "(no subject)",
-    body: a.details ?? "",
-    performedBy: a.performedBy,
-    createdAt: a.createdAt.toISOString(),
-  }));
+  function messageIdFor(activityCreatedAt: Date): string | null {
+    let best: { id: string; diff: number } | null = null;
+    for (const ie of inboundEmails) {
+      if (!ie.messageId) continue;
+      const ref = ie.receivedAt ?? ie.createdAt;
+      const diff = Math.abs(ref.getTime() - activityCreatedAt.getTime());
+      if (!best || diff < best.diff) best = { id: ie.messageId, diff };
+    }
+    // Only trust the match if it's within a couple of minutes of the activity.
+    return best && best.diff < 120_000 ? best.id : null;
+  }
+
+  return activities.map((a) => {
+    const isInbound = a.type === "email_received";
+    return {
+      id: a.id,
+      direction: isInbound ? ("inbound" as const) : ("outbound" as const),
+      // Title comes in as "Email: Re: …" or "Email sent: Subject" —
+      // strip the prefix so the UI shows just the subject.
+      subject: a.title
+        ?.replace(/^Email(?:\s+sent)?:\s*/i, "")
+        // Some inbound messages tack on " (1 attachment: foo.pdf)"; keep that.
+        .trim() ?? "(no subject)",
+      body: a.details ?? "",
+      performedBy: a.performedBy,
+      createdAt: a.createdAt.toISOString(),
+      // The customer's original Message-ID (inbound only) for threaded replies.
+      messageId: isInbound ? messageIdFor(a.createdAt) : null,
+    };
+  });
 }
 
 /**

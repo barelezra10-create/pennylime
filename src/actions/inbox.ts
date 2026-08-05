@@ -265,7 +265,14 @@ export async function replyToInboundEmail(
     .split(/\n{2,}/)
     .map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br/>")}</p>`)
     .join("");
-  const res = await sendEmail({ to: email.fromEmail, subject, html });
+  const res = await sendEmail({
+    to: email.fromEmail,
+    subject,
+    html,
+    // Thread the reply back into the customer's inbox conversation.
+    inReplyTo: email.messageId ?? undefined,
+    references: email.messageId ?? undefined,
+  });
   if (!res.success) return { ok: false as const, error: "Send failed" };
 
   await prisma.inboundEmail.update({ where: { id: emailId }, data: { status: "REPLIED", repliedBy: session.user.email } });

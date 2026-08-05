@@ -19,6 +19,7 @@ type EmailThreadItem = {
   body: string;
   performedBy: string | null;
   createdAt: string;
+  messageId?: string | null;
 };
 
 /**
@@ -39,6 +40,9 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
   const [polishing, setPolishing] = useState(false);
   const [thread, setThread] = useState<EmailThreadItem[]>([]);
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
+  // The inbound message we're replying to, so the send threads back into the
+  // customer's inbox (In-Reply-To) instead of arriving as a brand-new email.
+  const [replyingTo, setReplyingTo] = useState<{ messageId: string | null; subject: string } | null>(null);
 
   void recentEmails; // fetched for parity with the original tab; thread below is the visible history
 
@@ -110,12 +114,18 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
     }
     setSending(true);
     try {
-      const r = await sendCrmEmail({ contactId, subject, body });
+      const r = await sendCrmEmail({
+        contactId,
+        subject,
+        body,
+        inReplyTo: replyingTo?.messageId ?? undefined,
+      });
       if (r.ok) {
-        toast.success(`Email sent to ${contactEmail}`);
+        toast.success(replyingTo ? `Reply sent to ${contactEmail}` : `Email sent to ${contactEmail}`);
         setSelectedTemplateId("");
         setSubject("");
         setBody("");
+        setReplyingTo(null);
         const recents = await getRecentEmailsForContact(contactId);
         setRecentEmails(recents);
         await refreshThread();
@@ -195,6 +205,24 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
               </span>
             </div>
           </div>
+
+          {replyingTo && (
+            <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-[#15803d]/30 bg-[#f0fdf4] px-3.5 py-2.5">
+              <span className="text-[12px] text-[#166534]">
+                ↩ Replying in thread to <strong>{replyingTo.subject}</strong>
+                {!replyingTo.messageId && (
+                  <span className="ml-1 text-[#b45309]">(original message-id not found — will send as a new email)</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => setReplyingTo(null)}
+                className="shrink-0 text-[11px] font-semibold text-[#71717a] hover:text-[#0a0a0a] hover:underline"
+              >
+                Cancel reply
+              </button>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] mb-1.5 block">
@@ -332,8 +360,11 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
                           <button
                             type="button"
                             onClick={() => {
-                              // Pre-fill subject as "Re: …" + scroll to top
+                              // Reply INSIDE this thread: Re: subject + thread
+                              // the send back to the customer's message-id so
+                              // it lands in the same email conversation.
                               setSubject(`Re: ${msg.subject.replace(/^Re:\s*/i, "")}`);
+                              setReplyingTo({ messageId: msg.messageId ?? null, subject: msg.subject });
                               setExpandedThreadId(null);
                               window.scrollTo({ top: 0, behavior: "smooth" });
                             }}

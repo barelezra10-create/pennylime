@@ -21,8 +21,19 @@ export async function sendEmail(params: {
   templateId?: string;
   // Binary attachments (PDFs, etc.). Resend accepts Buffer or base64.
   attachments?: Array<{ filename: string; content: Buffer }>;
+  // Email threading. When replying to a customer's message, pass their
+  // original Message-ID so the reply lands in the SAME thread in their inbox
+  // (Gmail/Outlook thread on In-Reply-To / References) instead of as a new
+  // email. `references` is the running chain of message-ids in the thread.
+  inReplyTo?: string;
+  references?: string;
 }) {
   try {
+    const threadHeaders: Record<string, string> = {};
+    if (params.inReplyTo) {
+      threadHeaders["In-Reply-To"] = params.inReplyTo;
+      threadHeaders["References"] = params.references || params.inReplyTo;
+    }
     const result = await getResend().emails.send({
       from: FROM_EMAIL,
       to: params.to,
@@ -33,6 +44,7 @@ export async function sendEmail(params: {
         filename: a.filename,
         content: a.content,
       })),
+      ...(Object.keys(threadHeaders).length ? { headers: threadHeaders } : {}),
     });
     const messageId = result.data?.id ?? null;
 
