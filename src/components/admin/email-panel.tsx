@@ -42,9 +42,40 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
   const [expandedThreadId, setExpandedThreadId] = useState<string | null>(null);
   // The inbound message we're replying to, so the send threads back into the
   // customer's inbox (In-Reply-To) instead of arriving as a brand-new email.
-  const [replyingTo, setReplyingTo] = useState<{ messageId: string | null; subject: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; messageId: string | null; subject: string } | null>(null);
+  const [replyBody, setReplyBody] = useState("");
+  const [replySending, setReplySending] = useState(false);
 
   void recentEmails; // fetched for parity with the original tab; thread below is the visible history
+
+  async function handleInlineReply(msg: EmailThreadItem) {
+    if (!replyBody.trim()) {
+      toast.error("Write a reply first");
+      return;
+    }
+    setReplySending(true);
+    try {
+      const r = await sendCrmEmail({
+        contactId,
+        subject: `Re: ${msg.subject.replace(/^Re:\s*/i, "")}`,
+        body: replyBody.trim().replace(/\n/g, "<br/>"),
+        inReplyTo: msg.messageId ?? undefined,
+      });
+      if (r.ok) {
+        toast.success(`Reply sent to ${contactEmail}`);
+        setReplyingTo(null);
+        setReplyBody("");
+        await refreshThread();
+        router.refresh();
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setReplySending(false);
+    }
+  }
 
   async function refreshThread() {
     try {
@@ -114,18 +145,14 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
     }
     setSending(true);
     try {
-      const r = await sendCrmEmail({
-        contactId,
-        subject,
-        body,
-        inReplyTo: replyingTo?.messageId ?? undefined,
-      });
+      // The server auto-threads any email onto the customer's recent inbound,
+      // so a top-box send still lands in their conversation.
+      const r = await sendCrmEmail({ contactId, subject, body });
       if (r.ok) {
-        toast.success(replyingTo ? `Reply sent to ${contactEmail}` : `Email sent to ${contactEmail}`);
+        toast.success(`Email sent to ${contactEmail}`);
         setSelectedTemplateId("");
         setSubject("");
         setBody("");
-        setReplyingTo(null);
         const recents = await getRecentEmailsForContact(contactId);
         setRecentEmails(recents);
         await refreshThread();
@@ -205,24 +232,6 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
               </span>
             </div>
           </div>
-
-          {replyingTo && (
-            <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-[#15803d]/30 bg-[#f0fdf4] px-3.5 py-2.5">
-              <span className="text-[12px] text-[#166534]">
-                ↩ Replying in thread to <strong>{replyingTo.subject}</strong>
-                {!replyingTo.messageId && (
-                  <span className="ml-1 text-[#b45309]">(original message-id not found — will send as a new email)</span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={() => setReplyingTo(null)}
-                className="shrink-0 text-[11px] font-semibold text-[#71717a] hover:text-[#0a0a0a] hover:underline"
-              >
-                Cancel reply
-              </button>
-            </div>
-          )}
 
           <div className="mb-4">
             <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] mb-1.5 block">
@@ -356,22 +365,55 @@ export function EmailPanel({ contactId, contactEmail }: { contactId: string; con
                         ) : (
                           <p className="text-[11px] text-[#a1a1aa] italic">No body captured.</p>
                         )}
-                        {isInbound && (
+                        {isInbound && replyingTo?.id !== msg.id && (
                           <button
                             type="button"
                             onClick={() => {
-                              // Reply INSIDE this thread: Re: subject + thread
-                              // the send back to the customer's message-id so
-                              // it lands in the same email conversation.
-                              setSubject(`Re: ${msg.subject.replace(/^Re:\s*/i, "")}`);
-                              setReplyingTo({ messageId: msg.messageId ?? null, subject: msg.subject });
-                              setExpandedThreadId(null);
-                              window.scrollTo({ top: 0, behavior: "smooth" });
+                              // Reply right here, inline in the thread. The send
+                              // threads back onto the customer's message so it
+                              // lands in the same email conversation.
+                              setReplyingTo({ id: msg.id, messageId: msg.messageId ?? null, subject: msg.subject });
+                              setReplyBody("");
                             }}
                             className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[#15803d] hover:underline"
                           >
-                            ↑ Reply
+                            ↩ Reply
                           </button>
+                        )}
+                        {isInbound && replyingTo?.id === msg.id && (
+                          <div className="mt-3 rounded-lg border border-[#15803d]/30 bg-white p-2.5">
+                            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#15803d]">
+                              Reply to {contactEmail}
+                              {!msg.messageId && (
+                                <span className="ml-1 text-[#b45309] normal-case">(sends as a new email — no thread id)</span>
+                              )}
+                            </div>
+                            <textarea
+                              value={replyBody}
+                              onChange={(e) => setReplyBody(e.target.value)}
+                              rows={4}
+                              autoFocus
+                              placeholder="Type your reply…"
+                              className="w-full text-[12.5px] px-2.5 py-2 bg-[#fafafa] rounded-md border border-[#e4e4e7] focus:outline-none focus:ring-2 focus:ring-[#15803d]/20"
+                            />
+                            <div className="mt-2 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleInlineReply(msg)}
+                                disabled={replySending || !replyBody.trim()}
+                                className="rounded-md bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 hover:bg-[#166534] disabled:opacity-50"
+                              >
+                                {replySending ? "Sending…" : "Send reply"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setReplyingTo(null); setReplyBody(""); }}
+                                className="text-[11px] font-semibold text-[#71717a] hover:text-[#0a0a0a] hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}
