@@ -159,11 +159,13 @@ export async function sendCrmEmail(input: {
   // land in the same email thread no matter which compose box was used.
   let inReplyTo = input.inReplyTo;
   if (!inReplyTo) {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
     // Thread onto the RFC Message-ID (inReplyTo = our prior email the customer
-    // replied to), NOT the Gmail-internal messageId which can't thread.
+    // replied to), NOT the Gmail-internal messageId which can't thread. Look
+    // back a full year so any recent-ish customer conversation still threads
+    // from the top compose box, not just the conversation panel's Reply.
+    const yearAgo = new Date(Date.now() - 365 * 86400000);
     const latestInbound = await prisma.inboundEmail.findFirst({
-      where: { contactId: contact.id, inReplyTo: { not: null }, receivedAt: { gte: thirtyDaysAgo } },
+      where: { contactId: contact.id, inReplyTo: { not: null }, receivedAt: { gte: yearAgo } },
       orderBy: { receivedAt: "desc" },
       select: { inReplyTo: true },
     });
