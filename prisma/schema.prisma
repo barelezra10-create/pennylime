@@ -229,6 +229,16 @@ model Payment {
   attempts        PaymentAttempt[]
   retryCount      Int       @default(0)
   lastRetryAt     DateTime?
+  // NSF roll-to-end handling. When a payment returns NSF we mark the
+  // original REPLACED and append a fresh PENDING payment at the end of the
+  // schedule. rollCount tracks how many times this obligation has been rolled
+  // (the replacement inherits parent+1); at MAX_ROLLS we escalate to
+  // Collections instead of rolling again. isLateFee marks a standalone late-fee
+  // charge added alongside a roll. rolledFromPaymentId links back to the
+  // payment this one replaced (audit trail).
+  rollCount           Int      @default(0)
+  isLateFee           Boolean  @default(false)
+  rolledFromPaymentId String?
   // Running total of money actually pulled from the borrower's bank
   // for this payment, across all successful ACH attempts (full +
   // partial micro-collections). When collectedAmount >= amount the

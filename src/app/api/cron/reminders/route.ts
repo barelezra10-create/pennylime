@@ -4,7 +4,8 @@ import { verifyCronSecret } from "@/lib/cron-auth";
 import { sendEmail } from "@/lib/emails/send";
 import { paymentReminderEmail } from "@/lib/emails/payment-reminder";
 import { sendSms } from "@/lib/sms/twilio";
-import { paymentReminderSms } from "@/lib/sms/transactional";
+import { paymentReminderSms, fundsReadyReminderSms } from "@/lib/sms/transactional";
+import { fundsReadyReminderEmail } from "@/lib/emails/payment-rolled";
 import { calculateRemainingBalance } from "@/lib/amortization";
 import { paymentsPausedUntil } from "@/lib/payment-pause";
 
@@ -79,5 +80,55 @@ export async function POST(request: NextRequest) {
     sent++;
   }
 
-  return NextResponse.json({ reminders: sent });
+  // Recovery nudge: 2 days before the next payment, for borrowers who recently
+  // bounced (they have an unpaid rolled replacement on file). Extra "have funds
+  // ready" message so they don't NSF again.
+  const inTwoDays = new Date();
+  inTwoDays.setDate(inTwoDays.getDate() + 2);
+  inTwoDays.setHours(0, 0, 0, 0);
+  const inTwoDaysEnd = new Date(inTwoDays);
+  inTwoDaysEnd.setHours(23, 59, 59, 999);
+
+  const recoveryPayments = await prisma.payment.findMany({
+    where: {
+      status: "PENDING",
+      isLateFee: false,
+      dueDate: { gte: inTwoDays, lte: inTwoDaysEnd },
+      // Application is still working off a rolled obligation.
+      application: { payments: { some: { rollCount: { gt: 0 }, status: "PENDING" } } },
+    },
+    include: { application: { select: { firstName: true, email: true, phone: true, applicationCode: true } } },
+  });
+
+  let recoverySent = 0;
+  for (const payment of recoveryPayments) {
+    const contact = await prisma.contact.findFirst({
+      where: { applicationId: payment.applicationId },
+      select: { id: true },
+    });
+    await sendEmail({
+      to: payment.application.email,
+      ...fundsReadyReminderEmail({
+        firstName: payment.application.firstName,
+        applicationCode: payment.application.applicationCode,
+        amount: Number(payment.amount),
+        dueDate: payment.dueDate,
+      }),
+      contactId: contact?.id,
+      templateId: "funds-ready-reminder",
+    });
+    await sendSms({
+      to: payment.application.phone,
+      body: fundsReadyReminderSms({
+        firstName: payment.application.firstName,
+        amount: Number(payment.amount),
+        dueDate: payment.dueDate,
+      }),
+      contactId: contact?.id,
+      templateId: "funds-ready-reminder",
+    });
+    recoverySent++;
+  }
+
+  return NextResponse.json({ reminders: sent, recoveryReminders: recoverySent });
 }

@@ -466,6 +466,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Roll any newly RETURNED (NSF) payment to the end of the schedule + late
+  // fee before recomputing application status, so the borrower shows as on a
+  // rescheduled plan rather than LATE. Idempotent (rolled -> REPLACED).
+  let nsf = { rolled: 0, collections: 0, appIds: [] as string[] };
+  try {
+    const { sweepNsfRolls } = await import("@/lib/nsf-roll-service");
+    nsf = await sweepNsfRolls();
+    for (const id of nsf.appIds) dirtyApplicationIds.add(id);
+  } catch (err) {
+    console.error("[payment-status] NSF roll sweep failed:", err);
+  }
+
   // Cascade payment-level changes onto each touched application so the
   // FUNDED -> REPAYING -> LATE -> PAID_OFF transitions land without a
   // separate cron pass.
@@ -482,6 +494,8 @@ export async function POST(request: NextRequest) {
     repaymentsRefreshed,
     repaymentsSettled,
     repaymentsReturned,
+    nsfRolled: nsf.rolled,
+    nsfCollections: nsf.collections,
   });
 }
 
@@ -508,7 +522,10 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   const ACTIVE_STATUSES = ["FUNDED", "REPAYING", "ACTIVE", "LATE"];
   if (!ACTIVE_STATUSES.includes(app.status)) return;
 
-  const payments = app.payments;
+  // Void rows (rolled-away originals, canceled, waived) don't count toward
+  // paid-off — the replacement payment carries the obligation instead.
+  const VOID_STATUSES = ["REPLACED", "CANCELED", "WAIVED"];
+  const payments = app.payments.filter((p) => !VOID_STATUSES.includes(p.status));
   const allPaid = payments.length > 0 && payments.every((p) => p.status === "PAID");
   if (allPaid) {
     if (app.status !== "PAID_OFF") {

@@ -153,15 +153,18 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
   let potentialProfit = 0; // expected interest on active advances if paid in full
 
   const advances: AdvanceRow[] = apps.map((app) => {
-    const unpaid = app.payments.filter((p) => p.status !== "PAID" && !p.paidAt);
+    // REPLACED rows are rolled-away originals — the replacement payment carries
+    // that obligation, so exclude them from every total to avoid double counts.
+    const livePayments = app.payments.filter((p) => p.status !== "REPLACED");
+    const unpaid = livePayments.filter((p) => p.status !== "PAID" && !p.paidAt);
     const outstanding = unpaid.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
-    const paidPayments = app.payments.filter((p) => p.status === "PAID" || p.paidAt);
+    const paidPayments = livePayments.filter((p) => p.status === "PAID" || p.paidAt);
     const paidToDate = paidPayments.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
     const paidPrincipal = paidPayments.reduce((s, p) => s + num(p.principal), 0);
     const paidInterest = paidPayments.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
-    const scheduledInterest = app.payments.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
+    const scheduledInterest = livePayments.reduce((s, p) => s + num(p.interest) + num(p.lateFee), 0);
     const paidCount = paidPayments.length;
-    const totalCount = app.payments.length;
+    const totalCount = livePayments.length;
 
     const nextPending = app.payments.find((p) => p.status === "PENDING");
     const isProcessing = app.payments.some((p) => p.status === "PROCESSING");

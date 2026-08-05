@@ -84,3 +84,29 @@ export function lateFeeAddedSms(p: {
 }): string {
   return `PennyLime: A ${money(p.lateFeeAmount)} late fee was added to payment #${p.paymentNumber}. New total ${money(p.totalDue)}. ${OPT_OUT}`;
 }
+
+// NSF roll: the missed payment was moved to the end of the plan + a late fee
+// added. Tell the borrower and point them at the very next scheduled debit.
+export function paymentRolledSms(p: {
+  firstName: string;
+  amount: number;
+  lateFeeAmount: number;
+  nextDueDate: Date | null;
+  nextAmount: number | null;
+}): string {
+  const next =
+    p.nextDueDate && p.nextAmount != null
+      ? ` Please have funds ready for your next payment of ${money(p.nextAmount)} on ${shortDate(p.nextDueDate)}.`
+      : " Please keep your account funded for your next payment.";
+  return `PennyLime: ${p.firstName}, your ${money(p.amount)} payment didn't go through. We moved it to the end of your plan and added a ${money(p.lateFeeAmount)} late fee.${next} ${OPT_OUT}`;
+}
+
+// Recovery nudge: 2 days before the next payment for borrowers who recently
+// had an NSF, so they don't bounce again.
+export function fundsReadyReminderSms(p: {
+  firstName: string;
+  amount: number;
+  dueDate: Date;
+}): string {
+  return `PennyLime: ${p.firstName}, your ${money(p.amount)} payment debits ${shortDate(p.dueDate)}. After a recent missed payment, please make sure the funds are ready to avoid another fee. ${OPT_OUT}`;
+}

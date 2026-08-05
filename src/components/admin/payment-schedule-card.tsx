@@ -170,8 +170,12 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                 COLLECTIONS: "bg-[#fff1f2] text-[#dc2626]",
                 WAIVED: "bg-gray-100 text-[#a1a1aa]",
                 RETURNED: "bg-[#fff1f2] text-[#dc2626]",
+                REPLACED: "bg-gray-100 text-[#a1a1aa]",
               };
               const badgeClass = statusColors[payment.status] ?? "bg-gray-100 text-[#a1a1aa]";
+              const isReplaced = payment.status === "REPLACED";
+              const isLateFeeRow = Boolean((payment as any).isLateFee);
+              const rollCount = Number((payment as any).rollCount) || 0;
               const lateFee = Number(payment.lateFee);
               const isPaid = payment.status === "PAID";
               const isOverduePending =
@@ -211,6 +215,14 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
                       {payment.status}
                     </span>
+                    {(isLateFeeRow || rollCount > 0) && (
+                      <span className="ml-1 inline-flex items-center rounded-full bg-[#fef9ec] px-2 py-0.5 text-[10px] font-semibold text-[#b45309]">
+                        {isLateFeeRow ? "Late fee" : `Rolled${rollCount > 1 ? ` x${rollCount}` : ""}`}
+                      </span>
+                    )}
+                    {isReplaced && (
+                      <p className="mt-1 text-[10px] text-[#71717a] leading-tight">Moved to end of schedule (NSF)</p>
+                    )}
                     {payment.status === "RETURNED" && (payment as any).increaseReturnReason && (
                       <p className="mt-1 text-[10px] text-[#dc2626] leading-tight max-w-[180px]">
                         {(payment as any).increaseReturnReason}

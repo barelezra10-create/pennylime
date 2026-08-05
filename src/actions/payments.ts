@@ -23,11 +23,16 @@ export async function getPaymentsSummary(applicationId: string) {
     },
   });
 
-  // WAIVED / CANCELED / RETURNED rows shouldn't count as "owed" — they
-  // represent payments that were collapsed into a payoff or returned to
-  // the customer. Otherwise post-payoff customers still see a balance.
+  // WAIVED / CANCELED / RETURNED / REPLACED rows shouldn't count as "owed" —
+  // they represent payments collapsed into a payoff, returned to the customer,
+  // or rolled to the end (the replacement row carries that obligation instead).
+  // Otherwise the balance would double-count a rolled payment.
   const obligatedPayments = payments.filter(
-    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
+    (p) =>
+      p.status !== "WAIVED" &&
+      p.status !== "CANCELED" &&
+      p.status !== "RETURNED" &&
+      p.status !== "REPLACED",
   );
   const totalOwed = obligatedPayments.reduce((s, p) => s + Number(p.amount), 0);
   // Sum collectedAmount across ALL obligated payments so partial

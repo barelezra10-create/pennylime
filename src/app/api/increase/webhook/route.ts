@@ -161,6 +161,16 @@ export async function POST(req: NextRequest) {
       // the pipeline / financial summaries reflect reality without a
       // manual nudge.
       if (isSettled || isReturn) {
+        // NSF: roll the returned payment to the end + late fee before we
+        // recompute status, so the borrower reflects a rescheduled plan.
+        if (isReturn) {
+          try {
+            const { rollOneReturnedPayment } = await import("@/lib/nsf-roll-service");
+            await rollOneReturnedPayment(payment.id);
+          } catch (err) {
+            console.error(`[increase webhook] NSF roll failed for ${payment.id}:`, err);
+          }
+        }
         await refreshApplicationStatusFromPayments(payment.applicationId);
 
         // Fire admin notification. Best-effort — failures are swallowed
@@ -218,7 +228,10 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   const ACTIVE_STATUSES = ["FUNDED", "REPAYING", "ACTIVE", "LATE"];
   if (!ACTIVE_STATUSES.includes(app.status)) return;
 
-  const payments = app.payments;
+  // Void rows (rolled-away originals, canceled, waived) don't count toward
+  // paid-off — the replacement payment carries the obligation instead.
+  const VOID_STATUSES = ["REPLACED", "CANCELED", "WAIVED"];
+  const payments = app.payments.filter((p) => !VOID_STATUSES.includes(p.status));
   const allPaid = payments.length > 0 && payments.every((p) => p.status === "PAID");
   if (allPaid) {
     if (app.status !== "PAID_OFF") {
