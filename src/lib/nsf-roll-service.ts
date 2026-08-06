@@ -187,38 +187,58 @@ export async function rollOneReturnedPayment(
     select: { id: true },
   });
 
-  try {
-    await sendEmail({
-      to: app.email,
-      ...paymentRolledEmail({
-        firstName: app.firstName,
-        applicationCode: app.applicationCode,
-        paymentNumber: payment.paymentNumber,
-        amount: Number(payment.amount),
-        lateFeeAmount,
-        nextDueDate: nextUpcoming?.dueDate ?? null,
-        nextAmount: nextUpcoming ? Number(nextUpcoming.amount) : null,
-      }),
-      contactId: contact?.id,
-      templateId: "payment-rolled",
+  // Dedupe the borrower notice: if we already sent a roll email for this
+  // advance in the last ~20 hours (another payment rolled this cycle), do the
+  // roll silently. One "your payment didn't go through" message per day is
+  // plenty — no spamming a borrower who missed several payments at once.
+  let alreadyNotified = false;
+  if (contact?.id) {
+    const recent = await prisma.activity.findFirst({
+      where: {
+        contactId: contact.id,
+        type: "email_sent",
+        title: { contains: "didn't go through" },
+        createdAt: { gte: new Date(Date.now() - 20 * 3600 * 1000) },
+      },
+      select: { id: true },
     });
-  } catch (err) {
-    console.error(`[nsf-roll] email failed for ${paymentId}:`, err);
+    alreadyNotified = Boolean(recent);
   }
-  try {
-    await sendSms({
-      to: app.phone,
-      body: paymentRolledSms({
-        firstName: app.firstName,
-        amount: Number(payment.amount),
-        lateFeeAmount,
-        nextDueDate: nextUpcoming?.dueDate ?? null,
-        nextAmount: nextUpcoming ? Number(nextUpcoming.amount) : null,
-      }),
-      contactId: contact?.id,
-    });
-  } catch (err) {
-    console.error(`[nsf-roll] sms failed for ${paymentId}:`, err);
+
+  if (!alreadyNotified) {
+    try {
+      await sendEmail({
+        to: app.email,
+        ...paymentRolledEmail({
+          firstName: app.firstName,
+          applicationCode: app.applicationCode,
+          paymentNumber: payment.paymentNumber,
+          amount: Number(payment.amount),
+          lateFeeAmount,
+          nextDueDate: nextUpcoming?.dueDate ?? null,
+          nextAmount: nextUpcoming ? Number(nextUpcoming.amount) : null,
+        }),
+        contactId: contact?.id,
+        templateId: "payment-rolled",
+      });
+    } catch (err) {
+      console.error(`[nsf-roll] email failed for ${paymentId}:`, err);
+    }
+    try {
+      await sendSms({
+        to: app.phone,
+        body: paymentRolledSms({
+          firstName: app.firstName,
+          amount: Number(payment.amount),
+          lateFeeAmount,
+          nextDueDate: nextUpcoming?.dueDate ?? null,
+          nextAmount: nextUpcoming ? Number(nextUpcoming.amount) : null,
+        }),
+        contactId: contact?.id,
+      });
+    } catch (err) {
+      console.error(`[nsf-roll] sms failed for ${paymentId}:`, err);
+    }
   }
 
   await prisma.auditLog

@@ -466,17 +466,9 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Roll any newly RETURNED (NSF) payment to the end of the schedule + late
-  // fee before recomputing application status, so the borrower shows as on a
-  // rescheduled plan rather than LATE. Idempotent (rolled -> REPLACED).
-  let nsf = { rolled: 0, collections: 0, appIds: [] as string[] };
-  try {
-    const { sweepNsfRolls } = await import("@/lib/nsf-roll-service");
-    nsf = await sweepNsfRolls();
-    for (const id of nsf.appIds) dirtyApplicationIds.add(id);
-  } catch (err) {
-    console.error("[payment-status] NSF roll sweep failed:", err);
-  }
+  // NOTE: the NSF roll-to-end sweep runs in its OWN cron (/api/cron/nsf-roll),
+  // not here — running it in both doubled the sweep frequency and spammed
+  // borrowers with duplicate roll emails.
 
   // Cascade payment-level changes onto each touched application so the
   // FUNDED -> REPAYING -> LATE -> PAID_OFF transitions land without a
@@ -494,8 +486,6 @@ export async function POST(request: NextRequest) {
     repaymentsRefreshed,
     repaymentsSettled,
     repaymentsReturned,
-    nsfRolled: nsf.rolled,
-    nsfCollections: nsf.collections,
   });
 }
 
