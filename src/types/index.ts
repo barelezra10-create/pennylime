@@ -1,4 +1,5 @@
 import type { Application, Document, LoanRule } from "@/generated/prisma/client";
+import type { UnderwritingSignals } from "@/lib/underwriting-signals";
 
 export type ApplicationWithDocuments = Application & {
   documents: Document[];
@@ -11,6 +12,7 @@ export interface EvaluationResult {
   suggestedRate: number;
   rules: Record<string, string>;
   riskScore: RiskScoreResult | null;
+  signals: UnderwritingSignals | null;
 }
 
 export interface StorageProvider {

@@ -101,6 +101,14 @@ model Application {
   // Monthly profit-and-loss (revenue, expenses by category, net) derived from
   // the 90-day bank statement. JSON matching MonthlyPL in src/lib/monthly-pl.
   monthlyPnlJson           String?
+  // Underwriting risk signals read from the 90-day statements. NSF/overdraft
+  // fee count + negative-balance days + lowest balance are the strongest
+  // predictors of whether our ACH debit will bounce. lastDepositAt drives the
+  // income-recency check (are they still earning?).
+  nsfCount90d              Int?
+  daysNegative90d          Int?
+  minBalance90d            Decimal?
+  lastDepositAt            DateTime?
   workNeedsReview          Boolean   @default(false)
   workStartMonth           Int?
   workStartYear            Int?

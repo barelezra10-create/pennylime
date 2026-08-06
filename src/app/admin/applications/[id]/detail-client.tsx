@@ -578,6 +578,33 @@ export function DetailClient({
                   </ul>
                 </div>
               )}
+
+              {evaluation.signals && (
+                <div className="mt-5 border-t border-[#f4f4f5] pt-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-3">Underwriting signals</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {(() => {
+                      const s = evaluation.signals!;
+                      const cell = (label: string, value: string, bad: boolean) => (
+                        <div key={label} className="rounded-lg bg-[#fafafa] border border-[#e4e4e7] p-2.5">
+                          <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">{label}</div>
+                          <div className={`text-[14px] font-bold ${bad ? "text-[#b91c1c]" : "text-[#0a0a0a]"}`}>{value}</div>
+                        </div>
+                      );
+                      return [
+                        cell("NSF / OD fees", s.nsfCount == null ? "—" : `${s.nsfCount}`, (s.nsfCount ?? 0) >= 3),
+                        cell("Days negative", s.daysNegative == null ? "—" : `${s.daysNegative}`, (s.daysNegative ?? 0) > 0),
+                        cell("Min balance", s.minBalance == null ? "—" : `$${Math.round(s.minBalance).toLocaleString()}`, (s.minBalance ?? 0) < 0),
+                        cell("Debt / income", s.debtToIncome == null ? "—" : `${Math.round(s.debtToIncome * 100)}%`, (s.debtToIncome ?? 0) > 0.5),
+                        cell("Income variance", s.incomeVolatility == null ? "—" : s.incomeVolatility.toFixed(2), (s.incomeVolatility ?? 0) > 0.7),
+                        cell("Last deposit", s.daysSinceLastDeposit == null ? "—" : `${s.daysSinceLastDeposit}d ago`, (s.daysSinceLastDeposit ?? 0) > 21),
+                        cell("Platform match", s.platformMatch === "matched" ? "Yes" : s.platformMatch === "unmatched" ? "No" : "—", s.platformMatch === "unmatched"),
+                        cell("Prior advances", `${s.prior.advances}${s.prior.defaults ? ` · ${s.prior.defaults} dflt` : ""}`, s.prior.defaults > 0 || s.prior.nsf > 0),
+                      ];
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

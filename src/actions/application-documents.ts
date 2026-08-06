@@ -105,6 +105,12 @@ export async function finalizeDocumentsAndVerify(
         const pnl = (parsed.deposits?.length || parsed.expenses?.length)
           ? buildMonthlyPL(platformBreakdown, parsed.expenses ?? [])
           : null;
+        const incomeDates = (parsed.deposits ?? [])
+          .filter((d) => (d.classification ?? "income") === "income" && Number(d.amount) > 0)
+          .map((d) => d.date)
+          .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s || ""))
+          .sort();
+        const lastDep = incomeDates[incomeDates.length - 1];
         await prisma.application.update({
           where: { id: applicationId },
           data: {
@@ -113,6 +119,10 @@ export async function finalizeDocumentsAndVerify(
             avgWeeklyIncome: parsed.avgWeeklyIncome,
             depositCount90d: parsed.depositCount,
             largestDeposit: parsed.largestDeposit,
+            nsfCount90d: parsed.nsfCount ?? 0,
+            daysNegative90d: parsed.daysNegative ?? 0,
+            minBalance90d: parsed.minBalance == null ? null : parsed.minBalance,
+            lastDepositAt: lastDep ? new Date(lastDep) : null,
             ...(platformBreakdown ? { incomeByPlatformJson: JSON.stringify(platformBreakdown) } : {}),
             ...(pnl ? { monthlyPnlJson: JSON.stringify(pnl) } : {}),
           },

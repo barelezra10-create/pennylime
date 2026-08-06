@@ -51,6 +51,10 @@ export type ParsedStatementSummary = {
   avgWeeklyIncome: number;
   depositCount: number;
   largestDeposit: number;
+  // Underwriting risk signals — how often this account bounces / runs dry.
+  nsfCount: number; // NSF / overdraft / returned-item fees across the period
+  daysNegative: number; // days the running balance was negative (best effort)
+  minBalance: number | null; // lowest balance seen (null if not shown)
   estimatedCadence: "weekly" | "biweekly" | "semi-monthly" | "monthly" | "irregular" | "unknown";
   confidence: "high" | "medium" | "low";
   notes: string | null;
@@ -72,6 +76,11 @@ Expenses (money OUT):
 - Also extract EVERY withdrawal / debit / money-out transaction into "expenses" with a POSITIVE dollar amount: card purchases, ACH debits, bill payments, loan/advance payments, subscriptions, transfers out (Zelle/Venmo/CashApp out), and ATM/cash withdrawals.
 - Tag each expense with "category", which MUST be EXACTLY one of this fixed list: "Fuel / Gas", "Vehicle & Transport", "Groceries", "Food & Dining", "Housing / Rent", "Utilities & Phone", "Insurance", "Loan & Debt Payments", "Subscriptions", "Shopping / Retail", "Transfers", "ATM / Cash", "Other". Use the merchant/description to choose (e.g. "SHELL OIL" -> "Fuel / Gas", "GEICO" -> "Insurance", "AFFIRM PAYMENT" or "CASH ADVANCE" -> "Loan & Debt Payments", "NETFLIX" -> "Subscriptions", "WALMART" -> "Groceries", "ZELLE TO ..." -> "Transfers", "ATM WITHDRAWAL" -> "ATM / Cash"). Only use "Other" when nothing else fits.
 - Do NOT put income in "expenses" and do NOT put money-out in "deposits". Return expenses sorted oldest first.
+
+Risk signals (how often this account bounces or runs dry — critical for lending):
+- "nsfCount": count EVERY fee line indicating a bounce or negative balance across all statements: "NSF FEE", "NON-SUFFICIENT FUNDS", "OVERDRAFT FEE", "OD FEE", "RETURNED ITEM FEE", "INSUFFICIENT FUNDS FEE", "UNCOLLECTED FUNDS". Count each occurrence. 0 if none.
+- "daysNegative": your best estimate of how many days the running/available balance was BELOW $0 across the period (from the balance column if shown). 0 if the balance never went negative or you can't tell.
+- "minBalance": the LOWEST running/available balance shown anywhere in the statements (may be negative). null if the statement doesn't show a running balance.
 
 Return ONLY valid JSON matching the schema below. No prose, no markdown fences.`;
 
@@ -101,6 +110,9 @@ const RESPONSE_SCHEMA = `{
   "avgWeeklyIncome": number,
   "depositCount": number,
   "largestDeposit": number,
+  "nsfCount": number,
+  "daysNegative": number,
+  "minBalance": number | null,
   "estimatedCadence": "weekly" | "biweekly" | "semi-monthly" | "monthly" | "irregular" | "unknown",
   "confidence": "high" | "medium" | "low",
   "notes": string | null
@@ -208,6 +220,10 @@ function buildSummaryFromDeposits(
     avgWeeklyIncome: f.avgWeeklyIncome,
     depositCount: f.depositCount,
     largestDeposit: f.largestDeposit,
+    // Risk signals can't be recovered from a truncated response — leave neutral.
+    nsfCount: 0,
+    daysNegative: 0,
+    minBalance: null,
     estimatedCadence: "unknown",
     confidence: "low",
     notes: "Recovered from a truncated AI response; summary recomputed from the deposits that parsed.",
@@ -221,6 +237,12 @@ function mergeSummaries(summaries: ParsedStatementSummary[]): ParsedStatementSum
   const expenses = summaries.flatMap((s) => s.expenses ?? []);
   const f = computeIncomeFields(deposits);
   const truncated = summaries.some((s) => s.confidence === "low" && (s.notes ?? "").includes("truncated"));
+  // Risk signals across statements: sum the bounce counts, keep the worst
+  // (lowest) balance seen.
+  const nsfCount = summaries.reduce((s, x) => s + (Number(x.nsfCount) || 0), 0);
+  const daysNegative = summaries.reduce((s, x) => s + (Number(x.daysNegative) || 0), 0);
+  const minBalances = summaries.map((x) => x.minBalance).filter((v): v is number => v != null);
+  const minBalance = minBalances.length ? Math.min(...minBalances) : null;
   return {
     accountHolderName: summaries.find((s) => s.accountHolderName)?.accountHolderName ?? null,
     bankName: summaries.find((s) => s.bankName)?.bankName ?? null,
@@ -232,6 +254,9 @@ function mergeSummaries(summaries: ParsedStatementSummary[]): ParsedStatementSum
     avgWeeklyIncome: f.avgWeeklyIncome,
     depositCount: f.depositCount,
     largestDeposit: f.largestDeposit,
+    nsfCount,
+    daysNegative,
+    minBalance,
     estimatedCadence: summaries.find((s) => s.estimatedCadence !== "unknown")?.estimatedCadence ?? "unknown",
     confidence: truncated ? "low" : summaries[0]?.confidence ?? "medium",
     notes: truncated ? "One or more statements were very deposit-heavy; some deposits may be omitted." : null,
@@ -298,6 +323,9 @@ async function parseOneBatch(
   parsed.largestDeposit = Number(parsed.largestDeposit) || 0;
   parsed.deposits = Array.isArray(parsed.deposits) ? parsed.deposits : [];
   parsed.expenses = Array.isArray(parsed.expenses) ? parsed.expenses : [];
+  parsed.nsfCount = Number(parsed.nsfCount) || 0;
+  parsed.daysNegative = Number(parsed.daysNegative) || 0;
+  parsed.minBalance = parsed.minBalance == null ? null : Number(parsed.minBalance);
 
   return parsed;
 }

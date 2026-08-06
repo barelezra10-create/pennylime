@@ -19,6 +19,7 @@ export async function evaluateApplicationAction(
       suggestedRate: 30,
       rules: {},
       riskScore: null,
+      signals: null,
     };
   }
 

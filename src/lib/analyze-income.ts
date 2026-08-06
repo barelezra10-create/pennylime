@@ -2,6 +2,19 @@ import { prisma } from "@/lib/db";
 import { storage } from "@/lib/storage";
 import { incomeByPlatform } from "@/lib/income-by-platform";
 import { buildMonthlyPL } from "@/lib/monthly-pl";
+import type { ParsedDeposit } from "@/lib/bank-statement-parser";
+
+// Most recent income deposit date — drives the income-recency underwriting
+// check (has this gig worker stopped earning?).
+function latestDepositDate(deposits: ParsedDeposit[]): Date | null {
+  const dates = (deposits || [])
+    .filter((d) => (d.classification ?? "income") === "income" && Number(d.amount) > 0)
+    .map((d) => d.date)
+    .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s || ""))
+    .sort();
+  const last = dates[dates.length - 1];
+  return last ? new Date(last) : null;
+}
 
 /**
  * Read the stored 90-day bank statements for an application, parse them with
@@ -47,6 +60,7 @@ export async function analyzeAndStoreIncome(
 
   const breakdown = incomeByPlatform(parsed.deposits, application.platform ?? null);
   const pnl = buildMonthlyPL(breakdown, parsed.expenses ?? []);
+  const lastDepositAt = latestDepositDate(parsed.deposits);
 
   await prisma.application.update({
     where: { id: applicationId },
@@ -58,6 +72,10 @@ export async function analyzeAndStoreIncome(
       largestDeposit: parsed.largestDeposit,
       incomeByPlatformJson: JSON.stringify(breakdown),
       monthlyPnlJson: JSON.stringify(pnl),
+      nsfCount90d: parsed.nsfCount ?? 0,
+      daysNegative90d: parsed.daysNegative ?? 0,
+      minBalance90d: parsed.minBalance == null ? null : parsed.minBalance,
+      lastDepositAt,
     },
   });
 
