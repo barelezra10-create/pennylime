@@ -10,9 +10,14 @@ import { paymentRolledSms } from "@/lib/sms/transactional";
 // collections). A rolled advance that hits the cap moves to COLLECTIONS.
 const NON_ROLLABLE_APP_STATUSES = ["COLLECTIONS", "DEFAULTED", "PAID_OFF", "CANCELED", "REJECTED"];
 
+// Serial delinquency: once this many of an advance's payments have missed
+// (returned or already rolled away), stop rolling and send it to Collections
+// instead — that borrower isn't recovering.
+export const MAX_MISSED_BEFORE_COLLECTIONS = 3;
+
 export type RollOutcome =
   | { status: "rolled"; paymentId: string; replacementId: string; lateFeeId: string | null }
-  | { status: "collections"; paymentId: string }
+  | { status: "collections"; paymentId: string; reason: string }
   | { status: "skipped"; paymentId: string; reason: string };
 
 /**
@@ -24,7 +29,11 @@ export type RollOutcome =
  * Caller is responsible for refreshing the application status afterward
  * (the payment-status cron does this for every dirty application).
  */
-export async function rollOneReturnedPayment(paymentId: string): Promise<RollOutcome> {
+export async function rollOneReturnedPayment(
+  paymentId: string,
+  opts: { dryRun?: boolean } = {},
+): Promise<RollOutcome> {
+  const dryRun = opts.dryRun === true;
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
     include: {
@@ -58,8 +67,33 @@ export async function rollOneReturnedPayment(paymentId: string): Promise<RollOut
 
   const allPayments = await prisma.payment.findMany({
     where: { applicationId: app.id },
-    select: { paymentNumber: true, dueDate: true },
+    select: { paymentNumber: true, dueDate: true, status: true, isLateFee: true },
   });
+
+  // Serial delinquency check: too many missed (RETURNED now, or already rolled
+  // away = REPLACED) means this borrower isn't recovering — go to Collections
+  // instead of rolling again + charging another late fee.
+  const missedCount = allPayments.filter(
+    (p) => !p.isLateFee && (p.status === "RETURNED" || p.status === "REPLACED"),
+  ).length;
+  if (missedCount >= MAX_MISSED_BEFORE_COLLECTIONS) {
+    const reason = `${missedCount} missed payments on this advance; escalating to Collections.`;
+    if (!dryRun) {
+      await prisma.application.update({ where: { id: app.id }, data: { status: "COLLECTIONS" } });
+      await prisma.auditLog
+        .create({
+          data: {
+            action: "PAYMENT_SERIAL_MISS_TO_COLLECTIONS",
+            entityType: "APPLICATION",
+            entityId: app.id,
+            performedBy: "system",
+            details: JSON.stringify({ paymentId, missedCount }),
+          },
+        })
+        .catch(() => {});
+    }
+    return { status: "collections", paymentId, reason };
+  }
 
   const plan = computeRollPlan({
     failed: {
@@ -82,19 +116,26 @@ export async function rollOneReturnedPayment(paymentId: string): Promise<RollOut
   }
 
   if (plan.action === "collections") {
-    await prisma.application.update({ where: { id: app.id }, data: { status: "COLLECTIONS" } });
-    await prisma.auditLog
-      .create({
-        data: {
-          action: "PAYMENT_ROLL_TO_COLLECTIONS",
-          entityType: "APPLICATION",
-          entityId: app.id,
-          performedBy: "system",
-          details: JSON.stringify({ paymentId, rollCount: payment.rollCount, reason: plan.reason }),
-        },
-      })
-      .catch(() => {});
-    return { status: "collections", paymentId };
+    if (!dryRun) {
+      await prisma.application.update({ where: { id: app.id }, data: { status: "COLLECTIONS" } });
+      await prisma.auditLog
+        .create({
+          data: {
+            action: "PAYMENT_ROLL_TO_COLLECTIONS",
+            entityType: "APPLICATION",
+            entityId: app.id,
+            performedBy: "system",
+            details: JSON.stringify({ paymentId, rollCount: payment.rollCount, reason: plan.reason }),
+          },
+        })
+        .catch(() => {});
+    }
+    return { status: "collections", paymentId, reason: plan.reason };
+  }
+
+  // Dry run: report what would happen without writing or notifying.
+  if (dryRun) {
+    return { status: "rolled", paymentId, replacementId: "(dry-run)", lateFeeId: plan.lateFee ? "(dry-run)" : null };
   }
 
   const { replacement, lateFee } = plan;
@@ -211,7 +252,11 @@ export async function rollOneReturnedPayment(paymentId: string): Promise<RollOut
  * picked up again. Returns the affected application ids so the caller can
  * refresh their status.
  */
-export async function sweepNsfRolls(limit = 100): Promise<{ rolled: number; collections: number; appIds: string[] }> {
+export async function sweepNsfRolls(
+  limit = 100,
+  opts: { dryRun?: boolean } = {},
+): Promise<{ rolled: number; collections: number; appIds: string[]; dryRun: boolean }> {
+  const dryRun = opts.dryRun === true;
   // Only roll recent misses. This bounds the blast radius so the first run
   // after deploy doesn't retroactively roll (and late-fee + text) ancient
   // RETURNED rows. A genuine NSF is always on a current, near-due payment.
@@ -228,7 +273,7 @@ export async function sweepNsfRolls(limit = 100): Promise<{ rolled: number; coll
   const appIds = new Set<string>();
   for (const p of returned) {
     try {
-      const outcome = await rollOneReturnedPayment(p.id);
+      const outcome = await rollOneReturnedPayment(p.id, { dryRun });
       if (outcome.status === "rolled") {
         rolled++;
         appIds.add(p.applicationId);
@@ -240,5 +285,5 @@ export async function sweepNsfRolls(limit = 100): Promise<{ rolled: number; coll
       console.error(`[nsf-roll] sweep failed for ${p.id}:`, err);
     }
   }
-  return { rolled, collections, appIds: [...appIds] };
+  return { rolled, collections, appIds: [...appIds], dryRun };
 }
