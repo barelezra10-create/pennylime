@@ -14,10 +14,14 @@ import httpx
 
 
 PENNYLIME_URL = os.environ.get("PENNYLIME_URL", "https://pennylime.com")
+# Direct Railway origin for the heavier payment crons — bypasses Cloudflare's
+# 100s edge timeout so a busy payment-status run can't get cut off.
+PAYMENT_URL = os.environ.get("PAYMENT_CRON_URL", "https://pennylime-production.up.railway.app")
 CRON_SECRET = os.environ.get("CRON_SECRET")
 
 # (minute, hour, dayOfWeek (0=Sun, 1=Mon, ..., 6=Sat, None=any), endpoint, label)
-# None means "match any"
+# None means "match any". endpoint may be a path (joined to PENNYLIME_URL) or a
+# full http(s) URL (used as-is — payment crons hit the direct origin).
 SCHEDULES = [
     # Every 15 min (any hour, any day): comment replies
     (0,  None, None, "/api/cron/social-comments", "comments"),
@@ -36,6 +40,12 @@ SCHEDULES = [
     (0, 16, 5, "/api/cron/social-reel", "reel"),
     # Daily 06:00 UTC: token health check
     (0, 6, None, "/api/cron/social-health", "health"),
+
+    # ---- Payment automation (added 2026-08-06) ----
+    # Hourly :20 — detect ACH settlements / returns (NSF) from Increase + GoACH.
+    (20, None, None, PAYMENT_URL + "/api/cron/payment-status", "pay-status"),
+    # Hourly :35 — roll NSF returns to end + late fee, serial-miss -> Collections.
+    (35, None, None, PAYMENT_URL + "/api/cron/nsf-roll", "nsf-roll"),
 ]
 
 
@@ -72,7 +82,7 @@ def fire_due_jobs() -> list[tuple[str, int, str]]:
             py_dow = (dow + 6) % 7
             if now.weekday() != py_dow:
                 continue
-        url = PENNYLIME_URL + endpoint
+        url = endpoint if endpoint.startswith("http") else PENNYLIME_URL + endpoint
         try:
             r = httpx.post(
                 url,
