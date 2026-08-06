@@ -407,7 +407,7 @@ export async function POST(request: NextRequest) {
         const failed: string[] = [];
         for (const ch of upd.changes) {
           try {
-            const payment = await prisma.payment.findUnique({ where: { goachTransactionUuid: ch.transactionUuid }, select: { id: true, applicationId: true, paidAt: true } });
+            const payment = await prisma.payment.findUnique({ where: { goachTransactionUuid: ch.transactionUuid }, select: { id: true, applicationId: true, paidAt: true, status: true } });
             if (payment) {
               let returnCode: string | null = null;
               if (mapGoachStatus(ch.to, null).isReturned) {
@@ -415,13 +415,19 @@ export async function POST(request: NextRequest) {
                 if (t.ok) returnCode = t.returnCode;
               }
               const mapped = mapGoachStatus(ch.to, returnCode);
+              // Never overwrite a terminal status from the daily-update feed —
+              // a REPLACED (rolled) payment kept getting flipped back to
+              // RETURNED and re-rolled every run. Keep the current status for
+              // those; still record the transfer status + reason.
+              const VOID = ["REPLACED", "WAIVED", "CANCELED", "PAID"];
+              const keepStatus = VOID.includes(payment.status);
               // This is the retryable write — failure holds the cursor.
               await prisma.payment.update({
                 where: { id: payment.id },
                 data: {
                   increaseTransferStatus: ch.to,
-                  status: mapped.paymentStatus,
-                  paidAt: mapped.isSettled ? new Date() : payment.paidAt,
+                  ...(keepStatus ? {} : { status: mapped.paymentStatus }),
+                  paidAt: mapped.isSettled && !keepStatus ? new Date() : payment.paidAt,
                   increaseReturnReason: returnCode ? explainReturnCode(returnCode) : undefined,
                 },
               });

@@ -57,6 +57,19 @@ export async function rollOneReturnedPayment(
   // on an active advance is rolled.
   if (payment.status !== "RETURNED") return { status: "skipped", paymentId, reason: `status ${payment.status}` };
   if (payment.isLateFee) return { status: "skipped", paymentId, reason: "late-fee charge" };
+
+  // Bulletproof idempotency: if a replacement already exists for this payment,
+  // NEVER roll it again — even if a status re-poll flipped it back to RETURNED.
+  // (This was creating a fresh replacement + late fee every cron run.) Re-mark
+  // the original REPLACED to heal any status reset, then bail.
+  const existingReplacement = await prisma.payment.count({
+    where: { rolledFromPaymentId: payment.id, isLateFee: false },
+  });
+  if (existingReplacement > 0) {
+    await prisma.payment.update({ where: { id: payment.id }, data: { status: "REPLACED" } }).catch(() => {});
+    return { status: "skipped", paymentId, reason: "already rolled" };
+  }
+
   const app = payment.application;
   if (NON_ROLLABLE_APP_STATUSES.includes(app.status)) {
     return { status: "skipped", paymentId, reason: `app ${app.status}` };
