@@ -54,6 +54,9 @@ const submitSchema = z.object({
   addressState: z.string().max(40).optional(),
   addressZip: z.string().max(15).optional(),
   dateOfBirth: z.string().max(20).optional(),
+  // Explicit SMS consent from the apply form. Stored on the contact and gates
+  // every outbound text (required for Twilio A2P/toll-free verification).
+  smsOptIn: z.boolean().optional(),
   bankName: z.string().max(120).optional(),
   bankRoutingNumberManual: z.string().max(20).optional(),
   bankAccountNumberManual: z.string().max(40).optional(),
@@ -128,6 +131,14 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
         : null,
     },
   });
+
+  // Record the SMS consent choice on the borrower's contact so it gates every
+  // outbound text. Only ever set explicitly — never assume consent.
+  if (typeof data.smsOptIn === "boolean") {
+    await prisma.contact
+      .updateMany({ where: { email: data.email }, data: { smsOptIn: data.smsOptIn } })
+      .catch(() => {});
+  }
 
   try {
     const { signInPortal } = await import("@/lib/portal-auth");
