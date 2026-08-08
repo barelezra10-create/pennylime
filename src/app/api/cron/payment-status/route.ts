@@ -538,13 +538,13 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   const hasFailedPayment = payments.some(
     (p) => p.status === "RETURNED" || p.status === "FAILED",
   );
-  // Eastern-anchored so UTC midnight doesn't prematurely flip
-  // a borrower to LATE on the evening before grace expires.
+  // Only a payment we HAVEN'T started collecting (still PENDING) counts as
+  // overdue. A PROCESSING payment is in-flight at the ACH processor — with
+  // GoACH taking ~9 days to settle, it sits PROCESSING past its due date
+  // while it's being collected, which is not "late". Eastern-anchored so UTC
+  // midnight doesn't prematurely flip a borrower to LATE before grace expires.
   const hasOverduePending = payments.some(
-    (p) =>
-      (p.status === "PENDING" || p.status === "PROCESSING") &&
-      p.dueDate &&
-      easternDayDiff(now, p.dueDate) > GRACE_DAYS,
+    (p) => p.status === "PENDING" && p.dueDate && easternDayDiff(now, p.dueDate) > GRACE_DAYS,
   );
   const isLate = hasFailedPayment || hasOverduePending;
   const hasPaidPayment = payments.some((p) => p.status === "PAID");
