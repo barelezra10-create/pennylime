@@ -2,7 +2,7 @@ import type { ParsedDeposit, ParsedExpense } from "@/lib/bank-statement-parser";
 import { incomeByPlatform } from "@/lib/income-by-platform";
 
 // Gates for the apply funnel's bank-statement step.
-export const MIN_COVERAGE_DAYS = 75; // must span ~the last 90 days (slack for month boundaries)
+export const MIN_COVERAGE_DAYS = 150; // must span ~the last 6 months (slack for month boundaries)
 export const MIN_MONTHLY_INCOME = 1500; // minimum monthly income on the listed platform to qualify
 
 export type StatementGateResult =
@@ -11,7 +11,7 @@ export type StatementGateResult =
 
 /**
  * Evaluate whether parsed statements clear the funnel's two hard gates:
- *   1. Coverage — span at least MIN_COVERAGE_DAYS (the "last 90 days").
+ *   1. Coverage — span at least MIN_COVERAGE_DAYS (the "last 6 months").
  *   2. Income — a gig worker's income on their listed platform(s) is at least
  *      MIN_MONTHLY_INCOME per month.
  *
@@ -45,7 +45,7 @@ export function evaluateStatementGate(input: {
         ok: false,
         reason: "coverage",
         coverageDays,
-        message: `Your statements only cover about ${coverageDays} days. Please upload bank statements that cover the full last 90 days (3 months).`,
+        message: `Your statements only cover about ${coverageDays} days. Please upload bank statements that cover the full last 6 months.`,
       };
     }
   }

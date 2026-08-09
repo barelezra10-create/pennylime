@@ -33,8 +33,11 @@ export type SignalThresholds = {
 };
 
 export const DEFAULT_THRESHOLDS: SignalThresholds = {
-  nsfSoft: 3,
-  nsfHard: 6,
+  // Calibrated for the 6-month statement window — more months means more fees
+  // are expected for the same behavior, so the bars are higher than the old
+  // 90-day values (were 3/6).
+  nsfSoft: 5,
+  nsfHard: 10,
   maxDebtToIncome: 0.5,
   maxVolatility: 0.7,
   maxIncomeGapDays: 21,

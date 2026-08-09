@@ -231,7 +231,7 @@ function SidebarContent({ step, amount, loanTermMonths, totalSteps }: { step: nu
         </div>
         <h3 className="text-[22px] font-extrabold text-white tracking-tight">Verified deposits, not credit</h3>
         <p className="mt-2 text-white/70 text-[14px] leading-relaxed">
-          Your platform deposits are the proof. We size your advance to 90 days of real earnings, not a FICO score.
+          Your platform deposits are the proof. We size your advance to 6 months of real earnings, not a FICO score.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -1397,7 +1397,7 @@ function StepDocuments({
 
   const handleNext = async () => {
     if (statementFiles.length === 0) {
-      toast.error("Please upload your last 90 days of bank statements");
+      toast.error("Please upload your last 6 months of bank statements");
       return;
     }
     if (isBusiness) {
@@ -1409,7 +1409,7 @@ function StepDocuments({
     }
 
     // Verify the uploaded statements before letting them finish: they must
-    // cover the last 90 days, and (gig workers) earn >= $1,500/mo on their
+    // cover the last 6 months, and (gig workers) earn >= $1,500/mo on their
     // listed platform. Runs whenever statements are uploaded — including admin
     // preview, so the Test application flow exercises the gate. Fails open on
     // network errors.
@@ -1428,7 +1428,7 @@ function StepDocuments({
         // applicant finish so the application is captured as UNQUALIFIED for
         // review, and they're told at the final decline screen.
         if (res.ok && data && data.ok === false && (data.reason === "coverage" || data.reason === "missing")) {
-          const msg = data.message || "Please upload bank statements covering the last 90 days.";
+          const msg = data.message || "Please upload bank statements covering the last 6 months.";
           setGateError(msg);
           toast.error(msg);
           setChecking(false);
@@ -1459,13 +1459,13 @@ function StepDocuments({
         on top of your linked bank.
       </p>
 
-      {/* 90-day bank statement — required for everyone */}
+      {/* 6-month bank statements — required for everyone */}
       <div className="mt-8">
         <label className="mb-1.5 block text-[14px] font-semibold text-black">
-          Last 90 days of bank statements
+          Last 6 months of bank statements
         </label>
         <p className="mb-2 text-[12px] text-[#71717a]">
-          PDF, image, or CSV exports covering the last 3 months. You can add more than one file.
+          PDF, image, or CSV exports covering the last 6 months. You can add more than one file.
         </p>
         <label
           className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#e4e4e7] bg-white px-4 py-7 text-center transition-all hover:border-[#15803d] hover:bg-[#f0fdf4]"
