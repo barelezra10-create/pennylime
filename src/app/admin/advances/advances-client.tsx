@@ -82,6 +82,26 @@ export function AdvancesClient({
     return out;
   }, [advances, filter, search]);
 
+  // Dashboard cards reflect ONLY the current tab — sum the money figures over
+  // the filtered rows instead of the account-wide summary.
+  const tab = useMemo(
+    () =>
+      rows.reduce(
+        (a, r) => {
+          a.moneyOut += r.moneyOut;
+          a.paidBack += r.paidToDate;
+          a.profit += r.profit;
+          a.potentialProfit += r.potentialProfit;
+          a.dueTodayAmount += r.dueTodayAmount;
+          a.dueTodayCount += r.dueTodayCount;
+          a.overdueCount += r.overdueCount;
+          return a;
+        },
+        { moneyOut: 0, paidBack: 0, profit: 0, potentialProfit: 0, dueTodayAmount: 0, dueTodayCount: 0, overdueCount: 0 },
+      ),
+    [rows],
+  );
+
   async function chargeOne(a: AdvanceRow) {
     if (!a.nextPaymentId) return;
     setChargingId(a.id);
@@ -101,11 +121,11 @@ export function AdvancesClient({
   }
 
   async function chargeAll() {
-    if (summary.dueTodayCount === 0) {
+    if (tab.dueTodayCount === 0) {
       toast.info("Nothing due today.");
       return;
     }
-    if (!confirm(`Charge all ${summary.dueTodayCount} payments due today (${money2(summary.dueTodayAmount)})?`)) return;
+    if (!confirm(`Charge all ${tab.dueTodayCount} payments due today (${money2(tab.dueTodayAmount)})?`)) return;
     setBulkRunning(true);
     try {
       const r = await chargeAllDueToday();
@@ -150,11 +170,11 @@ export function AdvancesClient({
       {/* Ops metrics — only on funded stages */}
       {showServicing && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <Metric label="Money out" value={money(summary.moneyOut)} sub="principal still out" />
-          <Metric label="Paid back" value={money(summary.paidBack)} sub="collected to date" accent="text-[#15803d]" />
-          <Metric label="Profit" value={money(summary.profit)} sub="realized, paid-off only" accent="text-[#15803d]" />
-          <Metric label="Potential profit" value={money(summary.potentialProfit)} sub="if active pay in full" />
-          <Metric label="Due now" value={money(summary.dueTodayAmount)} sub={`${summary.dueTodayCount} due · ${summary.overdueCount} overdue`} accent={summary.overdueCount > 0 ? "text-[#b91c1c]" : ""} />
+          <Metric label="Money out" value={money(tab.moneyOut)} sub="principal still out" />
+          <Metric label="Paid back" value={money(tab.paidBack)} sub="collected to date" accent="text-[#15803d]" />
+          <Metric label="Profit" value={money(tab.profit)} sub="realized, paid-off only" accent="text-[#15803d]" />
+          <Metric label="Potential profit" value={money(tab.potentialProfit)} sub="if active pay in full" />
+          <Metric label="Due now" value={money(tab.dueTodayAmount)} sub={`${tab.dueTodayCount} due · ${tab.overdueCount} overdue`} accent={tab.overdueCount > 0 ? "text-[#b91c1c]" : ""} />
         </div>
       )}
 
@@ -169,10 +189,10 @@ export function AdvancesClient({
         {showCharge && (
           <button
             onClick={chargeAll}
-            disabled={bulkRunning || summary.dueTodayCount === 0}
+            disabled={bulkRunning || tab.dueTodayCount === 0}
             className="inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] text-white text-xs font-semibold px-3.5 py-2 hover:bg-[#166534] disabled:opacity-50 transition-colors"
           >
-            {bulkRunning ? "Charging…" : `Charge all due (${summary.dueTodayCount})`}
+            {bulkRunning ? "Charging…" : `Charge all due (${tab.dueTodayCount})`}
           </button>
         )}
       </div>

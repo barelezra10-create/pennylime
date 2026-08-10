@@ -76,6 +76,14 @@ export type AdvanceRow = {
   totalCount: number; // total scheduled payments
   schedule: { n: number; amount: number; dueDate: string; status: string; paidAt: string | null }[];
   newEmailCount: number; // unread inbound emails from this applicant — "they replied"
+  // Per-advance money figures so the dashboard cards can be scoped to the
+  // current stage tab (sum these over the filtered rows).
+  moneyOut: number; // principal still out on this advance
+  profit: number; // realized profit (paid-off advances only)
+  potentialProfit: number; // scheduled interest still to collect
+  dueTodayAmount: number;
+  dueTodayCount: number;
+  overdueCount: number;
 };
 
 export type AdvancesSummary = {
@@ -228,6 +236,30 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       profit += paidInterest;
     }
 
+    // Per-advance figures for tab-scoped dashboard cards. Cover defaulted +
+    // paid-off too so the Default and Paid tabs aren't understated.
+    const isDefaulted = app.status === "DEFAULTED";
+    const isPaidOff = app.status === "PAID_OFF";
+    const rowDisbursed = isFunded || isDefaulted || isPaidOff;
+    let rowDueTodayCount = 0;
+    let rowDueTodayAmount = 0;
+    let rowOverdueCount = 0;
+    if (isFunded || isDefaulted) {
+      for (const p of app.payments) {
+        if (p.status === "PENDING") {
+          const due = new Date(p.dueDate);
+          if (due <= todayEnd) {
+            rowDueTodayCount += 1;
+            rowDueTodayAmount += num(p.amount) + num(p.lateFee);
+            if (due < today0) rowOverdueCount += 1;
+          }
+        }
+      }
+    }
+    const rowMoneyOut = rowDisbursed ? Math.max((num(app.fundedAmount) || num(app.loanAmount)) - paidPrincipal, 0) : 0;
+    const rowProfit = isPaidOff ? paidInterest : 0;
+    const rowPotentialProfit = isFunded ? scheduledInterest : 0;
+
     return {
       id: app.id,
       applicationCode: app.applicationCode,
@@ -261,6 +293,12 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
         paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : null,
       })),
       newEmailCount: app.contact?.id ? unreadByContact.get(app.contact.id) ?? 0 : 0,
+      moneyOut: rowMoneyOut,
+      profit: rowProfit,
+      potentialProfit: rowPotentialProfit,
+      dueTodayAmount: rowDueTodayAmount,
+      dueTodayCount: rowDueTodayCount,
+      overdueCount: rowOverdueCount,
     };
   });
 
