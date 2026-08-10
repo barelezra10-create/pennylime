@@ -20,6 +20,16 @@ async function run(request: NextRequest) {
 
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
   const result = await sweepNsfRolls(100, { dryRun });
+
+  // Recompute status for every advance we touched — a rolled-away miss changes
+  // the account from LATE back to REPAYING, which nothing else recomputes.
+  if (!dryRun && result.appIds.length) {
+    const { refreshApplicationStatus } = await import("@/lib/application-status");
+    for (const id of result.appIds) {
+      await refreshApplicationStatus(id).catch(() => {});
+    }
+  }
+
   return NextResponse.json(result);
 }
 
