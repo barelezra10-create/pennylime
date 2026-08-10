@@ -30,6 +30,9 @@ export async function setOfferTerms(input: {
   offeredMinAmount: number;
   offeredMaxAmount: number;
   terms: OfferTerm[];
+  // Repayment cadence the admin picks at approval. Stored on the application so
+  // acceptOffer builds the schedule as daily or weekly debits.
+  paymentFrequency?: "WEEKLY" | "DAILY";
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("Unauthorized");
@@ -84,6 +87,7 @@ export async function setOfferTerms(input: {
       offeredTermsJson: JSON.stringify(input.terms),
       offerToken,
       offerSentAt: new Date(),
+      ...(input.paymentFrequency ? { paymentFrequency: input.paymentFrequency } : {}),
       ...(shouldApprove && {
         status: "APPROVED",
         approvedAt: new Date(),

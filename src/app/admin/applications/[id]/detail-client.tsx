@@ -766,6 +766,7 @@ export function DetailClient({
                   // the default offered max so we never accidentally
                   // offer more than they asked for.
                   requestedAmount: application.loanAmount != null ? Number(application.loanAmount) : null,
+                  paymentFrequency: (application as any).paymentFrequency ?? null,
                 }}
               />
             );

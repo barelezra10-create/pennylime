@@ -16,6 +16,8 @@ type ExistingOffer = {
   // ceiling for the default offered max so admin doesn't accidentally
   // offer more than the borrower wanted.
   requestedAmount: number | null;
+  // Repayment cadence chosen so far (from the funnel); admin can override here.
+  paymentFrequency: string | null;
 };
 
 const blankTerm = (recommended = false): OfferTerm => ({
@@ -64,6 +66,9 @@ export function SetOfferTermsForm({
   const [minAmount, setMinAmount] = useState<number>(defaultMin);
   const [maxAmount, setMaxAmount] = useState<number>(defaultMax);
   const [weeklyRate, setWeeklyRate] = useState<number>(5);
+  const [frequency, setFrequency] = useState<"WEEKLY" | "DAILY">(
+    existing.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY",
+  );
   const [genPrincipal, setGenPrincipal] = useState<number>(
     existing.requestedAmount ?? 500,
   );
@@ -164,6 +169,7 @@ export function SetOfferTermsForm({
         offeredMinAmount: minAmount,
         offeredMaxAmount: maxAmount,
         terms,
+        paymentFrequency: frequency,
       });
       if (r.ok) {
         setSavedToken(r.offerToken);
@@ -239,6 +245,30 @@ export function SetOfferTermsForm({
       <div className="grid grid-cols-2 gap-3 mb-5">
         <FieldNum label="Min approved amount" value={minAmount} onChange={setMinAmount} />
         <FieldNum label="Max approved amount" value={maxAmount} onChange={setMaxAmount} />
+      </div>
+
+      {/* Repayment cadence — admin chooses how the advance is collected */}
+      <div className="mb-5">
+        <label className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] mb-1.5 block">
+          Repayment
+        </label>
+        <div className="inline-flex rounded-lg border border-[#e4e4e7] bg-[#fafafa] p-0.5">
+          {(["WEEKLY", "DAILY"] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFrequency(f)}
+              className={`px-4 py-1.5 text-[13px] font-semibold rounded-md transition-colors ${
+                frequency === f ? "bg-[#15803d] text-white" : "text-[#52525b] hover:text-black"
+              }`}
+            >
+              {f === "WEEKLY" ? "Weekly" : "Daily (business days)"}
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-[#71717a] mt-1.5">
+          Same total cost — {frequency === "DAILY" ? "collected every business day (Mon–Fri)" : "collected once a week"}.
+        </p>
       </div>
 
       {/* Generate plans from weekly rate */}
