@@ -53,9 +53,14 @@ export async function rollOneReturnedPayment(
   });
   if (!payment) return { status: "skipped", paymentId, reason: "not found" };
 
-  // Idempotency + guardrails: only a genuinely returned, non-late-fee payment
-  // on an active advance is rolled.
-  if (payment.status !== "RETURNED") return { status: "skipped", paymentId, reason: `status ${payment.status}` };
+  // Roll a genuinely uncollected, non-late-fee payment on an active advance.
+  // RETURNED = the bank bounced it (NSF, borrower's fault -> late fee applies).
+  // FAILED = we couldn't even submit the debit; it otherwise sits stuck forever
+  // keeping the account LATE, so we roll it too but WITHOUT a late fee (not the
+  // borrower's fault).
+  if (payment.status !== "RETURNED" && payment.status !== "FAILED") {
+    return { status: "skipped", paymentId, reason: `status ${payment.status}` };
+  }
   if (payment.isLateFee) return { status: "skipped", paymentId, reason: "late-fee charge" };
 
   // Bulletproof idempotency: if a replacement already exists for this payment,
@@ -76,18 +81,19 @@ export async function rollOneReturnedPayment(
   }
 
   const rules = await getLoanRules();
-  const lateFeeAmount = parseFloat(rules.late_fee_amount || "25");
+  // Late fee only for a real NSF return — not for a technical submit failure.
+  const lateFeeAmount = payment.status === "RETURNED" ? parseFloat(rules.late_fee_amount || "25") : 0;
 
   const allPayments = await prisma.payment.findMany({
     where: { applicationId: app.id },
     select: { paymentNumber: true, dueDate: true, status: true, isLateFee: true },
   });
 
-  // Serial delinquency check: too many missed (RETURNED now, or already rolled
-  // away = REPLACED) means this borrower isn't recovering — go to Collections
-  // instead of rolling again + charging another late fee.
+  // Serial delinquency check: too many missed (RETURNED/FAILED now, or already
+  // rolled away = REPLACED) means this borrower isn't recovering — go to
+  // Collections instead of rolling again.
   const missedCount = allPayments.filter(
-    (p) => !p.isLateFee && (p.status === "RETURNED" || p.status === "REPLACED"),
+    (p) => !p.isLateFee && (p.status === "RETURNED" || p.status === "FAILED" || p.status === "REPLACED"),
   ).length;
   if (missedCount >= MAX_MISSED_BEFORE_COLLECTIONS) {
     const reason = `${missedCount} missed payments on this advance; escalating to Collections.`;
@@ -296,7 +302,7 @@ export async function sweepNsfRolls(
   const RECENT_DAYS = 45;
   const cutoff = new Date(Date.now() - RECENT_DAYS * 86400000);
   const returned = await prisma.payment.findMany({
-    where: { status: "RETURNED", isLateFee: false, dueDate: { gte: cutoff } },
+    where: { status: { in: ["RETURNED", "FAILED"] }, isLateFee: false, dueDate: { gte: cutoff } },
     select: { id: true, applicationId: true },
     take: limit,
   });
