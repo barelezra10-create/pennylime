@@ -46,6 +46,14 @@ SCHEDULES = [
     (20, None, None, PAYMENT_URL + "/api/cron/payment-status", "pay-status"),
     # Hourly :35 — roll NSF returns to end + late fee, serial-miss -> Collections.
     (35, None, None, PAYMENT_URL + "/api/cron/nsf-roll", "nsf-roll"),
+
+    # ---- Borrower payment reminders + collections ladder (added 2026-08-10) ----
+    # Daily 14:00 UTC — active-advance reminders: 3-day heads-up, day-before
+    # reminder, and 2-day funds-ready nudge for borrowers who had a late payment.
+    (0, 14, None, PAYMENT_URL + "/api/cron/reminders", "reminders"),
+    # Daily 14:30 UTC — collections ladder: 7/14/30-day warnings, pre-legal
+    # FINAL notice, and default escalation. Email + SMS.
+    (30, 14, None, PAYMENT_URL + "/api/cron/collections", "collections"),
 ]
 
 

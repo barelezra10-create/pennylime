@@ -6,7 +6,18 @@ import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/emails/send";
 import { collectionWarningEmail } from "@/lib/emails/collection-warning";
 import { collectionEscalationEmail } from "@/lib/emails/collection-escalation";
+import { collectionFinalNoticeEmail } from "@/lib/emails/collection-final-notice";
+import { sendSms } from "@/lib/sms/twilio";
+import {
+  collectionWarningSms,
+  collectionEscalationSms,
+  collectionFinalNoticeSms,
+} from "@/lib/sms/transactional";
 import { paymentsPausedUntil } from "@/lib/payment-pause";
+
+// Days after the collections escalation to send the pre-legal FINAL notice,
+// before the account is defaulted and referred out.
+const FINAL_NOTICE_DAYS = 15;
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
@@ -74,6 +85,48 @@ export async function POST(request: NextRequest) {
           const daysSinceEscalation = Math.floor(
             (now.getTime() - collectionsEvent.createdAt.getTime()) / (1000 * 60 * 60 * 24)
           );
+
+          const collectionsOverdue = app.payments.reduce(
+            (sum, p) => sum + Number(p.amount) + Number(p.lateFee),
+            0
+          );
+
+          // Pre-legal FINAL notice: once, between escalation and default.
+          if (
+            daysSinceEscalation >= FINAL_NOTICE_DAYS &&
+            daysSinceEscalation < defaultThreshold &&
+            !app.collectionEvents.some(
+              (e) => e.eventType === "WARNING_SENT" && e.notes?.includes("final-notice")
+            )
+          ) {
+            await prisma.collectionEvent.create({
+              data: {
+                applicationId: app.id,
+                eventType: "WARNING_SENT",
+                notes: `final-notice: ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding`,
+              },
+            });
+            await sendEmail({
+              to: app.email,
+              ...collectionFinalNoticeEmail({
+                firstName: app.firstName,
+                applicationCode: app.applicationCode,
+                totalOverdue: collectionsOverdue,
+              }),
+              contactId: linkedContact?.id,
+              templateId: "collection-final-notice",
+            });
+            await sendSms({
+              to: app.phone,
+              body: collectionFinalNoticeSms({
+                firstName: app.firstName,
+                applicationCode: app.applicationCode,
+                totalOverdue: collectionsOverdue,
+              }),
+              contactId: linkedContact?.id,
+              templateId: "collection-final-notice",
+            });
+          }
 
           if (daysSinceEscalation >= defaultThreshold) {
             await prisma.application.update({
@@ -172,6 +225,17 @@ export async function POST(request: NextRequest) {
         templateId: "collection-escalation",
       });
 
+      await sendSms({
+        to: app.phone,
+        body: collectionEscalationSms({
+          firstName: app.firstName,
+          applicationCode: app.applicationCode,
+          totalOverdue,
+        }),
+        contactId: linkedContact?.id,
+        templateId: "collection-escalation",
+      });
+
       escalated++;
       continue;
     }
@@ -212,6 +276,19 @@ export async function POST(request: NextRequest) {
           templateId: "collection-warning",
         });
 
+        await sendSms({
+          to: app.phone,
+          body: collectionWarningSms({
+            firstName: app.firstName,
+            applicationCode: app.applicationCode,
+            daysOverdue,
+            totalOverdue,
+            isSecondWarning: true,
+          }),
+          contactId: linkedContact?.id,
+          templateId: "collection-warning",
+        });
+
         warnings14++;
       }
       continue;
@@ -234,6 +311,19 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           to: app.email,
           ...collectionWarningEmail({
+            firstName: app.firstName,
+            applicationCode: app.applicationCode,
+            daysOverdue,
+            totalOverdue,
+            isSecondWarning: false,
+          }),
+          contactId: linkedContact?.id,
+          templateId: "collection-warning",
+        });
+
+        await sendSms({
+          to: app.phone,
+          body: collectionWarningSms({
             firstName: app.firstName,
             applicationCode: app.applicationCode,
             daysOverdue,

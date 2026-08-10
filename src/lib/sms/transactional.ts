@@ -68,6 +68,17 @@ export function paymentReminderSms(p: {
   return `PennyLime: Heads up ${p.firstName}, ${money(p.amount)} payment debits tomorrow (${shortDate(p.dueDate)}). Make sure your account is funded. ${OPT_OUT}`;
 }
 
+// Active-advance heads-up a few days before a scheduled debit.
+export function upcomingPaymentSms(p: {
+  firstName: string;
+  amount: number;
+  dueDate: Date;
+  daysUntil: number;
+}): string {
+  const when = p.daysUntil === 1 ? "tomorrow" : `in ${p.daysUntil} days`;
+  return `PennyLime: Hi ${p.firstName}, your ${money(p.amount)} payment is coming up ${when} on ${shortDate(p.dueDate)}. Please have your account funded. ${OPT_OUT}`;
+}
+
 export function paymentFailedSms(p: {
   firstName: string;
   amount: number;
@@ -109,4 +120,38 @@ export function fundsReadyReminderSms(p: {
   dueDate: Date;
 }): string {
   return `PennyLime: ${p.firstName}, your ${money(p.amount)} payment debits ${shortDate(p.dueDate)}. After a recent missed payment, please make sure the funds are ready to avoid another fee. ${OPT_OUT}`;
+}
+
+// Collections ladder. Firm but factual. STOP/HELP footer kept on every step.
+export function collectionWarningSms(p: {
+  firstName: string;
+  applicationCode: string;
+  daysOverdue: number;
+  totalOverdue: number;
+  isSecondWarning: boolean;
+}): string {
+  const lead = p.isSecondWarning ? "SECOND NOTICE" : "Past due";
+  const tail = p.isSecondWarning
+    ? "Pay now to avoid collections."
+    : "Please bring it current to avoid fees.";
+  return `PennyLime: ${lead} ${p.firstName}. Your advance is ${p.daysOverdue} days behind, ${money(p.totalOverdue)} due. ${tail} ${statusLine(p.applicationCode)} ${OPT_OUT}`;
+}
+
+export function collectionEscalationSms(p: {
+  firstName: string;
+  applicationCode: string;
+  totalOverdue: number;
+}): string {
+  return `PennyLime: ${p.firstName}, your advance has moved to collections with ${money(p.totalOverdue)} outstanding. Contact us today to resolve it. ${statusLine(p.applicationCode)} ${OPT_OUT}`;
+}
+
+// Pre-legal final notice before default/referral.
+export function collectionFinalNoticeSms(p: {
+  firstName: string;
+  applicationCode: string;
+  totalOverdue: number;
+  respondByDays?: number;
+}): string {
+  const days = p.respondByDays ?? 7;
+  return `PennyLime: FINAL NOTICE ${p.firstName}. ${money(p.totalOverdue)} remains unpaid. Respond within ${days} days or your account may be defaulted and referred for collection/legal action. ${statusLine(p.applicationCode)} ${OPT_OUT}`;
 }
