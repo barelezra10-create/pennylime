@@ -21,11 +21,16 @@ export async function POST(request: NextRequest) {
   const today = new Date();
   today.setHours(23, 59, 59, 999);
 
-  // Find all PENDING payments due today or earlier
+  // Find all PENDING payments due today or earlier.
+  // Skip accounts already in COLLECTIONS or DEFAULTED: once an advance escalates
+  // we stop the automatic ACH pulls (matching payment-retry and the collections
+  // escalation email, which tells the borrower retries are paused). From there
+  // it is handled by the pre-legal collections flow, not auto-debits.
   const duePayments = await prisma.payment.findMany({
     where: {
       status: "PENDING",
       dueDate: { lte: today },
+      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] } },
     },
     include: { application: true },
   });
