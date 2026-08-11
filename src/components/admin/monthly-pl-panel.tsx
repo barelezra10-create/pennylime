@@ -1,11 +1,19 @@
 "use client";
 
+import React, { useState } from "react";
 import type { MonthlyPL } from "@/lib/monthly-pl";
 
 function formatMonth(ym: string): string {
   const [year, month] = ym.split("-");
   const d = new Date(Number(year), Number(month) - 1, 1);
   return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+}
+
+function fmtDay(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  if (!m) return iso || "";
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function fmtMoney(n: number): string {
@@ -30,6 +38,9 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
   }
 
   const hasData = data && data.months.length > 0;
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (cat: string) => setExpanded((e) => ({ ...e, [cat]: !e[cat] }));
+  const colCount = (data?.months.length ?? 0) + 2;
 
   return (
     <div className="bg-white rounded-xl border border-[#e4e4e7] p-6">
@@ -93,19 +104,72 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                   Expenses
                 </td>
               </tr>
-              {data!.expenseCategories.map((row) => (
-                <tr key={row.category} className="border-b border-[#f4f4f5]">
-                  <td className="py-2 px-3 pl-6 text-[#52525b] whitespace-nowrap">{row.category}</td>
-                  {row.byMonth.map((bm) => (
-                    <td key={bm.month} className="py-2 px-3 text-right text-[#52525b] tabular-nums whitespace-nowrap">
-                      {fmtMoney(bm.amount)}
-                    </td>
-                  ))}
-                  <td className="py-2 px-3 text-right font-semibold text-[#0a0a0a] tabular-nums whitespace-nowrap">
-                    {fmtMoney(row.total)}
-                  </td>
-                </tr>
-              ))}
+              {data!.expenseCategories.map((row) => {
+                const items = row.items ?? [];
+                const canExpand = items.length > 0;
+                const isOpen = !!expanded[row.category];
+                return (
+                  <React.Fragment key={row.category}>
+                    <tr
+                      className={`border-b border-[#f4f4f5] ${canExpand ? "cursor-pointer hover:bg-[#fafafa]" : ""}`}
+                      onClick={canExpand ? () => toggle(row.category) : undefined}
+                    >
+                      <td className="py-2 px-3 pl-6 text-[#52525b] whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          {canExpand ? (
+                            <svg
+                              className={`h-3 w-3 text-[#a1a1aa] transition-transform ${isOpen ? "rotate-90" : ""}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2.5}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                            </svg>
+                          ) : (
+                            <span className="inline-block w-3" />
+                          )}
+                          {row.category}
+                          {canExpand && (
+                            <span className="text-[10px] text-[#a1a1aa] font-normal">({items.length})</span>
+                          )}
+                        </span>
+                      </td>
+                      {row.byMonth.map((bm) => (
+                        <td key={bm.month} className="py-2 px-3 text-right text-[#52525b] tabular-nums whitespace-nowrap">
+                          {fmtMoney(bm.amount)}
+                        </td>
+                      ))}
+                      <td className="py-2 px-3 text-right font-semibold text-[#0a0a0a] tabular-nums whitespace-nowrap">
+                        {fmtMoney(row.total)}
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="border-b border-[#f4f4f5] bg-[#fafafa]">
+                        <td colSpan={colCount} className="px-3 pb-3 pt-1">
+                          <div className="pl-6 max-h-64 overflow-y-auto">
+                            <table className="w-full text-[11px]">
+                              <tbody>
+                                {items.map((it, i) => (
+                                  <tr key={i} className="border-b border-[#efefef] last:border-0">
+                                    <td className="py-1 pr-3 text-[#a1a1aa] tabular-nums whitespace-nowrap w-14">
+                                      {fmtDay(it.date)}
+                                    </td>
+                                    <td className="py-1 pr-3 text-[#52525b]">{it.description || "-"}</td>
+                                    <td className="py-1 text-right text-[#0a0a0a] tabular-nums whitespace-nowrap">
+                                      {fmtMoney(it.amount)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
 
               {/* Total expenses */}
               <tr className="border-b border-[#f4f4f5] bg-[#fafafa]">

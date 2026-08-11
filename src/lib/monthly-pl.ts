@@ -45,7 +45,13 @@ function canonicalCategory(raw: string | undefined): ExpenseCategory {
 }
 
 export type PLMonthValue = { month: string; amount: number }; // month = "YYYY-MM"
-export type PLCategoryRow = { category: ExpenseCategory; total: number; byMonth: PLMonthValue[] };
+export type PLItem = { date: string; description: string; amount: number }; // one debit line
+export type PLCategoryRow = {
+  category: ExpenseCategory;
+  total: number;
+  byMonth: PLMonthValue[];
+  items: PLItem[]; // underlying transactions, biggest first (for the expand/drill-down)
+};
 export type MonthlyPL = {
   months: string[]; // sorted "YYYY-MM"
   revenueSource: string | null; // the listed platform(s) revenue is counted from
@@ -89,8 +95,9 @@ export function buildMonthlyPL(
     }
   }
 
-  // category -> month -> amount
+  // category -> month -> amount, and category -> underlying line items
   const cat: Record<string, Record<string, number>> = {};
+  const catItems: Record<string, PLItem[]> = {};
   for (const e of expenses || []) {
     const amt = Math.abs(Number(e.amount) || 0);
     if (amt <= 0) continue;
@@ -100,6 +107,7 @@ export function buildMonthlyPL(
     const c = canonicalCategory(e.category);
     cat[c] ??= {};
     cat[c][m] = (cat[c][m] || 0) + amt;
+    (catItems[c] ??= []).push({ date: e.date, description: e.description || "", amount: amt });
   }
 
   const months = [...monthSet].sort();
@@ -111,7 +119,8 @@ export function buildMonthlyPL(
     .map((c) => {
       const byMonth = months.map((m) => ({ month: m, amount: cat[c][m] || 0 }));
       const total = byMonth.reduce((s, x) => s + x.amount, 0);
-      return { category: c, total, byMonth };
+      const items = (catItems[c] ?? []).slice().sort((a, b) => b.amount - a.amount);
+      return { category: c, total, byMonth, items };
     })
     .filter((row) => row.total > 0);
 
