@@ -92,8 +92,11 @@ export function buildCollectionsTimeline(input: {
   const isDefaulted = input.status === "DEFAULTED";
   const isCollections = input.status === "COLLECTIONS";
 
-  if (isCollections && escalatedAt) {
-    // Recurring dunning: next one is DUNNING_INTERVAL_DAYS after the last thing we sent.
+  if (isCollections) {
+    // If we don't yet have an escalation timestamp (account reached collections
+    // via the roll service), anchor the projection to now: the cron backfills
+    // the escalation and starts the flow on its next run.
+    const ref = escalatedAt ?? now;
     const lastComm = events
       .filter((e) => ["WARNING_SENT", "DUNNING", "ESCALATED"].includes(e.eventType))
       .map((e) => e.at)
@@ -113,14 +116,14 @@ export function buildCollectionsTimeline(input: {
       upcoming.push({
         label: "Final pre-legal notice",
         channel: "Email + SMS",
-        date: addDays(escalatedAt, FINAL_NOTICE_DAYS),
+        date: addDays(ref, FINAL_NOTICE_DAYS),
         note: "Last notice before referral / legal action",
       });
     }
     upcoming.push({
       label: "Mark defaulted, refer for recovery",
       channel: "Status change",
-      date: addDays(escalatedAt, defaultDays),
+      date: addDays(ref, defaultDays),
     });
   } else if (!isDefaulted) {
     // Still in repayment: project the pre-collections warnings off the oldest
