@@ -7,17 +7,18 @@ import { sendEmail } from "@/lib/emails/send";
 import { collectionWarningEmail } from "@/lib/emails/collection-warning";
 import { collectionEscalationEmail } from "@/lib/emails/collection-escalation";
 import { collectionFinalNoticeEmail } from "@/lib/emails/collection-final-notice";
+import { collectionDunningEmail } from "@/lib/emails/collection-dunning";
 import { sendSms } from "@/lib/sms/twilio";
 import {
   collectionWarningSms,
   collectionEscalationSms,
   collectionFinalNoticeSms,
+  collectionDunningSms,
 } from "@/lib/sms/transactional";
 import { paymentsPausedUntil } from "@/lib/payment-pause";
+import { FINAL_NOTICE_DAYS, DUNNING_INTERVAL_DAYS } from "@/lib/collections-ladder";
 
-// Days after the collections escalation to send the pre-legal FINAL notice,
-// before the account is defaulted and referred out.
-const FINAL_NOTICE_DAYS = 15;
+const DAY_MS = 1000 * 60 * 60 * 24;
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
   let warnings7 = 0;
   let warnings14 = 0;
   let escalated = 0;
+  let finalNotices = 0;
+  let dunningSent = 0;
+  let defaulted = 0;
 
   // Find all in-repayment applications with failed payments. Includes
   // FUNDED + REPAYING so we don't lose loans that haven't transitioned
@@ -61,125 +65,125 @@ export async function POST(request: NextRequest) {
   });
 
   for (const app of applications) {
-    if (app.payments.length === 0) continue;
-
     // Cached contact lookup for CRM logging on any email we send below.
     const linkedContact = await prisma.contact.findFirst({
       where: { applicationId: app.id },
       select: { id: true },
     });
 
-      // DEFAULTED escalation: COLLECTIONS for 90+ days
-      if (app.status === "COLLECTIONS") {
-        const ruleMap = rules; // rules is already loaded as Record<string, string>
-        const defaultThreshold = parseInt(ruleMap.default_threshold_days ?? "90");
-        const collectionsEvent = await prisma.collectionEvent.findFirst({
-          where: {
+    // COLLECTIONS accounts run the dunning flow regardless of whether they have
+    // a FAILED payment row. Accounts pushed here by the NSF-roll service carry
+    // their misses as REPLACED (not FAILED), so gating on FAILED skipped them.
+    if (app.status === "COLLECTIONS") {
+      const defaultThreshold = parseInt(rules.default_threshold_days ?? "90");
+
+      // Real outstanding = every unpaid payment (PENDING + FAILED), not just the
+      // FAILED include, so rolled-to-collections accounts show a true balance.
+      const unpaid = await prisma.payment.findMany({
+        where: { applicationId: app.id, status: { in: ["PENDING", "FAILED"] } },
+        select: { amount: true, lateFee: true },
+      });
+      const collectionsOverdue = unpaid.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
+
+      // Ensure an ESCALATED event exists so the clock + notices have a start.
+      // Backfill (and send the first collections notice) for accounts that
+      // reached COLLECTIONS via the roll service without one.
+      let escalatedAt =
+        app.collectionEvents
+          .filter((e) => e.eventType === "ESCALATED")
+          .map((e) => e.createdAt)
+          .sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+      let contactedThisRun = false;
+
+      if (!escalatedAt) {
+        const ev = await prisma.collectionEvent.create({
+          data: {
             applicationId: app.id,
             eventType: "ESCALATED",
+            performedBy: "system:collections",
+            notes: `Backfilled escalation: already in collections, $${collectionsOverdue.toFixed(2)} outstanding`,
           },
-          orderBy: { createdAt: "desc" },
+        });
+        escalatedAt = ev.createdAt;
+        contactedThisRun = true;
+        await sendEmail({
+          to: app.email,
+          ...collectionEscalationEmail({ firstName: app.firstName, applicationCode: app.applicationCode, totalOverdue: collectionsOverdue }),
+          contactId: linkedContact?.id,
+          templateId: "collection-escalation",
+        });
+        await sendSms({
+          to: app.phone,
+          body: collectionEscalationSms({ firstName: app.firstName, applicationCode: app.applicationCode, totalOverdue: collectionsOverdue }),
+          contactId: linkedContact?.id,
+          templateId: "collection-escalation",
+        });
+        escalated++;
+      }
+
+      const daysSinceEscalation = Math.floor((now.getTime() - escalatedAt.getTime()) / DAY_MS);
+
+      // Pre-legal FINAL notice: once, between escalation and default.
+      const finalSent = app.collectionEvents.some(
+        (e) => e.eventType === "WARNING_SENT" && e.notes?.includes("final-notice"),
+      );
+      if (!contactedThisRun && !finalSent && daysSinceEscalation >= FINAL_NOTICE_DAYS && daysSinceEscalation < defaultThreshold) {
+        await prisma.collectionEvent.create({
+          data: { applicationId: app.id, eventType: "WARNING_SENT", performedBy: "system:collections", notes: `final-notice: ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding` },
+        });
+        contactedThisRun = true;
+        await sendEmail({ to: app.email, ...collectionFinalNoticeEmail({ firstName: app.firstName, applicationCode: app.applicationCode, totalOverdue: collectionsOverdue }), contactId: linkedContact?.id, templateId: "collection-final-notice" });
+        await sendSms({ to: app.phone, body: collectionFinalNoticeSms({ firstName: app.firstName, applicationCode: app.applicationCode, totalOverdue: collectionsOverdue }), contactId: linkedContact?.id, templateId: "collection-final-notice" });
+        finalNotices++;
+      }
+
+      // Recurring dunning between milestones: keep hitting them every
+      // DUNNING_INTERVAL_DAYS until they pay or default. Skip if we already
+      // contacted them this run so we never double-message in one pass.
+      if (!contactedThisRun && daysSinceEscalation < defaultThreshold) {
+        const lastComm = app.collectionEvents
+          .filter((e) => ["WARNING_SENT", "DUNNING", "ESCALATED"].includes(e.eventType))
+          .map((e) => e.createdAt)
+          .sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+        const dueForDunning = !lastComm || now.getTime() - lastComm.getTime() >= DUNNING_INTERVAL_DAYS * DAY_MS;
+        if (dueForDunning) {
+          await prisma.collectionEvent.create({
+            data: { applicationId: app.id, eventType: "DUNNING", performedBy: "system:collections", notes: `dunning: ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding` },
+          });
+          await sendEmail({ to: app.email, ...collectionDunningEmail({ firstName: app.firstName, applicationCode: app.applicationCode, totalOverdue: collectionsOverdue, daysInCollections: daysSinceEscalation }), contactId: linkedContact?.id, templateId: "collection-dunning" });
+          await sendSms({ to: app.phone, body: collectionDunningSms({ firstName: app.firstName, applicationCode: app.applicationCode, totalOverdue: collectionsOverdue }), contactId: linkedContact?.id, templateId: "collection-dunning" });
+          dunningSent++;
+        }
+      }
+
+      // Default at threshold days since escalation.
+      if (daysSinceEscalation >= defaultThreshold) {
+        await prisma.application.update({ where: { id: app.id }, data: { status: "DEFAULTED" } });
+        await prisma.collectionEvent.create({
+          data: { applicationId: app.id, eventType: "DEFAULTED", performedBy: "system:collections", notes: `Defaulted after ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding` },
         });
 
-        if (collectionsEvent) {
-          const daysSinceEscalation = Math.floor(
-            (now.getTime() - collectionsEvent.createdAt.getTime()) / (1000 * 60 * 60 * 24)
-          );
-
-          const collectionsOverdue = app.payments.reduce(
-            (sum, p) => sum + Number(p.amount) + Number(p.lateFee),
-            0
-          );
-
-          // Pre-legal FINAL notice: once, between escalation and default.
-          if (
-            daysSinceEscalation >= FINAL_NOTICE_DAYS &&
-            daysSinceEscalation < defaultThreshold &&
-            !app.collectionEvents.some(
-              (e) => e.eventType === "WARNING_SENT" && e.notes?.includes("final-notice")
-            )
-          ) {
-            await prisma.collectionEvent.create({
-              data: {
-                applicationId: app.id,
-                eventType: "WARNING_SENT",
-                notes: `final-notice: ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding`,
-              },
-            });
-            await sendEmail({
-              to: app.email,
-              ...collectionFinalNoticeEmail({
-                firstName: app.firstName,
-                applicationCode: app.applicationCode,
-                totalOverdue: collectionsOverdue,
-              }),
-              contactId: linkedContact?.id,
-              templateId: "collection-final-notice",
-            });
-            await sendSms({
-              to: app.phone,
-              body: collectionFinalNoticeSms({
-                firstName: app.firstName,
-                applicationCode: app.applicationCode,
-                totalOverdue: collectionsOverdue,
-              }),
-              contactId: linkedContact?.id,
-              templateId: "collection-final-notice",
-            });
-          }
-
-          if (daysSinceEscalation >= defaultThreshold) {
-            await prisma.application.update({
-              where: { id: app.id },
-              data: { status: "DEFAULTED" },
-            });
-
-            // Create RiskProfile
-            const allPayments = await prisma.payment.findMany({
-              where: { applicationId: app.id },
-            });
-            const totalPaid = allPayments
-              .filter((p) => p.status === "PAID")
-              .reduce((sum, p) => sum + Number(p.amount) + Number(p.lateFee), 0);
-            const totalOwed = allPayments
-              .reduce((sum, p) => sum + Number(p.amount), 0);
-            const latePaymentCount = allPayments
-              .filter((p) => Number(p.lateFee) > 0).length;
-
-            if (app.ssnHash) {
-              await prisma.riskProfile.create({
-                data: {
-                  applicationId: app.id,
-                  ssnHash: app.ssnHash,
-                  platform: app.platform ?? "unknown",
-                  monthlyIncome: app.monthlyIncome ?? 0,
-                  loanAmount: app.loanAmount,
-                  loanTermMonths: app.loanTermMonths ?? 12,
-                  interestRate: app.interestRate ?? 0,
-                  outcome: "DEFAULTED",
-                  totalPaid,
-                  totalOwed,
-                  latePaymentCount,
-                  defaultedAt: new Date(),
-                },
-              });
-
-              // Check retrain threshold
-              const { checkAndTriggerRetrain } = await import("@/lib/risk-model");
-              await checkAndTriggerRetrain();
-            }
-
-            await logAudit({
-              action: "COLLECTIONS_ESCALATION",
-              entityType: "APPLICATION",
-              entityId: app.id,
-              performedBy: "system:collections",
-              details: { escalatedTo: "DEFAULTED", daysSinceCollections: daysSinceEscalation },
-            });
-          }
+        const allPayments = await prisma.payment.findMany({ where: { applicationId: app.id } });
+        const totalPaid = allPayments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + Number(p.amount) + Number(p.lateFee), 0);
+        const totalOwed = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+        const latePaymentCount = allPayments.filter((p) => Number(p.lateFee) > 0).length;
+        if (app.ssnHash) {
+          await prisma.riskProfile.create({
+            data: { applicationId: app.id, ssnHash: app.ssnHash, platform: app.platform ?? "unknown", monthlyIncome: app.monthlyIncome ?? 0, loanAmount: app.loanAmount, loanTermMonths: app.loanTermMonths ?? 12, interestRate: app.interestRate ?? 0, outcome: "DEFAULTED", totalPaid, totalOwed, latePaymentCount, defaultedAt: new Date() },
+          });
+          const { checkAndTriggerRetrain } = await import("@/lib/risk-model");
+          await checkAndTriggerRetrain();
         }
-        continue; // COLLECTIONS apps don't need warning checks
+        await logAudit({ action: "COLLECTIONS_ESCALATION", entityType: "APPLICATION", entityId: app.id, performedBy: "system:collections", details: { escalatedTo: "DEFAULTED", daysSinceCollections: daysSinceEscalation } });
+        defaulted++;
       }
+
+      continue;
+    }
+
+    // FUNDED/ACTIVE/REPAYING/LATE accounts escalate off real FAILED payments;
+    // nothing to do without one.
+    if (app.payments.length === 0) continue;
 
     const oldestFailedDue = app.payments[0].dueDate;
     const daysOverdue = Math.floor(
@@ -339,5 +343,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ warnings7, warnings14, escalated });
+  return NextResponse.json({ warnings7, warnings14, escalated, finalNotices, dunningSent, defaulted });
 }

@@ -155,3 +155,12 @@ export function collectionFinalNoticeSms(p: {
   const days = p.respondByDays ?? 7;
   return `PennyLime: FINAL NOTICE ${p.firstName}. ${money(p.totalOverdue)} remains unpaid. Respond within ${days} days or your account may be defaulted and referred for collection/legal action. ${statusLine(p.applicationCode)} ${OPT_OUT}`;
 }
+
+// Recurring collections reminder between the milestone notices.
+export function collectionDunningSms(p: {
+  firstName: string;
+  applicationCode: string;
+  totalOverdue: number;
+}): string {
+  return `PennyLime: ${p.firstName}, your ${money(p.totalOverdue)} balance is still unpaid and in collections. Please resolve it or contact us to arrange payment. ${statusLine(p.applicationCode)} ${OPT_OUT}`;
+}

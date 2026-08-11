@@ -5,6 +5,8 @@ import { DetailClient } from "./detail-client";
 import type { ApplicationWithDocuments } from "@/types";
 import { prisma } from "@/lib/db";
 import { getTeamMembers } from "@/actions/team";
+import { getLoanRules } from "@/lib/rules-engine";
+import { buildCollectionsTimeline } from "@/lib/collections-ladder";
 
 const TAB_STATUS: Record<string, string | null> = {
   All: null,
@@ -88,6 +90,43 @@ export default async function ApplicationDetailPage({
     notFound();
   }
 
+  // Collections/dunning script for this account: what was sent + what's next.
+  // Only build it for accounts that are on (or heading toward) the default flow.
+  let collections = null;
+  if (["LATE", "COLLECTIONS", "DEFAULTED"].includes(application.status)) {
+    const [events, payments, rules] = await Promise.all([
+      prisma.collectionEvent.findMany({
+        where: { applicationId: id },
+        orderBy: { createdAt: "asc" },
+        select: { eventType: true, notes: true, createdAt: true },
+      }),
+      prisma.payment.findMany({
+        where: { applicationId: id },
+        select: { status: true, amount: true, lateFee: true, dueDate: true },
+      }),
+      getLoanRules(),
+    ]);
+    const t = buildCollectionsTimeline({
+      status: application.status,
+      payments: payments.map((p) => ({
+        status: p.status,
+        amount: Number(p.amount),
+        lateFee: Number(p.lateFee),
+        dueDate: p.dueDate,
+      })),
+      events,
+      collectionsThresholdDays: rules.collections_threshold_days ? parseInt(rules.collections_threshold_days) : undefined,
+      defaultThresholdDays: rules.default_threshold_days ? parseInt(rules.default_threshold_days) : undefined,
+    });
+    collections = {
+      status: t.status,
+      outstanding: t.outstanding,
+      daysInCollections: t.daysInCollections,
+      sent: t.sent.map((s) => ({ label: s.label, channel: s.channel, date: s.date ? s.date.toISOString() : null, note: s.note })),
+      upcoming: t.upcoming.map((s) => ({ label: s.label, channel: s.channel, date: s.date ? s.date.toISOString() : null, note: s.note })),
+    };
+  }
+
   // Compute prev/next within the same filtered list the user came from, so
   // they can step through applications without bouncing back to the list.
   const statusFilter = from ? TAB_STATUS[from] : null;
@@ -108,6 +147,7 @@ export default async function ApplicationDetailPage({
       nextId={nextId}
       position={idx >= 0 ? { index: idx + 1, total: siblings.length } : null}
       crm={crm}
+      collections={collections}
     />
   );
 }

@@ -31,6 +31,7 @@ import { SalesforceRecord } from "@/components/admin/sf-record";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { EmailPanel } from "@/components/admin/email-panel";
 import { SmsThread } from "@/components/admin/sms-thread";
+import { CollectionsTimeline, type CollectionsView } from "@/components/admin/collections-timeline";
 
 /* ── helpers ── */
 
@@ -142,6 +143,7 @@ export function DetailClient({
   nextId = null,
   position = null,
   crm = null,
+  collections = null,
 }: {
   application: ApplicationWithDocuments;
   achAuth?: AchAuthSnapshot | null;
@@ -157,6 +159,7 @@ export function DetailClient({
         smsOptOutAt: string | null;
       })
     | null;
+  collections?: CollectionsView | null;
 }) {
   const router = useRouter();
   const fromQs = fromTab ? `?from=${encodeURIComponent(fromTab)}` : "";
@@ -532,6 +535,9 @@ export function DetailClient({
               />
             </div>
           )}
+
+          {/* ── Collections flow — sent + scheduled dunning ── */}
+          {collections && <CollectionsTimeline view={collections} />}
 
           {/* ── Income by platform (from bank statement) ── */}
           <IncomeByPlatformPanel
