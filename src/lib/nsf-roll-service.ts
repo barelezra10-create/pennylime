@@ -18,6 +18,7 @@ export const MAX_MISSED_BEFORE_COLLECTIONS = 3;
 export type RollOutcome =
   | { status: "rolled"; paymentId: string; replacementId: string; lateFeeId: string | null }
   | { status: "collections"; paymentId: string; reason: string }
+  | { status: "restored"; paymentId: string; reason: string }
   | { status: "skipped"; paymentId: string; reason: string };
 
 /**
@@ -78,6 +79,73 @@ export async function rollOneReturnedPayment(
   const app = payment.application;
   if (NON_ROLLABLE_APP_STATUSES.includes(app.status)) {
     return { status: "skipped", paymentId, reason: `app ${app.status}` };
+  }
+
+  // Returned-payoff guard: an early payoff (executePayoff) repurposes ONE
+  // installment into a single full-balance debit and WAIVES all the others. If
+  // that debit bounces we must NOT roll it + add a late fee — that would invent
+  // a large balance the borrower never actually agreed to owe. Instead undo the
+  // payoff: restore the waived installments and turn this row back into a normal
+  // installment, so the borrower simply resumes their original schedule.
+  const siblings = await prisma.payment.findMany({
+    where: { applicationId: app.id, isLateFee: false, id: { not: payment.id } },
+    select: { id: true, status: true, amount: true, principal: true, interest: true, dueDate: true },
+    orderBy: { dueDate: "asc" },
+  });
+  const waivedSiblings = siblings.filter((p) => p.status === "WAIVED");
+  const liveSiblings = siblings.filter(
+    (p) => !["PAID", "WAIVED", "CANCELED", "RETURNED", "REPLACED"].includes(p.status),
+  );
+  const isReturnedPayoff = waivedSiblings.length > 0 && liveSiblings.length === 0;
+  if (isReturnedPayoff) {
+    if (dryRun) {
+      return { status: "restored", paymentId, reason: "returned payoff — would resume normal schedule" };
+    }
+    const template = waivedSiblings[0]; // installments are uniform; use earliest as the shape
+    await prisma.$transaction(async (txn) => {
+      await txn.payment.updateMany({
+        where: { applicationId: app.id, status: "WAIVED", isLateFee: false },
+        data: { status: "PENDING" },
+      });
+      await txn.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: "PENDING",
+          amount: template.amount,
+          principal: template.principal,
+          interest: template.interest,
+          lateFee: 0,
+          dueDate: template.dueDate,
+          increaseTransferId: null,
+          increaseTransferStatus: null,
+          goachTransactionUuid: null,
+          increaseReturnReason: null,
+          processor: null,
+          rolledFromPaymentId: null,
+          rollCount: 0,
+        },
+      });
+    });
+    // Let the borrower know their payoff didn't go through and nothing extra was added.
+    const statusUrl = `https://pennylime.com/status/${app.applicationCode}`;
+    await sendEmail({
+      to: app.email,
+      subject: "Your payoff didn't go through — your normal payments are back on",
+      html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color:#0a0a0a;">
+        <h2 style="color:#15803d;">Your payoff was returned</h2>
+        <p>Hi ${app.firstName},</p>
+        <p>Your one-time payoff didn't clear with your bank, so we did not charge it. Nothing extra was added to your balance.</p>
+        <p>Your <strong>regular payment schedule has resumed</strong> exactly as before. You can view it here:</p>
+        <p><a href="${statusUrl}" style="color:#15803d;font-weight:600;">${statusUrl}</a></p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#6b7280;font-size:12px;">PennyLime</p>
+      </div>`,
+    }).catch(() => {});
+    await sendSms({
+      to: app.phone,
+      body: `PennyLime: ${app.firstName}, your payoff didn't clear so we didn't charge it and added nothing extra. Your regular payments have resumed. ${statusUrl} Reply STOP to opt out, HELP for help.`,
+    }).catch(() => {});
+    return { status: "restored", paymentId, reason: "payoff returned; normal schedule resumed" };
   }
 
   const rules = await getLoanRules();
@@ -294,7 +362,7 @@ export async function rollOneReturnedPayment(
 export async function sweepNsfRolls(
   limit = 100,
   opts: { dryRun?: boolean } = {},
-): Promise<{ rolled: number; collections: number; appIds: string[]; dryRun: boolean }> {
+): Promise<{ rolled: number; collections: number; restored: number; appIds: string[]; dryRun: boolean }> {
   const dryRun = opts.dryRun === true;
   // Only roll recent misses. This bounds the blast radius so the first run
   // after deploy doesn't retroactively roll (and late-fee + text) ancient
@@ -309,6 +377,7 @@ export async function sweepNsfRolls(
 
   let rolled = 0;
   let collections = 0;
+  let restored = 0;
   const appIds = new Set<string>();
   for (const p of returned) {
     try {
@@ -319,10 +388,13 @@ export async function sweepNsfRolls(
       } else if (outcome.status === "collections") {
         collections++;
         appIds.add(p.applicationId);
+      } else if (outcome.status === "restored") {
+        restored++;
+        appIds.add(p.applicationId);
       }
     } catch (err) {
       console.error(`[nsf-roll] sweep failed for ${p.id}:`, err);
     }
   }
-  return { rolled, collections, appIds: [...appIds], dryRun };
+  return { rolled, collections, restored, appIds: [...appIds], dryRun };
 }
