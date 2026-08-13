@@ -54,6 +54,12 @@ SCHEDULES = [
     # Daily 14:30 UTC — collections ladder: 7/14/30-day warnings, pre-legal
     # FINAL notice, and default escalation. Email + SMS.
     (30, 14, None, PAYMENT_URL + "/api/cron/collections", "collections"),
+
+    # Twice hourly (:10, :40) — pre-analyze pending applications' bank
+    # statements (income breakdown + monthly P&L) so admins never wait on a
+    # manual Re-analyze. Direct Railway URL: parsing can take minutes.
+    (10, None, None, PAYMENT_URL + "/api/cron/analyze-income", "analyze-income"),
+    (40, None, None, PAYMENT_URL + "/api/cron/analyze-income", "analyze-income"),
 ]
 
 
