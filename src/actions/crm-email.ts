@@ -41,6 +41,23 @@ export async function getCrmEmailTemplates(): Promise<CrmEmailTemplate[]> {
 <p>Thanks,<br>The PennyLime Team</p>`,
     },
     {
+      id: "request-bank-statements-180",
+      name: "Request bank statements (6 months / 180 days)",
+      description: "Ask for 6 months of statements for full underwriting.",
+      subject: "Next step on your PennyLime application, last 6 months of transactions",
+      body: `<p>Hi {{firstName}},</p>
+<p>Thanks for applying for a cash advance with <strong>PennyLime</strong>. We're reviewing your application now.</p>
+<p>To complete underwriting, we need to verify your deposit history. Could you send us the <strong>last 6 months (180 days) of transactions</strong> from the bank account where you receive your gig-platform deposits?</p>
+<p>Two easy options, whichever is simpler:</p>
+<ol>
+  <li><strong>PDF statements</strong>: log in to your bank's online portal and download the last 6 monthly statements as PDFs.</li>
+  <li><strong>CSV export</strong>: most banks let you export transactions to CSV from the activity or history page. Download the last 180 days.</li>
+</ol>
+<p>Please include all pages so the statements are complete. Just reply to this email with the files attached. Your statements are encrypted in transit and stored only as long as needed to fund and service your advance.</p>
+<p>Once we have those, we'll review and get back to you within 24 hours.</p>
+<p>Thanks,<br>The PennyLime Team</p>`,
+    },
+    {
       id: "request-id",
       name: "Request photo ID",
       description: "Asks for a clear photo of government-issued ID.",
