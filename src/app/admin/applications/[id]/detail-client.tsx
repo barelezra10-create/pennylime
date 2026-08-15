@@ -48,6 +48,16 @@ const REJECT_REASONS: Array<{ value: string; label: string; reason: string }> = 
     reason: "After reviewing your application, we're unable to approve the cash advance at this time. Our underwriting requires a track record of consistent weekly income, and the deposits on file are too irregular for us to confidently project repayment. We'd encourage you to reapply in 3 to 6 months once you have a steadier deposit pattern.",
   },
   {
+    value: "no-platform-income",
+    label: "No income from the platform reported",
+    reason: "After reviewing your linked bank activity, we weren't able to find deposits from the platform you told us you earn on. Because we size advances against verified earnings from your stated income source, we're unable to approve at this time. If your earnings land in a different account, please reapply and link the account where those deposits are received.",
+  },
+  {
+    value: "cashflow-coverage",
+    label: "Cash flow can't cover the payments",
+    reason: "After reviewing your income and expenses, your current cash flow doesn't leave enough room to comfortably cover the advance payments on top of your existing costs. We hold to this so we don't put you in a tight spot. You're welcome to reapply if your income increases or your monthly expenses come down.",
+  },
+  {
     value: "insufficient-income",
     label: "Income too low for amount requested",
     reason: "We're unable to approve the amount you requested at this time. The advance works out to a weekly remittance that's outside our affordability range based on your verified weekly income. We'd be happy to reconsider a smaller advance.",
@@ -66,6 +76,31 @@ const REJECT_REASONS: Array<{ value: string; label: string; reason: string }> = 
     value: "concurrent-debt",
     label: "Existing MCA / lender debits detected",
     reason: "After reviewing your bank statements, we noticed regular debits to other lenders. Our policy is to wait until those obligations are paid down before extending additional advances. You're welcome to reapply once they're settled.",
+  },
+  {
+    value: "income-declining",
+    label: "Income trending down",
+    reason: "Your recent deposits show a downward trend compared with earlier months. Because we project repayment from your earning pattern, we're unable to approve at this time. Please reapply once your weekly earnings stabilize or recover.",
+  },
+  {
+    value: "overdrafts",
+    label: "Frequent overdrafts / negative balances",
+    reason: "Your account shows frequent overdrafts or negative balances over the last 90 days, which makes scheduled debits likely to bounce. For that reason we're unable to approve at this time. You're welcome to reapply once your balances stay more consistently positive.",
+  },
+  {
+    value: "high-risk-spending",
+    label: "High-risk spending pattern",
+    reason: "After reviewing your bank activity, the spending pattern falls outside what our underwriting can approve at this time. You're welcome to reapply in 60 to 90 days.",
+  },
+  {
+    value: "unreadable-statements",
+    label: "Statements unreadable / couldn't verify income",
+    reason: "We weren't able to read the bank statements provided, so we couldn't verify your income. Please reapply and upload clear, complete PDF statements covering the last 90 days (all pages), or link your bank account directly.",
+  },
+  {
+    value: "existing-advance",
+    label: "Existing active advance",
+    reason: "Our records show you already have an active advance with us. We can only extend a new advance once your current balance is paid off. You're welcome to reapply once it's settled.",
   },
   {
     value: "identity",
