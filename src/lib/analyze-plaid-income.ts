@@ -60,14 +60,21 @@ export async function analyzeAndStorePlaidIncome(
       access_token: accessToken,
       start_date: start.toISOString().split("T")[0],
       end_date: now.toISOString().split("T")[0],
-      options: {
-        count: 500,
-        ...(app.plaidAccountId ? { account_ids: [app.plaidAccountId] } : {}),
-      },
+      options: { count: 500 },
     });
-    txs = resp.data.transactions;
+    // Restrict to the linked account after the fact (passing account_ids in the
+    // request itself 400s on some items).
+    txs = resp.data.transactions.filter(
+      (tx) => !app.plaidAccountId || tx.account_id === app.plaidAccountId,
+    );
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to fetch Plaid transactions" };
+    const data = (err as { response?: { data?: { error_code?: string; error_message?: string } } })?.response?.data;
+    const detail = data?.error_code
+      ? `Plaid ${data.error_code}: ${data.error_message ?? ""}`.trim()
+      : err instanceof Error
+        ? err.message
+        : "Failed to fetch Plaid transactions";
+    return { ok: false, error: detail };
   }
 
   if (!txs.length) return { ok: false, error: "No Plaid transactions in the last 90 days" };
