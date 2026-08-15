@@ -16,7 +16,19 @@ export type CollectionsView = {
   daysInCollections: number | null;
   sent: CollectionsStep[];
   upcoming: CollectionsStep[];
+  bankBalance?: number | null;
+  bankBalanceUpdatedAt?: string | null;
+  hasPlaid?: boolean;
 };
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return "just now";
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
@@ -54,6 +66,33 @@ export function CollectionsTimeline({ view }: { view: CollectionsView | null }) 
           </div>
         </div>
       </div>
+
+      {/* Live bank balance — refreshed daily so collections can see if there
+          are funds to actually collect. */}
+      {view.hasPlaid && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-[#e4e4e7] bg-[#fafafa] px-3.5 py-2.5">
+          <div className="flex items-center gap-2 text-[12px] text-[#52525b]">
+            <svg className="h-4 w-4 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
+            </svg>
+            Bank balance
+          </div>
+          <div className="text-right">
+            <span
+              className={`text-[15px] font-bold tabular-nums ${
+                view.bankBalance != null && view.bankBalance >= view.outstanding
+                  ? "text-[#15803d]"
+                  : "text-[#0a0a0a]"
+              }`}
+            >
+              {view.bankBalance != null ? money(view.bankBalance) : "n/a"}
+            </span>
+            <span className="ml-2 text-[11px] text-[#a1a1aa]">
+              {view.bankBalanceUpdatedAt ? `updated ${timeAgo(view.bankBalanceUpdatedAt)}` : "not refreshed yet"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Upcoming */}
       {view.upcoming.length > 0 && (

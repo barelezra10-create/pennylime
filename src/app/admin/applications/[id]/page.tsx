@@ -94,7 +94,7 @@ export default async function ApplicationDetailPage({
   // Only build it for accounts that are on (or heading toward) the default flow.
   let collections = null;
   if (["LATE", "COLLECTIONS", "DEFAULTED"].includes(application.status)) {
-    const [events, payments, rules] = await Promise.all([
+    const [events, payments, rules, bank] = await Promise.all([
       prisma.collectionEvent.findMany({
         where: { applicationId: id },
         orderBy: { createdAt: "asc" },
@@ -105,6 +105,10 @@ export default async function ApplicationDetailPage({
         select: { status: true, amount: true, lateFee: true, dueDate: true },
       }),
       getLoanRules(),
+      prisma.application.findUnique({
+        where: { id },
+        select: { bankBalance: true, lastPlaidRefresh: true, plaidAccessToken: true },
+      }),
     ]);
     const t = buildCollectionsTimeline({
       status: application.status,
@@ -124,6 +128,9 @@ export default async function ApplicationDetailPage({
       daysInCollections: t.daysInCollections,
       sent: t.sent.map((s) => ({ label: s.label, channel: s.channel, date: s.date ? s.date.toISOString() : null, note: s.note })),
       upcoming: t.upcoming.map((s) => ({ label: s.label, channel: s.channel, date: s.date ? s.date.toISOString() : null, note: s.note })),
+      bankBalance: bank?.bankBalance != null ? Number(bank.bankBalance) : null,
+      bankBalanceUpdatedAt: bank?.lastPlaidRefresh ? bank.lastPlaidRefresh.toISOString() : null,
+      hasPlaid: !!bank?.plaidAccessToken,
     };
   }
 

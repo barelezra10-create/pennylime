@@ -60,6 +60,10 @@ SCHEDULES = [
     # manual Re-analyze. Direct Railway URL: parsing can take minutes.
     (10, None, None, PAYMENT_URL + "/api/cron/analyze-income", "analyze-income"),
     (40, None, None, PAYMENT_URL + "/api/cron/analyze-income", "analyze-income"),
+
+    # Daily 13:00 UTC — refresh live Plaid bank balances for default-funnel
+    # accounts (COLLECTIONS/DEFAULTED/LATE) so collections can see who has funds.
+    (0, 13, None, PAYMENT_URL + "/api/cron/refresh-balances", "refresh-balances"),
 ]
 
 
