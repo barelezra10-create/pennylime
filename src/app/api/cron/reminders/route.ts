@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
     where: {
       status: "PENDING",
       dueDate: { gte: tomorrow, lte: tomorrowEnd },
+      // Collections/defaulted accounts are handled by the collections flow, not
+      // "your payment is coming up" reminders.
+      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] } },
     },
     include: {
       application: {
@@ -93,6 +96,7 @@ export async function POST(request: NextRequest) {
     where: {
       status: "PENDING",
       dueDate: { gte: inThreeDays, lte: inThreeDaysEnd },
+      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] } },
     },
     include: { application: { include: { payments: true } } },
   });
@@ -152,8 +156,10 @@ export async function POST(request: NextRequest) {
       isLateFee: false,
       dueDate: { gte: inTwoDays, lte: inTwoDaysEnd },
       // Borrower recently had a late payment: either still working off a rolled
-      // obligation, or the advance is currently flagged LATE.
+      // obligation, or the advance is currently flagged LATE. Never collections/
+      // defaulted — those get the collections flow, not payment reminders.
       application: {
+        status: { notIn: ["COLLECTIONS", "DEFAULTED"] },
         OR: [
           { payments: { some: { rollCount: { gt: 0 }, status: "PENDING" } } },
           { status: "LATE" },
