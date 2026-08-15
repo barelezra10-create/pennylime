@@ -1,7 +1,7 @@
 "use server";
 
 import { requireNonSupportRole } from "@/lib/auth-helpers";
-import { analyzeAndStoreIncome } from "@/lib/analyze-income";
+import { analyzeIncomeAuto } from "@/lib/analyze-income-auto";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -18,7 +18,7 @@ export async function reanalyzeIncome(
     const auth = await requireNonSupportRole();
     if (!auth.ok) return { ok: false, error: auth.error };
 
-    const result = await analyzeAndStoreIncome(applicationId);
+    const result = await analyzeIncomeAuto(applicationId);
     if (!result.ok) return result;
 
     revalidatePath(`/admin/applications/${applicationId}`);

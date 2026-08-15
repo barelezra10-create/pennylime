@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { prisma } from "@/lib/db";
-import { analyzeAndStoreIncome } from "@/lib/analyze-income";
+import { analyzeIncomeAuto } from "@/lib/analyze-income-auto";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -28,7 +28,13 @@ async function runSweep() {
       status: { in: PENDING_STATUSES },
       // Missing either the income breakdown or the monthly P&L.
       OR: [{ incomeByPlatformJson: null }, { monthlyPnlJson: null }],
-      documents: { some: { documentType: "BANK_STATEMENT_90D" } },
+      // ...and has a source to analyze: uploaded statements OR a Plaid link.
+      AND: {
+        OR: [
+          { documents: { some: { documentType: "BANK_STATEMENT_90D" } } },
+          { plaidAccessToken: { not: null } },
+        ],
+      },
     },
     select: { id: true, applicationCode: true },
     orderBy: { createdAt: "desc" },
@@ -39,7 +45,7 @@ async function runSweep() {
   for (const app of candidates) {
     if (Date.now() - started > DEADLINE_MS) break; // stay under the request budget
     try {
-      const r = await analyzeAndStoreIncome(app.id);
+      const r = await analyzeIncomeAuto(app.id);
       results.push({
         id: app.id,
         code: app.applicationCode ?? null,
