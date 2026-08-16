@@ -611,6 +611,9 @@ model Contact {
   application     Application? @relation(fields: [applicationId], references: [id])
   lastAppStep     Int?
   loanAmountIntent Decimal?
+  // Set when we email the applicant asking for something; cleared when they
+  // reply. Drives the "Waiting for reply" badge in the admin.
+  awaitingReplySince DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   tags                ContactTag[]

@@ -167,6 +167,14 @@ export async function POST(req: NextRequest) {
     return null;
   });
 
+  // The applicant replied, so we're no longer waiting on them. Clears the
+  // "Waiting for reply" badge (a genuine inbound, not auto-noise).
+  if (contact && initialStatus !== "ARCHIVED") {
+    await prisma.contact
+      .update({ where: { id: contact.id }, data: { awaitingReplySince: null } })
+      .catch(() => null);
+  }
+
   if (!contact) {
     // Still log to audit for historical compat; main inbox view is the
     // InboundEmail row created above.

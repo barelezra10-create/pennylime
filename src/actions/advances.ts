@@ -76,6 +76,7 @@ export type AdvanceRow = {
   totalCount: number; // total scheduled payments
   schedule: { n: number; amount: number; dueDate: string; status: string; paidAt: string | null }[];
   newEmailCount: number; // unread inbound emails from this applicant — "they replied"
+  awaitingReply: boolean; // we emailed them and are waiting on a reply
   // Per-advance money figures so the dashboard cards can be scoped to the
   // current stage tab (sum these over the filtered rows).
   moneyOut: number; // principal still out on this advance
@@ -128,7 +129,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       bankBalance: true,
       offeredMaxAmount: true,
       createdAt: true,
-      contact: { select: { id: true, source: true, referrer: true } },
+      contact: { select: { id: true, source: true, referrer: true, awaitingReplySince: true } },
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
@@ -293,6 +294,9 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
         paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : null,
       })),
       newEmailCount: app.contact?.id ? unreadByContact.get(app.contact.id) ?? 0 : 0,
+      awaitingReply:
+        !!app.contact?.awaitingReplySince &&
+        (app.contact?.id ? unreadByContact.get(app.contact.id) ?? 0 : 0) === 0,
       moneyOut: rowMoneyOut,
       profit: rowProfit,
       potentialProfit: rowPotentialProfit,

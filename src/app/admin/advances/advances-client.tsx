@@ -230,6 +230,14 @@ export function AdvancesClient({
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
                         </span>
                       )}
+                      {a.awaitingReply && (
+                        <span
+                          title="We emailed this applicant and are waiting for their reply"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ⏳ Waiting
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
                   </td>
@@ -281,6 +289,14 @@ export function AdvancesClient({
                           className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
+                        </span>
+                      )}
+                      {a.awaitingReply && (
+                        <span
+                          title="We emailed this applicant and are waiting for their reply"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ⏳ Waiting
                         </span>
                       )}
                     </div>
@@ -363,6 +379,14 @@ export function AdvancesClient({
                           className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
+                        </span>
+                      )}
+                      {a.awaitingReply && (
+                        <span
+                          title="We emailed this applicant and are waiting for their reply"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ⏳ Waiting
                         </span>
                       )}
                     </div>

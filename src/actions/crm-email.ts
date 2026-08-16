@@ -229,6 +229,12 @@ export async function sendCrmEmail(input: {
     },
   });
 
+  // We emailed the applicant, so we're now waiting on them. Cleared by the
+  // inbound-email webhook when they reply. Drives the "Waiting for reply" badge.
+  await prisma.contact
+    .update({ where: { id: contact.id }, data: { awaitingReplySince: new Date() } })
+    .catch(() => null);
+
   revalidatePath(`/admin/contacts/${contact.id}`);
   return { ok: true as const };
 }
