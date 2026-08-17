@@ -330,6 +330,32 @@ async function parseOneBatch(
   return parsed;
 }
 
+// Guardrail against AI runaway duplication. The Gemini parser occasionally gets
+// stuck repeating a single line (seen: 1,143 identical "$36 Overdraft Item Fee"
+// rows all stamped on one date, inflating expenses by ~$41K). No real account
+// has the same merchant/amount charged this many times on the same day, so cap
+// identical (date, amount, description) expense rows at a sane maximum.
+const MAX_IDENTICAL_EXPENSES = 8;
+function capDuplicateExpenses(summary: ParsedStatementSummary): ParsedStatementSummary {
+  const seen = new Map<string, number>();
+  const kept: ParsedExpense[] = [];
+  let dropped = 0;
+  for (const e of summary.expenses || []) {
+    const key = `${e.date}|${Math.round(Number(e.amount) * 100)}|${(e.description || "").trim().toLowerCase()}`;
+    const n = seen.get(key) || 0;
+    if (n < MAX_IDENTICAL_EXPENSES) {
+      kept.push(e);
+      seen.set(key, n + 1);
+    } else {
+      dropped++;
+    }
+  }
+  if (dropped > 0) {
+    console.warn(`[parseStatementsWithAI] capped ${dropped} runaway duplicate expense rows`);
+  }
+  return { ...summary, expenses: kept };
+}
+
 export async function parseStatementsWithAI(
   pdfs: Array<{ filename: string; buffer: Buffer; mimeType: string }>,
 ): Promise<ParsedStatementSummary> {
@@ -341,7 +367,7 @@ export async function parseStatementsWithAI(
   // (dropping whole months of deposits). Parse each statement in its own call
   // so no single response can truncate, then merge. This guarantees every
   // month shows up in the income-by-platform breakdown.
-  if (pdfs.length === 1) return parseOneBatch(ai, pdfs);
+  if (pdfs.length === 1) return capDuplicateExpenses(await parseOneBatch(ai, pdfs));
 
   // Parse all statements concurrently. Sequential calls tripled the wall time
   // and tripped the gateway request timeout ("unexpected response from the
@@ -354,5 +380,5 @@ export async function parseStatementsWithAI(
   });
   if (summaries.length === 0) throw new Error("All statements failed to parse");
 
-  return mergeSummaries(summaries);
+  return capDuplicateExpenses(mergeSummaries(summaries));
 }
