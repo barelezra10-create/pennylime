@@ -32,8 +32,9 @@ export async function POST(request: NextRequest) {
       status: "PENDING",
       dueDate: { gte: tomorrow, lte: tomorrowEnd },
       // Collections/defaulted accounts are handled by the collections flow, not
-      // "your payment is coming up" reminders.
-      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] } },
+      // "your payment is coming up" reminders. DAILY advances are excluded too:
+      // a per-payment reminder would fire every single day (spam).
+      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] }, paymentFrequency: { not: "DAILY" } },
     },
     include: {
       application: {
@@ -96,7 +97,9 @@ export async function POST(request: NextRequest) {
     where: {
       status: "PENDING",
       dueDate: { gte: inThreeDays, lte: inThreeDaysEnd },
-      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] } },
+      // Not for daily advances: "due in 3 days" is meaningless when they pay
+      // every day, and it would fire constantly.
+      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] }, paymentFrequency: { not: "DAILY" } },
     },
     include: { application: { include: { payments: true } } },
   });
@@ -160,6 +163,7 @@ export async function POST(request: NextRequest) {
       // defaulted — those get the collections flow, not payment reminders.
       application: {
         status: { notIn: ["COLLECTIONS", "DEFAULTED"] },
+        paymentFrequency: { not: "DAILY" },
         OR: [
           { payments: { some: { rollCount: { gt: 0 }, status: "PENDING" } } },
           { status: "LATE" },
