@@ -109,16 +109,19 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   const now = new Date();
   const GRACE_DAYS = 1;
   const hasFailedPayment = payments.some((p) => p.status === "RETURNED" || p.status === "FAILED");
+  // A PROCESSING debit is in-flight at the processor (GoACH settles in ~9 days),
+  // so it is NOT overdue; only a still-PENDING payment past due is.
   const hasOverduePending = payments.some(
     (p) =>
-      (p.status === "PENDING" || p.status === "PROCESSING") &&
+      p.status === "PENDING" &&
       p.dueDate &&
       easternDayDiff(now, p.dueDate) > GRACE_DAYS,
   );
   const hasPaidPayment = payments.some((p) => p.status === "PAID");
+  const hasProcessing = payments.some((p) => p.status === "PROCESSING");
   let nextStatus: string = app.status;
   if (hasFailedPayment || hasOverduePending) nextStatus = "LATE";
-  else if (hasPaidPayment) nextStatus = "REPAYING";
+  else if (hasPaidPayment || hasProcessing) nextStatus = "REPAYING";
   else nextStatus = "FUNDED";
   if (nextStatus !== app.status) {
     await prisma.application.update({ where: { id: applicationId }, data: { status: nextStatus } });

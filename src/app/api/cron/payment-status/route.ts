@@ -104,19 +104,19 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // If loan was LATE/FUNDED and all overdue payments caught up,
-        // transition to ACTIVE. FUNDED loans can have a first-pay
-        // failure that later recovers via cron retry — without this
-        // they'd stay FUNDED forever instead of moving into ACTIVE.
+        // transition to REPAYING (a payment just settled, so repayment is
+        // underway). We use REPAYING everywhere for "repayment in progress"
+        // rather than a separate ACTIVE label so the status stays consistent.
         const overduePayments = allPayments.filter(
           (p) => p.status === "FAILED" || p.status === "LATE"
         );
         const currentStatus = payment.application.status;
-        const canTransitionToActive =
+        const canTransitionToRepaying =
           overduePayments.length === 0 && (currentStatus === "LATE" || currentStatus === "FUNDED");
-        if (canTransitionToActive) {
+        if (canTransitionToRepaying) {
           await prisma.application.update({
             where: { id: payment.applicationId },
-            data: { status: "ACTIVE" },
+            data: { status: "REPAYING" },
           });
         }
       }

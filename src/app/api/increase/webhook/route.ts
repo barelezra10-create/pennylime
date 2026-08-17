@@ -257,13 +257,14 @@ async function refreshApplicationStatusFromPayments(applicationId: string): Prom
   );
   const isLate = hasFailedPayment || hasOverduePending;
   const hasPaidPayment = payments.some((p) => p.status === "PAID");
-  // A rolled-away miss counts as activity too — only a truly untouched advance
-  // stays FUNDED.
+  // A rolled-away miss or an in-flight (PROCESSING) debit counts as activity
+  // too — only a truly untouched advance stays FUNDED.
   const hasRolled = app.payments.some((p) => p.status === "REPLACED");
+  const hasProcessing = payments.some((p) => p.status === "PROCESSING");
 
   let nextStatus: string = app.status;
   if (isLate) nextStatus = "LATE";
-  else if (hasPaidPayment || hasRolled) nextStatus = "REPAYING";
+  else if (hasPaidPayment || hasRolled || hasProcessing) nextStatus = "REPAYING";
   else nextStatus = "FUNDED";
 
   if (nextStatus !== app.status) {

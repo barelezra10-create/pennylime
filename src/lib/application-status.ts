@@ -45,8 +45,12 @@ export async function refreshApplicationStatus(applicationId: string): Promise<v
   );
   const hasPaid = app.payments.some((p) => p.status === "PAID");
   const hasRolled = app.payments.some((p) => p.status === "REPLACED");
+  // A debit that's in-flight at the processor means repayment has started, so
+  // the account is REPAYING, not FUNDED (which means "no debit attempted yet").
+  const hasProcessing = app.payments.some((p) => p.status === "PROCESSING");
 
-  const next = hasFailed || overduePending ? "LATE" : hasPaid || hasRolled ? "REPAYING" : "FUNDED";
+  const next =
+    hasFailed || overduePending ? "LATE" : hasPaid || hasRolled || hasProcessing ? "REPAYING" : "FUNDED";
   if (next !== app.status) {
     await prisma.application.update({ where: { id: applicationId }, data: { status: next } });
   }
