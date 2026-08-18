@@ -5,15 +5,9 @@ import { evaluateStatementGate } from "@/lib/statement-gate";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const ALLOWED_TYPES = [
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-  "text/csv",
-  "application/vnd.ms-excel",
-  "application/csv",
-];
+// PDF statements only. Screenshots/photos can't be reliably parsed and were the
+// source of unreadable "no deposits" applications, so reject them at the gate.
+const ALLOWED_TYPES = ["application/pdf"];
 
 /**
  * Validate the applicant's uploaded bank statements at the document step,
@@ -51,7 +45,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         ok: false,
         reason: "missing",
-        message: "Please upload PDF, image, or CSV bank statements.",
+        message: "Please upload your bank statements as PDF files (not screenshots). Download the official PDF from your bank.",
       });
     }
 

@@ -80,8 +80,6 @@ const GIG_PLATFORMS = [
 const MIN_AMOUNT = 500;
 const MAX_AMOUNT = 10000;
 const STEP_SIZE = 100;
-const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
-const IMAGE_TYPES = ["image/png", "image/jpeg", "image/jpg"];
 
 const formSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -1351,7 +1349,9 @@ function StepSSN({
 /* ------------------------------------------------------------------ */
 /*  STEP DOCUMENTS (90-day statement for all + EIN for business owners) */
 /* ------------------------------------------------------------------ */
-const DOC_ACCEPT = ".pdf,.png,.jpg,.jpeg,.csv,application/pdf,image/png,image/jpeg,text/csv";
+// Bank statements must be the real PDF from the bank, not a phone screenshot,
+// so the AI parser can read every transaction. Images are rejected.
+const DOC_ACCEPT = ".pdf,application/pdf";
 const formatEin = (d: string) =>
   d.replace(/\D/g, "").slice(0, 9).replace(/(\d{2})(\d{0,7})/, (_m, a, b) => (b ? `${a}-${b}` : a));
 
@@ -1383,11 +1383,21 @@ function StepDocuments({
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     const incoming = Array.from(list);
-    // Cap total at 6 files; dedupe by name+size.
+    // Cap total at 6 files; dedupe by name+size. PDF only — reject screenshots
+    // and images, they can't be reliably parsed.
     const merged = [...statementFiles];
+    let rejected = 0;
     for (const f of incoming) {
       if (merged.length >= 6) break;
+      const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+      if (!isPdf) {
+        rejected++;
+        continue;
+      }
       if (!merged.some((m) => m.name === f.name && m.size === f.size)) merged.push(f);
+    }
+    if (rejected > 0) {
+      toast.error("Please upload the PDF bank statement, not a screenshot or photo.");
     }
     setStatementFiles(merged);
   };
@@ -1462,10 +1472,13 @@ function StepDocuments({
       {/* 6-month bank statements — required for everyone */}
       <div className="mt-8">
         <label className="mb-1.5 block text-[14px] font-semibold text-black">
-          Last 6 months of bank statements
+          Last 6 months of bank statements (PDF only)
         </label>
         <p className="mb-2 text-[12px] text-[#71717a]">
-          PDF, image, or CSV exports covering the last 6 months. You can add more than one file.
+          Upload the <strong>official PDF bank statement</strong> from the account where you
+          receive your {isBusiness ? "business" : "gig work"} income. Download it from your bank's
+          website or app. <strong>Screenshots and photos are not accepted.</strong> Add all 6
+          monthly statements.
         </p>
         <label
           className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#e4e4e7] bg-white px-4 py-7 text-center transition-all hover:border-[#15803d] hover:bg-[#f0fdf4]"
@@ -1473,8 +1486,8 @@ function StepDocuments({
           <svg className="mb-2 h-7 w-7 text-[#15803d]" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
           </svg>
-          <span className="text-[14px] font-semibold text-[#15803d]">Tap to upload statements</span>
-          <span className="mt-0.5 text-[12px] text-[#a1a1aa]">PDF, PNG, JPG, or CSV</span>
+          <span className="text-[14px] font-semibold text-[#15803d]">Tap to upload PDF statements</span>
+          <span className="mt-0.5 text-[12px] text-[#a1a1aa]">PDF only, no screenshots</span>
           <input
             type="file"
             accept={DOC_ACCEPT}
