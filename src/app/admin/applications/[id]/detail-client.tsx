@@ -533,7 +533,9 @@ export function DetailClient({
           </div>
         </div>
 
-        <div className="space-y-6">
+        {/* Section order is controlled with CSS order: applicant details + amount
+            first, then Plaid, then cash flow, then everything else (order 0). */}
+        <div className="flex flex-col gap-6">
           {/* ── Customer CRM — Salesforce Lightning-style record ── */}
           {crm && (
             <SalesforceRecord
@@ -574,14 +576,17 @@ export function DetailClient({
           {/* ── Collections flow — sent + scheduled dunning ── */}
           {collections && <CollectionsTimeline view={collections} />}
 
-          {/* ── Income by platform (from bank statement) ── */}
-          <IncomeByPlatformPanel
-            applicationId={application.id}
-            json={(application as any).incomeByPlatformJson ?? null}
-          />
+          {/* ── Cash flow (income + P&L from bank) ── (order 3) */}
+          <div className="order-[-2] flex flex-col gap-6">
+            {/* ── Income by platform (from bank statement) ── */}
+            <IncomeByPlatformPanel
+              applicationId={application.id}
+              json={(application as any).incomeByPlatformJson ?? null}
+            />
 
-          {/* ── Monthly P&L (from bank statement) ── */}
-          <MonthlyPLPanel json={(application as any).monthlyPnlJson ?? null} />
+            {/* ── Monthly P&L (from bank statement) ── */}
+            <MonthlyPLPanel json={(application as any).monthlyPnlJson ?? null} />
+          </div>
 
           {/* ── Evaluation Card ── */}
           {evaluation && (
@@ -649,8 +654,8 @@ export function DetailClient({
             </div>
           )}
 
-          {/* ── Applicant Info ── */}
-          <div className="bg-white rounded-[10px] p-6">
+          {/* ── Applicant Info ── (order 1: how much + details on them) */}
+          <div className="bg-white rounded-[10px] p-6 order-[-4]">
             <h2 className="text-[16px] font-bold tracking-[-0.02em] text-black mb-5 flex items-center gap-2">
               <svg className="h-5 w-5 text-[#a1a1aa]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -822,7 +827,8 @@ export function DetailClient({
             );
           })()}
 
-          {/* ── Plaid Insights ── */}
+          {/* ── Plaid Insights ── (order 2: bank / Plaid) */}
+          <div className="order-[-3]">
           <PlaidInsightsPanel
             application={{
               id: application.id,
@@ -853,6 +859,7 @@ export function DetailClient({
               formPhone: application.phone,
             }}
           />
+          </div>
 
           {/* ── Documents ── */}
           <DocumentsPanel
