@@ -55,6 +55,17 @@ export async function analyzeAndStorePlaidIncome(
   await prisma.application.update({
     where: { id: app.id },
     data: {
+      // Re-derive income from the hardened, sanitized parse (dedup + merchant
+      // exclusion + recompute) so the stored figure is the real one, not an
+      // inflated Plaid/AI number.
+      monthlyIncome: parsed.monthlyIncome,
+      totalIncome: parsed.monthlyIncome * 3,
+      avgWeeklyIncome: parsed.avgWeeklyIncome,
+      depositCount90d: parsed.depositCount,
+      largestDeposit: parsed.largestDeposit,
+      nsfCount90d: parsed.nsfCount ?? 0,
+      daysNegative90d: parsed.daysNegative ?? 0,
+      minBalance90d: parsed.minBalance == null ? null : parsed.minBalance,
       incomeByPlatformJson: JSON.stringify(breakdown),
       monthlyPnlJson: JSON.stringify(pnl),
     },
