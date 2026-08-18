@@ -11,8 +11,14 @@ export const maxDuration = 300;
 // does this best-effort; this sweep is the safety net that catches any that
 // failed inline (e.g. a transient Gemini error) plus the existing backlog.
 //
-// Underwriting stages only — no point analyzing funded/rejected records.
-const PENDING_STATUSES = ["PENDING", "APPLICANT", "APPROVED", "OFFER_ACCEPTED"];
+// Underwriting + servicing stages. The candidate query below only picks apps
+// MISSING a panel, so funded accounts (which already have panels) aren't
+// reprocessed — this just lets us re-analyze a servicing account whose analysis
+// was cleared for a re-parse. Rejected records are intentionally excluded.
+const PENDING_STATUSES = [
+  "PENDING", "APPLICANT", "APPROVED", "OFFER_ACCEPTED",
+  "FUNDED", "ACTIVE", "REPAYING", "LATE", "COLLECTIONS", "DEFAULTED",
+];
 
 // Pull a generous candidate set but stop starting new analyses once we near
 // the time budget, so a single invocation always returns cleanly (heavy,
