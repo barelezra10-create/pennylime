@@ -341,13 +341,20 @@ const SPENDING_MERCHANTS = [
   "chipotle", "subway", "popeyes", "kfc", "domino", "pizza hut", "starbucks",
   "dunkin", "panera", "in-n-out", "raising cane", "whataburger", "sonic drive",
   "arby", "dairy queen", "little caesars", "five guys", "jersey mike", "wingstop",
-  "walmart", "target", "costco", "dollar general", "dollar tree", "family dollar",
-  "best buy", "home depot", "lowe's", "ross ", "marshalls", "tj maxx", "walgreens",
-  "cvs", "rite aid", "shell", "chevron", "exxon", "mobil", "circle k", "7-eleven",
-  "speedway", "wawa", "quiktrip", "racetrac", "valero", "arco", "uber eats",
+  "walmart", "costco", "dollar general", "dollar tree", "family dollar",
+  "best buy", "home depot", "walgreens", "cvs", "rite aid", "shell", "chevron",
+  "exxon", "circle k", "7-eleven", "speedway", "quiktrip", "racetrac", "valero",
+];
+// Legit income that can be delivered via / near a merchant name (earned-wage-access
+// like DailyPay for a Target/Walmart worker, or a check deposited by phone). If the
+// line looks like income delivery, keep it even if a merchant word appears.
+const INCOME_DELIVERY = [
+  "dailypay", "payroll", "direct dep", "mobile deposit", "deposit@mobile",
+  "earnin", "moneylion", "tapcheck", "earned wage", "branch messenger",
 ];
 function isSpendingMerchant(d: ParsedDeposit): boolean {
   const s = `${d.description || ""} ${d.platform || ""}`.toLowerCase();
+  if (INCOME_DELIVERY.some((k) => s.includes(k))) return false;
   return SPENDING_MERCHANTS.some((k) => s.includes(k));
 }
 
