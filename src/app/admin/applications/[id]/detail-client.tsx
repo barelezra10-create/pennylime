@@ -728,6 +728,15 @@ export function DetailClient({
                   <p className="mt-1 text-sm text-black">{(application as any).businessType}</p>
                 </div>
               )}
+              {(application as any).advancePurpose && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Use of funds</p>
+                  <p className="mt-1 text-sm text-black">{(application as any).advancePurpose}</p>
+                  {(application as any).advancePurposeDetail && (
+                    <p className="mt-0.5 text-[12px] text-[#71717a]">{(application as any).advancePurposeDetail}</p>
+                  )}
+                </div>
+              )}
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">Term</p>
                 <p className="mt-1 text-sm text-black">

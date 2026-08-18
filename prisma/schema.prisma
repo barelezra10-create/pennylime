@@ -16,6 +16,11 @@ model Application {
   phone           String
   loanAmount      Decimal
   loanTermMonths  Int       @default(6)
+  // What the applicant says they need the advance for (a business-expense
+  // purpose picked in the funnel) + optional free-text detail. Used to confirm
+  // the advance is for business use.
+  advancePurpose       String?
+  advancePurposeDetail String?
   // Repayment cadence the borrower chose in the funnel. "WEEKLY"
   // (default) debits once a week; "DAILY" debits every business day
   // (Mon-Fri) for the same total. Read at offer acceptance to build

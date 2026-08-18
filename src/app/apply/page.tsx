@@ -377,19 +377,45 @@ function SidebarContent({ step, amount, loanTermMonths, totalSteps }: { step: nu
 /* ------------------------------------------------------------------ */
 /*  STEP 1, LOAN AMOUNT                                               */
 /* ------------------------------------------------------------------ */
+const ADVANCE_PURPOSES = [
+  "Inventory or supplies",
+  "Equipment or tools",
+  "Vehicle, fuel, or repairs",
+  "Marketing or advertising",
+  "Payroll or contractors",
+  "Rent or operating costs",
+  "Working capital (cover a slow period)",
+  "Other business expense",
+];
+
 function StepAmount({
   amount,
   setAmount,
   loanTermMonths,
   setLoanTermMonths,
+  advancePurpose,
+  setAdvancePurpose,
+  advancePurposeDetail,
+  setAdvancePurposeDetail,
   onNext,
 }: {
   amount: number;
   setAmount: (v: number) => void;
   loanTermMonths: number;
   setLoanTermMonths: (v: number) => void;
+  advancePurpose: string;
+  setAdvancePurpose: (v: string) => void;
+  advancePurposeDetail: string;
+  setAdvancePurposeDetail: (v: string) => void;
   onNext: () => void;
 }) {
+  const handleContinue = () => {
+    if (!advancePurpose) {
+      toast.error("Please tell us what you'll use the advance for");
+      return;
+    }
+    onNext();
+  };
   const pct = ((amount - MIN_AMOUNT) / (MAX_AMOUNT - MIN_AMOUNT)) * 100;
   // loanTermMonths field now holds WEEKS. Same compound 5%/week formula
   // as the sidebar so both quotes agree.
@@ -480,6 +506,33 @@ function StepAmount({
         <p className="mt-2 text-[11px] text-[#71717a]">Maximum term: 16 weeks (about 4 months)</p>
       </div>
 
+      {/* What's the advance for — confirm it's a business use */}
+      <div className="mt-8 w-full">
+        <label className="mb-1.5 block text-[14px] font-semibold text-black">
+          What will you use this advance for?
+        </label>
+        <p className="mb-2 text-[12px] text-[#71717a]">
+          Advances are for business use, funding your work or operating costs.
+        </p>
+        <select
+          value={advancePurpose}
+          onChange={(e) => setAdvancePurpose(e.target.value)}
+          className="w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3.5 text-[15px] text-[#0a0a0a] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20"
+        >
+          <option value="">Select a purpose...</option>
+          {ADVANCE_PURPOSES.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        <textarea
+          value={advancePurposeDetail}
+          onChange={(e) => setAdvancePurposeDetail(e.target.value.slice(0, 300))}
+          placeholder="Tell us a bit more (optional)"
+          rows={2}
+          className="mt-2 w-full rounded-xl border border-[#e4e4e7] bg-white px-4 py-3 text-[14px] text-[#0a0a0a] outline-none transition-all focus:border-[#15803d] focus:ring-2 focus:ring-[#15803d]/20 resize-none"
+        />
+      </div>
+
       {/* Weekly estimate */}
       <div className="mt-6 bg-[#f0fdf4] border border-[#dcfce7] rounded-xl p-4">
         <div className="flex items-center justify-between">
@@ -493,7 +546,7 @@ function StepAmount({
 
       <motion.button
         type="button"
-        onClick={onNext}
+        onClick={handleContinue}
         className="mt-8 w-full rounded-xl bg-[#15803d] min-h-[52px] py-3 text-[15px] font-semibold text-white transition-all hover:bg-[#166534] shadow-[0_6px_16px_-8px_rgba(21,128,61,0.5)]"
         whileTap={{ scale: 0.97 }}
       >
@@ -3484,6 +3537,8 @@ function ApplyPageInner() {
   // sessionStorage snapshot), plus the EIN for business owners.
   const [statementFiles, setStatementFiles] = useState<File[]>([]);
   const [ein, setEin] = useState(persisted?.ein ?? "");
+  const [advancePurpose, setAdvancePurpose] = useState("");
+  const [advancePurposeDetail, setAdvancePurposeDetail] = useState("");
   const [paymentFrequency, setPaymentFrequency] = useState<"WEEKLY" | "DAILY">(
     persisted?.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY",
   );
@@ -3634,6 +3689,8 @@ function ApplyPageInner() {
         phone: form.phone,
         loanAmount,
         loanTermMonths,
+        advancePurpose: advancePurpose || undefined,
+        advancePurposeDetail: advancePurposeDetail.trim() || undefined,
         // Persist the typed "Other" description (platform name for
         // contractors, business name for business owners) instead of the
         // bare "other" id, so it actually shows in admin. Validation on
@@ -3801,6 +3858,10 @@ function ApplyPageInner() {
                         setAmount={setLoanAmount}
                         loanTermMonths={loanTermMonths}
                         setLoanTermMonths={setLoanTermMonths}
+                        advancePurpose={advancePurpose}
+                        setAdvancePurpose={setAdvancePurpose}
+                        advancePurposeDetail={advancePurposeDetail}
+                        setAdvancePurposeDetail={setAdvancePurposeDetail}
                         onNext={() => setStep(step + 1)}
                       />
                     );
@@ -4024,6 +4085,10 @@ function ApplyPageInner() {
                   setAmount={setLoanAmount}
                   loanTermMonths={loanTermMonths}
                   setLoanTermMonths={setLoanTermMonths}
+                  advancePurpose={advancePurpose}
+                  setAdvancePurpose={setAdvancePurpose}
+                  advancePurposeDetail={advancePurposeDetail}
+                  setAdvancePurposeDetail={setAdvancePurposeDetail}
                   onNext={() => setStep(1)}
                 />
               ) : step === 1 ? (
