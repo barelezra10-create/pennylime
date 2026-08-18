@@ -344,6 +344,7 @@ export function AdvancesClient({
                 <th className="font-semibold px-4 py-2.5">Customer</th>
                 <th className="font-semibold px-4 py-2.5">Status</th>
                 <th className="font-semibold px-4 py-2.5 text-right">Amount</th>
+                <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
                 <th className="font-semibold px-4 py-2.5 text-center">Paid</th>
                 <th className="font-semibold px-4 py-2.5">Last payment</th>
                 <th className="font-semibold px-4 py-2.5">Next payment</th>
@@ -353,7 +354,7 @@ export function AdvancesClient({
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
               ) : rows.map((a) => {
                 const isFunded = ["Active", "Default"].includes(a.stageTab);
                 const showCharge = ["Active", "Default"].includes(a.stageTab);
@@ -405,6 +406,9 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">
                     {money(isFunded ? a.fundedAmount : a.requestedAmount)}
                   </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-[#52525b]">
+                    {a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">n/a</span>}
+                  </td>
                   <td className="px-4 py-3 text-center tabular-nums text-[#52525b]">
                     {a.paidCount}/{a.totalCount}
                   </td>
@@ -446,7 +450,7 @@ export function AdvancesClient({
                 </tr>
                 {expandedId === a.id && (
                   <tr className="bg-[#fafafa]">
-                    <td colSpan={8} className="px-6 py-4">
+                    <td colSpan={9} className="px-6 py-4">
                       <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">Payment schedule · {a.borrowerName}</div>
                       <div className="overflow-hidden rounded-lg border border-[#e4e4e7] bg-white">
                         <table className="w-full text-[12px]">
