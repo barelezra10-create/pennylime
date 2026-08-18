@@ -63,6 +63,8 @@ export type ParsedStatementSummary = {
 const SYSTEM_PROMPT = `You are an underwriting analyst at PennyLime, a cash-advance product for gig workers. You will be given one or more PDF bank statements. Your job is to extract a structured income summary.
 
 Rules:
+- CRITICAL: a "deposit" is ONLY a CREDIT that INCREASES the balance (money flowing INTO the account). A card purchase, debit, or withdrawal at a merchant is money OUT and must NEVER appear in "deposits", even if it looks similar. Restaurants (e.g. Jack in the Box, McDonald's), stores (Walmart, Target), gas stations (Shell, Chevron), and pharmacies (CVS, Walgreens) are places people SPEND money, never income sources. Never list them as income.
+- Do NOT repeat the same transaction more than once. Each line on the statement is one entry. Never emit hundreds of identical rows.
 - Only count INCOME deposits (gig-platform payouts: Uber, Lyft, DoorDash, Instacart, Amazon Flex, Grubhub, freelance/contract income, payroll). Skip transfers between accounts, refunds, ATM credits, ACH credits FROM the customer themselves.
 - Compute monthlyIncome as the average monthly income across the entire period covered (sum of income deposits ÷ number of months covered).
 - Compute avgWeeklyIncome = sum of income deposits ÷ number of weeks covered.
@@ -330,30 +332,78 @@ async function parseOneBatch(
   return parsed;
 }
 
-// Guardrail against AI runaway duplication. The Gemini parser occasionally gets
-// stuck repeating a single line (seen: 1,143 identical "$36 Overdraft Item Fee"
-// rows all stamped on one date, inflating expenses by ~$41K). No real account
-// has the same merchant/amount charged this many times on the same day, so cap
-// identical (date, amount, description) expense rows at a sane maximum.
-const MAX_IDENTICAL_EXPENSES = 8;
-function capDuplicateExpenses(summary: ParsedStatementSummary): ParsedStatementSummary {
+// Merchants no one earns INCOME from. The AI sometimes miscounts card purchases
+// (money OUT) as income deposits (seen: "JACK IN THE BOX" showing as 688 income
+// "deposits" of ~$3.58, inflating income). A deposit whose payer matches one of
+// these is a purchase, so it is NOT counted toward income.
+const SPENDING_MERCHANTS = [
+  "jack in the box", "mcdonald", "burger king", "wendy", "taco bell", "chick-fil",
+  "chipotle", "subway", "popeyes", "kfc", "domino", "pizza hut", "starbucks",
+  "dunkin", "panera", "in-n-out", "raising cane", "whataburger", "sonic drive",
+  "arby", "dairy queen", "little caesars", "five guys", "jersey mike", "wingstop",
+  "walmart", "target", "costco", "dollar general", "dollar tree", "family dollar",
+  "best buy", "home depot", "lowe's", "ross ", "marshalls", "tj maxx", "walgreens",
+  "cvs", "rite aid", "shell", "chevron", "exxon", "mobil", "circle k", "7-eleven",
+  "speedway", "wawa", "quiktrip", "racetrac", "valero", "arco", "uber eats",
+];
+function isSpendingMerchant(d: ParsedDeposit): boolean {
+  const s = `${d.description || ""} ${d.platform || ""}`.toLowerCase();
+  return SPENDING_MERCHANTS.some((k) => s.includes(k));
+}
+
+// Cap identical (date, amount, description) rows. The Gemini parser occasionally
+// gets stuck repeating a single line (seen: 1,143 identical "$36 Overdraft Item
+// Fee" rows all stamped on one date). No real account has the same merchant +
+// amount this many times on the same day, so cap at a sane maximum.
+const MAX_IDENTICAL = 8;
+function capIdentical<T extends { date: string; amount: number; description: string }>(
+  items: T[],
+  max = MAX_IDENTICAL,
+): { kept: T[]; dropped: number } {
   const seen = new Map<string, number>();
-  const kept: ParsedExpense[] = [];
+  const kept: T[] = [];
   let dropped = 0;
-  for (const e of summary.expenses || []) {
-    const key = `${e.date}|${Math.round(Number(e.amount) * 100)}|${(e.description || "").trim().toLowerCase()}`;
+  for (const it of items || []) {
+    const key = `${it.date}|${Math.round(Number(it.amount) * 100)}|${(it.description || "").trim().toLowerCase()}`;
     const n = seen.get(key) || 0;
-    if (n < MAX_IDENTICAL_EXPENSES) {
-      kept.push(e);
+    if (n < max) {
+      kept.push(it);
       seen.set(key, n + 1);
     } else {
       dropped++;
     }
   }
-  if (dropped > 0) {
-    console.warn(`[parseStatementsWithAI] capped ${dropped} runaway duplicate expense rows`);
+  return { kept, dropped };
+}
+
+// Sanitize a parsed summary before it feeds underwriting:
+//   1. cap runaway duplicate deposits + expenses (AI repetition),
+//   2. drop deposits from known spending merchants (purchases miscounted as income),
+//   3. RECOMPUTE the income figures from the cleaned deposit list rather than
+//      trusting the AI's self-reported monthlyIncome (which can disagree with
+//      its own deposits and includes the bad rows).
+function sanitizeSummary(summary: ParsedStatementSummary): ParsedStatementSummary {
+  const exp = capIdentical(summary.expenses ?? []);
+  const dep = capIdentical(summary.deposits ?? []);
+  const cleanedDeposits = dep.kept.map((d) =>
+    isSpendingMerchant(d) ? { ...d, classification: "unknown" as const } : d,
+  );
+  const excludedMerchant = dep.kept.filter(isSpendingMerchant).length;
+  if (exp.dropped || dep.dropped || excludedMerchant) {
+    console.warn(
+      `[parseStatementsWithAI] sanitized: capped ${exp.dropped} exp + ${dep.dropped} dep dupes, dropped ${excludedMerchant} merchant "deposits" from income`,
+    );
   }
-  return { ...summary, expenses: kept };
+  const f = computeIncomeFields(cleanedDeposits);
+  return {
+    ...summary,
+    deposits: cleanedDeposits,
+    expenses: exp.kept,
+    monthlyIncome: f.monthlyIncome,
+    avgWeeklyIncome: f.avgWeeklyIncome,
+    depositCount: f.depositCount,
+    largestDeposit: f.largestDeposit,
+  };
 }
 
 export async function parseStatementsWithAI(
@@ -367,7 +417,7 @@ export async function parseStatementsWithAI(
   // (dropping whole months of deposits). Parse each statement in its own call
   // so no single response can truncate, then merge. This guarantees every
   // month shows up in the income-by-platform breakdown.
-  if (pdfs.length === 1) return capDuplicateExpenses(await parseOneBatch(ai, pdfs));
+  if (pdfs.length === 1) return sanitizeSummary(await parseOneBatch(ai, pdfs));
 
   // Parse all statements concurrently. Sequential calls tripled the wall time
   // and tripped the gateway request timeout ("unexpected response from the
@@ -380,5 +430,5 @@ export async function parseStatementsWithAI(
   });
   if (summaries.length === 0) throw new Error("All statements failed to parse");
 
-  return capDuplicateExpenses(mergeSummaries(summaries));
+  return sanitizeSummary(mergeSummaries(summaries));
 }
