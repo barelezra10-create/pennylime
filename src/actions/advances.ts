@@ -178,9 +178,12 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
   }
 
   const advances: AdvanceRow[] = apps.map((app) => {
-    // REPLACED rows are rolled-away originals — the replacement payment carries
-    // that obligation, so exclude them from every total to avoid double counts.
-    const livePayments = app.payments.filter((p) => p.status !== "REPLACED");
+    // Void rows never count toward the balance: REPLACED (rolled-away originals,
+    // the replacement carries the obligation), CANCELED (voided, e.g. a reversed
+    // payoff), and WAIVED (collapsed into a payoff). Counting them double-billed
+    // accounts (seen: a canceled roll + late fee inflating outstanding).
+    const VOID_STATUSES = ["REPLACED", "CANCELED", "WAIVED"];
+    const livePayments = app.payments.filter((p) => !VOID_STATUSES.includes(p.status));
     const unpaid = livePayments.filter((p) => p.status !== "PAID" && !p.paidAt);
     const outstanding = unpaid.reduce((s, p) => s + num(p.amount) + num(p.lateFee), 0);
     const paidPayments = livePayments.filter((p) => p.status === "PAID" || p.paidAt);
