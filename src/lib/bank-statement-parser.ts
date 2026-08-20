@@ -78,7 +78,7 @@ Rules:
 Expenses (money OUT):
 - Also extract EVERY withdrawal / debit / money-out transaction into "expenses" with a POSITIVE dollar amount: card purchases, ACH debits, bill payments, loan/advance payments, subscriptions, transfers out (Zelle/Venmo/CashApp out), and ATM/cash withdrawals.
 - Tag each expense with "category", which MUST be EXACTLY one of this fixed list: "Fuel / Gas", "Vehicle & Transport", "Groceries", "Food & Dining", "Housing / Rent", "Utilities & Phone", "Insurance", "Loan & Debt Payments", "Subscriptions", "Shopping / Retail", "Transfers", "ATM / Cash", "Other". Use the merchant/description to choose (e.g. "SHELL OIL" -> "Fuel / Gas", "GEICO" -> "Insurance", "AFFIRM PAYMENT" or "CASH ADVANCE" -> "Loan & Debt Payments", "NETFLIX" -> "Subscriptions", "WALMART" -> "Groceries", "ZELLE TO ..." -> "Transfers", "ATM WITHDRAWAL" -> "ATM / Cash"). Only use "Other" when nothing else fits.
-- Do NOT put income in "expenses" and do NOT put money-out in "deposits". Return expenses sorted oldest first.
+- "expenses" must contain ONLY money that LEFT the account (debits / withdrawals / purchases). NEVER put a deposit, credit, refund received, earnings, payout, or direct/mobile deposit in "expenses" — those are money IN and belong in "deposits". Do NOT put money-out in "deposits". Return expenses sorted oldest first.
 
 Risk signals (how often this account bounces or runs dry — critical for lending):
 - "nsfCount": count EVERY fee line indicating a bounce or negative balance across all statements: "NSF FEE", "NON-SUFFICIENT FUNDS", "OVERDRAFT FEE", "OD FEE", "RETURNED ITEM FEE", "INSUFFICIENT FUNDS FEE", "UNCOLLECTED FUNDS". Count each occurrence. 0 if none.
@@ -394,6 +394,10 @@ const GIG_INCOME_PATTERNS = [
   /instant\s*pay/i,
   /(driver|courier|delivery)\s*(pay|payout|earnings)/i,
   /weekly\s*payout/i,
+  /\bpayout\b/i,
+  /direct\s*dep(osit)?/i,
+  /mobile\s*deposit/i,
+  /remote\s*deposit/i,
 ];
 function looksLikeGigIncome(desc: string): boolean {
   return GIG_INCOME_PATTERNS.some((r) => r.test(desc || ""));

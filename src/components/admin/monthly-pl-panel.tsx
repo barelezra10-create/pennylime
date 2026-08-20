@@ -105,7 +105,8 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                 </td>
               </tr>
               {data!.expenseCategories.map((row) => {
-                const items = row.items ?? [];
+                // Show the drill-down line items by date (most recent first).
+                const items = [...(row.items ?? [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
                 const canExpand = items.length > 0;
                 const isOpen = !!expanded[row.category];
                 return (
