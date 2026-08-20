@@ -18,6 +18,7 @@ export const maxDuration = 300;
 const PENDING_STATUSES = [
   "PENDING", "APPLICANT", "APPROVED", "OFFER_ACCEPTED",
   "FUNDED", "ACTIVE", "REPAYING", "LATE", "COLLECTIONS", "DEFAULTED",
+  "UNQUALIFIED",
 ];
 
 // Pull a generous candidate set but stop starting new analyses once we near
