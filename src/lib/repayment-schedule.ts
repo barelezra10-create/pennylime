@@ -25,7 +25,9 @@ export interface ScheduleInput {
   preferredChargeDay?: number | null;
 }
 
-const FIRST_PAYMENT_BUFFER_DAYS = 3;
+// Payments never start until this many BUSINESS days after the advance is
+// accepted, so the borrower has the funds and a few days of runway first.
+const FIRST_PAYMENT_BUSINESS_DAYS = 5;
 const BUSINESS_DAYS_PER_WEEK = 5;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -43,23 +45,34 @@ function nextBusinessDay(d: Date): Date {
   return x;
 }
 
+// Advance `n` business days (Mon-Fri) from `d`; always lands on a business day.
+function addBusinessDays(d: Date, n: number): Date {
+  let x = new Date(d);
+  let added = 0;
+  while (added < n) {
+    x = addDays(x, 1);
+    if (!isWeekend(x)) added++;
+  }
+  return x;
+}
+
 /**
- * First-debit anchor. Leaves ACH disbursement time to clear
- * (FIRST_PAYMENT_BUFFER_DAYS), and for weekly snaps onto the borrower's
- * preferredChargeDay when we have one.
+ * First-debit anchor. Never sooner than FIRST_PAYMENT_BUSINESS_DAYS business
+ * days after acceptance (funds clear + runway), and for weekly snaps onto the
+ * borrower's preferredChargeDay when we have one.
  */
 function firstDueDate(input: ScheduleInput): Date {
   const start = new Date(input.startDate);
+  // Earliest possible first debit: 5 business days out (already a business day).
+  const earliest = addBusinessDays(start, FIRST_PAYMENT_BUSINESS_DAYS);
   if (input.frequency === "WEEKLY" && input.preferredChargeDay != null) {
-    const targetDay = input.preferredChargeDay;
-    let dayOffset = (targetDay - start.getDay() + 7) % 7;
-    if (dayOffset < FIRST_PAYMENT_BUFFER_DAYS) dayOffset += 7;
-    return addDays(start, dayOffset);
+    // Snap forward from `earliest` to the borrower's preferred weekday.
+    let due = new Date(earliest);
+    while (due.getDay() !== input.preferredChargeDay) due = addDays(due, 1);
+    return due;
   }
-  let due = addDays(start, FIRST_PAYMENT_BUFFER_DAYS);
-  // Daily debits must land on a business day.
-  if (input.frequency === "DAILY" && isWeekend(due)) due = nextBusinessDay(due);
-  return due;
+  // Daily / no preferred day: the 5th business day.
+  return earliest;
 }
 
 export function generateRepaymentSchedule(input: ScheduleInput): ScheduleRow[] {
