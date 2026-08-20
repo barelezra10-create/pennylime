@@ -66,6 +66,7 @@ Rules:
 - CRITICAL: a "deposit" is ONLY a CREDIT that INCREASES the balance (money flowing INTO the account). A card purchase, debit, or withdrawal at a merchant is money OUT and must NEVER appear in "deposits", even if it looks similar. Restaurants (e.g. Jack in the Box, McDonald's), stores (Walmart, Target), gas stations (Shell, Chevron), and pharmacies (CVS, Walgreens) are places people SPEND money, never income sources. Never list them as income.
 - Do NOT repeat the same transaction more than once. Each line on the statement is one entry. Never emit hundreds of identical rows.
 - Only count INCOME deposits (gig-platform payouts: Uber, Lyft, DoorDash, Instacart, Amazon Flex, Grubhub, freelance/contract income, payroll). Skip transfers between accounts, refunds, ATM credits, ACH credits FROM the customer themselves.
+- Lines labeled "Trip Earnings", "Trip Fare", "Instant Pay", "Weekly Payout", "Driver/Courier Pay", or "Earnings" are gig INCOME (money IN) and belong in "deposits", NEVER in "expenses".
 - Compute monthlyIncome as the average monthly income across the entire period covered (sum of income deposits ÷ number of months covered).
 - Compute avgWeeklyIncome = sum of income deposits ÷ number of weeks covered.
 - Estimate the pay cadence based on the deposit pattern.
@@ -383,29 +384,63 @@ function capIdentical<T extends { date: string; amount: number; description: str
   return { kept, dropped };
 }
 
+// Gig EARNINGS the AI sometimes files as expenses (seen: 109 "Trip Earnings"
+// lines dumped into Other expenses, inflating spend and undercounting income,
+// which can wrongly disqualify a driver). These are money IN, so move them back
+// to income.
+const GIG_INCOME_PATTERNS = [
+  /trip\s*(earnings|fare|pay|payment)/i,
+  /\bearnings\b/i,
+  /instant\s*pay/i,
+  /(driver|courier|delivery)\s*(pay|payout|earnings)/i,
+  /weekly\s*payout/i,
+];
+function looksLikeGigIncome(desc: string): boolean {
+  return GIG_INCOME_PATTERNS.some((r) => r.test(desc || ""));
+}
+
 // Sanitize a parsed summary before it feeds underwriting:
 //   1. cap runaway duplicate deposits + expenses (AI repetition),
-//   2. drop deposits from known spending merchants (purchases miscounted as income),
-//   3. RECOMPUTE the income figures from the cleaned deposit list rather than
-//      trusting the AI's self-reported monthlyIncome (which can disagree with
-//      its own deposits and includes the bad rows).
+//   2. move gig-earnings lines miscounted as expenses back to income,
+//   3. drop deposits from known spending merchants (purchases miscounted as income),
+//   4. RECOMPUTE the income figures from the cleaned deposit list rather than
+//      trusting the AI's self-reported monthlyIncome.
 function sanitizeSummary(summary: ParsedStatementSummary): ParsedStatementSummary {
   const exp = capIdentical(summary.expenses ?? []);
   const dep = capIdentical(summary.deposits ?? []);
+
+  // Split expenses: real spending vs gig-income the AI misfiled as an expense.
+  const realExpenses: ParsedExpense[] = [];
+  const movedToIncome: ParsedDeposit[] = [];
+  for (const e of exp.kept) {
+    if (looksLikeGigIncome(e.description)) {
+      movedToIncome.push({
+        date: e.date,
+        amount: Math.abs(Number(e.amount)) || 0,
+        description: e.description,
+        platform: (e.description || "").trim() || "Gig earnings",
+        classification: "income",
+      });
+    } else {
+      realExpenses.push(e);
+    }
+  }
+
   const cleanedDeposits = dep.kept.map((d) =>
     isSpendingMerchant(d) ? { ...d, classification: "unknown" as const } : d,
   );
+  const allDeposits = [...cleanedDeposits, ...movedToIncome];
   const excludedMerchant = dep.kept.filter(isSpendingMerchant).length;
-  if (exp.dropped || dep.dropped || excludedMerchant) {
+  if (exp.dropped || dep.dropped || excludedMerchant || movedToIncome.length) {
     console.warn(
-      `[parseStatementsWithAI] sanitized: capped ${exp.dropped} exp + ${dep.dropped} dep dupes, dropped ${excludedMerchant} merchant "deposits" from income`,
+      `[parseStatementsWithAI] sanitized: capped ${exp.dropped} exp + ${dep.dropped} dep dupes, dropped ${excludedMerchant} merchant deposits, moved ${movedToIncome.length} gig-earnings expenses back to income`,
     );
   }
-  const f = computeIncomeFields(cleanedDeposits);
+  const f = computeIncomeFields(allDeposits);
   return {
     ...summary,
-    deposits: cleanedDeposits,
-    expenses: exp.kept,
+    deposits: allDeposits,
+    expenses: realExpenses,
     monthlyIncome: f.monthlyIncome,
     avgWeeklyIncome: f.avgWeeklyIncome,
     depositCount: f.depositCount,
