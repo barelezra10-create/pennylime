@@ -58,6 +58,7 @@ export type AdvanceRow = {
   platform: string | null;
   termMonths: number;
   monthlyIncome: number | null;
+  unqualifiedReason: string | null; // why the applicant was marked UNQUALIFIED
   bankBalance: number | null;
   referral: string | null;
   requestedAmount: number;
@@ -126,6 +127,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       platform: true,
       loanTermMonths: true,
       monthlyIncome: true,
+      workVerificationJson: true,
       bankBalance: true,
       offeredMaxAmount: true,
       createdAt: true,
@@ -273,6 +275,14 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       platform: app.platform ?? null,
       termMonths: app.loanTermMonths,
       monthlyIncome: app.monthlyIncome != null ? num(app.monthlyIncome) : null,
+      unqualifiedReason: (() => {
+        if (app.status !== "UNQUALIFIED" || !(app as any).workVerificationJson) return null;
+        try {
+          return JSON.parse((app as any).workVerificationJson).reason ?? null;
+        } catch {
+          return null;
+        }
+      })(),
       bankBalance: app.bankBalance != null ? num(app.bankBalance) : null,
       referral: friendlySource(app.contact?.referrer ?? null, app.contact?.source ?? null),
       requestedAmount: num(app.loanAmount),

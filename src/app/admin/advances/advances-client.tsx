@@ -240,6 +240,11 @@ export function AdvancesClient({
                       )}
                     </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                    {a.unqualifiedReason && (
+                      <div className="mt-1 max-w-[320px] rounded bg-[#fff7ed] px-2 py-1 text-[11px] leading-snug text-[#b45309]">
+                        <span className="font-semibold">Why: </span>{a.unqualifiedReason}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{fmtDate(a.appliedAt)}</td>
                   <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
