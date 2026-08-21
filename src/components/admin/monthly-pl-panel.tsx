@@ -27,6 +27,12 @@ function fmtSigned(n: number): string {
   return r < 0 ? `-$${Math.abs(r).toLocaleString()}` : `$${r.toLocaleString()}`;
 }
 
+// Expenses are money OUT, always shown with a minus sign.
+function fmtNeg(n: number): string {
+  if (!n) return "-";
+  return `-$${Math.round(Math.abs(n)).toLocaleString()}`;
+}
+
 export function MonthlyPLPanel({ json }: { json: string | null }) {
   let data: MonthlyPL | null = null;
   if (json) {
@@ -138,11 +144,11 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                       </td>
                       {row.byMonth.map((bm) => (
                         <td key={bm.month} className="py-2 px-3 text-right text-[#52525b] tabular-nums whitespace-nowrap">
-                          {fmtMoney(bm.amount)}
+                          {fmtNeg(bm.amount)}
                         </td>
                       ))}
-                      <td className="py-2 px-3 text-right font-semibold text-[#0a0a0a] tabular-nums whitespace-nowrap">
-                        {fmtMoney(row.total)}
+                      <td className="py-2 px-3 text-right font-semibold text-[#b91c1c] tabular-nums whitespace-nowrap">
+                        {fmtNeg(row.total)}
                       </td>
                     </tr>
                     {isOpen && (
@@ -157,8 +163,8 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                                       {fmtDay(it.date)}
                                     </td>
                                     <td className="py-1 pr-3 text-[#52525b]">{it.description || "-"}</td>
-                                    <td className="py-1 text-right text-[#0a0a0a] tabular-nums whitespace-nowrap">
-                                      {fmtMoney(it.amount)}
+                                    <td className="py-1 text-right text-[#b91c1c] tabular-nums whitespace-nowrap">
+                                      {fmtNeg(it.amount)}
                                     </td>
                                   </tr>
                                 ))}
