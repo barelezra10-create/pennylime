@@ -77,10 +77,16 @@ export async function POST(request: NextRequest) {
     if (app.status === "COLLECTIONS") {
       const defaultThreshold = parseInt(rules.default_threshold_days ?? "90");
 
-      // Real outstanding = every unpaid payment (PENDING + FAILED), not just the
-      // FAILED include, so rolled-to-collections accounts show a true balance.
+      // Real outstanding = EVERY unpaid payment (PENDING, FAILED, RETURNED,
+      // PROCESSING), excluding only void rows (PAID/REPLACED/CANCELED/WAIVED).
+      // Was PENDING+FAILED only, which undercounted RETURNED bounces (a
+      // collections email showed ~$354 when the borrower actually owed $734).
       const unpaid = await prisma.payment.findMany({
-        where: { applicationId: app.id, status: { in: ["PENDING", "FAILED"] } },
+        where: {
+          applicationId: app.id,
+          status: { notIn: ["PAID", "REPLACED", "CANCELED", "WAIVED"] },
+          paidAt: null,
+        },
         select: { amount: true, lateFee: true },
       });
       const collectionsOverdue = unpaid.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
@@ -190,7 +196,17 @@ export async function POST(request: NextRequest) {
       (now.getTime() - oldestFailedDue.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const totalOverdue = app.payments.reduce(
+    // Full balance owed (not just the FAILED rows loaded above): every unpaid
+    // non-void payment, so warning emails show the true amount.
+    const unpaidAll = await prisma.payment.findMany({
+      where: {
+        applicationId: app.id,
+        status: { notIn: ["PAID", "REPLACED", "CANCELED", "WAIVED"] },
+        paidAt: null,
+      },
+      select: { amount: true, lateFee: true },
+    });
+    const totalOverdue = unpaidAll.reduce(
       (sum, p) => sum + Number(p.amount) + Number(p.lateFee),
       0
     );
