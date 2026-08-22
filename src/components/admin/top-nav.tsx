@@ -284,7 +284,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-[#e4e4e7]">
-      <div className="px-6">
+      <div className="px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-6">
             <Link href="/admin/dashboard" className="text-[15px] font-extrabold tracking-[-0.03em]">
@@ -413,7 +413,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
       {/* Sub-nav for active tab (hidden for the customer stage tabs) */}
       {activeTab.subnav.length > 0 && (
       <div className="border-t border-[#f4f4f5] bg-[#fafafa]">
-        <div className="px-6 py-2 flex items-center gap-1 overflow-x-auto">
+        <div className="px-4 sm:px-6 py-2 flex items-center gap-1 overflow-x-auto">
           {activeTab.subnav.map((s) => {
             const active = activeSubHref === s.href;
             return (

@@ -20,7 +20,7 @@ export default async function AdminLayout({
       <div className="min-h-screen bg-[#f8f8f6]">
         <AdminTopNav userName={session.user?.name || session.user?.email || "Admin"} />
         <CommandPalette />
-        <main className="p-6 lg:p-8 max-w-[1400px] mx-auto">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">{children}</main>
       </div>
     </DialerProvider>
   );

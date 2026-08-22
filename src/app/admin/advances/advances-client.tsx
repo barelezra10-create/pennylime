@@ -197,8 +197,121 @@ export function AdvancesClient({
         )}
       </div>
 
-      {/* Table */}
-      <div className="overflow-auto rounded-xl border border-[#e4e4e7] bg-white">
+      {/* Mobile card list (funnel on phone) */}
+      <div className="md:hidden space-y-3">
+        {rows.length === 0 ? (
+          <div className="rounded-xl border border-[#e4e4e7] bg-white p-6 text-center text-[13px] text-[#a1a1aa]">
+            No advances match.
+          </div>
+        ) : (
+          rows.map((a) => {
+            const isFunded = ["Active", "Default"].includes(a.stageTab);
+            const showCharge = ["Active", "Default"].includes(a.stageTab);
+            return (
+              <Link
+                key={a.id}
+                href={`/admin/applications/${a.id}?from=${filter}`}
+                className="block rounded-xl border border-[#e4e4e7] bg-white p-4 active:bg-[#fafafa]"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-black flex flex-wrap items-center gap-1.5">
+                      <span className="truncate">{a.borrowerName}</span>
+                      {a.newEmailCount > 0 && (
+                        <span className="inline-flex items-center rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                          ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
+                        </span>
+                      )}
+                      {a.awaitingReply && (
+                        <span className="inline-flex items-center rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                          ⏳ Waiting
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                  </div>
+                  <span
+                    className={`shrink-0 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[a.status] || "bg-[#f4f4f5] text-[#71717a]"}`}
+                  >
+                    {a.status}
+                  </span>
+                </div>
+
+                {a.daysOverdue > 0 && (
+                  <div className="mt-1 text-[11px] font-semibold text-[#b91c1c]">{a.daysOverdue} days overdue</div>
+                )}
+
+                {a.unqualifiedReason && (
+                  <div className="mt-2 rounded bg-[#fff7ed] px-2 py-1 text-[11px] leading-snug text-[#b45309]">
+                    <span className="font-semibold">Why: </span>
+                    {a.unqualifiedReason}
+                  </div>
+                )}
+
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[12px]">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">{isFunded ? "Advance" : "Requested"}</div>
+                    <div className="font-semibold tabular-nums">{money(isFunded ? a.fundedAmount : a.requestedAmount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">Monthly income</div>
+                    <div className="font-semibold tabular-nums">
+                      {a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">n/a</span>}
+                    </div>
+                  </div>
+                  {filter === "Approved" && a.approvedAmount != null && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">Approved</div>
+                      <div className="font-semibold tabular-nums text-[#15803d]">{money(a.approvedAmount)}</div>
+                    </div>
+                  )}
+                  {isFunded && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">Paid</div>
+                      <div className="font-semibold tabular-nums">{a.paidCount}/{a.totalCount}</div>
+                    </div>
+                  )}
+                  {isFunded && (
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">Outstanding</div>
+                      <div className="font-semibold tabular-nums">
+                        {a.outstanding > 0 ? money2(a.outstanding) : <span className="text-[#a1a1aa]">—</span>}
+                      </div>
+                    </div>
+                  )}
+                  {isFunded && a.nextPaymentId && (
+                    <div className="col-span-2">
+                      <div className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">Next payment</div>
+                      <div className="font-semibold tabular-nums">
+                        {money2(a.nextDueAmount)} <span className="text-[#a1a1aa] font-normal">· {fmtDate(a.nextDueDate)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {showCharge && (
+                  <div className="mt-3">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        chargeOne(a);
+                      }}
+                      disabled={!a.nextPaymentId || a.isProcessing || chargingId === a.id}
+                      className="w-full rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[13px] font-semibold py-2 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {chargingId === a.id ? "Charging…" : "Charge now"}
+                    </button>
+                  </div>
+                )}
+              </Link>
+            );
+          })
+        )}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="hidden md:block overflow-auto rounded-xl border border-[#e4e4e7] bg-white">
         {filter === "Pending" || filter === "Unqualified" ? (
           <table className="w-full text-[13px]">
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
