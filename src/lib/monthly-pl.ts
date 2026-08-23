@@ -69,6 +69,55 @@ function monthOf(dateIso: string): string | null {
   return m ? `${m[1]}-${m[2]}` : null;
 }
 
+// Known gig/payroll platforms, longest-first so "uber eats" wins over "uber".
+const KNOWN_PLATFORMS: [RegExp, string][] = [
+  [/uber\s*eats/i, "Uber Eats"],
+  [/uber/i, "Uber"],
+  [/lyft/i, "Lyft"],
+  [/doordash|door\s*dash/i, "DoorDash"],
+  [/grubhub|grub\s*hub/i, "Grubhub"],
+  [/instacart/i, "Instacart"],
+  [/amazon\s*flex/i, "Amazon Flex"],
+  [/postmates/i, "Postmates"],
+  [/shipt/i, "Shipt"],
+  [/\bspark\b/i, "Spark"],
+  [/gopuff|go\s*puff/i, "Gopuff"],
+  [/roadie/i, "Roadie"],
+  [/favor/i, "Favor"],
+  [/taskrabbit/i, "TaskRabbit"],
+  [/rover/i, "Rover"],
+];
+
+// Turn the (often noisy) listed platform labels into a short, deduped source
+// label like "Uber, DoorDash" instead of a giant concatenation of income types.
+function cleanRevenueSource(labels: string[]): string | null {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of labels) {
+    let matched = false;
+    for (const [re, name] of KNOWN_PLATFORMS) {
+      if (re.test(raw) && !seen.has(name)) {
+        seen.add(name);
+        out.push(name);
+        matched = true;
+      } else if (re.test(raw)) {
+        matched = true;
+      }
+    }
+    if (!matched) {
+      // Fall back to the first token of the label (before a comma/semicolon).
+      const first = (raw.split(/[,;]/)[0] || raw).trim();
+      if (first && !seen.has(first)) {
+        seen.add(first);
+        out.push(first);
+      }
+    }
+  }
+  if (out.length === 0) return null;
+  if (out.length > 4) return `${out.slice(0, 4).join(", ")} +${out.length - 4} more`;
+  return out.join(", ");
+}
+
 /**
  * Build a monthly profit-and-loss from the income-by-platform breakdown and
  * categorized expenses. Revenue counts ONLY the platform the applicant listed
@@ -83,7 +132,7 @@ export function buildMonthlyPL(
   const platforms = breakdown?.platforms ?? [];
   const listed = platforms.filter((p) => p.isListed);
   const revenueSources = listed.length > 0 ? listed : platforms;
-  const revenueSource = listed.length > 0 ? listed.map((p) => p.platform).join(", ") : null;
+  const revenueSource = listed.length > 0 ? cleanRevenueSource(listed.map((p) => p.platform)) : null;
 
   const monthSet = new Set<string>();
   const revenue: Record<string, number> = {};
