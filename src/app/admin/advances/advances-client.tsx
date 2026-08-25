@@ -26,6 +26,47 @@ const lastPayStyle = (s: string) => {
 
 type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default" | "Rejected" | "Unqualified";
 
+type SortKey =
+  | "borrowerName"
+  | "appliedAt"
+  | "platform"
+  | "monthlyIncome"
+  | "requestedAmount"
+  | "approvedAmount"
+  | "termMonths"
+  | "referral"
+  | "bankBalance"
+  | "status"
+  | "amount"
+  | "paidCount"
+  | "lastResult"
+  | "nextDue"
+  | "outstanding";
+type Sort = { key: SortKey; dir: "asc" | "desc" };
+
+// Comparable value for a given column. Missing numbers sort last on desc by
+// using -1; strings are lowercased for case-insensitive ordering.
+function sortVal(a: AdvanceRow, key: SortKey): number | string {
+  switch (key) {
+    case "borrowerName": return a.borrowerName.toLowerCase();
+    case "appliedAt": return new Date(a.appliedAt).getTime();
+    case "platform": return (a.platform || "").toLowerCase();
+    case "monthlyIncome": return a.monthlyIncome ?? -1;
+    case "requestedAmount": return a.requestedAmount;
+    case "approvedAmount": return a.approvedAmount ?? -1;
+    case "termMonths": return a.termMonths;
+    case "referral": return (a.referral || "").toLowerCase();
+    case "bankBalance": return a.bankBalance ?? -1;
+    case "status": return a.status;
+    case "amount": return ["Active", "Default"].includes(a.stageTab) ? a.fundedAmount : a.requestedAmount;
+    case "paidCount": return a.paidCount;
+    case "lastResult": return a.lastResult || "";
+    case "nextDue": return a.nextDueDate ? new Date(a.nextDueDate).getTime() : -1;
+    case "outstanding": return a.outstanding;
+    default: return 0;
+  }
+}
+
 const STATUS_STYLE: Record<string, string> = {
   ACTIVE: "bg-[#f0fdf4] text-[#15803d]",
   FUNDED: "bg-[#eff6ff] text-[#1d4ed8]",
@@ -60,6 +101,16 @@ export function AdvancesClient({
   const [bulkRunning, setBulkRunning] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sort, setSort] = useState<Sort | null>(null);
+
+  // Click a column header: asc -> desc -> back to default (null).
+  function toggleSort(key: SortKey) {
+    setSort((cur) => {
+      if (!cur || cur.key !== key) return { key, dir: "asc" };
+      if (cur.dir === "asc") return { key, dir: "desc" };
+      return null;
+    });
+  }
 
   // Servicing metrics + bulk charge only make sense on funded stages.
   const showServicing = ["Active", "Paid", "Default"].includes(filter);
@@ -75,12 +126,21 @@ export function AdvancesClient({
       }
       return true;
     });
-    // Pending/Unqualified: newest applications first.
-    if (filter === "Pending" || filter === "Unqualified") {
+    if (sort) {
+      out.sort((x, y) => {
+        const vx = sortVal(x, sort.key);
+        const vy = sortVal(y, sort.key);
+        let cmp: number;
+        if (typeof vx === "number" && typeof vy === "number") cmp = vx - vy;
+        else cmp = String(vx).localeCompare(String(vy));
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+    } else if (filter === "Pending" || filter === "Unqualified") {
+      // Default for the intake tabs: newest applications first.
       out.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
     }
     return out;
-  }, [advances, filter, search]);
+  }, [advances, filter, search, sort]);
 
   // Dashboard cards reflect ONLY the current tab — sum the money figures over
   // the filtered rows instead of the account-wide summary.
@@ -163,6 +223,24 @@ export function AdvancesClient({
     } finally {
       setDecidingId(null);
     }
+  }
+
+  function SortHeader({ label, k, align = "left" }: { label: string; k: SortKey; align?: "left" | "right" | "center" }) {
+    const active = sort?.key === k;
+    const arrow = active ? (sort!.dir === "asc" ? "↑" : "↓") : "";
+    const textAlign = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
+    const justify = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
+    return (
+      <th className={`font-semibold px-4 py-2.5 ${textAlign}`}>
+        <button
+          onClick={() => toggleSort(k)}
+          className={`inline-flex w-full items-center gap-1 ${justify} whitespace-nowrap hover:text-[#15803d] transition-colors ${active ? "text-[#15803d]" : ""}`}
+        >
+          {label}
+          <span className="text-[10px] w-2 inline-block">{arrow}</span>
+        </button>
+      </th>
+    );
   }
 
   return (
@@ -316,14 +394,14 @@ export function AdvancesClient({
           <table className="w-full text-[13px]">
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>
-                <th className="font-semibold px-4 py-2.5">Applicant</th>
-                <th className="font-semibold px-4 py-2.5">Applied</th>
-                <th className="font-semibold px-4 py-2.5">Where they work</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Requested</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Length</th>
-                <th className="font-semibold px-4 py-2.5">How they found us</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Plaid balance</th>
+                <SortHeader label="Applicant" k="borrowerName" />
+                <SortHeader label="Applied" k="appliedAt" />
+                <SortHeader label="Where they work" k="platform" />
+                <SortHeader label="Monthly income" k="monthlyIncome" align="right" />
+                <SortHeader label="Requested" k="requestedAmount" align="right" />
+                <SortHeader label="Length" k="termMonths" align="right" />
+                <SortHeader label="How they found us" k="referral" />
+                <SortHeader label="Plaid balance" k="bankBalance" align="right" />
                 <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
@@ -382,14 +460,14 @@ export function AdvancesClient({
           <table className="w-full text-[13px]">
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>
-                <th className="font-semibold px-4 py-2.5">Applicant</th>
-                <th className="font-semibold px-4 py-2.5">Where they work</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Requested</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Approved</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Length</th>
-                <th className="font-semibold px-4 py-2.5">How they found us</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Plaid balance</th>
+                <SortHeader label="Applicant" k="borrowerName" />
+                <SortHeader label="Where they work" k="platform" />
+                <SortHeader label="Monthly income" k="monthlyIncome" align="right" />
+                <SortHeader label="Requested" k="requestedAmount" align="right" />
+                <SortHeader label="Approved" k="approvedAmount" align="right" />
+                <SortHeader label="Length" k="termMonths" align="right" />
+                <SortHeader label="How they found us" k="referral" />
+                <SortHeader label="Plaid balance" k="bankBalance" align="right" />
                 <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
@@ -459,14 +537,14 @@ export function AdvancesClient({
           <table className="w-full text-[13px]">
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>
-                <th className="font-semibold px-4 py-2.5">Customer</th>
-                <th className="font-semibold px-4 py-2.5">Status</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Amount</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Monthly income</th>
-                <th className="font-semibold px-4 py-2.5 text-center">Paid</th>
-                <th className="font-semibold px-4 py-2.5">Last payment</th>
-                <th className="font-semibold px-4 py-2.5">Next payment</th>
-                <th className="font-semibold px-4 py-2.5 text-right">Outstanding</th>
+                <SortHeader label="Customer" k="borrowerName" />
+                <SortHeader label="Status" k="status" />
+                <SortHeader label="Amount" k="amount" align="right" />
+                <SortHeader label="Monthly income" k="monthlyIncome" align="right" />
+                <SortHeader label="Paid" k="paidCount" align="center" />
+                <SortHeader label="Last payment" k="lastResult" />
+                <SortHeader label="Next payment" k="nextDue" />
+                <SortHeader label="Outstanding" k="outstanding" align="right" />
                 <th className="font-semibold px-4 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
