@@ -11,6 +11,7 @@ import {
 } from "@/actions/applications";
 import { evaluateApplicationAction } from "@/actions/evaluation";
 import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
+import { sendBankUpdateLink } from "@/actions/bank-update";
 import { IncomeByPlatformPanel } from "@/components/admin/income-by-platform-panel";
 import { MonthlyPLPanel } from "@/components/admin/monthly-pl-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
@@ -303,6 +304,29 @@ export function DetailClient({
   /* SSN reveal */
   const [ssn, setSsn] = useState<string | null>(null);
   const [ssnLoading, setSsnLoading] = useState(false);
+
+  const [sendingBankLink, setSendingBankLink] = useState(false);
+  async function handleSendBankUpdate() {
+    if (!application.email) {
+      toast.error("This client has no email on file.");
+      return;
+    }
+    if (!confirm(`Email a secure bank-update link to ${application.email}? They'll reconnect their bank via Plaid and future payments will move to the new account.`)) return;
+    setSendingBankLink(true);
+    try {
+      const r = await sendBankUpdateLink(application.id);
+      if (r.ok) {
+        toast.success(`Bank-update link sent to ${r.sentTo} (link copied to clipboard)`);
+        try { await navigator.clipboard.writeText(r.url); } catch {}
+      } else {
+        toast.error(r.error);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to send link");
+    } finally {
+      setSendingBankLink(false);
+    }
+  }
 
   async function handleRevealSSN() {
     setSsnLoading(true);
@@ -859,6 +883,18 @@ export function DetailClient({
               formPhone: application.phone,
             }}
           />
+          <div className="mt-2 flex items-center justify-between gap-3 rounded-[10px] border border-[#e4e4e7] bg-white px-4 py-3">
+            <div className="text-[12px] text-[#71717a] leading-snug">
+              Client changed banks? Send a secure link to reconnect their bank via Plaid. Future payments move to the new account automatically.
+            </div>
+            <button
+              onClick={handleSendBankUpdate}
+              disabled={sendingBankLink}
+              className="shrink-0 rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[12px] font-semibold px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {sendingBankLink ? "Sending…" : "Change bank on file"}
+            </button>
+          </div>
           </div>
 
           {/* ── Documents ── */}

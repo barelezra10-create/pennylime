@@ -6,8 +6,17 @@ import { createReceiver, createBankAccount } from "@/lib/goach";
  * Ensure the application has a GoACH receiver + bank account, creating them
  * from the Plaid-verified routing/account on first use. Idempotent: cached
  * uuids on the Application are returned without re-creating.
+ *
+ * Pass { force: true } to (re)provision even when a bank account already
+ * exists — used when a customer changes the bank on file. GoACH bank accounts
+ * are immutable, so a change means creating a NEW bank account under the same
+ * receiver and repointing goachBankAccountUuid; future/pending debits then hit
+ * the new account automatically (they read this uuid live at charge time).
  */
-export async function ensureGoachBankAccount(applicationId: string): Promise<
+export async function ensureGoachBankAccount(
+  applicationId: string,
+  opts?: { force?: boolean },
+): Promise<
   { ok: true; receiverUuid: string; bankAccountUuid: string } | { ok: false; error: string }
 > {
   const app = await prisma.application.findUnique({
@@ -23,7 +32,7 @@ export async function ensureGoachBankAccount(applicationId: string): Promise<
     },
   });
   if (!app) return { ok: false, error: "Application not found" };
-  if (app.goachReceiverUuid && app.goachBankAccountUuid) {
+  if (!opts?.force && app.goachReceiverUuid && app.goachBankAccountUuid) {
     return { ok: true, receiverUuid: app.goachReceiverUuid, bankAccountUuid: app.goachBankAccountUuid };
   }
 

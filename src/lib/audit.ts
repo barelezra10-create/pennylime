@@ -25,7 +25,9 @@ export type AuditAction =
   | "CONTRACT_CANCELED"
   | "PORTAL_PREVIEW_AS_CUSTOMER"
   | "WITHDRAW_APPLICATION"
-  | "CANCEL_APPLICATION";
+  | "CANCEL_APPLICATION"
+  | "BANK_UPDATE_LINK_SENT"
+  | "CHANGE_BANK";
 
 export type AuditEntityType =
   | "APPLICATION"
