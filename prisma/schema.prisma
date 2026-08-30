@@ -1478,3 +1478,27 @@ model KnowledgeWaiter {
   @@unique([entryId, sessionId])
   @@index([sessionId])
 }
+
+// Careers / recruiting: candidates who apply through the public /hr page.
+model JobApplicant {
+  id              String    @id @default(uuid())
+  fullName        String
+  email           String
+  phone           String?
+  linkedin        String?
+  yearsExperience String?
+  mcaExperience   Boolean   @default(false)
+  message         String?
+  role            String    @default("Underwriter")
+  cvStoragePath   String
+  cvFileName      String
+  cvMimeType      String?
+  status          String    @default("NEW") // NEW, REVIEWING, INVITED, REJECTED, HIRED
+  invitedAt       DateTime?
+  proposedTimes   String?
+  notes           String?
+  createdAt       DateTime  @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}

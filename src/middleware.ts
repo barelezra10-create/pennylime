@@ -31,6 +31,7 @@ const ADMIN_PROTECTED = [
   "/admin/agent",
   "/admin/social",
   "/admin/tickets",
+  "/admin/hr",
 ];
 
 function generatePennyClickId(): string {

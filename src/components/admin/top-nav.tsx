@@ -126,6 +126,14 @@ const TABS: TopTab[] = [
       { href: "/admin/settings/tracking", label: "Voice settings" },
     ],
   },
+  {
+    id: "hiring",
+    label: "Hiring",
+    icon: "◇",
+    prefixes: ["/admin/hr"],
+    href: "/admin/hr",
+    subnav: [{ href: "/admin/hr", label: "Applicants" }],
+  },
 ];
 
 function findActiveTab(pathname: string): TopTab {
