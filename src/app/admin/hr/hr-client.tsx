@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { inviteApplicant, setApplicantStatus } from "@/actions/hr";
+import { inviteApplicant, setApplicantStatus, addApplicantByAdmin } from "@/actions/hr";
 
 export type ApplicantRow = {
   id: string;
@@ -43,6 +43,26 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
   const [times, setTimes] = useState("");
   const [note, setNote] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [savingNew, setSavingNew] = useState(false);
+
+  async function submitNew(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSavingNew(true);
+    try {
+      const fd = new FormData(e.currentTarget);
+      const r = await addApplicantByAdmin(fd);
+      if (r.ok) {
+        toast.success("Candidate added");
+        setAdding(false);
+        router.refresh();
+      } else toast.error(r.error);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add");
+    } finally {
+      setSavingNew(false);
+    }
+  }
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { ALL: rows.length };
@@ -90,20 +110,65 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
 
   return (
     <div>
-      {/* Filter tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-4">
-        {(["ALL", ...STATUSES] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
-              filter === s ? "bg-[#15803d] text-white" : "bg-white border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa]"
-            }`}
-          >
-            {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()} · {counts[s] || 0}
-          </button>
-        ))}
+      {/* Filter tabs + Add candidate */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {(["ALL", ...STATUSES] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilter(s)}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                filter === s ? "bg-[#15803d] text-white" : "bg-white border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa]"
+              }`}
+            >
+              {s === "ALL" ? "All" : s.charAt(0) + s.slice(1).toLowerCase()} · {counts[s] || 0}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => setAdding((v) => !v)}
+          className="rounded-lg bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 hover:bg-[#166534] transition-colors"
+        >
+          {adding ? "Close" : "+ Add candidate"}
+        </button>
       </div>
+
+      {adding && (
+        <form onSubmit={submitNew} className="mb-4 rounded-xl border border-[#e4e4e7] bg-white p-4 space-y-3">
+          <h3 className="text-[14px] font-bold text-black">Add a candidate + CV</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input name="fullName" required placeholder="Full name *" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="email" type="email" placeholder="Email" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="phone" placeholder="Phone" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="linkedin" placeholder="LinkedIn URL" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="yearsExperience" placeholder="Years experience" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <label className="flex items-center gap-2 text-[13px] text-[#3f3f46]">
+              <input type="checkbox" name="mcaExperience" className="h-4 w-4 accent-[#15803d]" />
+              Has MCA experience
+            </label>
+          </div>
+          <input name="message" placeholder="Note (optional)" className="w-full rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+          <div>
+            <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">CV / Resume * (PDF or Word)</label>
+            <input
+              name="cv"
+              type="file"
+              required
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="block w-full text-[13px] text-[#52525b] file:mr-3 file:rounded-md file:border-0 file:bg-[#15803d] file:px-3 file:py-1.5 file:text-white file:text-[13px] file:font-semibold hover:file:bg-[#166534]"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="submit" disabled={savingNew} className="rounded-md bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 hover:bg-[#166534] disabled:opacity-50 transition-colors">
+              {savingNew ? "Saving…" : "Save candidate"}
+            </button>
+            <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-[#e4e4e7] text-[#52525b] text-[12px] font-semibold px-3 py-1.5 hover:bg-[#fafafa] transition-colors">
+              Cancel
+            </button>
+            <span className="text-[11px] text-[#a1a1aa]">Tip: you can add candidates one at a time, repeat for each CV.</span>
+          </div>
+        </form>
+      )}
 
       {list.length === 0 ? (
         <div className="rounded-xl border border-[#e4e4e7] bg-white p-10 text-center text-[13px] text-[#a1a1aa]">

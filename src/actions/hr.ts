@@ -57,6 +57,54 @@ export async function submitJobApplication(
   return { ok: true };
 }
 
+/**
+ * Admin: manually add a candidate + CV to the pipeline (e.g. someone sourced
+ * off Indeed or referred). Same storage as the public form, but auth-gated and
+ * defaults to REVIEWING since a human is adding a known candidate.
+ */
+export async function addApplicantByAdmin(
+  formData: FormData,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  const fullName = String(formData.get("fullName") || "").trim();
+  const email = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const linkedin = String(formData.get("linkedin") || "").trim();
+  const yearsExperience = String(formData.get("yearsExperience") || "").trim();
+  const mcaExperience = formData.get("mcaExperience") === "on" || formData.get("mcaExperience") === "true";
+  const message = String(formData.get("message") || "").trim();
+  const file = formData.get("cv") as File | null;
+
+  if (!fullName) return { ok: false, error: "Enter a name." };
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: "That email looks invalid." };
+  if (!file || file.size === 0) return { ok: false, error: "Attach a CV." };
+  if (!CV_TYPES.includes(file.type)) return { ok: false, error: "CV must be a PDF or Word document." };
+  if (file.size > MAX_CV_BYTES) return { ok: false, error: "That file is too large (max 15MB)." };
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const cvStoragePath = await storage.upload(buffer, file.name);
+
+  await prisma.jobApplicant.create({
+    data: {
+      fullName,
+      email: email || "",
+      phone: phone || null,
+      linkedin: linkedin || null,
+      yearsExperience: yearsExperience || null,
+      mcaExperience,
+      message: message || null,
+      cvStoragePath,
+      cvFileName: file.name,
+      cvMimeType: file.type,
+      status: "REVIEWING",
+    },
+  });
+
+  return { ok: true };
+}
+
 /** Admin: change an applicant's pipeline status. */
 export async function setApplicantStatus(
   id: string,
