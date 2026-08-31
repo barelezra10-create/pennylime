@@ -6,6 +6,7 @@ import { requireNonSupportRole } from "@/lib/auth-helpers";
 import { sendEmail } from "@/lib/emails/send";
 import { interviewInviteEmail } from "@/lib/emails/interview-invite";
 import { logAudit } from "@/lib/audit";
+import { parseCv, type CvFields } from "@/lib/cv-parser";
 
 const CV_TYPES = [
   "application/pdf",
@@ -55,6 +56,28 @@ export async function submitJobApplication(
   });
 
   return { ok: true };
+}
+
+/**
+ * Admin: read a CV file and extract the candidate's details with Gemini so the
+ * add form can be prefilled. Does NOT save anything.
+ */
+export async function parseCvFromUpload(
+  formData: FormData,
+): Promise<{ ok: true; fields: CvFields } | { ok: false; error: string }> {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  const file = formData.get("cv") as File | null;
+  if (!file || file.size === 0) return { ok: false, error: "No CV attached." };
+  if (!CV_TYPES.includes(file.type)) return { ok: false, error: "CV must be a PDF or Word document." };
+  if (file.size > MAX_CV_BYTES) return { ok: false, error: "That file is too large (max 15MB)." };
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const fields = await parseCv(buffer, file.type);
+    return { ok: true, fields };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not read the CV." };
+  }
 }
 
 /**

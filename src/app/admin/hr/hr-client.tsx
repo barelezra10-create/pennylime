@@ -3,7 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { inviteApplicant, setApplicantStatus, addApplicantByAdmin } from "@/actions/hr";
+import { inviteApplicant, setApplicantStatus, addApplicantByAdmin, parseCvFromUpload } from "@/actions/hr";
+
+const EMPTY_NEW = { fullName: "", email: "", phone: "", linkedin: "", yearsExperience: "", mcaExperience: false, message: "" };
 
 export type ApplicantRow = {
   id: string;
@@ -45,6 +47,44 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [savingNew, setSavingNew] = useState(false);
+  const [nf, setNf] = useState({ ...EMPTY_NEW });
+  const [parsing, setParsing] = useState(false);
+
+  function openAdd() {
+    setNf({ ...EMPTY_NEW });
+    setAdding((v) => !v);
+  }
+
+  // Read the CV with AI as soon as it's picked, and prefill the fields.
+  async function onCvChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setParsing(true);
+    try {
+      const fd = new FormData();
+      fd.append("cv", file);
+      const r = await parseCvFromUpload(fd);
+      if (r.ok) {
+        const f = r.fields;
+        setNf((cur) => ({
+          fullName: f.fullName || cur.fullName,
+          email: f.email || cur.email,
+          phone: f.phone || cur.phone,
+          linkedin: f.linkedin || cur.linkedin,
+          yearsExperience: f.yearsExperience || cur.yearsExperience,
+          mcaExperience: f.mcaExperience || cur.mcaExperience,
+          message: f.summary || cur.message,
+        }));
+        toast.success("Read details from CV, review and save");
+      } else {
+        toast.error(r.error);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not read the CV");
+    } finally {
+      setParsing(false);
+    }
+  }
 
   async function submitNew(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -55,6 +95,7 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
       if (r.ok) {
         toast.success("Candidate added");
         setAdding(false);
+        setNf({ ...EMPTY_NEW });
         router.refresh();
       } else toast.error(r.error);
     } catch (err) {
@@ -126,7 +167,7 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
           ))}
         </div>
         <button
-          onClick={() => setAdding((v) => !v)}
+          onClick={openAdd}
           className="rounded-lg bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 hover:bg-[#166534] transition-colors"
         >
           {adding ? "Close" : "+ Add candidate"}
@@ -136,36 +177,40 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
       {adding && (
         <form onSubmit={submitNew} className="mb-4 rounded-xl border border-[#e4e4e7] bg-white p-4 space-y-3">
           <h3 className="text-[14px] font-bold text-black">Add a candidate + CV</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input name="fullName" required placeholder="Full name *" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
-            <input name="email" type="email" placeholder="Email" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
-            <input name="phone" placeholder="Phone" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
-            <input name="linkedin" placeholder="LinkedIn URL" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
-            <input name="yearsExperience" placeholder="Years experience" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
-            <label className="flex items-center gap-2 text-[13px] text-[#3f3f46]">
-              <input type="checkbox" name="mcaExperience" className="h-4 w-4 accent-[#15803d]" />
-              Has MCA experience
-            </label>
-          </div>
-          <input name="message" placeholder="Note (optional)" className="w-full rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
           <div>
-            <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">CV / Resume * (PDF or Word)</label>
+            <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">
+              CV / Resume * (PDF or Word) {parsing && <span className="text-[#15803d] font-normal">· reading…</span>}
+            </label>
             <input
               name="cv"
               type="file"
               required
+              onChange={onCvChange}
               accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="block w-full text-[13px] text-[#52525b] file:mr-3 file:rounded-md file:border-0 file:bg-[#15803d] file:px-3 file:py-1.5 file:text-white file:text-[13px] file:font-semibold hover:file:bg-[#166534]"
             />
+            <p className="mt-1 text-[11px] text-[#a1a1aa]">Pick the CV first, we read the name, email and experience from it automatically. Review before saving.</p>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input name="fullName" required value={nf.fullName} onChange={(e) => setNf({ ...nf, fullName: e.target.value })} placeholder="Full name *" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="email" type="email" value={nf.email} onChange={(e) => setNf({ ...nf, email: e.target.value })} placeholder="Email" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="phone" value={nf.phone} onChange={(e) => setNf({ ...nf, phone: e.target.value })} placeholder="Phone" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="linkedin" value={nf.linkedin} onChange={(e) => setNf({ ...nf, linkedin: e.target.value })} placeholder="LinkedIn URL" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <input name="yearsExperience" value={nf.yearsExperience} onChange={(e) => setNf({ ...nf, yearsExperience: e.target.value })} placeholder="Years experience" className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
+            <label className="flex items-center gap-2 text-[13px] text-[#3f3f46]">
+              <input type="checkbox" name="mcaExperience" checked={nf.mcaExperience} onChange={(e) => setNf({ ...nf, mcaExperience: e.target.checked })} className="h-4 w-4 accent-[#15803d]" />
+              Has MCA experience
+            </label>
+          </div>
+          <input name="message" value={nf.message} onChange={(e) => setNf({ ...nf, message: e.target.value })} placeholder="Note (optional)" className="w-full rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]" />
           <div className="flex items-center gap-2">
-            <button type="submit" disabled={savingNew} className="rounded-md bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 hover:bg-[#166534] disabled:opacity-50 transition-colors">
+            <button type="submit" disabled={savingNew || parsing} className="rounded-md bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 hover:bg-[#166534] disabled:opacity-50 transition-colors">
               {savingNew ? "Saving…" : "Save candidate"}
             </button>
             <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-[#e4e4e7] text-[#52525b] text-[12px] font-semibold px-3 py-1.5 hover:bg-[#fafafa] transition-colors">
               Cancel
             </button>
-            <span className="text-[11px] text-[#a1a1aa]">Tip: you can add candidates one at a time, repeat for each CV.</span>
+            <span className="text-[11px] text-[#a1a1aa]">Repeat for each CV.</span>
           </div>
         </form>
       )}
