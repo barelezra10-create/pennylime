@@ -167,6 +167,25 @@ export async function POST(req: NextRequest) {
     return null;
   });
 
+  // AI-draft a suggested reply for common timing questions ("how long does it
+  // take", "when will I hear back"). A human reviews + sends it from the inbox.
+  // Best-effort: never block inbound handling. Skip auto-noise (ARCHIVED).
+  if (inboundEmailRow && initialStatus !== "ARCHIVED") {
+    try {
+      const { maybeDraftReply } = await import("@/lib/support-autoresponder");
+      const firstName = (fromName || "").trim().split(/\s+/)[0] || undefined;
+      const draft = await maybeDraftReply(subject, bodyText, firstName);
+      if (draft) {
+        await prisma.inboundEmail.update({
+          where: { id: inboundEmailRow.id },
+          data: { aiDraftReply: draft.draft, aiDraftKind: draft.kind },
+        });
+      }
+    } catch (err) {
+      console.error("[inbound-email] AI draft failed:", err);
+    }
+  }
+
   // The applicant replied, so we're no longer waiting on them. Clears the
   // "Waiting for reply" badge (a genuine inbound, not auto-noise).
   if (contact && initialStatus !== "ARCHIVED") {

@@ -1,0 +1,2 @@
+ALTER TABLE "InboundEmail" ADD COLUMN IF NOT EXISTS "aiDraftReply" TEXT;
+ALTER TABLE "InboundEmail" ADD COLUMN IF NOT EXISTS "aiDraftKind" TEXT;

@@ -99,6 +99,8 @@ export type InboxMessageDetail = {
   receivedAt: string;
   status: string;
   repliedBy: string | null;
+  aiDraftReply: string | null;
+  aiDraftKind: string | null;
   contact: { id: string; firstName: string; lastName: string | null; email: string } | null;
   replies: { id: string; body: string; sentBy: string; createdAt: string }[];
 };
@@ -145,6 +147,8 @@ export async function getInboxMessage(id: string): Promise<InboxMessageDetail | 
     receivedAt: row.receivedAt.toISOString(),
     status: row.status,
     repliedBy: row.repliedBy,
+    aiDraftReply: row.aiDraftReply,
+    aiDraftKind: row.aiDraftKind,
     contact,
     replies: row.replies.map((r) => ({
       id: r.id,

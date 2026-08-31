@@ -9,6 +9,7 @@ import {
   getInboxMessage,
   setInboxStatus,
   convertInboxToContact,
+  replyToInboundEmail,
   type InboxRow,
   type InboxFilter,
   type InboxMessageDetail,
@@ -45,17 +46,37 @@ export function InboxClient({
   const [openId, setOpenId] = useState<string | null>(null);
   const [detail, setDetail] = useState<InboxMessageDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
   const [, startTransition] = useTransition();
 
   async function openMessage(id: string) {
     setOpenId(id);
     setLoadingDetail(true);
     setDetail(null);
+    setReplyText("");
     const m = await getInboxMessage(id);
     setDetail(m);
+    setReplyText(m?.aiDraftReply || "");
     setLoadingDetail(false);
     // Refresh list in background so the row's status updates to READ.
     startTransition(() => router.refresh());
+  }
+
+  async function sendReply() {
+    if (!detail || !replyText.trim()) return;
+    setSending(true);
+    try {
+      const r = await replyToInboundEmail(detail.id, replyText);
+      if (r.ok) {
+        toast.success("Reply sent");
+        setReplyText("");
+        setDetail({ ...detail, status: "REPLIED" });
+        startTransition(() => router.refresh());
+      } else toast.error(r.error);
+    } finally {
+      setSending(false);
+    }
   }
 
   async function handleArchive(id: string) {
@@ -250,6 +271,32 @@ export function InboxClient({
                     {detail.bodyText || "(empty)"}
                   </pre>
                 )}
+              </div>
+
+              {/* Reply composer (prefilled with the AI suggestion when present) */}
+              <div className="border-t border-[#e4e4e7] p-4">
+                {detail.aiDraftReply && (
+                  <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#f0fdf4] text-[#15803d] text-[11px] font-semibold px-2 py-0.5">
+                    ✨ AI suggested reply{detail.aiDraftKind ? ` (${detail.aiDraftKind})` : ""} — review, edit, then send
+                  </div>
+                )}
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  rows={detail.aiDraftReply ? 9 : 4}
+                  placeholder="Write a reply…"
+                  className="w-full rounded-lg border border-[#e4e4e7] px-3 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                />
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <button
+                    onClick={sendReply}
+                    disabled={sending || !replyText.trim()}
+                    className="rounded-lg bg-[#15803d] text-white text-[12px] font-semibold px-3.5 py-2 hover:bg-[#166534] disabled:opacity-50 transition-colors"
+                  >
+                    {sending ? "Sending…" : "Send reply"}
+                  </button>
+                  <span className="text-[11px] text-[#a1a1aa]">Sends from PennyLime, threaded to their email. Replies go to info@pennylime.com.</span>
+                </div>
               </div>
             </div>
           )}
