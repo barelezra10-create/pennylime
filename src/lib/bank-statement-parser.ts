@@ -10,11 +10,12 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// gemini-2.5-flash-lite is the most permissive recent model — accessible
-// on brand-new API keys that 403 on gemini-2.5-flash and 404 on the
-// deprecated gemini-2.0-flash. Supports PDF input natively. Override
-// with GEMINI_PARSE_MODEL on Railway if a more capable tier is approved.
-const MODEL = process.env.GEMINI_PARSE_MODEL || "gemini-2.5-flash-lite";
+// We try the stronger gemini-2.5-flash first (much better at income/expense
+// direction — e.g. not filing a check deposit as an expense) and fall back to
+// gemini-2.5-flash-lite if the key can't access it (older keys 403/404 on
+// flash). Override either with GEMINI_PARSE_MODEL / GEMINI_PARSE_FALLBACK_MODEL.
+const PRIMARY_MODEL = process.env.GEMINI_PARSE_MODEL || "gemini-2.5-flash";
+const FALLBACK_MODEL = process.env.GEMINI_PARSE_FALLBACK_MODEL || "gemini-2.5-flash-lite";
 
 let client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
@@ -78,7 +79,7 @@ Rules:
 Expenses (money OUT):
 - Also extract EVERY withdrawal / debit / money-out transaction into "expenses" with a POSITIVE dollar amount: card purchases, ACH debits, bill payments, loan/advance payments, subscriptions, transfers out (Zelle/Venmo/CashApp out), and ATM/cash withdrawals.
 - Tag each expense with "category", which MUST be EXACTLY one of this fixed list: "Fuel / Gas", "Vehicle & Transport", "Groceries", "Food & Dining", "Housing / Rent", "Utilities & Phone", "Insurance", "Loan & Debt Payments", "Subscriptions", "Shopping / Retail", "Transfers", "ATM / Cash", "Other". Use the merchant/description to choose (e.g. "SHELL OIL" -> "Fuel / Gas", "GEICO" -> "Insurance", "AFFIRM PAYMENT" or "CASH ADVANCE" -> "Loan & Debt Payments", "NETFLIX" -> "Subscriptions", "WALMART" -> "Groceries", "ZELLE TO ..." -> "Transfers", "ATM WITHDRAWAL" -> "ATM / Cash"). Only use "Other" when nothing else fits.
-- "expenses" must contain ONLY money that LEFT the account (debits / withdrawals / purchases). NEVER put a deposit, credit, refund received, earnings, payout, or direct/mobile deposit in "expenses" — those are money IN and belong in "deposits". Do NOT put money-out in "deposits". Return expenses sorted oldest first.
+- "expenses" must contain ONLY money that LEFT the account (debits / withdrawals / purchases). NEVER put a deposit, credit, refund received, earnings, payout, or direct/mobile deposit in "expenses" — those are money IN and belong in "deposits". This INCLUDES check deposits: a "CHECK DEPOSIT", "TELLER DEPOSIT", "CASH DEPOSIT", "ATM DEPOSIT", "MOBILE/REMOTE DEPOSIT", or "INCOMING ACH/WIRE" is money IN and belongs in "deposits", NEVER in "expenses". (A bare "CHECK #1234" with no "deposit" wording is usually a check the customer WROTE — that is money OUT, an expense.) Do NOT put money-out in "deposits". Return expenses sorted oldest first.
 
 Risk signals (how often this account bounces or runs dry — critical for lending):
 - "nsfCount": count EVERY fee line indicating a bounce or negative balance across all statements: "NSF FEE", "NON-SUFFICIENT FUNDS", "OVERDRAFT FEE", "OD FEE", "RETURNED ITEM FEE", "INSUFFICIENT FUNDS FEE", "UNCOLLECTED FUNDS". Count each occurrence. 0 if none.
@@ -287,19 +288,23 @@ async function parseOneBatch(
     text: `Extract the income summary from the ${pdfs.length === 1 ? "statement" : `${pdfs.length} statements`} above. Return JSON matching this schema:\n\n${RESPONSE_SCHEMA}`,
   });
 
-  const result = await ai.models.generateContent({
-    model: MODEL,
-    contents: [{ role: "user", parts }],
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      temperature: 0,
-      responseMimeType: "application/json",
-      // Statements with many small daily gig payouts produce a long deposit
-      // array. Give the model plenty of room so the JSON isn't cut off
-      // mid-array (which yields "Unterminated string" parse errors).
-      maxOutputTokens: 65536,
-    },
-  });
+  const config = {
+    systemInstruction: SYSTEM_PROMPT,
+    temperature: 0,
+    responseMimeType: "application/json",
+    // Statements with many small daily gig payouts produce a long deposit
+    // array. Give the model plenty of room so the JSON isn't cut off
+    // mid-array (which yields "Unterminated string" parse errors).
+    maxOutputTokens: 65536,
+  };
+  let result;
+  try {
+    result = await ai.models.generateContent({ model: PRIMARY_MODEL, contents: [{ role: "user", parts }], config });
+  } catch (err) {
+    // Older keys 403/404 on flash — fall back to the always-available lite tier.
+    console.warn(`[parseStatementsWithAI] ${PRIMARY_MODEL} failed (${err instanceof Error ? err.message : err}); falling back to ${FALLBACK_MODEL}`);
+    result = await ai.models.generateContent({ model: FALLBACK_MODEL, contents: [{ role: "user", parts }], config });
+  }
 
   const text = result.text;
   if (!text) throw new Error("Empty response from Gemini");
@@ -398,6 +403,20 @@ const GIG_INCOME_PATTERNS = [
   /direct\s*dep(osit)?/i,
   /mobile\s*deposit/i,
   /remote\s*deposit/i,
+  // Check / teller / cash deposits are money IN. The model sometimes files
+  // these into "expenses"; they are income (or at minimum not spending), so
+  // rescue them. Only explicit deposit phrasings — NOT a bare "check #1234",
+  // which on a statement is usually a check the customer WROTE (money out).
+  /check\s*deposit/i,
+  /deposit(ed)?\s*(of\s*)?check/i,
+  /teller\s*deposit/i,
+  /cash\s*deposit/i,
+  /atm\s*deposit/i,
+  /branch\s*deposit/i,
+  /counter\s*deposit/i,
+  /deposit\s*(ref|#|no\b)/i,
+  /incoming\s*(ach|wire|transfer)/i,
+  /\bach\s*credit\b/i,
 ];
 function looksLikeGigIncome(desc: string): boolean {
   return GIG_INCOME_PATTERNS.some((r) => r.test(desc || ""));
