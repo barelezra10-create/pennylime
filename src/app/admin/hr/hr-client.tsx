@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { inviteApplicant, setApplicantStatus, addApplicantByAdmin, parseCvFromUpload } from "@/actions/hr";
+import { scheduleInterview, setApplicantStatus, addApplicantByAdmin, parseCvFromUpload } from "@/actions/hr";
 
 const EMPTY_NEW = { fullName: "", email: "", phone: "", linkedin: "", yearsExperience: "", mcaExperience: false, message: "" };
 
@@ -22,6 +22,8 @@ export type ApplicantRow = {
   status: string;
   invitedAt: string | null;
   proposedTimes: string | null;
+  interviewAt: string | null;
+  meetLink: string | null;
   notes: string | null;
   createdAt: string;
 };
@@ -38,11 +40,22 @@ const STATUS_STYLE: Record<string, string> = {
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
-export function HrClient({ rows }: { rows: ApplicantRow[] }) {
+export function HrClient({
+  rows,
+  calConnected,
+  calEmail,
+  calConfigured,
+}: {
+  rows: ApplicantRow[];
+  calConnected: boolean;
+  calEmail: string | null;
+  calConfigured: boolean;
+}) {
   const router = useRouter();
   const [filter, setFilter] = useState<string>("ALL");
   const [inviteId, setInviteId] = useState<string | null>(null);
-  const [times, setTimes] = useState("");
+  const [startLocal, setStartLocal] = useState("");
+  const [durationMin, setDurationMin] = useState(30);
   const [note, setNote] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -129,18 +142,19 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
     }
   }
 
-  async function sendInvite(a: ApplicantRow) {
-    if (!times.trim()) {
-      toast.error("Add at least one proposed time.");
+  async function sendSchedule(a: ApplicantRow) {
+    if (!startLocal) {
+      toast.error("Pick a date and time.");
       return;
     }
     setBusyId(a.id);
     try {
-      const r = await inviteApplicant({ id: a.id, proposedTimes: times, note });
+      const startISO = new Date(startLocal).toISOString();
+      const r = await scheduleInterview({ id: a.id, startISO, durationMin, note });
       if (r.ok) {
-        toast.success(`Interview invite sent to ${r.sentTo}`);
+        toast.success(`Interview scheduled, Meet invite sent to ${r.sentTo}`);
         setInviteId(null);
-        setTimes("");
+        setStartLocal("");
         setNote("");
         router.refresh();
       } else toast.error(r.error);
@@ -151,6 +165,27 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
 
   return (
     <div>
+      {/* Google Calendar connection status */}
+      {calConnected ? (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-2.5">
+          <span className="text-[12px] text-[#15803d]">
+            ✓ Google Calendar connected{calEmail ? ` (${calEmail})` : ""}. Interview invites auto-create a Google Meet.
+          </span>
+          <a href="/api/hr/google/connect" className="text-[12px] font-semibold text-[#15803d] underline shrink-0">Reconnect</a>
+        </div>
+      ) : calConfigured ? (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-4 py-2.5">
+          <span className="text-[12px] text-[#b45309]">
+            Connect Google Calendar so interview invites auto-create a Google Meet link and calendar event.
+          </span>
+          <a href="/api/hr/google/connect" className="rounded-md bg-[#15803d] text-white text-[12px] font-semibold px-3 py-1.5 shrink-0 hover:bg-[#166534]">Connect Google Calendar</a>
+        </div>
+      ) : (
+        <div className="mb-4 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-4 py-2.5 text-[12px] text-[#b91c1c]">
+          Google Calendar isn't set up yet. Add <code className="font-mono">GOOGLE_OAUTH_CLIENT_ID</code> and <code className="font-mono">GOOGLE_OAUTH_CLIENT_SECRET</code> to the environment, then reload to connect.
+        </div>
+      )}
+
       {/* Filter tabs + Add candidate */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -256,39 +291,67 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
                     View CV
                   </a>
                   <button
-                    onClick={() => { setInviteId(inviteId === a.id ? null : a.id); setTimes(""); setNote(""); }}
+                    onClick={() => { setInviteId(inviteId === a.id ? null : a.id); setStartLocal(""); setNote(""); setDurationMin(30); }}
                     className="rounded-md bg-[#15803d] text-white hover:bg-[#166534] text-[11px] font-semibold px-2.5 py-1 transition-colors"
                   >
-                    {a.status === "INVITED" ? "Invite again" : "Invite to interview"}
+                    {a.status === "INVITED" ? "Reschedule" : "Schedule interview"}
                   </button>
                 </div>
               </div>
 
-              {/* Invite panel */}
+              {/* Already-scheduled info */}
+              {a.status === "INVITED" && a.interviewAt && (
+                <div className="mt-2 text-[12px] text-[#15803d]">
+                  Interview {new Date(a.interviewAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                  {a.meetLink && (
+                    <> · <a href={a.meetLink} target="_blank" className="underline font-semibold">Google Meet link</a></>
+                  )}
+                </div>
+              )}
+
+              {/* Schedule panel */}
               {inviteId === a.id && (
                 <div className="mt-3 rounded-lg bg-[#fafafa] border border-[#e4e4e7] p-3">
-                  <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">Propose interview times (one per line)</label>
-                  <textarea
-                    value={times}
-                    onChange={(e) => setTimes(e.target.value)}
-                    rows={3}
-                    placeholder={"Tue Sep 2, 10:00 AM ET\nWed Sep 3, 2:00 PM ET\nThu Sep 4, 11:30 AM ET"}
-                    className="w-full rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
-                  />
-                  <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1 mt-2">Optional note</label>
+                  {!calConnected && (
+                    <p className="mb-2 text-[12px] text-[#b45309]">Connect Google Calendar above to auto-create the Meet.</p>
+                  )}
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">Date &amp; time (ET shown to candidate)</label>
+                      <input
+                        type="datetime-local"
+                        value={startLocal}
+                        onChange={(e) => setStartLocal(e.target.value)}
+                        className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">Duration</label>
+                      <select
+                        value={durationMin}
+                        onChange={(e) => setDurationMin(Number(e.target.value))}
+                        className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                      >
+                        <option value={30}>30 min</option>
+                        <option value={45}>45 min</option>
+                        <option value={60}>60 min</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1 mt-2">Optional note to candidate</label>
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="e.g. The call is a 30-minute video interview."
+                    placeholder="e.g. It's a 30-minute video interview with the hiring team."
                     className="w-full rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
                   />
                   <div className="mt-2 flex items-center gap-2">
                     <button
-                      onClick={() => sendInvite(a)}
-                      disabled={busyId === a.id}
+                      onClick={() => sendSchedule(a)}
+                      disabled={busyId === a.id || !calConnected}
                       className="rounded-md bg-[#15803d] text-white hover:bg-[#166534] text-[12px] font-semibold px-3 py-1.5 disabled:opacity-50 transition-colors"
                     >
-                      {busyId === a.id ? "Sending…" : "Send invite"}
+                      {busyId === a.id ? "Scheduling…" : "Schedule & send Meet invite"}
                     </button>
                     <button
                       onClick={() => setInviteId(null)}
@@ -296,9 +359,6 @@ export function HrClient({ rows }: { rows: ApplicantRow[] }) {
                     >
                       Cancel
                     </button>
-                    {a.proposedTimes && a.status === "INVITED" && (
-                      <span className="text-[11px] text-[#a1a1aa]">Previously sent {a.invitedAt ? fmtDate(a.invitedAt) : ""}</span>
-                    )}
                   </div>
                 </div>
               )}

@@ -1,13 +1,17 @@
 import { prisma } from "@/lib/db";
 import { storage } from "@/lib/storage";
+import { isCalendarConnected, connectedEmail, googleConfigured } from "@/lib/google-calendar";
 import { HrClient, type ApplicantRow } from "./hr-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminHrPage() {
-  const applicants = await prisma.jobApplicant.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+  const [applicants, calConnected, calEmail] = await Promise.all([
+    prisma.jobApplicant.findMany({ orderBy: { createdAt: "desc" } }),
+    isCalendarConnected(),
+    connectedEmail(),
+  ]);
+  const calConfigured = googleConfigured();
 
   const rows: ApplicantRow[] = applicants.map((a) => ({
     id: a.id,
@@ -24,6 +28,8 @@ export default async function AdminHrPage() {
     status: a.status,
     invitedAt: a.invitedAt ? a.invitedAt.toISOString() : null,
     proposedTimes: a.proposedTimes,
+    interviewAt: a.interviewAt ? a.interviewAt.toISOString() : null,
+    meetLink: a.meetLink,
     notes: a.notes,
     createdAt: a.createdAt.toISOString(),
   }));
@@ -36,7 +42,7 @@ export default async function AdminHrPage() {
           Applications from the <a href="/hr" target="_blank" className="text-[#15803d] font-semibold underline">careers page</a>. Review CVs and invite candidates to interview.
         </p>
       </div>
-      <HrClient rows={rows} />
+      <HrClient rows={rows} calConnected={calConnected} calEmail={calEmail} calConfigured={calConfigured} />
     </div>
   );
 }

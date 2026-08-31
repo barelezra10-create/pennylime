@@ -1496,6 +1496,8 @@ model JobApplicant {
   status          String    @default("NEW") // NEW, REVIEWING, INVITED, REJECTED, HIRED
   invitedAt       DateTime?
   proposedTimes   String?
+  interviewAt     DateTime?
+  meetLink        String?
   notes           String?
   createdAt       DateTime  @default(now())
 

@@ -151,42 +151,78 @@ export async function setApplicantNote(
 }
 
 /**
- * Admin: email a candidate to set up an interview. The admin types the
- * specific time slots to propose; we send the invite and mark them INVITED.
+ * Admin: schedule an interview. Creates a Google Calendar event with a Google
+ * Meet link (Google emails the candidate a calendar invite), sends our own
+ * branded email with the Meet link and time, and marks them INVITED.
  */
-export async function inviteApplicant(input: {
+export async function scheduleInterview(input: {
   id: string;
-  proposedTimes: string;
+  startISO: string;
+  durationMin: number;
   note?: string;
-}): Promise<{ ok: true; sentTo: string } | { ok: false; error: string }> {
+}): Promise<{ ok: true; sentTo: string; meetLink: string | null } | { ok: false; error: string }> {
   const auth = await requireNonSupportRole();
   if (!auth.ok) return { ok: false, error: auth.error };
 
-  const times = input.proposedTimes.trim();
-  if (!times) return { ok: false, error: "Add at least one proposed time." };
+  if (!input.startISO || Number.isNaN(new Date(input.startISO).getTime())) {
+    return { ok: false, error: "Pick a valid date and time." };
+  }
 
   const applicant = await prisma.jobApplicant.findUnique({
     where: { id: input.id },
     select: { id: true, fullName: true, email: true, role: true },
   });
   if (!applicant) return { ok: false, error: "Applicant not found." };
+  if (!applicant.email) return { ok: false, error: "This candidate has no email on file." };
 
-  const firstName = applicant.fullName.split(/\s+/)[0] || "there";
+  const { createInterviewEvent } = await import("@/lib/google-calendar");
+  let meetLink: string | null = null;
+  try {
+    const ev = await createInterviewEvent({
+      summary: `PennyLime interview: ${applicant.fullName} (${applicant.role})`,
+      description: `Interview for the ${applicant.role} role at PennyLime.${input.note ? `\n\n${input.note}` : ""}`,
+      startISO: input.startISO,
+      durationMin: input.durationMin || 30,
+      attendeeEmail: applicant.email,
+      attendeeName: applicant.fullName,
+    });
+    meetLink = ev.meetLink;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "calendar error";
+    if (/not connected/i.test(msg)) {
+      return { ok: false, error: "Connect Google Calendar first (button at the top of this page)." };
+    }
+    return { ok: false, error: `Could not create the Google Meet: ${msg}` };
+  }
+
+  const whenText = new Date(input.startISO).toLocaleString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+    timeZone: "America/New_York",
+  });
+
   const { subject, html, preheader } = interviewInviteEmail({
-    firstName,
+    firstName: applicant.fullName.split(/\s+/)[0] || "there",
     role: applicant.role,
-    proposedTimes: times,
+    whenText,
+    meetLink: meetLink || "",
     note: input.note?.trim() || "",
   });
-  const res = await sendEmail({ to: applicant.email, subject, html, preheader, templateId: "interview-invite" });
-  if (!res?.success) {
-    const err = (res as { error?: unknown })?.error;
-    return { ok: false, error: err instanceof Error ? err.message : "Email failed to send." };
-  }
+  await sendEmail({ to: applicant.email, subject, html, preheader, templateId: "interview-invite" });
 
   await prisma.jobApplicant.update({
     where: { id: applicant.id },
-    data: { status: "INVITED", invitedAt: new Date(), proposedTimes: times },
+    data: {
+      status: "INVITED",
+      invitedAt: new Date(),
+      interviewAt: new Date(input.startISO),
+      meetLink,
+      proposedTimes: whenText,
+    },
   });
 
   await logAudit({
@@ -194,8 +230,8 @@ export async function inviteApplicant(input: {
     entityType: "APPLICATION",
     entityId: applicant.id,
     performedBy: auth.email,
-    details: { kind: "INTERVIEW_INVITE", sentTo: applicant.email, proposedTimes: times },
+    details: { kind: "INTERVIEW_SCHEDULED", sentTo: applicant.email, when: whenText, meetLink },
   });
 
-  return { ok: true, sentTo: applicant.email };
+  return { ok: true, sentTo: applicant.email, meetLink };
 }
