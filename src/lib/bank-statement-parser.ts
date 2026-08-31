@@ -393,6 +393,10 @@ function capIdentical<T extends { date: string; amount: number; description: str
 // lines dumped into Other expenses, inflating spend and undercounting income,
 // which can wrongly disqualify a driver). These are money IN, so move them back
 // to income.
+// Money-IN the model misfiled as an expense that we count as real INCOME:
+// gig payouts, payroll/direct deposits, and deposited checks / ACH credits /
+// wires (an identifiable payer sent money). NOT a bare "check #1234" — that is
+// usually a check the customer WROTE (money out), so we don't match it.
 const GIG_INCOME_PATTERNS = [
   /trip\s*(earnings|fare|pay|payment)/i,
   /\bearnings\b/i,
@@ -403,23 +407,29 @@ const GIG_INCOME_PATTERNS = [
   /direct\s*dep(osit)?/i,
   /mobile\s*deposit/i,
   /remote\s*deposit/i,
-  // Check / teller / cash deposits are money IN. The model sometimes files
-  // these into "expenses"; they are income (or at minimum not spending), so
-  // rescue them. Only explicit deposit phrasings — NOT a bare "check #1234",
-  // which on a statement is usually a check the customer WROTE (money out).
   /check\s*deposit/i,
   /deposit(ed)?\s*(of\s*)?check/i,
-  /teller\s*deposit/i,
+  /\bach\s*credit\b/i,
+  /incoming\s*wire/i,
+];
+// Money-IN that is NOT spending but is UNVERIFIABLE as income (the customer
+// could be funding their own account): raw cash / ATM / teller deposits and
+// generic incoming transfers. We pull these OUT of expenses (they are not
+// spending) but classify them "unknown" so they DON'T inflate income either.
+const NEUTRAL_DEPOSIT_PATTERNS = [
   /cash\s*deposit/i,
   /atm\s*deposit/i,
+  /teller\s*deposit/i,
   /branch\s*deposit/i,
   /counter\s*deposit/i,
   /deposit\s*(ref|#|no\b)/i,
-  /incoming\s*(ach|wire|transfer)/i,
-  /\bach\s*credit\b/i,
+  /incoming\s*(ach|transfer)/i,
 ];
 function looksLikeGigIncome(desc: string): boolean {
   return GIG_INCOME_PATTERNS.some((r) => r.test(desc || ""));
+}
+function looksLikeNeutralDeposit(desc: string): boolean {
+  return NEUTRAL_DEPOSIT_PATTERNS.some((r) => r.test(desc || ""));
 }
 
 // Sanitize a parsed summary before it feeds underwriting:
@@ -432,9 +442,13 @@ function sanitizeSummary(summary: ParsedStatementSummary): ParsedStatementSummar
   const exp = capIdentical(summary.expenses ?? []);
   const dep = capIdentical(summary.deposits ?? []);
 
-  // Split expenses: real spending vs gig-income the AI misfiled as an expense.
+  // Split expenses three ways: real spending stays; money-in the AI misfiled as
+  // an expense is pulled out — counted as income when it's an identifiable payer
+  // (gig/payroll/check/ACH/wire), or moved to a neutral "unknown" deposit when
+  // it's a raw cash/ATM deposit (money in, but not verifiable income).
   const realExpenses: ParsedExpense[] = [];
   const movedToIncome: ParsedDeposit[] = [];
+  const movedToNeutral: ParsedDeposit[] = [];
   for (const e of exp.kept) {
     if (looksLikeGigIncome(e.description)) {
       movedToIncome.push({
@@ -444,6 +458,14 @@ function sanitizeSummary(summary: ParsedStatementSummary): ParsedStatementSummar
         platform: (e.description || "").trim() || "Gig earnings",
         classification: "income",
       });
+    } else if (looksLikeNeutralDeposit(e.description)) {
+      movedToNeutral.push({
+        date: e.date,
+        amount: Math.abs(Number(e.amount)) || 0,
+        description: e.description,
+        platform: (e.description || "").trim() || "Cash deposit",
+        classification: "unknown",
+      });
     } else {
       realExpenses.push(e);
     }
@@ -452,11 +474,11 @@ function sanitizeSummary(summary: ParsedStatementSummary): ParsedStatementSummar
   const cleanedDeposits = dep.kept.map((d) =>
     isSpendingMerchant(d) ? { ...d, classification: "unknown" as const } : d,
   );
-  const allDeposits = [...cleanedDeposits, ...movedToIncome];
+  const allDeposits = [...cleanedDeposits, ...movedToIncome, ...movedToNeutral];
   const excludedMerchant = dep.kept.filter(isSpendingMerchant).length;
-  if (exp.dropped || dep.dropped || excludedMerchant || movedToIncome.length) {
+  if (exp.dropped || dep.dropped || excludedMerchant || movedToIncome.length || movedToNeutral.length) {
     console.warn(
-      `[parseStatementsWithAI] sanitized: capped ${exp.dropped} exp + ${dep.dropped} dep dupes, dropped ${excludedMerchant} merchant deposits, moved ${movedToIncome.length} gig-earnings expenses back to income`,
+      `[parseStatementsWithAI] sanitized: capped ${exp.dropped} exp + ${dep.dropped} dep dupes, dropped ${excludedMerchant} merchant deposits, moved ${movedToIncome.length} earnings expenses to income + ${movedToNeutral.length} cash/ATM deposits to neutral`,
     );
   }
   const f = computeIncomeFields(allDeposits);
