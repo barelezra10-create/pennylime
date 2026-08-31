@@ -5,6 +5,7 @@ import { storage } from "@/lib/storage";
 import { requireNonSupportRole } from "@/lib/auth-helpers";
 import { sendEmail } from "@/lib/emails/send";
 import { interviewInviteEmail } from "@/lib/emails/interview-invite";
+import { outreachEmail } from "@/lib/emails/outreach";
 import { logAudit } from "@/lib/audit";
 import { parseCv, type CvFields } from "@/lib/cv-parser";
 
@@ -126,6 +127,51 @@ export async function addApplicantByAdmin(
   });
 
   return { ok: true };
+}
+
+/**
+ * Admin: send a plain outreach email (e.g. "we'd like to move forward, when are
+ * you available this week"). No calendar needed. Moves NEW applicants to
+ * REVIEWING so it's clear they've been contacted.
+ */
+export async function sendOutreach(input: {
+  id: string;
+  message: string;
+}): Promise<{ ok: true; sentTo: string } | { ok: false; error: string }> {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  const message = input.message.trim();
+  if (!message) return { ok: false, error: "Write a message first." };
+
+  const applicant = await prisma.jobApplicant.findUnique({
+    where: { id: input.id },
+    select: { id: true, email: true, status: true },
+  });
+  if (!applicant) return { ok: false, error: "Applicant not found." };
+  if (!applicant.email) return { ok: false, error: "This candidate has no email on file." };
+
+  const { subject, html, preheader } = outreachEmail({ message });
+  const res = await sendEmail({ to: applicant.email, subject, html, preheader, templateId: "hr-outreach" });
+  if (!res?.success) {
+    const err = (res as { error?: unknown })?.error;
+    return { ok: false, error: err instanceof Error ? err.message : "Email failed to send." };
+  }
+
+  await prisma.jobApplicant.update({
+    where: { id: applicant.id },
+    data: applicant.status === "NEW" ? { status: "REVIEWING" } : {},
+  });
+
+  await logAudit({
+    action: "CHANGE_SETTING",
+    entityType: "APPLICATION",
+    entityId: applicant.id,
+    performedBy: auth.email,
+    details: { kind: "HR_OUTREACH", sentTo: applicant.email },
+  });
+
+  return { ok: true, sentTo: applicant.email };
 }
 
 /** Admin: change an applicant's pipeline status. */

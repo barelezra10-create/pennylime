@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { scheduleInterview, setApplicantStatus, addApplicantByAdmin, parseCvFromUpload } from "@/actions/hr";
+import { scheduleInterview, setApplicantStatus, addApplicantByAdmin, parseCvFromUpload, sendOutreach } from "@/actions/hr";
+
+function defaultOutreach(fullName: string) {
+  const first = fullName.split(/\s+/)[0] || "there";
+  return `Hi ${first},\n\nThanks again for applying for the Underwriter role at PennyLime. We reviewed your background and we'd love to move forward with you.\n\nCould you let me know your availability for a quick call this week? Just share a few times that work and I'll lock one in.\n\nLooking forward to connecting.\n\nBest,`;
+}
 
 const EMPTY_NEW = { fullName: "", email: "", phone: "", linkedin: "", yearsExperience: "", mcaExperience: false, message: "" };
 
@@ -57,6 +62,8 @@ export function HrClient({
   const [startLocal, setStartLocal] = useState("");
   const [durationMin, setDurationMin] = useState(30);
   const [note, setNote] = useState("");
+  const [outreachId, setOutreachId] = useState<string | null>(null);
+  const [outreachMsg, setOutreachMsg] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [savingNew, setSavingNew] = useState(false);
@@ -135,6 +142,33 @@ export function HrClient({
       const r = await setApplicantStatus(id, status);
       if (r.ok) {
         toast.success(`Marked ${status.toLowerCase()}`);
+        router.refresh();
+      } else toast.error(r.error);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function openOutreach(a: ApplicantRow) {
+    if (outreachId === a.id) {
+      setOutreachId(null);
+      return;
+    }
+    setOutreachId(a.id);
+    setOutreachMsg(defaultOutreach(a.fullName));
+  }
+
+  async function sendOut(a: ApplicantRow) {
+    if (!outreachMsg.trim()) {
+      toast.error("Write a message first.");
+      return;
+    }
+    setBusyId(a.id);
+    try {
+      const r = await sendOutreach({ id: a.id, message: outreachMsg });
+      if (r.ok) {
+        toast.success(`Email sent to ${r.sentTo}`);
+        setOutreachId(null);
         router.refresh();
       } else toast.error(r.error);
     } finally {
@@ -291,6 +325,12 @@ export function HrClient({
                     View CV
                   </a>
                   <button
+                    onClick={() => openOutreach(a)}
+                    className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                  >
+                    Email candidate
+                  </button>
+                  <button
                     onClick={() => { setInviteId(inviteId === a.id ? null : a.id); setStartLocal(""); setNote(""); setDurationMin(30); }}
                     className="rounded-md bg-[#15803d] text-white hover:bg-[#166534] text-[11px] font-semibold px-2.5 py-1 transition-colors"
                   >
@@ -298,6 +338,37 @@ export function HrClient({
                   </button>
                 </div>
               </div>
+
+              {/* Outreach panel */}
+              {outreachId === a.id && (
+                <div className="mt-3 rounded-lg bg-[#fafafa] border border-[#e4e4e7] p-3">
+                  <label className="block text-[12px] font-semibold text-[#3f3f46] mb-1">
+                    Email to {a.fullName} <span className="font-normal text-[#a1a1aa]">· subject: Next steps on your PennyLime application</span>
+                  </label>
+                  <textarea
+                    value={outreachMsg}
+                    onChange={(e) => setOutreachMsg(e.target.value)}
+                    rows={8}
+                    className="w-full rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      onClick={() => sendOut(a)}
+                      disabled={busyId === a.id}
+                      className="rounded-md bg-[#15803d] text-white hover:bg-[#166534] text-[12px] font-semibold px-3 py-1.5 disabled:opacity-50 transition-colors"
+                    >
+                      {busyId === a.id ? "Sending…" : "Send email"}
+                    </button>
+                    <button
+                      onClick={() => setOutreachId(null)}
+                      className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-white text-[12px] font-semibold px-3 py-1.5 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <span className="text-[11px] text-[#a1a1aa]">Sends from PennyLime · replies go to info@pennylime.com</span>
+                  </div>
+                </div>
+              )}
 
               {/* Already-scheduled info */}
               {a.status === "INVITED" && a.interviewAt && (
