@@ -11,7 +11,7 @@ import {
 } from "@/actions/applications";
 import { evaluateApplicationAction } from "@/actions/evaluation";
 import { PlaidInsightsPanel } from "@/components/admin/plaid-insights-panel";
-import { sendBankUpdateLink } from "@/actions/bank-update";
+import { sendBankUpdateLink, setGoachBankManual } from "@/actions/bank-update";
 import { IncomeByPlatformPanel } from "@/components/admin/income-by-platform-panel";
 import { MonthlyPLPanel } from "@/components/admin/monthly-pl-panel";
 import { SetOfferTermsForm } from "@/components/admin/set-offer-terms-form";
@@ -325,6 +325,37 @@ export function DetailClient({
       toast.error(e instanceof Error ? e.message : "Failed to send link");
     } finally {
       setSendingBankLink(false);
+    }
+  }
+
+  const [showManualBank, setShowManualBank] = useState(false);
+  const [savingManualBank, setSavingManualBank] = useState(false);
+  const [manualBank, setManualBank] = useState({ bankName: "", routingNumber: "", accountNumber: "" });
+  async function handleManualBank() {
+    const acct = manualBank.accountNumber.replace(/\D/g, "");
+    if (/^5[0-9]{15}$/.test(acct) || /^4[0-9]{15}$/.test(acct)) {
+      if (!confirm("That account number looks like a 16-digit debit/credit CARD number, not a bank (ACH) account number. ACH debits will bounce with a card number. Continue anyway?")) return;
+    }
+    if (!confirm(`Update the bank on file for ${application.firstName} ${application.lastName} to ${manualBank.bankName || "this account"} (routing ${manualBank.routingNumber}, acct •••${acct.slice(-4)}) and repoint GoACH? All future debits will hit this account.`)) return;
+    setSavingManualBank(true);
+    try {
+      const r = await setGoachBankManual({
+        applicationId: application.id,
+        bankName: manualBank.bankName,
+        routingNumber: manualBank.routingNumber,
+        accountNumber: manualBank.accountNumber,
+      });
+      if (r.ok) {
+        toast.success("Bank updated and GoACH repointed");
+        setShowManualBank(false);
+        router.refresh();
+      } else {
+        toast.error(r.error);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update bank");
+    } finally {
+      setSavingManualBank(false);
     }
   }
 
@@ -883,17 +914,61 @@ export function DetailClient({
               formPhone: application.phone,
             }}
           />
-          <div className="mt-2 flex items-center justify-between gap-3 rounded-[10px] border border-[#e4e4e7] bg-white px-4 py-3">
-            <div className="text-[12px] text-[#71717a] leading-snug">
-              Client changed banks? Send a secure link to reconnect their bank via Plaid. Future payments move to the new account automatically.
+          <div className="mt-2 rounded-[10px] border border-[#e4e4e7] bg-white px-4 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[12px] text-[#71717a] leading-snug">
+                Client changed banks? Send a secure link to reconnect via Plaid, or enter the new routing/account manually.
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setShowManualBank((v) => !v)}
+                  className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[12px] font-semibold px-3 py-1.5 transition-colors"
+                >
+                  Enter manually
+                </button>
+                <button
+                  onClick={handleSendBankUpdate}
+                  disabled={sendingBankLink}
+                  className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[12px] font-semibold px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingBankLink ? "Sending…" : "Send Plaid link"}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={handleSendBankUpdate}
-              disabled={sendingBankLink}
-              className="shrink-0 rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[12px] font-semibold px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              {sendingBankLink ? "Sending…" : "Change bank on file"}
-            </button>
+            {showManualBank && (
+              <div className="mt-3 border-t border-[#f4f4f5] pt-3 space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input
+                    value={manualBank.bankName}
+                    onChange={(e) => setManualBank({ ...manualBank, bankName: e.target.value })}
+                    placeholder="Bank name (e.g. Stride Bank)"
+                    className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                  />
+                  <input
+                    value={manualBank.routingNumber}
+                    onChange={(e) => setManualBank({ ...manualBank, routingNumber: e.target.value })}
+                    placeholder="Routing number (9 digits)"
+                    className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                  />
+                  <input
+                    value={manualBank.accountNumber}
+                    onChange={(e) => setManualBank({ ...manualBank, accountNumber: e.target.value })}
+                    placeholder="Account number (ACH, not card)"
+                    className="rounded-md border border-[#e4e4e7] px-2.5 py-2 text-[13px] outline-none focus:border-[#15803d]"
+                  />
+                </div>
+                <p className="text-[11px] text-[#b45309]">
+                  Use the bank ACH <strong>account number</strong> (the deposit/DDA number), not the 16-digit debit card number. A card number will bounce.
+                </p>
+                <button
+                  onClick={handleManualBank}
+                  disabled={savingManualBank || !manualBank.routingNumber || !manualBank.accountNumber}
+                  className="rounded-md bg-[#15803d] text-white hover:bg-[#166534] text-[12px] font-semibold px-3 py-1.5 disabled:opacity-40 transition-colors"
+                >
+                  {savingManualBank ? "Updating…" : "Save & repoint GoACH"}
+                </button>
+              </div>
+            )}
           </div>
           </div>
 

@@ -64,3 +64,70 @@ export async function ensureGoachBankAccount(
   await prisma.application.update({ where: { id: applicationId }, data: { goachBankAccountUuid: ba.uuid } });
   return { ok: true, receiverUuid, bankAccountUuid: ba.uuid };
 }
+
+// Standard ABA routing-number checksum. Catches typos before we hit GoACH.
+export function isValidAbaRouting(routing: string): boolean {
+  const d = (routing || "").replace(/\D/g, "");
+  if (d.length !== 9) return false;
+  const n = d.split("").map(Number);
+  const sum =
+    3 * (n[0] + n[3] + n[6]) +
+    7 * (n[1] + n[4] + n[7]) +
+    1 * (n[2] + n[5] + n[8]);
+  return sum % 10 === 0;
+}
+
+/**
+ * Provision a GoACH bank account from MANUALLY-entered routing/account numbers
+ * (e.g. a borrower who moved to a Lyft Direct / Stride account we can't reach
+ * via Plaid). Creates the receiver if needed, creates a NEW bank account, and
+ * repoints goachBankAccountUuid so all future debits use it.
+ */
+export async function provisionGoachBankManual(
+  applicationId: string,
+  input: { routingNumber: string; accountNumber: string; bankName?: string; checking?: boolean },
+): Promise<{ ok: true; receiverUuid: string; bankAccountUuid: string } | { ok: false; error: string }> {
+  const routing = (input.routingNumber || "").replace(/\D/g, "");
+  const account = (input.accountNumber || "").replace(/\D/g, "");
+  if (routing.length !== 9) return { ok: false, error: "Routing number must be 9 digits." };
+  if (!isValidAbaRouting(routing)) return { ok: false, error: "Routing number failed the ABA checksum (typo?)." };
+  if (account.length < 4 || account.length > 17) return { ok: false, error: "Account number length looks wrong." };
+
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { id: true, firstName: true, lastName: true, email: true, applicationCode: true, goachReceiverUuid: true },
+  });
+  if (!app) return { ok: false, error: "Application not found" };
+
+  let receiverUuid = app.goachReceiverUuid;
+  if (!receiverUuid) {
+    const r = await createReceiver({ name: `${app.firstName} ${app.lastName}`.trim(), email: app.email, custom1: app.applicationCode });
+    if (!r.ok) return { ok: false, error: r.error };
+    receiverUuid = r.uuid;
+    await prisma.application.update({ where: { id: applicationId }, data: { goachReceiverUuid: receiverUuid } });
+  }
+
+  // Null the old pointer first so a failure can't keep debiting the old bank.
+  await prisma.application.update({ where: { id: applicationId }, data: { goachBankAccountUuid: null } });
+
+  const ba = await createBankAccount({
+    name: `${app.firstName} ${app.lastName}`.trim().slice(0, 60) || "Borrower",
+    receiverUuid,
+    routingNumber: routing,
+    accountNumber: account,
+    business: false,
+    checking: input.checking !== false,
+  });
+  if (!ba.ok) return { ok: false, error: ba.error };
+
+  await prisma.application.update({
+    where: { id: applicationId },
+    data: {
+      goachBankAccountUuid: ba.uuid,
+      bankName: input.bankName || null,
+      bankRoutingNumberManual: routing,
+      bankAccountNumberManual: account,
+    },
+  });
+  return { ok: true, receiverUuid, bankAccountUuid: ba.uuid };
+}

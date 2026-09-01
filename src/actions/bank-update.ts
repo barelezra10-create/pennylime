@@ -52,6 +52,46 @@ export async function sendBankUpdateLink(applicationId: string): Promise<
 }
 
 /**
+ * Admin action: set a borrower's bank on file from manually-entered routing /
+ * account numbers and repoint GoACH. Used when Plaid can't reach the account
+ * (e.g. a Lyft Direct / Stride account the borrower moved to).
+ */
+export async function setGoachBankManual(input: {
+  applicationId: string;
+  bankName: string;
+  routingNumber: string;
+  accountNumber: string;
+  checking?: boolean;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { ok: false, error: auth.error };
+
+  const { provisionGoachBankManual } = await import("@/lib/goach-provision");
+  const r = await provisionGoachBankManual(input.applicationId, {
+    routingNumber: input.routingNumber,
+    accountNumber: input.accountNumber,
+    bankName: input.bankName,
+    checking: input.checking,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+
+  await logAudit({
+    action: "CHANGE_BANK",
+    entityType: "APPLICATION",
+    entityId: input.applicationId,
+    performedBy: auth.email,
+    details: {
+      kind: "MANUAL_GOACH",
+      bankName: input.bankName,
+      routingNumber: input.routingNumber.replace(/\D/g, ""),
+      accountLast4: input.accountNumber.replace(/\D/g, "").slice(-4),
+      goachBankAccountUuid: r.bankAccountUuid,
+    },
+  });
+  return { ok: true };
+}
+
+/**
  * Public (token-authed) action called from the /update-bank page after the
  * customer completes Plaid Link. Stores the new verified bank connection and
  * re-provisions GoACH with the new routing/account. Authorization comes from
