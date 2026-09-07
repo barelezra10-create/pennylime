@@ -979,7 +979,8 @@ export function DetailClient({
           </div>
           </div>
 
-          {/* ── Documents ── */}
+          {/* ── Documents ── (order -3: sits directly under Plaid) */}
+          <div className="order-[-3]">
           <DocumentsPanel
             applicationId={application.id}
             documents={application.documents}
@@ -1005,6 +1006,7 @@ export function DetailClient({
               }
             }}
           />
+          </div>
 
           {/* ── ACH Authorization Proof (when customer has accepted) ── */}
           {achAuth && (
