@@ -42,7 +42,7 @@ export function DialerPanel() {
   if (state.phase === "idle") return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 rounded-xl border border-[#e4e4e7] bg-white shadow-xl p-4">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 sm:w-80 rounded-xl border border-[#e4e4e7] bg-white shadow-xl p-4">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[14px] font-semibold text-[#18181b]">{state.name}</p>

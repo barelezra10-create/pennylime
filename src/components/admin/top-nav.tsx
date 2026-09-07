@@ -262,6 +262,10 @@ export function AdminTopNav({ userName }: { userName: string }) {
     };
   }, []);
 
+  // Mobile nav drawer (hamburger) — the desktop tab strip is hidden below lg.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
+
   // Inbox dropdown — opens when admin clicks the CRM tab badge.
   const [inboxOpen, setInboxOpen] = useState(false);
   const inboxRef = useRef<HTMLDivElement>(null);
@@ -294,7 +298,18 @@ export function AdminTopNav({ userName }: { userName: string }) {
     <header className="sticky top-0 z-30 bg-white border-b border-[#e4e4e7]">
       <div className="px-4 sm:px-6">
         <div className="flex items-center justify-between h-14">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              className="lg:hidden inline-flex items-center justify-center h-8 w-8 -ml-1 rounded-lg hover:bg-[#fafafa] text-[#52525b]"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d={menuOpen ? "M6 18 18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
             <Link href="/admin/dashboard" className="text-[15px] font-extrabold tracking-[-0.03em]">
               Penny<span className="text-[#15803d]">Lime</span>
               <span className="ml-2 text-[10px] uppercase tracking-[0.1em] text-[#a1a1aa]">Admin</span>
@@ -389,8 +404,8 @@ export function AdminTopNav({ userName }: { userName: string }) {
           </div>
         </div>
 
-        {/* Top tabs */}
-        <nav className="-mb-px flex items-center gap-1 overflow-x-auto">
+        {/* Top tabs (desktop) — replaced by the hamburger drawer below lg */}
+        <nav className="-mb-px hidden lg:flex items-center gap-1 overflow-x-auto">
           {TABS.map((t) => {
             const active = t.stage
               ? onCustomers && currentStage === t.stage
@@ -420,7 +435,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
 
       {/* Sub-nav for active tab (hidden for the customer stage tabs) */}
       {activeTab.subnav.length > 0 && (
-      <div className="border-t border-[#f4f4f5] bg-[#fafafa]">
+      <div className="hidden lg:block border-t border-[#f4f4f5] bg-[#fafafa]">
         <div className="px-4 sm:px-6 py-2 flex items-center gap-1 overflow-x-auto">
           {activeTab.subnav.map((s) => {
             const active = activeSubHref === s.href;
@@ -438,6 +453,54 @@ export function AdminTopNav({ userName }: { userName: string }) {
           })}
         </div>
       </div>
+      )}
+
+      {/* Mobile drawer — full tab + sub-nav list, shown below lg */}
+      {menuOpen && (
+        <div className="lg:hidden border-t border-[#e4e4e7] bg-white max-h-[75vh] overflow-y-auto">
+          <nav className="px-4 py-3 divide-y divide-[#f4f4f5]">
+            {TABS.map((t) => {
+              const badgeCount = tabBadges[t.id] ?? 0;
+              const active = t.stage
+                ? onCustomers && currentStage === t.stage
+                : t.id === activeTab.id;
+              return (
+                <div key={t.id} className="py-2 first:pt-0 last:pb-0">
+                  <Link
+                    href={t.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`flex items-center gap-2 text-[15px] font-bold py-1.5 ${active ? "text-black" : "text-[#18181b]"}`}
+                  >
+                    <span className={`w-4 text-center ${badgeCount > 0 ? "text-[#dc2626]" : "text-[#15803d]"}`}>{t.icon}</span>
+                    {t.label}
+                    {badgeCount > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold leading-none">
+                        {badgeCount > 99 ? "99+" : badgeCount}
+                      </span>
+                    )}
+                  </Link>
+                  {t.subnav.length > 0 && (
+                    <div className="ml-6 mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                      {t.subnav.map((s) => {
+                        const subActive = activeTab.id === t.id && activeSubHref === s.href;
+                        return (
+                          <Link
+                            key={s.href}
+                            href={s.href}
+                            onClick={() => setMenuOpen(false)}
+                            className={`py-1.5 text-[13px] ${subActive ? "text-black font-semibold" : "text-[#52525b]"}`}
+                          >
+                            {s.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
       )}
     </header>
   );
