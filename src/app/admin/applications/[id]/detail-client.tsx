@@ -198,8 +198,15 @@ export function DetailClient({
   collections?: CollectionsView | null;
 }) {
   const router = useRouter();
+  // Prev/next step to other DETAIL pages, which read the origin via ?from=.
   const fromQs = fromTab ? `?from=${encodeURIComponent(fromTab)}` : "";
-  const backHref = `/admin/applications${fromQs}`;
+  // Back-to-list must use ?stage= — that's the param the applications list
+  // reads. Passing ?from= here left the list with no stage, so it fell back
+  // to the default (Active) even when you came from Pending.
+  const backHref =
+    fromTab && fromTab !== "All"
+      ? `/admin/applications?stage=${encodeURIComponent(fromTab)}`
+      : "/admin/applications";
 
   /* evaluation */
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
