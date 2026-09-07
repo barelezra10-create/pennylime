@@ -47,7 +47,7 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
   const [noteText, setNoteText] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
   const [savingNote, startNoteSave] = useTransition();
-  const { startCall, hangUp, state } = useDialer();
+  const { startCall, hangUp, state, numbers, callerId, setCallerId } = useDialer();
   const selectedIdRef = useRef<string | null>(null);
 
   // --- Run state ---
@@ -320,6 +320,23 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
 
         {tab === "dialpad" && (
           <div className="rounded-xl border border-[#e4e4e7] bg-white p-6 max-w-sm">
+            {numbers.length > 0 && (
+              <label className="block mb-3">
+                <span className="text-[11px] font-medium text-[#71717a] uppercase tracking-wide">Call from</span>
+                <select
+                  value={callerId ?? ""}
+                  onChange={(e) => setCallerId(e.target.value)}
+                  aria-label="Outbound caller ID number"
+                  className="mt-1 w-full rounded-lg border border-[#e4e4e7] px-2 py-1.5 text-[13px]"
+                >
+                  {numbers.map((n) => (
+                    <option key={n.number} value={n.number}>
+                      {n.label === n.number ? n.number : `${n.label} (${n.number})`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <input
               value={formatDialed(digits)}
               onChange={(e) => setDigits(dialedDigits(e.target.value))}

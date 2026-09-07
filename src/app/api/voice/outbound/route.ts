@@ -4,6 +4,7 @@ import { getTrackingConfig } from "@/lib/tracking/config";
 import { normalizePhone } from "@/lib/tracking/hash";
 import { readVerifiedTwilioForm } from "@/lib/voice/signature";
 import { outboundDialTwiml, rejectTwiml, twimlResponse } from "@/lib/voice/twiml";
+import { isOwnedNumber } from "@/lib/voice/numbers";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,11 @@ export async function POST(req: NextRequest) {
   const p = verified.params;
 
   const cfg = await getTrackingConfig();
-  const callerId = cfg.twilioFromNumber;
+  // The dialer can pass a chosen caller ID. Only honor it when it's a number
+  // this Twilio account actually owns (you can't spoof arbitrary caller IDs,
+  // and Twilio would reject the call). Otherwise fall back to the default.
+  const requested = (p.callerId || "").trim();
+  const callerId = requested && (await isOwnedNumber(requested)) ? requested : cfg.twilioFromNumber;
   const to = normalizePhone(p.To);
   const callSid = p.CallSid;
 

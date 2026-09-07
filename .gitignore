@@ -59,3 +59,5 @@ uploads/
 
 # Local borrower export - never commit (contains PII)
 .pl_recipients.json
+
+.indeed-scan/

@@ -12,15 +12,22 @@ export type DialerState =
   | { phase: "wrap-up"; name: string; phone: string; callSid: string | null; durationSec: number }
   | { phase: "error"; name: string; phone: string; message: string };
 
+type OwnedNumber = { number: string; label: string };
+
 type DialerContextValue = {
   state: DialerState;
   muted: boolean;
+  numbers: OwnedNumber[];
+  callerId: string | null;
+  setCallerId: (n: string) => void;
   startCall: (opts: { phone: string; name: string; contactId?: string }) => Promise<void>;
   hangUp: () => void;
   toggleMute: () => void;
   dismiss: () => void;
   saveWrapUp: (outcome: string, notes: string) => Promise<void>;
 };
+
+const CALLER_ID_KEY = "pl_dialer_caller_id";
 
 const DialerContext = createContext<DialerContextValue | null>(null);
 
@@ -33,11 +40,42 @@ export function useDialer() {
 export function DialerProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<DialerState>({ phase: "idle" });
   const [muted, setMuted] = useState(false);
+  const [numbers, setNumbers] = useState<OwnedNumber[]>([]);
+  const [callerId, setCallerIdState] = useState<string | null>(null);
+  const callerIdRef = useRef<string | null>(null);
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
   const startedAtRef = useRef<number>(0);
 
   useEffect(() => () => { deviceRef.current?.destroy(); }, []);
+
+  // Load the account's owned voice numbers for the outbound caller-ID picker,
+  // and restore the agent's last choice.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/voice/numbers");
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { numbers: OwnedNumber[]; default: string | null };
+        if (cancelled) return;
+        setNumbers(data.numbers || []);
+        const saved = typeof window !== "undefined" ? window.localStorage.getItem(CALLER_ID_KEY) : null;
+        const valid = saved && data.numbers?.some((n) => n.number === saved) ? saved : data.default;
+        callerIdRef.current = valid;
+        setCallerIdState(valid);
+      } catch {
+        /* dialer still works with the server default */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const setCallerId = useCallback((n: string) => {
+    callerIdRef.current = n;
+    setCallerIdState(n);
+    if (typeof window !== "undefined") window.localStorage.setItem(CALLER_ID_KEY, n);
+  }, []);
 
   const getDevice = useCallback(async (): Promise<Device> => {
     if (deviceRef.current) return deviceRef.current;
@@ -67,7 +105,11 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
       try {
         const device = await getDevice();
         const call = await device.connect({
-          params: { To: opts.phone, contactId: opts.contactId || "" },
+          params: {
+            To: opts.phone,
+            contactId: opts.contactId || "",
+            callerId: callerIdRef.current || "",
+          },
         });
         callRef.current = call;
 
@@ -132,7 +174,7 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <DialerContext.Provider value={{ state, muted, startCall, hangUp, toggleMute, dismiss, saveWrapUp }}>
+    <DialerContext.Provider value={{ state, muted, numbers, callerId, setCallerId, startCall, hangUp, toggleMute, dismiss, saveWrapUp }}>
       {children}
       <DialerPanel />
     </DialerContext.Provider>
