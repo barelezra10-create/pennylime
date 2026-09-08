@@ -708,6 +708,9 @@ export async function acceptOffer(input: {
                 goachDisburseUuid: tx.uuid,
               },
             });
+            // Keep the first debit at least a week after funding.
+            const { enforceFirstPaymentBuffer } = await import("@/lib/first-payment-buffer");
+            await enforceFirstPaymentBuffer(app.id);
             console.log(`[disburse] app ${app.applicationCode} funded via GoACH credit ${tx.uuid}`);
             // Move linked contact to FUNDED stage (drives stage-tracking).
             const linkedContact = await prisma.contact.findFirst({

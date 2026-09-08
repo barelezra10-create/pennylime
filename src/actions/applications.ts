@@ -654,6 +654,11 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
     },
   });
 
+  // Hold the first payment to at least a week after funding so no debit hits
+  // before the money lands (funding can lag acceptance by days).
+  const { enforceFirstPaymentBuffer } = await import("@/lib/first-payment-buffer");
+  await enforceFirstPaymentBuffer(applicationId);
+
   // Pull the real schedule we'll show in the funded email — either
   // pre-created by the offer-accept flow or by the legacy block above.
   const schedule = await prisma.payment.findMany({
