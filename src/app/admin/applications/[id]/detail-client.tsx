@@ -591,6 +591,22 @@ export function DetailClient({
               </svg>
               View as customer
             </button>
+            {application.status === "PENDING" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRejectForm(true);
+                  document.getElementById("reject-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#dc2626] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#dc2626] hover:bg-[#fff1f2] transition-colors"
+                title="Reject this application"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+                Reject
+              </button>
+            )}
             <StatusBadge status={application.status} offerStatus={application.offerStatus} />
           </div>
         </div>
@@ -1339,7 +1355,7 @@ export function DetailClient({
               chooses on the offer page. Reject is the only one-click
               decision that still lives at the application level. */}
           {application.status === "PENDING" && (
-            <div className="bg-white rounded-[10px] p-6">
+            <div id="reject-section" className="bg-white rounded-[10px] p-6 scroll-mt-24">
               {!showRejectForm ? (
                 <div className="flex items-center justify-between gap-4">
                   <div>
