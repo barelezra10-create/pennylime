@@ -1141,15 +1141,7 @@ export function DetailClient({
             </div>
           )}
 
-          {/* ── Bank Statements + Verified Income ── */}
-          <BankStatementsPanel
-            applicationId={application.id}
-            documents={application.documents}
-            currentMonthlyIncome={
-              application.monthlyIncome != null ? Number(application.monthlyIncome) : null
-            }
-            onChange={() => router.refresh()}
-          />
+          {/* Bank statements now live only under the Documents section. */}
 
           {/* ── Income Entry ── */}
           <div className="bg-white rounded-[10px] p-6">
