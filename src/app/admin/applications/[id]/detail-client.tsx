@@ -515,7 +515,7 @@ export function DetailClient({
 
   return (
     <div className="min-h-screen bg-[#f8faf8]">
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -563,7 +563,7 @@ export function DetailClient({
               <p className="text-sm text-[#a1a1aa] mt-0.5">Review and analyze advance application</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
             <CallButton
               phone={crm?.phone ?? application.phone}
               name={`${application.firstName} ${application.lastName}`.trim()}
@@ -582,7 +582,7 @@ export function DetailClient({
                   toast.error(r.error || "Failed to start preview");
                 }
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#15803d] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#15803d] hover:bg-[#f0fdf4] transition-colors"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-[#15803d] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#15803d] hover:bg-[#f0fdf4] transition-colors"
               title="Sign into the customer portal as this applicant - opens in a new tab"
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -598,7 +598,7 @@ export function DetailClient({
                   setShowRejectForm(true);
                   document.getElementById("reject-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[#dc2626] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#dc2626] hover:bg-[#fff1f2] transition-colors"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-[#dc2626] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#dc2626] hover:bg-[#fff1f2] transition-colors"
                 title="Reject this application"
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
