@@ -86,7 +86,9 @@ export async function setOfferTerms(input: {
       offeredMaxAmount: input.offeredMaxAmount,
       offeredTermsJson: JSON.stringify(input.terms),
       offerToken,
-      offerSentAt: new Date(),
+      // offerSentAt is NOT set here anymore. Saving terms only PREPARES the
+      // offer for the agent to review; it is stamped when the agent explicitly
+      // sends the offer to the client (sendOfferToClient / resend action).
       ...(input.paymentFrequency ? { paymentFrequency: input.paymentFrequency } : {}),
       ...(shouldApprove && {
         status: "APPROVED",
@@ -117,24 +119,11 @@ export async function setOfferTerms(input: {
     },
   });
 
-  // Fire the offer-ready notification on first send. Pulled out into
-  // a helper so callers (and tests) can also trigger it explicitly.
-  if (wasFirstOffer) {
-    await sendOfferReadyNotification({
-      applicationId: input.applicationId,
-      email: updated.email,
-      phone: updated.phone,
-      firstName: updated.firstName,
-      applicationCode: updated.applicationCode,
-      offerToken,
-      approvedAmount: input.offeredMaxAmount,
-      terms: input.terms,
-    }).catch((err) =>
-      console.error("[offer-ready] notification dispatch failed:", err),
-    );
-  }
-
-  return { ok: true as const, offerToken, notified: wasFirstOffer };
+  // NOTE: the client is NOT notified here anymore. Preparing an offer is a
+  // two-step flow now — the agent reviews the prepared offer, then explicitly
+  // sends it to the client (sendOfferToClient). This keeps clients from
+  // receiving an offer before an agent has reviewed the contract/terms.
+  return { ok: true as const, offerToken, notified: false };
 }
 
 /**
@@ -185,6 +174,14 @@ export async function resendOfferNotification(applicationId: string) {
     offerToken: app.offerToken,
     approvedAmount: Number(app.offeredMaxAmount ?? 0),
     terms,
+  });
+
+  // Stamp when the offer was actually delivered to the client. This is the
+  // flag the UI uses to distinguish a prepared (draft) offer from a sent one,
+  // and what the stale-offer expiry cron counts from.
+  await prisma.application.update({
+    where: { id: app.id },
+    data: { offerSentAt: new Date() },
   });
 
   await logAudit({

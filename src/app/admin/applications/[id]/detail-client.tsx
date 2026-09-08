@@ -894,6 +894,9 @@ export function DetailClient({
                   maxAmount: a.offeredMaxAmount != null ? Number(a.offeredMaxAmount) : null,
                   terms: parsedTerms,
                   offerToken: a.offerToken ?? null,
+                  // Whether the prepared offer has actually been sent to the
+                  // client yet (drives the two-stage prepare -> send UI).
+                  sent: (a as any).offerSentAt != null,
                   applicationCode: application.applicationCode,
                   // Borrower's requested amount from the apply form. Caps
                   // the default offered max so we never accidentally

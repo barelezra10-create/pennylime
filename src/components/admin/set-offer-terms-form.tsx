@@ -11,6 +11,9 @@ type ExistingOffer = {
   maxAmount: number | null;
   terms: OfferTerm[];
   offerToken: string | null;
+  // Whether the offer has been sent to the client. False = prepared/draft,
+  // awaiting the agent to review and send.
+  sent: boolean;
   applicationCode: string;
   // What the borrower originally asked for on the apply form. Used as the
   // ceiling for the default offered max so admin doesn't accidentally
@@ -51,7 +54,11 @@ export function SetOfferTermsForm({
   applicationId: string;
   existing: ExistingOffer;
 }) {
-  const [open, setOpen] = useState(existing.status === "PENDING");
+  // Open by default when there's active work: a brand-new offer (PENDING) or
+  // one that's prepared but not yet sent (so the agent sees the Send button).
+  const [open, setOpen] = useState(
+    existing.status === "PENDING" || (existing.status === "OFFERED" && !existing.sent),
+  );
   // Default the offered MAX to what the borrower actually requested - we
   // shouldn't accidentally offer more than they asked for. Default the
   // MIN to half their request (rounded down to the nearest $50), capped
@@ -79,6 +86,9 @@ export function SetOfferTermsForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [savedToken, setSavedToken] = useState<string | null>(existing.offerToken);
+  // Two-stage flow: saving terms only PREPARES the offer; the agent then
+  // reviews and sends it to the client. `sent` tracks whether it's gone out.
+  const [sent, setSent] = useState<boolean>(existing.sent);
 
   function regeneratePlans() {
     setTerms(buildDefaultTerms(genPrincipal, weeklyRate));
@@ -173,7 +183,7 @@ export function SetOfferTermsForm({
       });
       if (r.ok) {
         setSavedToken(r.offerToken);
-        toast.success("Offer saved. Share the link below with the applicant.");
+        toast.success("Offer prepared. Review it below, then Send offer to client.");
       } else {
         toast.error(r.error);
       }
@@ -200,15 +210,22 @@ export function SetOfferTermsForm({
                 className={`uppercase tracking-wide text-xs px-2 py-0.5 rounded-full ${
                   existing.status === "ACCEPTED"
                     ? "bg-[#dcfce7] text-[#15803d]"
-                    : existing.status === "OFFERED"
+                    : existing.status === "OFFERED" && !existing.sent
                     ? "bg-[#fef3c7] text-[#92400e]"
+                    : existing.status === "OFFERED"
+                    ? "bg-[#dcfce7] text-[#15803d]"
                     : "bg-[#f4f4f5] text-[#71717a]"
                 }`}
               >
-                {existing.status}
+                {existing.status === "OFFERED" && !existing.sent ? "PREPARED — NOT SENT" : existing.status}
               </span>
             </h2>
-            {existing.status === "OFFERED" && offerUrl && (
+            {existing.status === "OFFERED" && !existing.sent && (
+              <p className="mt-1 text-xs text-[#92400e]">
+                Offer prepared but not sent. Click {`"`}Edit terms{`"`} to review and send it to the client.
+              </p>
+            )}
+            {existing.status === "OFFERED" && existing.sent && offerUrl && (
               <p className="mt-1 text-xs text-[#71717a] truncate max-w-[400px]" title={offerUrl}>
                 {offerUrl}
               </p>
@@ -408,26 +425,49 @@ export function SetOfferTermsForm({
         disabled={submitting}
         className="mt-5 inline-flex items-center gap-2 rounded-lg bg-[#15803d] text-white px-4 py-2 text-sm font-semibold hover:bg-[#166534] disabled:opacity-50"
       >
-        {submitting ? "Saving…" : "Save offer terms"}
+        {submitting ? "Saving…" : "Save offer for review"}
       </button>
 
+      {/* Stage 2 — review the prepared offer, then send it to the client. */}
       {offerUrl && (
-        <div className="mt-5 rounded-lg bg-[#f0fdf4] border border-[#dcfce7] p-3">
-          <p className="text-[11px] uppercase tracking-[0.05em] text-[#15803d] font-semibold">
-            Applicant offer link
+        <div className={`mt-5 rounded-lg border p-4 ${sent ? "bg-[#f0fdf4] border-[#dcfce7]" : "bg-[#fffbeb] border-[#fde68a]"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className={`text-[10px] font-bold uppercase tracking-[0.06em] px-2 py-0.5 rounded-full ${
+                sent ? "bg-[#dcfce7] text-[#15803d]" : "bg-[#fef3c7] text-[#92400e]"
+              }`}
+            >
+              {sent ? "Sent to client" : "Prepared — not sent"}
+            </span>
+          </div>
+          <p className="text-[12px] text-[#52525b] mb-3">
+            {sent
+              ? "The client has received this offer. You can preview it or resend the email + SMS."
+              : "The client has NOT been notified yet. Review the offer, then send it."}
           </p>
-          <p className="mt-1 text-xs text-[#0a0a0a] break-all font-mono">{offerUrl}</p>
-          <div className="mt-2 flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={offerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#e4e4e7] bg-white px-3 py-2 text-[13px] font-semibold text-[#52525b] hover:bg-[#fafafa]"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+              Preview offer (what the client sees)
+            </a>
+            <SendOfferButton applicationId={applicationId} sent={sent} onSent={() => setSent(true)} />
             <button
               onClick={() => {
                 navigator.clipboard.writeText(offerUrl);
                 toast.success("Link copied");
               }}
-              className="text-xs font-semibold text-[#15803d] hover:text-[#166534]"
+              className="text-xs font-semibold text-[#15803d] hover:text-[#166534] px-2"
             >
               Copy link
             </button>
-            <ResendOfferButton applicationId={applicationId} />
           </div>
         </div>
       )}
@@ -435,18 +475,28 @@ export function SetOfferTermsForm({
   );
 }
 
-function ResendOfferButton({ applicationId }: { applicationId: string }) {
+function SendOfferButton({
+  applicationId,
+  sent,
+  onSent,
+}: {
+  applicationId: string;
+  sent: boolean;
+  onSent: () => void;
+}) {
   const [sending, setSending] = useState(false);
   async function handleClick() {
     if (sending) return;
-    if (!confirm("Send the offer-ready email + SMS (with PDF) to this applicant now?")) {
-      return;
-    }
+    const msg = sent
+      ? "Resend the offer email + SMS (with PDF) to this client now?"
+      : "Send this offer to the client now? They'll get the offer email + SMS with the link to accept.";
+    if (!confirm(msg)) return;
     setSending(true);
     try {
       const r = await resendOfferNotification(applicationId);
       if (r.ok) {
-        toast.success("Offer-ready email + SMS sent.");
+        toast.success(sent ? "Offer resent." : "Offer sent to client.");
+        onSent();
       } else {
         toast.error(r.error);
       }
@@ -456,14 +506,29 @@ function ResendOfferButton({ applicationId }: { applicationId: string }) {
       setSending(false);
     }
   }
+  if (sent) {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={sending}
+        className="text-xs font-semibold text-[#15803d] hover:text-[#166534] disabled:opacity-50 px-2"
+      >
+        {sending ? "Sending…" : "Resend email + SMS"}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
       onClick={handleClick}
       disabled={sending}
-      className="text-xs font-semibold text-[#15803d] hover:text-[#166534] disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-[#15803d] text-white px-4 py-2 text-[13px] font-semibold hover:bg-[#166534] disabled:opacity-50"
     >
-      {sending ? "Sending…" : "Resend offer email + SMS"}
+      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+      </svg>
+      {sending ? "Sending…" : "Send offer to client"}
     </button>
   );
 }
