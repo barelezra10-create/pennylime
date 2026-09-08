@@ -655,7 +655,7 @@ export function DetailClient({
           {collections && <CollectionsTimeline view={collections} />}
 
           {/* ── Cash flow (income + P&L from bank) ── (order 3) */}
-          <div className="order-[-2] flex flex-col gap-6">
+          <div className="order-[-1] flex flex-col gap-6">
             {/* ── Income by platform (from bank statement) ── */}
             <IncomeByPlatformPanel
               applicationId={application.id}
@@ -876,7 +876,8 @@ export function DetailClient({
           {/* ── Prior advances (repeat-applicant context) ── */}
           <PriorAdvancesCard priorAdvances={(application as any).priorAdvances ?? []} />
 
-          {/* ── Offer terms ── */}
+          {/* ── Offer terms ── (order -2: sits under Plaid + Documents) */}
+          <div className="order-[-2]">
           {(() => {
             const a = application as any;
             let parsedTerms: OfferTerm[] = [];
@@ -907,6 +908,7 @@ export function DetailClient({
               />
             );
           })()}
+          </div>
 
           {/* ── Plaid Insights ── (order 2: bank / Plaid) */}
           <div className="order-[-3]">
