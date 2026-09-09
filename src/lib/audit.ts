@@ -27,7 +27,9 @@ export type AuditAction =
   | "WITHDRAW_APPLICATION"
   | "CANCEL_APPLICATION"
   | "BANK_UPDATE_LINK_SENT"
-  | "CHANGE_BANK";
+  | "CHANGE_BANK"
+  | "RESCHEDULE_PAYMENT"
+  | "SKIP_PAYMENT";
 
 export type AuditEntityType =
   | "APPLICATION"

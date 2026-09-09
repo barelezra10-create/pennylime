@@ -303,6 +303,136 @@ export async function waiveLateFee(paymentId: string) {
   return { success: true, waivedAmount };
 }
 
+// Only a PENDING payment is safe to reschedule. A PROCESSING row has an
+// in-flight ACH debit; PAID/WAIVED/REPLACED/RETURNED/CANCELED/FAILED are
+// settled, collapsed, or already in a recovery flow and must not be moved.
+const RESCHEDULABLE_STATUSES = new Set(["PENDING"]);
+
+// Derive the cadence gap (in days) between scheduled payments so "skip
+// to end" appends one full period regardless of weekly/biweekly/monthly.
+// Uses the gap between the last two due dates; falls back to 7 days.
+function cadenceDays(payments: Array<{ dueDate: Date }>): number {
+  const sorted = [...payments]
+    .map((p) => new Date(p.dueDate).getTime())
+    .sort((a, b) => a - b);
+  if (sorted.length >= 2) {
+    const gapMs = sorted[sorted.length - 1] - sorted[sorted.length - 2];
+    const days = Math.round(gapMs / (24 * 60 * 60 * 1000));
+    if (days >= 1) return days;
+  }
+  return 7;
+}
+
+/**
+ * Admin: push a single PENDING payment's due date forward by N days.
+ * Only that payment moves — every other payment keeps its date. Used to
+ * give a borrower a few extra days before a charge (including delaying
+ * the very first payment before it's ever debited).
+ */
+export async function pushPaymentDueDate(paymentId: string, days: number) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  if (!Number.isInteger(days) || days < 1 || days > 30) {
+    return { success: false, error: "Enter a whole number of days between 1 and 30." };
+  }
+
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment) return { success: false, error: "Payment not found" };
+  if (!RESCHEDULABLE_STATUSES.has(payment.status)) {
+    return { success: false, error: `Can't push a ${payment.status} payment.` };
+  }
+
+  // Don't reshape the schedule while an ACH debit is in flight anywhere
+  // on this advance — a settling charge could land on a stale due date.
+  const inflight = await prisma.payment.findFirst({
+    where: { applicationId: payment.applicationId, status: "PROCESSING" },
+    select: { id: true },
+  });
+  if (inflight) {
+    return { success: false, error: "Another payment is processing. Try again in a few minutes." };
+  }
+
+  const oldDueDate = payment.dueDate;
+  const newDueDate = new Date(oldDueDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { dueDate: newDueDate },
+  });
+
+  await logAudit({
+    action: "RESCHEDULE_PAYMENT",
+    entityType: "PAYMENT",
+    entityId: paymentId,
+    performedBy: auth.email,
+    details: {
+      kind: "PUSH_DUE_DATE",
+      applicationId: payment.applicationId,
+      paymentNumber: payment.paymentNumber,
+      days,
+      oldDueDate: oldDueDate.toISOString(),
+      newDueDate: newDueDate.toISOString(),
+    },
+  });
+
+  return { success: true, newDueDate: newDueDate.toISOString() };
+}
+
+/**
+ * Admin: skip a single PENDING payment by moving it to the end of the
+ * schedule (last due date + one cadence period). No fee, no cap — this
+ * is an admin override, distinct from the borrower portal's paid "skip"
+ * feature. Keeps the same paymentNumber (parity with the portal skip).
+ */
+export async function skipPaymentToEnd(paymentId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment) return { success: false, error: "Payment not found" };
+  if (!RESCHEDULABLE_STATUSES.has(payment.status)) {
+    return { success: false, error: `Can't skip a ${payment.status} payment.` };
+  }
+
+  const inflight = await prisma.payment.findFirst({
+    where: { applicationId: payment.applicationId, status: "PROCESSING" },
+    select: { id: true },
+  });
+  if (inflight) {
+    return { success: false, error: "Another payment is processing. Try again in a few minutes." };
+  }
+
+  const all = await prisma.payment.findMany({
+    where: { applicationId: payment.applicationId },
+    select: { dueDate: true },
+  });
+  const maxDue = all.reduce((max, p) => Math.max(max, new Date(p.dueDate).getTime()), 0);
+  const newDueDate = new Date(maxDue + cadenceDays(all) * 24 * 60 * 60 * 1000);
+
+  const oldDueDate = payment.dueDate;
+  await prisma.payment.update({
+    where: { id: paymentId },
+    data: { dueDate: newDueDate },
+  });
+
+  await logAudit({
+    action: "SKIP_PAYMENT",
+    entityType: "PAYMENT",
+    entityId: paymentId,
+    performedBy: auth.email,
+    details: {
+      kind: "ADMIN_SKIP_TO_END",
+      applicationId: payment.applicationId,
+      paymentNumber: payment.paymentNumber,
+      oldDueDate: oldDueDate.toISOString(),
+      newDueDate: newDueDate.toISOString(),
+    },
+  });
+
+  return { success: true, newDueDate: newDueDate.toISOString() };
+}
+
 /**
  * Send the borrower a friendly "we missed your remittance, tell us when
  * to retry" email. Used by admin when a payment is overdue/failed and

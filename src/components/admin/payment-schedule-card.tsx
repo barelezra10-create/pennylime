@@ -6,8 +6,10 @@ import {
   chargePartialPayment,
   chargePaymentNow,
   getPaymentsSummary,
+  pushPaymentDueDate,
   retryPayment,
   sendMissedPaymentNotice,
+  skipPaymentToEnd,
   waiveLateFee,
 } from "@/actions/payments";
 import { easternDayDiff } from "@/lib/eastern-time";
@@ -257,6 +259,64 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                           title="ACH debit this payment now (instead of waiting for the daily cron)"
                         >
                           Charge now
+                        </button>
+                      )}
+                      {payment.status === "PENDING" && (
+                        <button
+                          onClick={async () => {
+                            const label =
+                              payment.paymentNumber === 1 ? "first payment" : `payment #${payment.paymentNumber}`;
+                            const input = window.prompt(
+                              `Push the ${label} out by how many days? (1–30)\nOnly this payment moves; the rest keep their dates.`,
+                              "3",
+                            );
+                            if (!input) return;
+                            const days = Number(input.replace(/[^0-9]/g, ""));
+                            if (!Number.isInteger(days) || days < 1 || days > 30) {
+                              toast.error("Enter a whole number of days between 1 and 30.");
+                              return;
+                            }
+                            const result = await pushPaymentDueDate(payment.id, days);
+                            if (result.success) {
+                              toast.success(
+                                `${label[0].toUpperCase() + label.slice(1)} pushed to ${new Date(result.newDueDate!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
+                              );
+                              getPaymentsSummary(applicationId).then(setPaymentSummary);
+                            } else {
+                              toast.error(result.error || "Failed to push payment");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d8] bg-white px-2.5 py-1 text-xs font-semibold text-[#52525b] hover:bg-[#f4f4f5] transition-colors"
+                          title="Move just this payment's due date out a few days"
+                        >
+                          Push
+                        </button>
+                      )}
+                      {payment.status === "PENDING" && (
+                        <button
+                          onClick={async () => {
+                            const label =
+                              payment.paymentNumber === 1 ? "first payment" : `payment #${payment.paymentNumber}`;
+                            if (
+                              !confirm(
+                                `Skip the ${label} ($${fmt(Number(payment.amount))})? It moves to the end of the schedule (no fee). The term extends by one period.`,
+                              )
+                            )
+                              return;
+                            const result = await skipPaymentToEnd(payment.id);
+                            if (result.success) {
+                              toast.success(
+                                `Payment #${payment.paymentNumber} moved to ${new Date(result.newDueDate!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`,
+                              );
+                              getPaymentsSummary(applicationId).then(setPaymentSummary);
+                            } else {
+                              toast.error(result.error || "Failed to skip payment");
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d8] bg-white px-2.5 py-1 text-xs font-semibold text-[#52525b] hover:bg-[#f4f4f5] transition-colors"
+                          title="Move this payment to the end of the schedule, no fee"
+                        >
+                          Skip to end
                         </button>
                       )}
                       {payment.status === "PROCESSING" && (
