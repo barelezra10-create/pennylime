@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { requireNonSupportRole } from "@/lib/auth-helpers";
 import { chargePaymentNow } from "@/actions/payments";
+import { earliestByDueDate } from "@/lib/next-payment";
 
 const num = (v: number | string | { toString(): string } | null | undefined) => {
   if (v == null) return 0;
@@ -196,11 +197,13 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
     const paidCount = paidPayments.length;
     const totalCount = livePayments.length;
 
-    const nextPending = app.payments.find((p) => p.status === "PENDING");
+    // Earliest-dued pending, not first-by-paymentNumber: a skipped/pushed
+    // payment keeps its number but moves in time (see earliestByDueDate).
+    const nextPending = earliestByDueDate(app.payments.filter((p) => p.status === "PENDING"));
     const isProcessing = app.payments.some((p) => p.status === "PROCESSING");
 
     // Days overdue based on the oldest still-pending payment past its due date.
-    const oldestPending = app.payments.find((p) => p.status === "PENDING");
+    const oldestPending = earliestByDueDate(app.payments.filter((p) => p.status === "PENDING"));
     let daysOverdue = 0;
     if (oldestPending && new Date(oldestPending.dueDate) < today0) {
       daysOverdue = Math.floor((today0.getTime() - new Date(oldestPending.dueDate).getTime()) / 86400000);
@@ -299,13 +302,20 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       lastResult,
       paidCount,
       totalCount,
-      schedule: app.payments.map((p) => ({
-        n: p.paymentNumber,
-        amount: num(p.amount) + num(p.lateFee),
-        dueDate: new Date(p.dueDate).toISOString(),
-        status: p.status,
-        paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : null,
-      })),
+      // Ordered by dueDate (paymentNumber tiebreak) so a skipped/pushed row
+      // shows in its real chronological slot, matching the detail-page card.
+      schedule: [...app.payments]
+        .sort((x, y) =>
+          new Date(x.dueDate).getTime() - new Date(y.dueDate).getTime() ||
+          x.paymentNumber - y.paymentNumber,
+        )
+        .map((p) => ({
+          n: p.paymentNumber,
+          amount: num(p.amount) + num(p.lateFee),
+          dueDate: new Date(p.dueDate).toISOString(),
+          status: p.status,
+          paidAt: p.paidAt ? new Date(p.paidAt).toISOString() : null,
+        })),
       newEmailCount: app.contact?.id ? unreadByContact.get(app.contact.id) ?? 0 : 0,
       awaitingReply:
         !!app.contact?.awaitingReplySince &&

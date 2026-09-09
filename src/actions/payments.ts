@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { requireNonSupportRole } from "@/lib/auth-helpers";
 import { selectMissedPayments } from "@/lib/missed-payments";
+import { earliestByDueDate } from "@/lib/next-payment";
 
 export async function getPaymentsByApplicationId(applicationId: string) {
   return prisma.payment.findMany({
@@ -15,9 +16,12 @@ export async function getPaymentsByApplicationId(applicationId: string) {
 }
 
 export async function getPaymentsSummary(applicationId: string) {
+  // Order by dueDate, not paymentNumber: a skipped/pushed payment keeps its
+  // number but moves in time, so dueDate is the true chronological order.
+  // paymentNumber breaks ties so same-day rows stay in a stable order.
   const payments = await prisma.payment.findMany({
     where: { applicationId },
-    orderBy: { paymentNumber: "asc" },
+    orderBy: [{ dueDate: "asc" }, { paymentNumber: "asc" }],
     include: {
       attempts: { orderBy: { attemptNumber: "asc" } },
     },
@@ -44,8 +48,8 @@ export async function getPaymentsSummary(applicationId: string) {
     0,
   );
   const totalLateFees = obligatedPayments.reduce((s, p) => s + Number(p.lateFee), 0);
-  const nextPayment = payments.find(
-    (p) => p.status === "PENDING" || p.status === "FAILED"
+  const nextPayment = earliestByDueDate(
+    payments.filter((p) => p.status === "PENDING" || p.status === "FAILED")
   );
   const remainingBalance = Math.max(totalOwed - totalPaid, 0);
 
