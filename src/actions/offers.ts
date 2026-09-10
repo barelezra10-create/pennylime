@@ -10,6 +10,30 @@ import {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+/**
+ * Best-effort team alert when a signed offer fails to disburse — the borrower
+ * is left stranded on the Approved tab with money never sent. Reuses the
+ * payment-failed recipient list. Never throws.
+ */
+async function alertFundingFailed(
+  app: { id: string; applicationCode: string; firstName: string; lastName: string; email: string },
+  error: string,
+) {
+  try {
+    const { notifyAdmins, getAdminUrl } = await import("@/lib/notify");
+    const name = `${app.firstName} ${app.lastName}`.trim() || app.email;
+    await notifyAdmins("fundingFailed", {
+      subject: `⚠️ Funding failed — ${name} (${app.applicationCode}) stuck on Approved`,
+      html: `<p><strong>${name}</strong> signed their agreement, but the ACH disbursement failed — they are stuck on the Approved tab and have not received funds.</p>
+        <p><strong>Error:</strong> ${error}</p>
+        <p>Open the advance and click <strong>Retry funding</strong> (re-provisions a fresh GoACH bank account and re-attempts the disbursement).</p>
+        <p><a href="${getAdminUrl()}/admin/applications/${app.id}">Open application →</a></p>`,
+    });
+  } catch (err) {
+    console.error("[notify] fundingFailed alert failed:", err);
+  }
+}
+
 export type OfferTerm = {
   weeklyRemittance: number;
   durationWeeks: number;
@@ -810,6 +834,7 @@ export async function acceptOffer(input: {
               where: { id: app.id },
               data: { increaseDisburseError: tx.error },
             });
+            await alertFundingFailed(app, tx.error);
           }
         } else {
           console.error(`[disburse] app ${app.applicationCode} ensureGoachBankAccount failed: ${prov.error}`);
@@ -817,6 +842,7 @@ export async function acceptOffer(input: {
             where: { id: app.id },
             data: { increaseDisburseError: prov.error },
           });
+          await alertFundingFailed(app, prov.error);
         }
       } // end goachConfigured
     }

@@ -95,6 +95,10 @@ export type AdvanceRow = {
   topUpRequestId?: string;
   topUpApplicationId?: string;
   topUpContactId?: string | null;
+  // Signed the offer (offerStatus ACCEPTED) but still APPROVED — the ACH
+  // disbursement never completed, so they're stranded on the Approved tab.
+  fundingFailed?: boolean;
+  disburseError?: string | null;
 };
 
 export type AdvancesSummary = {
@@ -139,6 +143,8 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       workVerificationJson: true,
       bankBalance: true,
       offeredMaxAmount: true,
+      offerStatus: true,
+      increaseDisburseError: true,
       createdAt: true,
       contact: { select: { id: true, source: true, referrer: true, awaitingReplySince: true } },
       payments: {
@@ -334,6 +340,9 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       dueTodayAmount: rowDueTodayAmount,
       dueTodayCount: rowDueTodayCount,
       overdueCount: rowOverdueCount,
+      // Signed but not funded: offer accepted yet status is still APPROVED.
+      fundingFailed: app.status === "APPROVED" && app.offerStatus === "ACCEPTED",
+      disburseError: app.increaseDisburseError ?? null,
     };
   });
 

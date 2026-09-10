@@ -523,7 +523,11 @@ export async function revealSSN(applicationId: string) {
   return { success: true, ssn };
 }
 
-export async function fundApplication(applicationId: string, fundedAmount: number) {
+export async function fundApplication(
+  applicationId: string,
+  fundedAmount: number,
+  opts?: { forceReprovision?: boolean },
+) {
   const auth = await requireNonSupportRole();
   if (!auth.ok) return { success: false, error: auth.error };
 
@@ -563,7 +567,10 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
       });
       return { success: false, error: "GoACH not configured" };
     }
-    const ba = await ensureGoachBankAccount(applicationId);
+    // forceReprovision creates a FRESH GoACH bank account (immutable, so a new
+    // one under the same receiver) instead of reusing the cached uuid. Used to
+    // recover disbursements that 500 against a bad/stale provisioned account.
+    const ba = await ensureGoachBankAccount(applicationId, { force: opts?.forceReprovision === true });
     if (!ba.ok) {
       await prisma.application.update({
         where: { id: applicationId },
@@ -727,4 +734,29 @@ export async function fundApplication(applicationId: string, fundedAmount: numbe
   }
 
   return { success: true };
+}
+
+/**
+ * Retry a stuck disbursement for a signed-but-unfunded advance. Some GoACH
+ * bank accounts land in a state where the Credit transaction 500s ("Internal
+ * Server Error") even though provisioning succeeded — the borrower signs and
+ * gets stranded on Approved. This re-provisions a FRESH GoACH bank account and
+ * re-attempts the disbursement. Uses the amount the borrower actually accepted.
+ */
+export async function retryFundingWithReprovision(applicationId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: { status: true, offerStatus: true, acceptedAmount: true, fundedAmount: true, offeredMaxAmount: true, loanAmount: true },
+  });
+  if (!app) return { success: false, error: "Application not found" };
+  if (app.status !== "APPROVED") {
+    return { success: false, error: `Can only retry funding on an APPROVED advance (currently ${app.status}).` };
+  }
+  const amount = Number(app.acceptedAmount ?? app.fundedAmount ?? app.offeredMaxAmount ?? app.loanAmount ?? 0);
+  if (!(amount > 0)) return { success: false, error: "No accepted amount on file to fund." };
+
+  return fundApplication(applicationId, amount, { forceReprovision: true });
 }

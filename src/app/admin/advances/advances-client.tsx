@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { chargePaymentNow } from "@/actions/payments";
 import { chargeAllDueToday, type AdvanceRow, type AdvancesSummary } from "@/actions/advances";
 import { withdrawApplication, cancelApplication } from "@/actions/application-decision";
+import { retryFundingWithReprovision } from "@/actions/applications";
 
 const money = (n: number) =>
   `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -100,6 +101,7 @@ export function AdvancesClient({
   const [chargingId, setChargingId] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort | null>(null);
 
@@ -222,6 +224,24 @@ export function AdvancesClient({
       toast.error(e instanceof Error ? e.message : "Action failed.");
     } finally {
       setDecidingId(null);
+    }
+  }
+
+  async function runRetryFunding(a: AdvanceRow) {
+    if (!confirm(`Retry funding ${a.borrowerName} for ${money2(a.approvedAmount ?? a.requestedAmount)}?\n\nThis re-provisions a fresh GoACH bank account and sends a REAL ACH disbursement to the borrower.`)) return;
+    setRetryingId(a.id);
+    try {
+      const r = await retryFundingWithReprovision(a.id);
+      if ((r as { success: boolean }).success) {
+        toast.success(`${a.borrowerName} funded — disbursement sent.`);
+        router.refresh();
+      } else {
+        toast.error((r as { error?: string }).error || "Retry failed.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed.");
+    } finally {
+      setRetryingId(null);
     }
   }
 
@@ -492,10 +512,18 @@ export function AdvancesClient({
               {rows.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No approved applicants.</td></tr>
               ) : rows.map((a) => (
-                <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
+                <tr key={a.id} className={`border-t border-[#f4f4f5] ${a.fundingFailed ? "bg-[#fff1f2] hover:bg-[#ffe4e6]" : "hover:bg-[#fafafa]"}`}>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-black flex items-center gap-1.5">
                       {a.borrowerName}
+                      {a.fundingFailed && (
+                        <span
+                          title="Borrower signed the agreement but the ACH disbursement never completed — stuck on Approved"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#dc2626] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ⚠ Signed · not funded
+                        </span>
+                      )}
                       {a.newEmailCount > 0 && (
                         <span
                           title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
@@ -514,6 +542,11 @@ export function AdvancesClient({
                       )}
                     </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
+                    {a.fundingFailed && a.disburseError && (
+                      <div className="mt-1 max-w-[320px] rounded bg-[#fef2f2] px-2 py-1 text-[11px] leading-snug text-[#b91c1c]">
+                        <span className="font-semibold">Disbursement error: </span>{a.disburseError}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">—</span>}</td>
@@ -524,6 +557,16 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      {a.fundingFailed && (
+                        <button
+                          onClick={() => runRetryFunding(a)}
+                          disabled={retryingId === a.id}
+                          title="Re-provision a fresh GoACH bank account and re-send the ACH disbursement"
+                          className="rounded-md border border-[#dc2626] bg-[#dc2626] text-white hover:bg-[#b91c1c] text-[11px] font-bold px-2.5 py-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {retryingId === a.id ? "Funding…" : "Retry funding"}
+                        </button>
+                      )}
                       <button
                         onClick={() => runDecision(a, "withdraw")}
                         disabled={decidingId === a.id}

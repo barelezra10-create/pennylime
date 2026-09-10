@@ -17,7 +17,10 @@ export type NotificationEvent =
   | "inboundEmail"
   | "paymentSettled"
   | "paymentFailed"
-  | "paymentInitiated";
+  | "paymentInitiated"
+  // A borrower signed but the ACH disbursement failed, leaving them stuck on
+  // Approved. Reuses the payment-failed recipient list (no separate config).
+  | "fundingFailed";
 
 type RecipientField =
   | "chatStartedEmails"
@@ -36,6 +39,7 @@ const FIELD_BY_EVENT: Record<NotificationEvent, RecipientField> = {
   paymentSettled: "paymentSettledEmails",
   paymentFailed: "paymentFailedEmails",
   paymentInitiated: "paymentInitiatedEmails",
+  fundingFailed: "paymentFailedEmails",
 };
 
 function parseRecipients(csv: string): string[] {
