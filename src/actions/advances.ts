@@ -87,6 +87,14 @@ export type AdvanceRow = {
   dueTodayAmount: number;
   dueTodayCount: number;
   overdueCount: number;
+  // A pending portal "top-up" request surfaced into the Pending queue as its
+  // own row (the borrower asking for more on an already-funded advance). These
+  // are AdvanceTopUpRequest rows, not Applications, so they carry the source
+  // application id + contact for the "Review top-up" link.
+  isTopUp?: boolean;
+  topUpRequestId?: string;
+  topUpApplicationId?: string;
+  topUpContactId?: string | null;
 };
 
 export type AdvancesSummary = {
@@ -328,6 +336,78 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       overdueCount: rowOverdueCount,
     };
   });
+
+  // Surface pending portal top-up requests as their own rows in the Pending
+  // queue. The borrower's underlying advance still shows on its own stage tab
+  // (Active/etc); this is the "give me more" ask awaiting a decision, so it
+  // belongs in Pending alongside new applications — just flagged as a top-up.
+  const pendingTopUps = await prisma.advanceTopUpRequest.findMany({
+    where: { status: "PENDING" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, requestedAmount: true, createdAt: true, contactId: true, applicationId: true },
+  });
+  // AdvanceTopUpRequest has no Application relation (scalar applicationId only),
+  // so pull the source applications in one query and index them by id.
+  const topUpAppById = new Map<string, {
+    id: string; applicationCode: string; firstName: string; lastName: string;
+    platform: string | null; monthlyIncome: unknown; bankBalance: unknown; loanTermMonths: number;
+    contact: { id: string; source: string | null; referrer: string | null } | null;
+  }>();
+  if (pendingTopUps.length) {
+    const srcApps = await prisma.application.findMany({
+      where: { id: { in: pendingTopUps.map((t) => t.applicationId) } },
+      select: {
+        id: true, applicationCode: true, firstName: true, lastName: true,
+        platform: true, monthlyIncome: true, bankBalance: true, loanTermMonths: true,
+        contact: { select: { id: true, source: true, referrer: true } },
+      },
+    });
+    for (const a of srcApps) topUpAppById.set(a.id, a);
+  }
+  for (const t of pendingTopUps) {
+    const app = topUpAppById.get(t.applicationId);
+    if (!app) continue;
+    advances.push({
+      id: `topup-${t.id}`,
+      applicationCode: app.applicationCode,
+      borrowerName: `${app.firstName} ${app.lastName}`.trim(),
+      status: "PENDING",
+      stageTab: "Pending",
+      platform: app.platform ?? null,
+      termMonths: app.loanTermMonths,
+      monthlyIncome: app.monthlyIncome != null ? num(app.monthlyIncome) : null,
+      unqualifiedReason: null,
+      bankBalance: app.bankBalance != null ? num(app.bankBalance) : null,
+      referral: friendlySource(app.contact?.referrer ?? null, app.contact?.source ?? null),
+      requestedAmount: num(t.requestedAmount),
+      approvedAmount: null,
+      fundedAmount: 0,
+      appliedAt: new Date(t.createdAt).toISOString(),
+      nextPaymentId: null,
+      nextDueDate: null,
+      nextDueAmount: 0,
+      outstanding: 0,
+      paidToDate: 0,
+      daysOverdue: 0,
+      isProcessing: false,
+      lastResult: null,
+      paidCount: 0,
+      totalCount: 0,
+      schedule: [],
+      newEmailCount: 0,
+      awaitingReply: false,
+      moneyOut: 0,
+      profit: 0,
+      potentialProfit: 0,
+      dueTodayAmount: 0,
+      dueTodayCount: 0,
+      overdueCount: 0,
+      isTopUp: true,
+      topUpRequestId: t.id,
+      topUpApplicationId: app.id,
+      topUpContactId: t.contactId ?? app.contact?.id ?? null,
+    });
+  }
 
   // Sort: most overdue first, then due soonest, then most owed.
   advances.sort((a, b) => {

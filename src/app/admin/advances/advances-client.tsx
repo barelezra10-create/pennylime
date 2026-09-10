@@ -409,10 +409,18 @@ export function AdvancesClient({
               {rows.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No pending applicants.</td></tr>
               ) : rows.map((a) => (
-                <tr key={a.id} className="border-t border-[#f4f4f5] hover:bg-[#fafafa]">
+                <tr key={a.id} className={`border-t border-[#f4f4f5] ${a.isTopUp ? "bg-[#faf5ff] hover:bg-[#f3e8ff]" : "hover:bg-[#fafafa]"}`}>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-black flex items-center gap-1.5">
                       {a.borrowerName}
+                      {a.isTopUp && (
+                        <span
+                          title="Existing borrower requesting more advance (portal top-up request)"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#7c3aed] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                        >
+                          ↑ Top up
+                        </span>
+                      )}
                       {a.newEmailCount > 0 && (
                         <span
                           title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
@@ -445,12 +453,21 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-[#52525b]">{a.referral || <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/admin/applications/${a.id}?from=Pending`}
-                      className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
-                    >
-                      Review
-                    </Link>
+                    {a.isTopUp ? (
+                      <Link
+                        href={a.topUpContactId ? `/admin/contacts/${a.topUpContactId}` : `/admin/applications/${a.topUpApplicationId}?from=Pending`}
+                        className="rounded-md border border-[#7c3aed] text-[#7c3aed] hover:bg-[#f5f3ff] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                      >
+                        Review top-up
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/admin/applications/${a.id}?from=Pending`}
+                        className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                      >
+                        Review
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}
