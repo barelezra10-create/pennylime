@@ -330,9 +330,9 @@ By checking the boxes below and clicking **"Accept and Authorize"**, I confirm t
 
 **770 Technology LLC** d/b/a **PennyLime**
 
-By: **Elad Levy**
-Title: **Sole Member / Authorized Signatory**
-Date: **2026-05-17**
+By: **PennyLime — Authorized Signatory**
+Title: **Authorized Signatory**
+Date: **[Acceptance Date]**
 
 Address: 1300 Monad Terrace, Unit 9B, Miami Beach, FL 33139
 EIN: 42-2071573
