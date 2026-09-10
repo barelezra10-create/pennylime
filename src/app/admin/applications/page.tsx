@@ -38,8 +38,11 @@ export default async function ApplicationsPage({
   const isApproved = stage === "Approved";
   const approvedRows = advances.filter((a) => a.stageTab === "Approved");
   const approvedCount = approvedRows.length;
-  const approvedTotal = approvedRows.reduce((s, a) => s + a.requestedAmount, 0);
-  const approvedAvg = approvedCount ? approvedTotal / approvedCount : 0;
+  // Sum the APPROVED amount (offeredMaxAmount), not what the borrower
+  // requested — otherwise "Total/Avg approved" report the ask, not the offer.
+  const approvedWithAmount = approvedRows.filter((a) => a.approvedAmount != null);
+  const approvedTotal = approvedWithAmount.reduce((s, a) => s + (a.approvedAmount ?? 0), 0);
+  const approvedAvg = approvedWithAmount.length ? approvedTotal / approvedWithAmount.length : 0;
   const approvedAvgWeeks = approvedCount ? approvedRows.reduce((s, a) => s + a.termMonths, 0) / approvedCount : 0;
 
   // Unqualified tab metrics — applicants auto-flagged (income too low / short
