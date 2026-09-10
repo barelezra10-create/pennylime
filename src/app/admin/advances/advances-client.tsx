@@ -513,21 +513,21 @@ export function AdvancesClient({
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No approved applicants.</td></tr>
               ) : rows.map((a) => (
                 <tr key={a.id} className={`border-t border-[#f4f4f5] ${a.fundingFailed ? "bg-[#fff1f2] hover:bg-[#ffe4e6]" : "hover:bg-[#fafafa]"}`}>
-                  <td className="px-4 py-3">
-                    <div className="font-semibold text-black flex items-center gap-1.5">
-                      {a.borrowerName}
+                  <td className="px-4 py-3 min-w-[180px]">
+                    <div className="font-semibold text-black flex flex-wrap items-center gap-1.5">
+                      <span>{a.borrowerName}</span>
                       {a.fundingFailed && (
                         <span
                           title="Borrower signed the agreement but the ACH disbursement never completed — stuck on Approved"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#dc2626] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#dc2626] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
-                          ⚠ Signed · not funded
+                          ⚠ Not funded
                         </span>
                       )}
                       {a.newEmailCount > 0 && (
                         <span
                           title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
-                          className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
                         </span>
@@ -535,7 +535,7 @@ export function AdvancesClient({
                       {a.awaitingReply && (
                         <span
                           title="We emailed this applicant and are waiting for their reply"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ⏳ Waiting
                         </span>
@@ -543,8 +543,12 @@ export function AdvancesClient({
                     </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
                     {a.fundingFailed && a.disburseError && (
-                      <div className="mt-1 max-w-[320px] rounded bg-[#fef2f2] px-2 py-1 text-[11px] leading-snug text-[#b91c1c]">
-                        <span className="font-semibold">Disbursement error: </span>{a.disburseError}
+                      <div className="mt-1 max-w-[280px] rounded bg-[#fef2f2] px-2 py-1 text-[11px] leading-snug text-[#b91c1c]">
+                        {(a.approvedAmount ?? 0) > 1000 ? (
+                          <><span className="font-semibold">Over GoACH's $1,000 disbursement limit.</span> Raise the limit with GoACH or lower the advance to fund.</>
+                        ) : (
+                          <><span className="font-semibold">Disbursement error: </span>{a.disburseError}</>
+                        )}
                       </div>
                     )}
                   </td>
@@ -556,13 +560,13 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-[#52525b]">{a.referral || <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-end gap-1.5 min-w-[150px]">
                       {a.fundingFailed && (
                         <button
                           onClick={() => runRetryFunding(a)}
                           disabled={retryingId === a.id}
                           title="Re-provision a fresh GoACH bank account and re-send the ACH disbursement"
-                          className="rounded-md border border-[#dc2626] bg-[#dc2626] text-white hover:bg-[#b91c1c] text-[11px] font-bold px-2.5 py-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="whitespace-nowrap rounded-md border border-[#dc2626] bg-[#dc2626] text-white hover:bg-[#b91c1c] text-[11px] font-bold px-2.5 py-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {retryingId === a.id ? "Funding…" : "Retry funding"}
                         </button>
