@@ -67,6 +67,11 @@ model Application {
   goachReceiverUuid        String?
   goachBankAccountUuid     String?
   goachDisburseUuid        String?
+  // GoACH caps a single ACH credit at $1,000, so advances over that are
+  // disbursed as multiple credits. JSON array of { uuid, amountCents, status }
+  // for every credit sent, persisted as each one succeeds so a retry only ever
+  // sends the not-yet-disbursed remainder (never double-pays the borrower).
+  goachCreditsJson         String?
   // Times the borrower used the "skip one payment" feature in /portal.
   // Each skip charges a 5%-of-advance fee + shifts the next pending
   // payment to the end of the schedule. Capped to 1 per advance for now.

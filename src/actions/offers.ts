@@ -704,17 +704,22 @@ export async function acceptOffer(input: {
   try {
     const { goachProductionReady } = await import("@/lib/payment-processor");
     if (goachProductionReady()) {
-      const { goachConfigured, createTransaction } = await import("@/lib/goach");
+      const { goachConfigured } = await import("@/lib/goach");
       const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
       if (!goachConfigured()) {
         console.error(`[disburse] app ${app.applicationCode} skipped: GoACH not configured`);
       } else {
         const prov = await ensureGoachBankAccount(app.id);
         if (prov.ok) {
-          const tx = await createTransaction({
+          // Split over GoACH's $1,000 credit cap; records each credit as it
+          // clears so a later retry only sends the remainder.
+          const { disburseInChunks } = await import("@/lib/goach-disburse");
+          const existing = await prisma.application.findUnique({ where: { id: app.id }, select: { goachCreditsJson: true } });
+          const tx = await disburseInChunks({
+            applicationId: app.id,
             bankAccountUuid: prov.bankAccountUuid,
-            amountCents: Math.round(input.selectedAmount * 100),
-            type: "Credit",
+            totalCents: Math.round(input.selectedAmount * 100),
+            existingCreditsJson: existing?.goachCreditsJson ?? null,
             descriptor: "PENNYLIME ADV",
           });
           if (tx.ok) {
@@ -724,15 +729,15 @@ export async function acceptOffer(input: {
                 status: "FUNDED",
                 fundedAt: new Date(),
                 fundedAmount: input.selectedAmount,
-                increaseTransferId: tx.uuid,
-                increaseTransferStatus: tx.status,
-                goachDisburseUuid: tx.uuid,
+                increaseTransferId: tx.credits[0].uuid,
+                increaseTransferStatus: tx.credits[0].status,
+                goachDisburseUuid: tx.credits[0].uuid,
               },
             });
             // Keep the first debit at least a week after funding.
             const { enforceFirstPaymentBuffer } = await import("@/lib/first-payment-buffer");
             await enforceFirstPaymentBuffer(app.id);
-            console.log(`[disburse] app ${app.applicationCode} funded via GoACH credit ${tx.uuid}`);
+            console.log(`[disburse] app ${app.applicationCode} funded via ${tx.credits.length} GoACH credit(s)`);
             // Move linked contact to FUNDED stage (drives stage-tracking).
             const linkedContact = await prisma.contact.findFirst({
               where: { applicationId: app.id },

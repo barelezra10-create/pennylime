@@ -558,7 +558,7 @@ export async function fundApplication(
       });
       return { success: false, error: "GoACH production not configured" };
     }
-    const { goachConfigured, createTransaction } = await import("@/lib/goach");
+    const { goachConfigured } = await import("@/lib/goach");
     const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
     if (!goachConfigured()) {
       await prisma.application.update({
@@ -578,23 +578,34 @@ export async function fundApplication(
       });
       return { success: false, error: `Couldn't set up GoACH bank account: ${ba.error}` };
     }
-    const tx = await createTransaction({
+    // GoACH caps a single credit at $1,000, so advances above that go out as
+    // several <=$1,000 credits. disburseInChunks sends only the remainder and
+    // records each credit as it clears, so a retry never double-pays.
+    const totalCents = Math.round(fundedAmount * 100);
+    const { disburseInChunks } = await import("@/lib/goach-disburse");
+    const result = await disburseInChunks({
+      applicationId,
       bankAccountUuid: ba.bankAccountUuid,
-      amountCents: Math.round(fundedAmount * 100),
-      type: "Credit",
+      totalCents,
+      existingCreditsJson: application.goachCreditsJson ?? null,
       descriptor: "PENNYLIME ADV",
     });
-    if (!tx.ok) {
+    if (!result.ok) {
+      const sentCents = result.credits.reduce((s, c) => s + c.amountCents, 0);
+      const msg =
+        sentCents > 0
+          ? `Partially funded: $${(sentCents / 100).toFixed(2)} of $${(totalCents / 100).toFixed(2)} sent. Click Retry funding to send the rest. (${result.error})`
+          : `Disbursement failed: ${result.error}`;
       await prisma.application.update({
         where: { id: applicationId },
-        data: { increaseDisburseError: tx.error },
+        data: { increaseDisburseError: msg },
       });
-      return { success: false, error: `Disbursement failed: ${tx.error}` };
+      return { success: false, error: msg };
     }
-    transferId = tx.uuid;
-    transferStatus = tx.status;
-    goachDisburseUuid = tx.uuid;
-    console.log(`[disburse] app ${application.applicationCode} funded via GoACH credit ${tx.uuid}`);
+    transferId = result.credits[0].uuid;
+    transferStatus = result.credits[0].status;
+    goachDisburseUuid = result.credits[0].uuid;
+    console.log(`[disburse] app ${application.applicationCode} funded via ${result.credits.length} GoACH credit(s)`);
   } catch (err) {
     const message = err instanceof Error ? err.message : "goach error";
     await prisma.application.update({ where: { id: applicationId }, data: { increaseDisburseError: message } }).catch(() => {});
