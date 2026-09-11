@@ -28,6 +28,7 @@ import { previewPortalAs } from "@/actions/portal-preview";
 import type { ApplicationWithDocuments } from "@/types";
 import type { EvaluationResult } from "@/types";
 import type { CustomerCrm } from "@/components/admin/customer-crm-panel";
+import { TopUpRequestsPanel } from "@/components/admin/top-up-requests-panel";
 import { SalesforceRecord } from "@/components/admin/sf-record";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { EmailPanel } from "@/components/admin/email-panel";
@@ -614,6 +615,7 @@ export function DetailClient({
         {/* Section order is controlled with CSS order: applicant details + amount
             first, then Plaid, then cash flow, then everything else (order 0). */}
         <div className="flex flex-col gap-6">
+          <TopUpRequestsPanel applicationId={application.id} />
           {/* ── Customer CRM — Salesforce Lightning-style record ── */}
           {crm && (
             <SalesforceRecord
