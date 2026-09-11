@@ -4,7 +4,7 @@ import { useState, useMemo, Fragment } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { chargePaymentNow } from "@/actions/payments";
+import { chargePaymentNow, emailUpdatedPaymentTerms } from "@/actions/payments";
 import { chargeAllDueToday, type AdvanceRow, type AdvancesSummary } from "@/actions/advances";
 import { withdrawApplication, cancelApplication } from "@/actions/application-decision";
 import { retryFundingWithReprovision } from "@/actions/applications";
@@ -104,6 +104,7 @@ export function AdvancesClient({
   const [bulkRunning, setBulkRunning] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [emailingId, setEmailingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort | null>(null);
 
@@ -226,6 +227,23 @@ export function AdvancesClient({
       toast.error(e instanceof Error ? e.message : "Action failed.");
     } finally {
       setDecidingId(null);
+    }
+  }
+
+  async function runEmailSchedule(a: AdvanceRow) {
+    if (!confirm(`Email ${a.borrowerName} their updated payment schedule?`)) return;
+    setEmailingId(a.id);
+    try {
+      const r = await emailUpdatedPaymentTerms(a.id);
+      if (r.success) {
+        toast.success(`Updated schedule emailed to ${r.to}`);
+      } else {
+        toast.error(r.error || "Couldn't send the email.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't send the email.");
+    } finally {
+      setEmailingId(null);
     }
   }
 
@@ -709,6 +727,14 @@ export function AdvancesClient({
                           {chargingId === a.id ? "…" : "Charge now"}
                         </button>
                       )}
+                      <button
+                        onClick={() => runEmailSchedule(a)}
+                        disabled={emailingId === a.id}
+                        title="Email this borrower their updated payment schedule"
+                        className="rounded-md border border-[#2563eb] text-[#2563eb] hover:bg-[#eff6ff] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {emailingId === a.id ? "Sending…" : "Email schedule"}
+                      </button>
                       <Link
                         href={`/admin/applications/${a.id}?from=Active`}
                         className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 transition-colors"

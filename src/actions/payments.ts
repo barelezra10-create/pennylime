@@ -689,3 +689,58 @@ export async function reversePayoff(applicationId: string) {
 
   return { success: true as const, moneyOutcome, restoredPayments: waived.length + 1 };
 }
+
+/**
+ * Admin: email a single borrower their updated payment schedule (new first
+ * payment date, per-debit amount, remaining total, and the full upcoming
+ * schedule). Used after a reschedule so the borrower sees the new dates. Uses
+ * the logged-in admin session — no cron secret. sendEmail records the send on
+ * the contact timeline via contactId.
+ */
+export async function emailUpdatedPaymentTerms(applicationId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false as const, error: auth.error };
+
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    select: {
+      firstName: true,
+      email: true,
+      applicationCode: true,
+      paymentFrequency: true,
+      contact: { select: { id: true } },
+      payments: {
+        where: { status: "PENDING", paidAt: null },
+        orderBy: [{ dueDate: "asc" }, { paymentNumber: "asc" }],
+        select: { paymentNumber: true, dueDate: true, amount: true },
+      },
+    },
+  });
+  if (!app) return { success: false as const, error: "Application not found" };
+  if (app.payments.length === 0) return { success: false as const, error: "No upcoming payments to email." };
+
+  const schedule = app.payments.map((p) => ({
+    paymentNumber: p.paymentNumber,
+    dueDate: new Date(p.dueDate),
+    amount: Number(p.amount),
+  }));
+  const { paymentTermsUpdatedEmail } = await import("@/lib/emails/payment-terms-updated");
+  const { sendEmail } = await import("@/lib/emails/send");
+  const email = paymentTermsUpdatedEmail({
+    firstName: app.firstName,
+    applicationCode: app.applicationCode,
+    firstDueDate: schedule[0].dueDate,
+    schedule,
+    frequency: app.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY",
+  });
+  const r = await sendEmail({
+    to: app.email,
+    subject: email.subject,
+    html: email.html,
+    preheader: email.preheader,
+    contactId: app.contact?.id,
+    templateId: "payment-terms-updated",
+  });
+  if (!r.success) return { success: false as const, error: "Failed to send email" };
+  return { success: true as const, to: app.email };
+}
