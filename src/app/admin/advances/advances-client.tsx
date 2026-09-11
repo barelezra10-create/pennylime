@@ -39,6 +39,7 @@ type SortKey =
   | "bankBalance"
   | "status"
   | "amount"
+  | "totalDebt"
   | "paidCount"
   | "lastResult"
   | "nextDue"
@@ -60,6 +61,7 @@ function sortVal(a: AdvanceRow, key: SortKey): number | string {
     case "bankBalance": return a.bankBalance ?? -1;
     case "status": return a.status;
     case "amount": return ["Active", "Default"].includes(a.stageTab) ? a.fundedAmount : a.requestedAmount;
+    case "totalDebt": return a.totalDebt;
     case "paidCount": return a.paidCount;
     case "lastResult": return a.lastResult || "";
     case "nextDue": return a.nextDueDate ? new Date(a.nextDueDate).getTime() : -1;
@@ -603,6 +605,7 @@ export function AdvancesClient({
                 {filter === "Rejected" && <SortHeader label="Applied" k="appliedAt" />}
                 <SortHeader label="Status" k="status" />
                 <SortHeader label="Amount" k="amount" align="right" />
+                {filter !== "Rejected" && <SortHeader label="Total debt" k="totalDebt" align="right" />}
                 <SortHeader label="Monthly income" k="monthlyIncome" align="right" />
                 <SortHeader label="Paid" k="paidCount" align="center" />
                 <SortHeader label="Last payment" k="lastResult" />
@@ -613,7 +616,7 @@ export function AdvancesClient({
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={filter === "Rejected" ? 10 : 9} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
+                <tr><td colSpan={10} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
               ) : rows.map((a) => {
                 const isFunded = ["Active", "Default"].includes(a.stageTab);
                 const showCharge = ["Active", "Default"].includes(a.stageTab);
@@ -668,6 +671,11 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">
                     {money(isFunded ? a.fundedAmount : a.requestedAmount)}
                   </td>
+                  {filter !== "Rejected" && (
+                    <td className="px-4 py-3 text-right tabular-nums text-black">
+                      {a.totalDebt > 0 ? money2(a.totalDebt) : <span className="text-[#a1a1aa]">—</span>}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-right tabular-nums text-[#52525b]">
                     {a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">n/a</span>}
                   </td>
@@ -712,7 +720,7 @@ export function AdvancesClient({
                 </tr>
                 {expandedId === a.id && (
                   <tr className="bg-[#fafafa]">
-                    <td colSpan={filter === "Rejected" ? 10 : 9} className="px-6 py-4">
+                    <td colSpan={10} className="px-6 py-4">
                       <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">Payment schedule · {a.borrowerName}</div>
                       <div className="overflow-hidden rounded-lg border border-[#e4e4e7] bg-white">
                         <table className="w-full text-[12px]">

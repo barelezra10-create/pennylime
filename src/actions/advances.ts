@@ -65,6 +65,9 @@ export type AdvanceRow = {
   requestedAmount: number;
   approvedAmount: number | null;
   fundedAmount: number;
+  // Total debt = full repayment obligation (principal + interest + fees across
+  // all live payments). fundedAmount is the cash out; this is what they owe back.
+  totalDebt: number;
   appliedAt: string;
   nextPaymentId: string | null;
   nextDueDate: string | null;
@@ -305,6 +308,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       requestedAmount: num(app.loanAmount),
       approvedAmount: app.offeredMaxAmount != null ? num(app.offeredMaxAmount) : null,
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
+      totalDebt: Math.round((outstanding + paidToDate) * 100) / 100,
       appliedAt: new Date(app.createdAt).toISOString(),
       nextPaymentId: nextPending?.id ?? null,
       nextDueDate: nextPending ? new Date(nextPending.dueDate).toISOString() : null,
@@ -391,6 +395,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       requestedAmount: num(t.requestedAmount),
       approvedAmount: null,
       fundedAmount: 0,
+      totalDebt: 0,
       appliedAt: new Date(t.createdAt).toISOString(),
       nextPaymentId: null,
       nextDueDate: null,
