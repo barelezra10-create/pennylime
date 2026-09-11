@@ -6,6 +6,12 @@ import { prisma } from "@/lib/db";
 // is held to at least this many CALENDAR days after the funding date.
 const MIN_DAYS_AFTER_FUNDING = 7;
 
+// TEMPORARY floor while GoACH holds new-originator deposits until ~the 22nd:
+// no first debit before this date even when a per-advance deposit date wasn't
+// captured. Self-expiring — once today is past it, funded+7 dominates and this
+// has no effect. Bump or drop it once GoACH deposits settle on a normal T+1/2.
+const EARLIEST_FIRST_PAYMENT = new Date("2026-09-23T00:00:00Z");
+
 const isWeekend = (d: Date) => d.getUTCDay() === 0 || d.getUTCDay() === 6;
 function addDays(d: Date, n: number): Date {
   const x = new Date(d);
@@ -75,6 +81,12 @@ export async function enforceFirstPaymentBuffer(
   if (app.goachDepositDate) {
     const afterDeposit = stamp(nextBusinessDay(addDays(app.goachDepositDate, 1)));
     if (afterDeposit.getTime() > minFirst.getTime()) minFirst = afterDeposit;
+  }
+
+  // Temporary global floor (see EARLIEST_FIRST_PAYMENT) — covers advances whose
+  // deposit date GoACH hasn't reported yet during the current deposit hold.
+  if (EARLIEST_FIRST_PAYMENT.getTime() > minFirst.getTime()) {
+    minFirst = stamp(nextBusinessDay(new Date(EARLIEST_FIRST_PAYMENT)));
   }
 
   if (pending[0].dueDate.getTime() >= minFirst.getTime()) {
