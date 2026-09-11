@@ -600,6 +600,7 @@ export function AdvancesClient({
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>
                 <SortHeader label="Customer" k="borrowerName" />
+                {filter === "Rejected" && <SortHeader label="Applied" k="appliedAt" />}
                 <SortHeader label="Status" k="status" />
                 <SortHeader label="Amount" k="amount" align="right" />
                 <SortHeader label="Monthly income" k="monthlyIncome" align="right" />
@@ -612,7 +613,7 @@ export function AdvancesClient({
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
+                <tr><td colSpan={filter === "Rejected" ? 10 : 9} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
               ) : rows.map((a) => {
                 const isFunded = ["Active", "Default"].includes(a.stageTab);
                 const showCharge = ["Active", "Default"].includes(a.stageTab);
@@ -653,6 +654,9 @@ export function AdvancesClient({
                       </>
                     )}
                   </td>
+                  {filter === "Rejected" && (
+                    <td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{fmtDate(a.appliedAt)}</td>
+                  )}
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[a.status] || "bg-[#f4f4f5] text-[#71717a]"}`}>
                       {a.status}
@@ -708,7 +712,7 @@ export function AdvancesClient({
                 </tr>
                 {expandedId === a.id && (
                   <tr className="bg-[#fafafa]">
-                    <td colSpan={9} className="px-6 py-4">
+                    <td colSpan={filter === "Rejected" ? 10 : 9} className="px-6 py-4">
                       <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">Payment schedule · {a.borrowerName}</div>
                       <div className="overflow-hidden rounded-lg border border-[#e4e4e7] bg-white">
                         <table className="w-full text-[12px]">
