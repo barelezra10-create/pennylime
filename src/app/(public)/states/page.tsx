@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return generateMeta({
     title: "Cash Advances by State — PennyLime",
     description:
-      "Find merchant cash advance options in your state. PennyLime serves gig workers and 1099 contractors in all 50 U.S. states with funding in as fast as 1 business day.",
+      "Find merchant cash advance options in your state. PennyLime serves gig workers and 1099 contractors in all 50 U.S. states with funding that can take up to 10 business days.",
     path: "/states",
   }) as Metadata;
 }

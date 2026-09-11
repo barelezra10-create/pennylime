@@ -689,13 +689,13 @@ function SuccessScreen({ firstName, amount, isDaily }: { firstName: string; amou
           You&rsquo;re funded, {firstName}!
         </h1>
         <p className="mt-2 text-[14px] text-[#52525b]">
-          ${amount.toLocaleString()} is on its way to your linked bank account. ACH transfers
-          typically arrive within 1 business day.
+          ${amount.toLocaleString()} is on its way to your linked bank account. Funds can take up to 10 business days to arrive after you accept your approved offer.
+          Business days exclude weekends and federal holidays.
         </p>
         <p className="mt-4 text-[12px] text-[#71717a]">
           {isDaily
             ? "Daily remittances (Monday through Friday) will start automatically."
-            : "Weekly remittances will start automatically next week."}
+            : "Weekly remittances will follow your agreed schedule."}
         </p>
       </motion.div>
     </div>

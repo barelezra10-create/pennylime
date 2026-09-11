@@ -2687,7 +2687,7 @@ function StepPlaidLink({
           Disbursement account
         </p>
         <p className="mt-0.5 text-[12px] text-[#15803d]/80">
-          Funds will be deposited here within 1 business day of approval.
+          Funds can take up to 10 business days to reach your bank account after you accept your approved offer.
         </p>
       </div>
       <div className="mt-4 flex flex-col gap-4">

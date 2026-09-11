@@ -19,7 +19,7 @@ export function offerReadyEmail(params: {
     html: `
       <h2 style="color: #15803d; margin: 0 0 8px;">You're approved, ${params.firstName}.</h2>
       <p style="font-size: 15px; color: #1a1a1a; margin: 0 0 20px;">
-        Your PennyLime cash advance is ready to review. Open your offer page to pick the term that works for your cash flow and accept &mdash; funds typically arrive within 1 business day.
+        Your PennyLime cash advance is ready to review. Open your offer page to pick the term that works for your cash flow and accept. Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.
       </p>
 
       <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin: 0 0 20px;">

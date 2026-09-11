@@ -26,7 +26,7 @@ export function applicationApprovedEmail(params: {
           <p style="margin: 8px 0 0; font-size: 13px; color: #52525b;">Rate: <strong>5%</strong> per week, compounded</p>
         </div>
         <p>You'll receive a separate email with your <strong>offer plan options</strong> in a moment. Open that email to pick the weekly remittance plan that works for your cash flow and accept your advance.</p>
-        <p>Once you accept, funds typically arrive in your linked bank account within 1 business day.</p>
+        <p>Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.</p>
         <p style="margin-top: 16px;">Track your application: <a href="${statusUrl}" style="color: #15803d;">${statusUrl}</a></p>
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
         <p style="color: #6b7280; font-size: 12px;">PennyLime purchases a portion of your future receivables. This is a cash advance product, not a loan.</p>

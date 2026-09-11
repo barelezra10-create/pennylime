@@ -115,7 +115,7 @@ export async function getCrmEmailTemplates(): Promise<CrmEmailTemplate[]> {
       subject: "Good news — your PennyLime application is approved",
       body: `<p>Hi {{firstName}},</p>
 <p>Great news — your application (#{{applicationCode}}) is approved. We'll send your offer with the available advance amount, term options, and weekly remittance within the next few hours.</p>
-<p>Once you accept, funds typically land in your bank account within 1-3 business days.</p>
+<p>Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.</p>
 <p>Talk soon,<br>The PennyLime Team</p>`,
     },
   ];

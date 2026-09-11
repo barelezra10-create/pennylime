@@ -81,7 +81,7 @@ const SEQUENCES = [
           <p>{firstName}, your <strong>$\{loanAmount}</strong> application is still open but it expires soon.</p>
           <p>Most gig workers who finish get a decision within an hour. We size advances by your actual deposits, so the only thing standing between you and the cash is one minute of bank verification.</p>
           <p style="margin:24px 0;">${ctaButton("https://pennylime.com/apply", "Continue my application →")}</p>
-          <p style="color:#71717a;font-size:13px;">PennyLime is built for Uber, Lyft, DoorDash, Instacart, and 10+ other gig platforms. Same-day funding available on most advances.</p>
+          <p style="color:#71717a;font-size:13px;">PennyLime is built for Uber, Lyft, DoorDash, Instacart, and 10+ other gig platforms. Funding can take up to 10 business days after you accept your approved offer.</p>
         `),
         delayAmount: 24,
         delayUnit: "hours",
@@ -153,7 +153,7 @@ const SEQUENCES = [
             <strong>Reference:</strong> #{applicationCode}<br>
             <strong>Approved range:</strong> $\{minAmount} &mdash; $\{maxAmount}
           </p>
-          <p>Once you accept, ACH disbursement starts immediately. Funds typically land in your linked bank account within 1 business day.</p>
+          <p>Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.</p>
           <p style="color:#71717a;font-size:13px;margin-top:24px;">This offer is valid for 7 days. Questions before you accept? Just reply to this email.</p>
         `),
         delayAmount: 0,
@@ -207,7 +207,7 @@ const SEQUENCES = [
         subject: "Funded! $\{loanAmount} is on the way, {firstName}",
         body: wrap(`
           ${h1("Cash is on the way, {firstName}.")}
-          <p>Your <strong>$\{loanAmount}</strong> advance has been disbursed via ACH to the bank account you linked. Most banks post the credit within 1 business day; some do same-day.</p>
+          <p>Your <strong>$\{loanAmount}</strong> advance has been disbursed via ACH to the bank account you linked. Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.</p>
           <p>Reference: <strong style="color:#15803d;font-family:'SF Mono','Monaco','Courier New',monospace;letter-spacing:0.05em;">#{applicationCode}</strong></p>
           <p>From here, weekly remittances will run automatically every 7 days from the same bank account, on the schedule you accepted. We'll email a reminder before each one.</p>
           <p>Keep earning, keep growing. Thanks for choosing PennyLime.</p>

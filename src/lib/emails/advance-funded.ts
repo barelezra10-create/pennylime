@@ -48,7 +48,7 @@ export function advanceFundedEmail(params: {
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #15803d;">Your advance is funded.</h2>
         <p>Hi ${params.firstName},</p>
-        <p>Your <strong>$${params.fundedAmount.toLocaleString()}</strong> advance is on its way to your linked bank account. Here are the terms and your remittance schedule.</p>
+        <p>Your <strong>$${params.fundedAmount.toLocaleString()}</strong> advance is on its way to your linked bank account. Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays. Here are the terms and your remittance schedule.</p>
         <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Funded Amount</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">$${params.fundedAmount.toLocaleString()}</td></tr>
           <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Factor Rate</td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb; font-weight: bold;">${factorRate.toFixed(2)}</td></tr>
