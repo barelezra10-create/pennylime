@@ -43,15 +43,33 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
   if (!platform || !platform.published) notFound();
 
   const faqs: FaqEntry[] = JSON.parse(platform.faqEntries);
+  const isOnlyFans = slug === "onlyfans-creators";
+  const creatorSlugs = ["patreon-creators", "twitch-streamers", "youtube-creators", "upwork-freelancers", "fiverr-freelancers", "etsy-sellers"];
   // Pull a few sibling platforms for the "related platforms" section
   // at the bottom — internal linking is huge for crawl + equity flow.
   const allPlatforms = await getPublishedPlatformPages();
+  const currentPlatformIndex = allPlatforms.findIndex(p => p.slug === slug);
+  const relatedOrder = isOnlyFans ? creatorSlugs : [
+    ...allPlatforms.slice(currentPlatformIndex + 1),
+    ...allPlatforms.slice(0, currentPlatformIndex),
+  ].map(p => p.slug);
+  const relatedPriority = new Map(relatedOrder.map((relatedSlug, index) => [relatedSlug, index]));
   const related = allPlatforms
     .filter((p) => p.slug !== slug)
-    .sort(() => Math.random() - 0.5) // randomize so each render shows a different sample, helping crawl coverage over time
+    .sort((a, b) => (relatedPriority.get(a.slug) ?? 99) - (relatedPriority.get(b.slug) ?? 99))
     .slice(0, 6);
 
   const pageUrl = `https://pennylime.com/cash-advance/${slug}`;
+  const productSchema = cashAdvanceProductSchema({ platformName: platform.platformName, pageUrl });
+  const howItWorks = isOnlyFans ? [
+    { num: "1", title: "Apply with your creator income", body: "Request the amount you need for your business and provide the identity, bank, and income information requested in the application." },
+    { num: "2", title: "Review your offer", body: "If approved, review the amount, total repayment, fees, and remittance schedule before you decide whether to accept. Approval is subject to underwriting." },
+    { num: "3", title: "Allow up to 10 business days", body: "Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays." },
+  ] : [
+    { num: "1", title: "Apply in 5 minutes", body: `Tell us how much you need and link your bank account where your ${platform.platformName} earnings deposit.` },
+    { num: "2", title: "Instant decision", body: "Our underwriting reads your 1099 deposit history. No credit check, no pay stubs. Most applicants hear back same day." },
+    { num: "3", title: "Funds can take up to 10 business days", body: "Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Repay through small weekly debits over 4 to 12 weeks." },
+  ];
 
   return (
     <div className="min-h-screen bg-[#fafaf7]">
@@ -69,7 +87,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
             <div className="flex items-center gap-4 mb-4">
               <PlatformLogo platformName={platform.platformName} size={64} />
               <span className="inline-block bg-[#15803d] text-white text-[11px] font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full">
-                Built for {platform.platformName} workers
+                Built for {platform.platformName} {isOnlyFans ? "creators" : "workers"}
               </span>
             </div>
             <h1 className="mt-4 text-[36px] md:text-[48px] font-extrabold tracking-[-0.03em] text-[#0a0a0a] leading-[1.05]">
@@ -92,7 +110,13 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
         </div>
       </header>
 
-      <JsonLd data={cashAdvanceProductSchema({ platformName: platform.platformName, pageUrl })} />
+      <JsonLd data={isOnlyFans ? {
+        ...productSchema,
+        name: "PennyLime Cash Advance for OnlyFans Creators",
+        description: platform.heroSubtext,
+        audience: { "@type": "BusinessAudience", audienceType: "OnlyFans creators with verifiable business earnings" },
+        feesAndCommissionsSpecification: "The approved offer and agreement disclose the total repayment, fees, and remittance schedule before acceptance.",
+      } : productSchema} />
       <JsonLd data={faqSchema(faqs)} />
       <JsonLd
         data={breadcrumbSchema([
@@ -103,6 +127,20 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
       />
 
       <main className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">
+        {isOnlyFans && (
+          <section aria-label="Creator advance overview" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-10">
+            {[
+              { value: "$500–$10,000", label: "Request for business expenses" },
+              { value: "No credit check", label: "Subject to income review" },
+              { value: "Up to 10 business days", label: "To receive funds after accepting" },
+            ].map(item => (
+              <div key={item.label} className="bg-white rounded-2xl p-5 border border-[#e4e4e7]">
+                <p className="text-[20px] font-extrabold tracking-[-0.02em] text-[#0a0a0a]">{item.value}</p>
+                <p className="mt-2 text-[12px] text-[#71717a]">{item.label}</p>
+              </div>
+            ))}
+          </section>
+        )}
         {/* Stats strip */}
         {(platform.avgEarnings || platform.topEarnerRange) && (
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-10">
@@ -143,11 +181,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
             How it works
           </h2>
           <ol className="space-y-4">
-            {[
-              { num: "1", title: "Apply in 5 minutes", body: `Tell us how much you need and link your bank account where your ${platform.platformName} earnings deposit.` },
-              { num: "2", title: "Instant decision", body: "Our underwriting reads your 1099 deposit history. No credit check, no pay stubs. Most applicants hear back same day." },
-              { num: "3", title: "Funds can take up to 10 business days", body: "Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Repay through small weekly debits over 4 to 12 weeks." },
-            ].map((s) => (
+            {howItWorks.map((s) => (
               <li key={s.num} className="flex gap-4">
                 <span className="flex-shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#15803d] text-white text-[14px] font-bold">
                   {s.num}
@@ -165,10 +199,12 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
         {platform.loanDetailsHtml && (
           <section className="mb-10">
             <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#0a0a0a] mb-3">
-              Advance details
+              {isOnlyFans ? "Funding your creator business" : "Advance details"}
             </h2>
             <div
-              className="text-[14px] text-[#52525b] leading-relaxed prose prose-sm max-w-none"
+              className={isOnlyFans
+                ? "text-[15px] text-[#52525b] leading-[1.8] max-w-3xl [&_h3]:text-[21px] [&_h3]:font-bold [&_h3]:text-[#0a0a0a] [&_h3]:mt-9 [&_h3]:mb-3 [&_p]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:my-3 [&_strong]:text-[#0a0a0a] [&_a]:text-[#15803d] [&_a]:underline [&_a]:underline-offset-4"
+                : "text-[14px] text-[#52525b] leading-relaxed prose prose-sm max-w-none"}
               dangerouslySetInnerHTML={{ __html: platform.loanDetailsHtml }}
             />
           </section>
@@ -180,7 +216,16 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
             <h2 className="text-[24px] md:text-[28px] font-extrabold tracking-[-0.02em] text-[#0a0a0a] mb-4">
               Frequently asked questions
             </h2>
-            <FaqAccordion entries={faqs} />
+            {isOnlyFans ? (
+              <div className="space-y-3">
+                {faqs.map(entry => (
+                  <details key={entry.question} className="group rounded-xl border border-[#e4e4e7] bg-white p-5">
+                    <summary className="cursor-pointer text-[15px] font-semibold text-[#0a0a0a] focus-visible:outline-2 focus-visible:outline-[#15803d]">{entry.question}</summary>
+                    <p className="mt-3 text-[14px] text-[#52525b] leading-relaxed">{entry.answer}</p>
+                  </details>
+                ))}
+              </div>
+            ) : <FaqAccordion entries={faqs} />}
           </section>
         )}
 
@@ -192,7 +237,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
         {related.length > 0 && (
           <section className="mt-14">
             <h2 className="text-[20px] font-extrabold tracking-[-0.02em] text-[#0a0a0a] mb-4">
-              Cash advances for other gig platforms
+              {isOnlyFans ? "Explore funding for other creator platforms" : "Cash advances for other gig platforms"}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {related.map((r) => (
