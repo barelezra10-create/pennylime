@@ -335,7 +335,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
                 )}
               </button>
               {inboxOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-96 bg-white rounded-xl border border-[#e4e4e7] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.12)] overflow-hidden z-40">
+                <div className="absolute right-0 top-full mt-1.5 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-[#e4e4e7] shadow-[0_12px_32px_-8px_rgba(0,0,0,0.12)] overflow-hidden z-40">
                   <div className="px-4 py-3 border-b border-[#f4f4f5] flex items-center justify-between">
                     <p className="text-[12px] font-bold text-[#0a0a0a] uppercase tracking-[0.05em]">
                       Unreplied emails
@@ -415,14 +415,14 @@ export function AdminTopNav({ userName }: { userName: string }) {
               <Link
                 key={t.id}
                 href={t.href}
-                className={`relative px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors ${
+                className={`relative inline-flex shrink-0 items-center px-4 py-2.5 text-[13px] font-semibold whitespace-nowrap transition-colors ${
                   active ? "text-black" : "text-[#71717a] hover:text-black"
                 }`}
               >
                 <span className={`mr-1.5 ${badgeCount > 0 ? "text-[#dc2626]" : "text-[#15803d]"}`}>{t.icon}</span>
                 {t.label}
                 {badgeCount > 0 && (
-                  <span className="ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold leading-none animate-pulse">
+                  <span className="ml-1.5 inline-flex shrink-0 items-center justify-center whitespace-nowrap min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold leading-none">
                     {badgeCount > 99 ? "99+" : badgeCount}
                   </span>
                 )}
@@ -474,7 +474,7 @@ export function AdminTopNav({ userName }: { userName: string }) {
                     <span className={`w-4 text-center ${badgeCount > 0 ? "text-[#dc2626]" : "text-[#15803d]"}`}>{t.icon}</span>
                     {t.label}
                     {badgeCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold leading-none">
+                      <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#dc2626] text-white text-[10px] font-bold leading-none">
                         {badgeCount > 99 ? "99+" : badgeCount}
                       </span>
                     )}

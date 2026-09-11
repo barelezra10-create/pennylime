@@ -451,12 +451,12 @@ export function AdvancesClient({
               ) : rows.map((a) => (
                 <tr key={a.id} className={`border-t border-[#f4f4f5] ${a.isTopUp ? "bg-[#faf5ff] hover:bg-[#f3e8ff]" : "hover:bg-[#fafafa]"}`}>
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-black flex items-center gap-1.5">
-                      {a.borrowerName}
+                    <div className="font-semibold text-black flex flex-wrap items-center gap-1.5">
+                      <span>{a.borrowerName}</span>
                       {a.isTopUp && (
                         <span
                           title="Existing borrower requesting more advance (portal top-up request)"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#7c3aed] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#7c3aed] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ↑ Top up
                         </span>
@@ -464,7 +464,7 @@ export function AdvancesClient({
                       {a.newEmailCount > 0 && (
                         <span
                           title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
-                          className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
                         </span>
@@ -472,7 +472,7 @@ export function AdvancesClient({
                       {a.awaitingReply && (
                         <span
                           title="We emailed this applicant and are waiting for their reply"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ⏳ Waiting
                         </span>
@@ -496,14 +496,14 @@ export function AdvancesClient({
                     {a.isTopUp ? (
                       <Link
                         href={a.topUpContactId ? `/admin/contacts/${a.topUpContactId}` : `/admin/applications/${a.topUpApplicationId}?from=Pending`}
-                        className="rounded-md border border-[#7c3aed] text-[#7c3aed] hover:bg-[#f5f3ff] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                        className="inline-flex min-h-7 items-center justify-center whitespace-nowrap rounded-md border border-[#7c3aed] text-[#7c3aed] hover:bg-[#f5f3ff] text-[11px] font-semibold px-2.5 py-1 transition-colors"
                       >
                         Review top-up
                       </Link>
                     ) : (
                       <Link
                         href={`/admin/applications/${a.id}?from=Pending`}
-                        className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                        className="inline-flex min-h-7 items-center justify-center whitespace-nowrap rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
                       >
                         Review
                       </Link>
@@ -539,7 +539,7 @@ export function AdvancesClient({
                       {a.fundingFailed && (
                         <span
                           title="Borrower signed the agreement but the ACH disbursement never completed — stuck on Approved"
-                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#dc2626] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#dc2626] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ⚠ Not funded
                         </span>
@@ -547,7 +547,7 @@ export function AdvancesClient({
                       {a.newEmailCount > 0 && (
                         <span
                           title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
-                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
                         </span>
@@ -555,7 +555,7 @@ export function AdvancesClient({
                       {a.awaitingReply && (
                         <span
                           title="We emailed this applicant and are waiting for their reply"
-                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ⏳ Waiting
                         </span>
@@ -652,12 +652,12 @@ export function AdvancesClient({
                       </button>
                     ) : (
                       <>
-                        <div className="font-semibold text-black flex items-center gap-1.5">
-                      {a.borrowerName}
+                        <div className="font-semibold text-black flex flex-wrap items-center gap-1.5">
+                      <span>{a.borrowerName}</span>
                       {a.newEmailCount > 0 && (
                         <span
                           title={`${a.newEmailCount} new email${a.newEmailCount > 1 ? "s" : ""} from this applicant`}
-                          className="inline-flex items-center gap-1 rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#15803d] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ✉ New{a.newEmailCount > 1 ? ` ${a.newEmailCount}` : ""}
                         </span>
@@ -665,7 +665,7 @@ export function AdvancesClient({
                       {a.awaitingReply && (
                         <span
                           title="We emailed this applicant and are waiting for their reply"
-                          className="inline-flex items-center gap-1 rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-[#b45309] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
                         >
                           ⏳ Waiting
                         </span>
@@ -722,7 +722,7 @@ export function AdvancesClient({
                         <button
                           onClick={() => chargeOne(a)}
                           disabled={!a.nextPaymentId || a.isProcessing || chargingId === a.id}
-                          className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          className="inline-flex min-h-7 items-center justify-center whitespace-nowrap rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           {chargingId === a.id ? "…" : "Charge now"}
                         </button>
