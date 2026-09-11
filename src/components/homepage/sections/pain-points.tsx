@@ -10,7 +10,7 @@ if (typeof window !== "undefined") gsap.registerPlugin(ScrollTrigger);
 const PAIN_POINTS = [
   {
     title: "Vehicle down for repairs",
-    desc: "Transmission, tires, engine work. A car off the road means zero Uber, Lyft, or DoorDash income. Funded in 48 hours so you stop bleeding days.",
+    desc: "Transmission, tires, engine work. A car off the road means zero Uber, Lyft, or DoorDash income. Funds can take up to 10 business days to reach your bank account after you accept your approved offer.",
     icon: (
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
         <path d="M18 6 L22 10 L15 17 L11 13 Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -163,7 +163,7 @@ export function PainPoints() {
             </svg>
           </Link>
           <p className="text-[#52525b] text-[14px]">
-            <span className="font-semibold text-black">48-hour funding</span>{" "}
+            <span className="font-semibold text-black">Funding: up to 10 business days</span>{" "}
             · No credit pull · Verified 1099 deposits, not pay stubs
           </p>
         </div>

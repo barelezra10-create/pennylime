@@ -226,6 +226,8 @@ Write a complete blog article in **HTML** (not markdown). The blog renderer pars
 
 REQUIREMENTS:
 
+- PennyLime funding can take up to 10 business days to reach the customer's bank account after they accept an approved offer. Business days exclude weekends and federal holidays. Never claim same-day, next-day, 24-hour, or 48-hour PennyLime funding. Keep approval timing separate from receipt of funds.
+
 - 900 to 1,400 words. TIGHT and useful, not bloated. The best gig-economy blog posts are read in 5 minutes and answer the question concretely.
 - Open with ONE H2 introducing the topic + a short <p> setting up what the reader will learn. No "in this article" filler.
 - 4-6 main sections, each with an H2. Use H3 sparingly inside sections only when truly needed.

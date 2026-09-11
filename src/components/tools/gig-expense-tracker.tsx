@@ -169,7 +169,7 @@ export function GigExpenseTracker() {
             href="/apply"
             className="mt-4 bg-[#15803d] text-white text-center text-[14px] font-bold py-3.5 rounded-xl hover:bg-[#166534] transition-colors"
           >
-            Short on operating costs? PennyLime funds gig workers in 48 hours
+            Short on operating costs? PennyLime funds gig workers in up to 10 business days
           </Link>
         </div>
       </div>

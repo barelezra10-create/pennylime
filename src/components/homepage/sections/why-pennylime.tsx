@@ -25,7 +25,7 @@ const FEATURES = [
       </svg>
     ),
     title: "Same-day decisions",
-    desc: "Most applicants get a decision within 1 to 3 hours. Funds in your bank within 48 hours after acceptance.",
+    desc: "Most applicants get a decision within 1 to 3 hours. Funds can take up to 10 business days to reach your bank account after you accept your approved offer.",
   },
   {
     icon: (

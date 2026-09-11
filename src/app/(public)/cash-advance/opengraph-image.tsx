@@ -79,7 +79,7 @@ export default async function HubOgImage() {
             maxWidth: 980,
           }}
         >
-          {platforms.length}+ supported · No credit check · Funded in as fast as 24 hours
+          {platforms.length}+ supported · No credit check · Funding can take up to 10 business days
         </div>
 
         {/* Platform chips grid */}

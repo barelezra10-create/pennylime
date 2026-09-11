@@ -16,7 +16,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = generateMeta({
   title: "Cash Advances for Gig Workers — Uber, DoorDash, Lyft, Amazon Flex & More",
   description:
-    "Fast cash advances for Uber, Lyft, DoorDash, Amazon Flex, Instacart, OnlyFans, Twitch and 19 other gig platforms. No credit check. $500 to $10,000. Funded in as fast as 24 hours.",
+    "Fast cash advances for Uber, Lyft, DoorDash, Amazon Flex, Instacart, OnlyFans, Twitch and 19 other gig platforms. No credit check. $500 to $10,000. Funding can take up to 10 business days.",
   canonicalUrl: "https://pennylime.com/cash-advance",
 }) as Metadata;
 
@@ -48,7 +48,7 @@ export default async function CashAdvanceHubPage() {
             Cash advances built for every gig platform
           </h1>
           <p className="mt-4 text-[17px] md:text-[18px] text-[#52525b] max-w-2xl leading-relaxed">
-            Pick your platform below to see how PennyLime cash advances work for {platforms.length}+ gig services. No credit check required, decisions in minutes, funded in as fast as 24 hours.
+            Pick your platform below to see how PennyLime cash advances work for {platforms.length}+ gig services. No credit check required, decisions in minutes, funding can take up to 10 business days.
           </p>
           <div className="mt-7 flex flex-wrap items-center gap-3">
             <Link

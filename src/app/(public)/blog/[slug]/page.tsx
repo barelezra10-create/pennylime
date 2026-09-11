@@ -144,7 +144,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                 </Link>
                 <div className="flex justify-between mt-3 text-[11px] text-[#a1a1aa]">
                   <span>No credit check</span>
-                  <span>48h funding</span>
+                  <span>Funding: up to 10 business days</span>
                 </div>
               </div>
 
@@ -228,7 +228,7 @@ function ArticleBody({ html }: { html: string }) {
           return <ContentCta key={`cta-${i}`} variant="banner" text="Did you know?" subtext="PennyLime doesn't check your credit score. We verify your gig platform earnings directly. A low credit score won't hold you back from getting funded." />;
         }
         if (part === "inline") {
-          return <ContentCta key={`cta-${i}`} variant="inline" text="Need cash between gigs?" subtext="$500 to $10,000. No credit check. Funded in 48 hours." />;
+          return <ContentCta key={`cta-${i}`} variant="inline" text="Need cash between gigs?" subtext="$500 to $10,000. No credit check. Funding can take up to 10 business days." />;
         }
         return (
           <article

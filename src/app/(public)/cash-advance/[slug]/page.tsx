@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Ahrefs flags meta descriptions <70 chars as too short. Pad with a
   // standard value-prop suffix so every platform page hits 140-160 chars.
   const baseDesc = platform.metaDescription || platform.heroSubtext;
-  const padding = " Apply in 5 minutes, fund in as fast as 24-48 hours. Built for 1099 workers and gig earners — no traditional credit check.";
+  const padding = " Apply in 5 minutes, fund in up to 10 business days. Built for 1099 workers and gig earners — no traditional credit check.";
   const description = baseDesc.length < 130 ? `${baseDesc}${padding}`.slice(0, 160) : baseDesc;
   return generateMeta({
     title: platform.metaTitle || `Cash Advances for ${platform.platformName} Workers`,
@@ -86,7 +86,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
                 {platform.ctaText || "Apply now"}
                 <span aria-hidden>→</span>
               </Link>
-              <span className="text-[13px] text-[#71717a]">No credit check · 5-minute application · Funds in as fast as 24h</span>
+              <span className="text-[13px] text-[#71717a]">No credit check · 5-minute application · Funds can take up to 10 business days</span>
             </div>
           </div>
         </div>
@@ -146,7 +146,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
             {[
               { num: "1", title: "Apply in 5 minutes", body: `Tell us how much you need and link your bank account where your ${platform.platformName} earnings deposit.` },
               { num: "2", title: "Instant decision", body: "Our underwriting reads your 1099 deposit history. No credit check, no pay stubs. Most applicants hear back same day." },
-              { num: "3", title: "Funds in as fast as 24 hours", body: "Once you accept, the ACH credit goes out to your linked bank account. Repay through small weekly debits over 4 to 12 weeks." },
+              { num: "3", title: "Funds can take up to 10 business days", body: "Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Repay through small weekly debits over 4 to 12 weeks." },
             ].map((s) => (
               <li key={s.num} className="flex gap-4">
                 <span className="flex-shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#15803d] text-white text-[14px] font-bold">

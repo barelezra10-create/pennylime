@@ -10,6 +10,7 @@ export const getLoanProducts: ToolDefinition = {
     status: "ok",
     data: {
       product: "cash advance",
+      fundingTimeline: "Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.",
       minAmount: 500,
       maxAmount: 10000,
       termWeeksMin: 1,

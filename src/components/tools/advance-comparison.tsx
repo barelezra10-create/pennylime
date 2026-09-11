@@ -36,7 +36,7 @@ const features: FeatureRow[] = [
   },
   {
     label: "Funding Speed",
-    lime: { value: "48 hours", positive: true },
+    lime: { value: "Up to 10 business days", positive: true },
     mca: { value: "24 hours", positive: true },
     bank: { value: "2-4 weeks", positive: false },
   },

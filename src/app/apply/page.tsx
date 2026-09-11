@@ -171,7 +171,7 @@ function SidebarContent({ step, amount, loanTermMonths, totalSteps }: { step: nu
       <div className="flex flex-col gap-3">
         {[
           { icon: "✓", label: "No credit pull, ever" },
-          { icon: "⚡", label: "Funded in 48 hours" },
+          { icon: "⚡", label: "Funding can take up to 10 business days" },
           { icon: "📋", label: "Drivers, sellers, and operators welcome" },
           { icon: "🔒", label: "Bank-grade encryption end to end" },
         ].map((b) => (
@@ -318,7 +318,7 @@ function SidebarContent({ step, amount, loanTermMonths, totalSteps }: { step: nu
           {[
             { step: "1", label: "Review (1-2 hrs)" },
             { step: "2", label: "Approval decision" },
-            { step: "3", label: "Funded in 48 hrs" },
+            { step: "3", label: "Funding can take up to 10 business days" },
           ].map((s) => (
             <div key={s.step} className="flex items-center gap-3">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/30 text-[12px] font-bold text-white flex-shrink-0">
@@ -4298,7 +4298,7 @@ function ApplyPageInner() {
             {/* Bottom trust line */}
             <div className="mt-10 pt-6 border-t border-white/20">
               <p className="text-[12px] text-white/50">
-                Trusted by 1,200+ drivers, sellers, and operators. Average time to funded: 31 hours.
+                Trusted by 1,200+ drivers, sellers, and operators. Funds can take up to 10 business days to reach your bank account after you accept your approved offer.
               </p>
             </div>
           </div>

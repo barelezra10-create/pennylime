@@ -190,7 +190,7 @@ const ARTICLES = [
 
 <h2>Your Options for Emergency Funding</h2>
 <h3>Gig-Worker Specific Funders</h3>
-<p>The fastest option for most Uber drivers. Funders like PennyLime are built for platform workers and can verify your earnings directly through the Uber Driver API. You can often get a funding decision the same day and receive the advance within 24 hours.</p>
+<p>The fastest option for most Uber drivers. Funders like PennyLime are built for platform workers and can verify your earnings directly through the Uber Driver API. You can often get a funding decision the same day and receive the advance in up to 10 business days.</p>
 <p>What you'll typically need: government ID, 3+ months of driving history on the platform, and a credit score above 580. No W-2, no employer call, no weeks of waiting.</p>
 
 <h3>Personal Loans from Online Banks</h3>
@@ -218,7 +218,7 @@ const ARTICLES = [
   <li>Check if your auto insurance covers the issue before paying out of pocket</li>
   <li>Look into Uber's vehicle repair partnerships in your city, some offer discounted services for drivers</li>
 </ul>
-<p>The faster you get back on the road, the faster you're earning again. PennyLime funds approved advances within 24 hours, so you can get your car fixed and your income stream restored as quickly as possible.</p>`,
+<p>The faster you get back on the road, the faster you're earning again. PennyLime funds approved advances in up to 10 business days, so you can get your car fixed and your income stream restored as quickly as possible.</p>`,
   },
 
   // ── ARTICLE 4 ────────────────────────────────────────────────
@@ -340,7 +340,7 @@ const ARTICLES = [
   <li><strong>Apply in 3 minutes</strong>, basic personal and financial information</li>
   <li><strong>Connect your DoorDash account</strong>, we verify your earnings directly (optional but recommended for the best factor rate)</li>
   <li><strong>See your offer instantly</strong>, factor rate, advance amount, and remittance schedule, with no credit impact yet</li>
-  <li><strong>Accept and fund</strong>, funds arrive in your bank account within 24 hours of acceptance</li>
+  <li><strong>Accept and fund</strong>, funds arrive in your bank account in up to 10 business days after acceptance</li>
 </ol>
 <p>No fax machine. No branch visit. No waiting a week for a decision.</p>`,
   },
@@ -1551,7 +1551,7 @@ function platformFaqs(platformName: string, avgHourly: string): string {
     { question: `How does PennyLime verify my ${platformName} income?`, answer: `PennyLime connects directly to your ${platformName} driver/worker account via API to pull your verified earnings history. You can also upload bank statements showing your ${platformName} deposits as an alternative.` },
     { question: `How much can I get using my ${platformName} earnings?`, answer: `Advance amounts are based on your average monthly ${platformName} income over the last 3-6 months. Most ${platformName} workers qualify for $500-$8,000. Your credit score also influences the maximum amount.` },
     { question: `Do I need a W-2 to qualify?`, answer: `No. PennyLime was built specifically for gig workers and independent contractors. Your ${platformName} earnings and bank statements replace the W-2 requirement entirely.` },
-    { question: `How quickly will I receive funds?`, answer: `Once approved, funds are typically deposited to your bank account within 24 hours. Some applicants receive same-day funding depending on their bank's processing time.` },
+    { question: `How quickly will I receive funds?`, answer: `Once approved, funds are typically deposited to your bank account in up to 10 business days. Business days exclude weekends and federal holidays.` },
     { question: `Will applying affect my credit score?`, answer: `Checking your factor rate on PennyLime uses a soft credit pull, which does not affect your credit score. A hard pull only occurs if you formally accept a funding offer.` },
     { question: `What credit score do I need?`, answer: `PennyLime works with ${platformName} workers who have credit scores as low as 580. Better scores unlock lower factor rates, but a less-than-perfect credit score won't automatically disqualify you.` },
     { question: `Can I pay off my advance early?`, answer: `Yes. PennyLime charges no prepayment penalties. If your ${platformName} earnings are strong in a given period, you can remit extra or pay off the advance entirely without any extra fees.` },
@@ -1563,7 +1563,7 @@ const PLATFORMS = [
     platformName: "Uber",
     slug: "uber",
     heroHeadline: "Cash Advances for Uber Drivers, No W-2 Required",
-    heroSubtext: "Get funded using your Uber earnings. Fast decisions, same-day funding available.",
+    heroSubtext: "Get funded using your Uber earnings. Fast decisions, funding can take up to 10 business days.",
     platformDescription: "Uber is the world's largest rideshare platform, with millions of drivers earning flexible income across the US. Whether you drive part-time or full-time, your Uber earnings can qualify you for a cash advance through PennyLime, no W-2, no employer verification, no waiting weeks for a decision.",
     avgEarnings: "$18-$28/hour including tips",
     topEarnerRange: "$4,000-$7,000/month (full-time, top markets)",
@@ -1582,7 +1582,7 @@ const PLATFORMS = [
     platformDescription: "Lyft drivers across the country earn reliable income picking up passengers, yet traditional banks often reject them for lack of traditional pay documentation. PennyLime changes that. We verify your Lyft earnings directly and offer cash advances sized to your actual driving income, not some bureaucrat's idea of what counts as real income.",
     avgEarnings: "$17-$26/hour including tips",
     topEarnerRange: "$3,500-$6,500/month (full-time, high-demand areas)",
-    loanDetailsHtml: "<p>Connect your Lyft driver account to PennyLime and we'll pull your verified earnings history. Alternatively, submit 3-6 months of bank statements showing your weekly Lyft deposits. Funding decisions in minutes, funds in 24 hours.</p>",
+    loanDetailsHtml: "<p>Connect your Lyft driver account to PennyLime and we'll pull your verified earnings history. Alternatively, submit 3-6 months of bank statements showing your weekly Lyft deposits. Funding decisions in minutes, funds in up to 10 business days.</p>",
     ctaText: "See My Funding Options",
     ctaSubtext: "Soft pull only, won't affect your credit.",
     metaTitle: "Lyft Driver Cash Advances | PennyLime",
@@ -1787,7 +1787,7 @@ function statePageContent(stateName: string, stateCode: string, gigWorkerCount: 
       { question: `Is PennyLime available in ${stateName}?`, answer: `Yes. PennyLime offers cash advances to gig workers in ${stateName}. Apply online in minutes, no branch visit required.` },
       { question: `What income documentation do I need in ${stateName}?`, answer: `Connect your gig platform account or submit 3-6 months of bank statements showing your gig earnings. PennyLime does not require a W-2 or employer verification.` },
       { question: `Are there ${stateName}-specific cost caps?`, answer: `${stateName} has financing regulations that PennyLime complies with fully. ${lendingNote} Your personalized factor rate is shown before you accept any offer.` },
-      { question: `How fast can I get funded in ${stateName}?`, answer: `Most approved ${stateName} applicants receive funds within 24 hours of accepting their offer. Same-day funding may be available depending on your bank.` },
+      { question: `How fast can I get funded in ${stateName}?`, answer: `Most approved ${stateName} applicants receive funds in up to 10 business days after accepting their offer. Business days exclude weekends and federal holidays.` },
       { question: `Do I need to be a full-time gig worker in ${stateName}?`, answer: `No. Part-time gig workers in ${stateName} can also qualify as long as you have at least 3 months of consistent platform income and meet the minimum income threshold.` },
     ]),
     ctaText: `Apply for a Cash Advance in ${stateName}`,
@@ -1995,7 +1995,7 @@ const COMPARISON_PAGES = [
       { feature: "Income Verification", pennylime: "Direct platform API or bank statements", competitor: "Bank statements only" },
       { feature: "Platforms Accepted", pennylime: "Uber, Lyft, DoorDash, Instacart, 14+ platforms", competitor: "Select platforms" },
       { feature: "Credit Score Minimum", pennylime: "580", competitor: "600" },
-      { feature: "Funding Speed", pennylime: "24 hours after approval", competitor: "1-3 business days" },
+      { feature: "Funding Speed", pennylime: "Up to 10 business days after accepting your approved offer", competitor: "1-3 business days" },
       { feature: "Prepayment Penalty", pennylime: "None", competitor: "None" },
     ]),
     verdict: "PennyLime offers higher advance amounts, more platform integrations, faster funding, and competitive factor rates compared to Fundo. For gig workers who need more than $5,000 or earn from multiple platforms, PennyLime is the stronger choice.",
@@ -2019,7 +2019,7 @@ const COMPARISON_PAGES = [
       { feature: "Self-Employed Accepted", pennylime: "Yes, designed for 1099 workers", competitor: "Rarely, requires 2 years tax returns" },
       { feature: "Application Time", pennylime: "3 minutes online", competitor: "30-60+ minutes, often branch visit" },
       { feature: "Decision Speed", pennylime: "Instant rate offer", competitor: "3-14 business days" },
-      { feature: "Funding Speed", pennylime: "Within 24 hours", competitor: "5-10 business days" },
+      { feature: "Funding Speed", pennylime: "in up to 10 business days", competitor: "5-10 business days" },
       { feature: "Credit Score Minimum", pennylime: "580", competitor: "Often 700+" },
       { feature: "Funded Amount", pennylime: "$500 - $10,000", competitor: "$5,000 - $50,000+" },
       { feature: "Income History Required", pennylime: "3-6 months platform history", competitor: "2 years W-2 history" },

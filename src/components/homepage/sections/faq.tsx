@@ -10,7 +10,7 @@ const FAQ_ENTRIES = [
   },
   {
     question: "How fast can I get funded?",
-    answer: "Most applicants get a decision within 1 to 3 hours. Once approved, funds typically land in your bank within 24 to 48 hours. Same-day funding is available for standard bank accounts in many cases.",
+    answer: "Most applicants get a decision within 1 to 3 hours. Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Business days exclude weekends and federal holidays.",
   },
   {
     question: "What platforms do you support?",

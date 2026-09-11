@@ -114,7 +114,7 @@ export default async function PlatformOgImage({
               <span style={{ color: "#a1a1aa" }}>·</span>
               <span>No credit check</span>
               <span style={{ color: "#a1a1aa" }}>·</span>
-              <span>Funded in 24h</span>
+              <span>Funding: up to 10 business days</span>
             </div>
           </div>
           <div

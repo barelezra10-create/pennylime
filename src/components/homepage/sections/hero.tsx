@@ -100,7 +100,7 @@ export function Hero() {
           >
             If you drive for Uber, deliver for DoorDash, sell on Amazon, or run a
             shop on Shopify, your bank deposits are your credit. We read 90 days
-            of verified earnings and fund you in 48 hours.{" "}
+            of verified earnings. Funds can take up to 10 business days to reach your account after you accept your approved offer.{" "}
             <strong className="text-[#0a0a0a]">$500 to $10,000.</strong>
           </p>
 

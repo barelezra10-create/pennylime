@@ -37,14 +37,14 @@ async function main() {
       heroIllustration: "/illustrations/platform-rideshare.png",
       trustItems: JSON.stringify([
         "No credit check",
-        "48-hour funding",
+        "Funding: up to 10 business days",
         "No W-2 required",
         "5 min application",
       ]),
       trustStats: JSON.stringify([
         { value: "$2M+", label: "Funded to rideshare drivers" },
         { value: "1,200+", label: "Drivers approved" },
-        { value: "48h", label: "Average funding time" },
+        { value: "Up to 10", label: "Business days for funding" },
         { value: "4.8★", label: "Driver rating" },
       ]),
       howItWorksTitle: "Three steps. No paperwork.",
@@ -66,7 +66,7 @@ async function main() {
         {
           num: "03",
           title: "Cash in your account",
-          desc: "Approved advances fund in as little as 24-48 hours. Back on the road, no interruptions.",
+          desc: "Funds can take up to 10 business days to reach your bank account after you accept your approved offer.",
           img: "/illustrations/step-3-funded.png",
         },
       ]),
@@ -78,20 +78,6 @@ async function main() {
           name: "Marcus T.",
           role: "Uber Driver · Atlanta, GA",
           amount: "$4,200",
-        },
-        {
-          quote:
-            "Every other funder wanted W-2s I don't have. PennyLime just looked at my Lyft earnings. Applied Monday, funded Wednesday. Simple.",
-          name: "Sofia R.",
-          role: "Lyft Driver · Phoenix, AZ",
-          amount: "$3,500",
-        },
-        {
-          quote:
-            "Needed new tires and an oil change to keep driving. Slow week meant I couldn't cover it out of pocket. Got $1,500 same day. Back to full-time by Friday.",
-          name: "David K.",
-          role: "Uber/Lyft Driver · Chicago, IL",
-          amount: "$1,500",
         },
       ]),
       faqTitle: "Rideshare driver questions.",
@@ -109,7 +95,7 @@ async function main() {
         {
           question: "How fast can I get funded?",
           answer:
-            "Most rideshare drivers get a decision within hours. Once approved, funds hit your bank account in as little as 24-48 hours.",
+            "Most rideshare drivers get a decision within hours. Once approved, funds hit your bank account in up to 10 business days.",
         },
         {
           question: "How much can I get as a rideshare driver?",

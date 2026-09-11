@@ -14,22 +14,10 @@ const STATS = [
 
 const TESTIMONIALS = [
   {
-    quote: "Three banks said no because I drive for Uber. PennyLime read my deposits and funded me in two hours. Saved the week.",
-    name: "Marcus T.",
-    role: "Uber and DoorDash driver",
-    location: "Atlanta, GA",
-  },
-  {
     quote: "As a freelancer, income verification is always a fight. PennyLime pulled my Upwork deposits, sized the advance, done.",
     name: "Priya S.",
     role: "Upwork operator",
     location: "Austin, TX",
-  },
-  {
-    quote: "Applied Sunday night, funded Monday. Factor rate and total cost were on one screen. Repayment moves with my deposits.",
-    name: "Jordan K.",
-    role: "Amazon Flex driver",
-    location: "Chicago, IL",
   },
 ];
 
@@ -127,7 +115,7 @@ export function SocialProof() {
         </div>
 
         {/* Testimonials */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 max-w-xl mx-auto gap-6">
           {TESTIMONIALS.map((t, i) => (
             <div
               key={i}

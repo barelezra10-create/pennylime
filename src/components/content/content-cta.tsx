@@ -27,7 +27,7 @@ export function ContentCta({ text, subtext, variant = "default" }: { text?: stri
             {text || "Need cash between gigs?"}
           </p>
           <p className="text-[13px] text-[#bbf7d0] mt-0.5">
-            {subtext || "$500 to $10,000. No credit check. Funded in 48 hours."}
+            {subtext || "$500 to $10,000. No credit check. Funding can take up to 10 business days."}
           </p>
         </div>
         <Link
@@ -102,7 +102,7 @@ export function ContentCta({ text, subtext, variant = "default" }: { text?: stri
         </div>
         <div className="flex justify-center gap-6 mt-6 text-[12px] text-[#86efac]">
           <span>No credit check</span>
-          <span>48h funding</span>
+          <span>Funding: up to 10 business days</span>
           <span>$500 - $10K</span>
         </div>
       </div>

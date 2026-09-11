@@ -83,7 +83,7 @@ export function faqSchema(entries: { question: string; answer: string }[]) {
 
 export function cashAdvanceProductSchema(options?: { platformName?: string; pageUrl?: string }) {
   const baseDescription =
-    "Cash advance for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables and delivers funds in as fast as 24 hours, with repayment as a fixed weekly remittance.";
+    "Cash advance for gig workers, 1099 contractors, and small businesses. PennyLime purchases a portion of your future receivables and allows up to 10 business days for funds to reach your account, with repayment as a fixed weekly remittance.";
   return {
     "@context": "https://schema.org",
     "@type": "FinancialProduct",

@@ -32,8 +32,8 @@ const STEPS = [
   },
   {
     num: "03",
-    headline: "Funded in 48 hours",
-    desc: "Approved offer with the factor rate and total cost on one screen. Funds in your bank within 48 hours. Repaid as a small percentage of future deposits.",
+    headline: "Funding can take up to 10 business days",
+    desc: "Approved offer with the factor rate and total cost on one screen. Funds can take up to 10 business days to reach your bank account after you accept your approved offer. Repaid as a small percentage of future deposits.",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M16 4v20M9 17l7 7 7-7" />

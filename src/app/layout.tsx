@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     default: "PennyLime, Fast Cash Advances for Gig Workers",
     template: "%s | PennyLime",
   },
-  description: "Merchant cash advances for gig workers and 1099 contractors. $500 to $10,000. Apply in 5 minutes, funding in as fast as 48 hours. No credit checks.",
+  description: "Merchant cash advances for gig workers and 1099 contractors. $500 to $10,000. Apply in 5 minutes, funding in up to 10 business days. No credit checks.",
   metadataBase: new URL("https://pennylime.com"),
   openGraph: {
     siteName: "PennyLime",

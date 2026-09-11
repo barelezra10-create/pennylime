@@ -115,7 +115,7 @@ export function Problem() {
                 </p>
                 <p className="text-[#52525b] text-[16px] flex items-start gap-3">
                   <span className="text-[#15803d] text-[18px] mt-0.5">&#10003;</span>
-                  <span><strong className="text-black">Funded in 48 hours.</strong> Apply in 5 minutes, decision same day.</span>
+                  <span><strong className="text-black">Funding can take up to 10 business days.</strong> Apply in 5 minutes, decision same day.</span>
                 </p>
               </div>
             </div>
@@ -302,7 +302,7 @@ function ScreenApproved() {
       </div>
       <p className="text-[10px] font-bold tracking-[0.1em] uppercase text-[#15803d] mb-1">Approved</p>
       <p className="text-[28px] font-extrabold tracking-[-0.02em] text-black tabular-nums mb-1">$5,000</p>
-      <p className="text-[12px] text-[#71717a] mb-5">Funded to your bank in 48 hours</p>
+      <p className="text-[12px] text-[#71717a] mb-5">Bank receipt: up to 10 business days</p>
       <div className="w-full space-y-2.5">
         <div className="flex items-center justify-between border border-[#e4e4e7] rounded-xl px-3 py-2.5">
           <span className="text-[12px] text-[#71717a]">Factor rate</span>

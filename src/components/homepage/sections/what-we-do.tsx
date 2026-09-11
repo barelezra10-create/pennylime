@@ -93,8 +93,8 @@ export function WhatWeDo() {
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 8.5L6.5 11L12 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </div>
               <div>
-                <p className="text-[16px] font-bold text-black">Funded in 48 hours</p>
-                <p className="text-[14px] text-[#52525b] mt-1">Apply in 5 minutes, get a decision the same day, cash in your bank within 48 hours. Repaid as a percentage of your future deposits.</p>
+                <p className="text-[16px] font-bold text-black">Funding can take up to 10 business days</p>
+                <p className="text-[14px] text-[#52525b] mt-1">Apply in 5 minutes, get a decision the same day, cash in your bank in up to 10 business days. Repaid as a percentage of your future deposits.</p>
               </div>
             </div>
           </div>

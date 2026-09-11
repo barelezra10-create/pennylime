@@ -14,7 +14,7 @@ const INDUSTRIES = [
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M4 22V16L7 10H25L28 16V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="9" cy="22" r="3" stroke="currentColor" strokeWidth="2" /><circle cx="23" cy="22" r="3" stroke="currentColor" strokeWidth="2" /><path d="M12 22H20" stroke="currentColor" strokeWidth="2" /></svg>
     ),
-    description: "Drive passengers, earn on your schedule. Whether full-time or side hustle, Uber and Lyft drivers get funded in 48 hours, sized to verified weekly deposits.",
+    description: "Drive passengers, earn on your schedule. Whether full-time or side hustle, Uber and Lyft drivers can receive funds in up to 10 business days, sized to verified weekly deposits.",
     stats: { avgEarnings: "$45K/yr", drivers: "1.5M+" },
     color: "bg-[#dcfce7]",
     href: "/cash-advance/uber-drivers",
@@ -25,7 +25,7 @@ const INDUSTRIES = [
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M6 24V12L16 6L26 12V24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><rect x="12" y="18" width="8" height="6" stroke="currentColor" strokeWidth="2" rx="1" /><path d="M16 6V2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
     ),
-    description: "Deliver meals across your city on DoorDash, Grubhub, or Uber Eats. When your bike needs replacing or your car needs brakes, we fund the repair in hours.",
+    description: "Deliver meals across your city on DoorDash, Grubhub, or Uber Eats. When your bike needs replacing or your car needs brakes, funds for the repair can take up to 10 business days to reach your account.",
     stats: { avgEarnings: "$38K/yr", drivers: "2M+" },
     color: "bg-[#fefce8]",
     href: "/cash-advance/doordash-dashers",
@@ -58,7 +58,7 @@ const INDUSTRIES = [
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M20 8L24 12L14 22L10 18L20 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M10 18L6 22L10 26L14 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
     ),
-    description: "Handymen, movers, cleaners, assemblers on TaskRabbit and Thumbtack. Physical work, variable demand. When the van needs work, we fund it the same week.",
+    description: "Handymen, movers, cleaners, assemblers on TaskRabbit and Thumbtack. Physical work, variable demand. When the van needs work, funds can take up to 10 business days to reach your account.",
     stats: { avgEarnings: "$42K/yr", drivers: "800K+" },
     color: "bg-[#fefce8]",
     href: "/cash-advance/taskrabbit-taskers",
