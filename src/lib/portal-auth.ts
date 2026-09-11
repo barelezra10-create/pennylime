@@ -79,7 +79,7 @@ export async function findApplicationByPhone(phone: string): Promise<{ id: strin
   // Match on last-10 digits to dodge country-code mismatches. Most US
   // phones are stored either as +15555555555 or 5555555555.
   const candidates = await prisma.application.findMany({
-    where: { phone: { contains: last10 } },
+    where: { phone: { contains: last10 }, OR: [{ topUpOrigin: { is: null } }, { offerSentAt: { not: null } }] },
     orderBy: { createdAt: "desc" },
     select: { id: true, phone: true, firstName: true },
   });

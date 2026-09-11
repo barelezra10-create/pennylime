@@ -489,7 +489,7 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-[#52525b]">{a.platform ? fmtPlatforms(a.platform) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.monthlyIncome != null ? money(a.monthlyIncome) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">{money(a.requestedAmount)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{a.termMonths} wks</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{a.isTopUp ? "Not set" : `${a.termMonths} wks`}</td>
                   <td className="px-4 py-3 text-[#52525b]">{a.referral || <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right">

@@ -18,6 +18,8 @@ type Term = {
 };
 
 type InitialOffer = {
+  draft?: boolean;
+  previewOnly?: boolean;
   ok: true;
   applicationId: string;
   firstName: string;
@@ -228,7 +230,7 @@ export function OfferClient({
   const expectedName = `${initial.firstName} ${initial.lastName}`.trim();
   const nameMatchesApplicant =
     trimmedSignedName.toLowerCase() === expectedName.toLowerCase();
-  const canAccept =
+  const canAccept = !initial.draft && !initial.previewOnly &&
     agreedToAgreement &&
     agreedToAch &&
     scrolledToBottom &&
@@ -254,6 +256,7 @@ export function OfferClient({
   const needsCfdl = !!initial.cfdlState && !cfdlSigned;
 
   async function handleAccept() {
+    if (initial.draft || initial.previewOnly) return;
     if (!agreedToAgreement || !agreedToAch) {
       toast.error("Please check both boxes to accept.");
       return;
@@ -520,6 +523,8 @@ export function OfferClient({
           </div>
         </section>
 
+        {initial.previewOnly && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Contract preview. Signing is disabled in this view.</p>}
+        {initial.draft && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">Draft contract preview. Signing becomes available after this contract is sent to the customer.</p>}
         {/* Accept button */}
         <div className="mt-6 sticky bottom-0 bg-[#fafaf7] py-4 -mx-5 px-5 md:relative md:bg-transparent md:p-0">
           <motion.button

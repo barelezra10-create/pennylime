@@ -181,6 +181,7 @@ export function DetailClient({
   position = null,
   crm = null,
   collections = null,
+  topUpParentId = null,
 }: {
   application: ApplicationWithDocuments;
   achAuth?: AchAuthSnapshot | null;
@@ -197,6 +198,7 @@ export function DetailClient({
       })
     | null;
   collections?: CollectionsView | null;
+  topUpParentId?: string | null;
 }) {
   const router = useRouter();
   // Prev/next step to other DETAIL pages, which read the origin via ?from=.
@@ -615,6 +617,7 @@ export function DetailClient({
         {/* Section order is controlled with CSS order: applicant details + amount
             first, then Plaid, then cash flow, then everything else (order 0). */}
         <div className="flex flex-col gap-6">
+          {topUpParentId && <Link className="order-first text-sm text-[#15803d]" href={`/admin/applications/${topUpParentId}`}>← Original advance and customer record</Link>}
           <TopUpRequestsPanel applicationId={application.id} />
           {/* ── Customer CRM — Salesforce Lightning-style record ── */}
           {crm && (
@@ -880,7 +883,7 @@ export function DetailClient({
 
           {/* ── Offer terms ── (order -2: sits under Plaid + Documents) */}
           <div className="order-[-2]">
-          {(() => {
+          {!topUpParentId && (() => {
             const a = application as any;
             let parsedTerms: OfferTerm[] = [];
             try {

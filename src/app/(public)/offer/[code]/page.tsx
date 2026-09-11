@@ -25,10 +25,10 @@ export default async function OfferPage({
   searchParams,
 }: {
   params: Promise<{ code: string }>;
-  searchParams: Promise<{ t?: string }>;
+  searchParams: Promise<{ t?: string; preview?: string }>;
 }) {
   const { code } = await params;
-  const { t } = await searchParams;
+  const { t, preview } = await searchParams;
 
   if (!t) {
     return (
@@ -58,6 +58,7 @@ export default async function OfferPage({
       token={t}
       initial={{
         ...result,
+        previewOnly: preview === "1",
         paymentFrequency: result.paymentFrequency === "DAILY" ? "DAILY" : "WEEKLY",
       }}
       agreementHtml={await agreementHtml}

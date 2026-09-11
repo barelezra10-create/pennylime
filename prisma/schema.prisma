@@ -158,6 +158,7 @@ model Application {
   lastPlaidRefresh         DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  topUpOrigin     AdvanceTopUpRequest? @relation("TopUpAdvance")
   documents       Document[]
   payments        Payment[]
   collectionEvents CollectionEvent[]
@@ -979,6 +980,10 @@ model AdvanceTopUpRequest {
   applicationId   String
   contactId       String?
   requestedAmount Decimal
+  newApplicationId String? @unique
+  newApplication Application? @relation("TopUpAdvance", fields: [newApplicationId], references: [id], onDelete: Restrict)
+  weeklyRate Decimal?
+  contractSendingAt DateTime?
   // PENDING -> admin reviews; APPROVED -> ready to fund; DECLINED -> denied;
   // FUNDED -> the new advance has been wired. Status transitions are admin
   // actions, the customer only ever creates a PENDING row from /portal.

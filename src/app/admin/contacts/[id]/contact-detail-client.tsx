@@ -912,9 +912,7 @@ function PortalPreviewButton({ applicationId }: { applicationId: string }) {
  * TopUpRequestsPanel
  * Lists pending + historical "request more advance" submissions from
  * the customer portal. Admin can Approve / Decline each PENDING one
- * with an optional note. Approval here is a soft confirmation — the
- * admin still has to clone the application data and run the new
- * advance through the offer flow manually.
+ * through the shared terms and contract panel on the application page.
  * ───────────────────────────────────────────────────────────────── */
 
 // ── Other applications card ───────────────────────────────────────

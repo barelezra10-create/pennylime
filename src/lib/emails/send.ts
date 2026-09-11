@@ -46,7 +46,8 @@ export async function sendEmail(params: {
       })),
       ...(Object.keys(threadHeaders).length ? { headers: threadHeaders } : {}),
     });
-    const messageId = result.data?.id ?? null;
+    if (result.error || !result.data?.id) throw new Error(result.error?.message ?? "Email provider did not accept the message.");
+    const messageId = result.data.id;
 
     // CRM logging — best-effort, never blocks the send. If something
     // goes wrong we log the error but still return success since the

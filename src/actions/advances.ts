@@ -355,7 +355,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
   // (Active/etc); this is the "give me more" ask awaiting a decision, so it
   // belongs in Pending alongside new applications — just flagged as a top-up.
   const pendingTopUps = await prisma.advanceTopUpRequest.findMany({
-    where: { status: "PENDING" },
+    where: { status: "PENDING", newApplicationId: null },
     orderBy: { createdAt: "desc" },
     select: { id: true, requestedAmount: true, createdAt: true, contactId: true, applicationId: true },
   });

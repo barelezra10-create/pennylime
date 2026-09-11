@@ -13,10 +13,10 @@ import { logAudit } from "@/lib/audit";
  *
  * Submitting a request creates an AdvanceTopUpRequest row in PENDING
  * status. Admin reviews it in the CRM (it shows up as an activity +
- * tag on the contact). No new Application is created automatically -
- * admin can clone the existing application data when they approve.
+ * tag on the contact). A separate Application is created when the admin saves top-up terms;
+ * the original advance and signed agreement remain unchanged.
  *
- * One outstanding PENDING request at a time per active advance.
+ * One pending or approved-but-unfunded request at a time per active advance.
  */
 
 const ELIGIBILITY_PAID_RATIO = 0.5;
@@ -73,7 +73,9 @@ export async function getTopUpEligibility(): Promise<TopUpEligibility> {
   const paidRatio = totalRepay > 0 ? paidAmount / totalRepay : 0;
 
   const pendingRequest = await prisma.advanceTopUpRequest.findFirst({
-    where: { applicationId: app.id, status: "PENDING" },
+    where: { applicationId: app.id, status: { in: ["PENDING", "APPROVED"] },
+      OR: [{ newApplicationId: null }, { newApplication: { is: { fundedAt: null, status: { notIn: ["REJECTED", "WITHDRAWN", "CANCELED"] } } } }],
+    },
     orderBy: { createdAt: "desc" },
     select: { id: true, requestedAmount: true, createdAt: true },
   });

@@ -145,8 +145,11 @@ export default async function ApplicationDetailPage({
   const prevId = idx > 0 ? siblings[idx - 1].id : null;
   const nextId = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1].id : null;
 
+  const topUpOrigin = await prisma.advanceTopUpRequest.findUnique({ where: { newApplicationId: id }, select: { applicationId: true } });
+
   return (
     <DetailClient
+      topUpParentId={topUpOrigin?.applicationId ?? null}
       application={application as ApplicationWithDocuments}
       achAuth={achAuth}
       fromTab={from ?? null}

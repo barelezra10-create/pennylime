@@ -78,6 +78,8 @@ export async function setOfferTerms(input: {
       loanAmount: true,
     },
   });
+  const topUp = await prisma.advanceTopUpRequest.findUnique({ where: { newApplicationId: input.applicationId } });
+  if (topUp) return { ok: false as const, error: "Edit this offer from the original application's Top-up requests section." };
   // Server-side ceiling: don't let the offered max exceed what the borrower
   // actually requested. Stops accidental over-offers if the form default
   // gets out of sync or someone hits the API directly.
@@ -189,7 +191,24 @@ export async function resendOfferNotification(applicationId: string) {
   }
   if (terms.length === 0) return { ok: false as const, error: "Offer has no terms saved" };
 
-  await sendOfferReadyNotification({
+  // Lock top-up terms before dispatch; a concurrent draft save cannot change
+  // the contract behind the link being emailed. Failed email sends release it.
+  const topUp = await prisma.advanceTopUpRequest.findUnique({ where: { newApplicationId: app.id } });
+  const dispatchAt = new Date();
+  if (topUp) {
+    const claimed = await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT "id" FROM "AdvanceTopUpRequest" WHERE "id" = ${topUp.id} FOR UPDATE`;
+      const request = await tx.advanceTopUpRequest.findUnique({ where: { id: topUp.id } });
+      if (request?.contractSendingAt && Date.now() - request.contractSendingAt.getTime() < 600000) return false;
+      const latest = await tx.application.findUnique({ where: { id: app.id } });
+      if (!latest || latest.offerToken !== app.offerToken || latest.offerStatus !== "OFFERED") return false;
+      await tx.advanceTopUpRequest.update({ where: { id: topUp.id }, data: { contractSendingAt: dispatchAt } });
+      return true;
+    });
+    if (!claimed) return { ok: false as const, error: "The offer changed or a send is already in progress. Refresh before sending." };
+  }
+
+  const delivery = await sendOfferReadyNotification({
     applicationId: app.id,
     email: app.email,
     phone: app.phone,
@@ -198,14 +217,19 @@ export async function resendOfferNotification(applicationId: string) {
     offerToken: app.offerToken,
     approvedAmount: Number(app.offeredMaxAmount ?? 0),
     terms,
-  });
+  }).catch(() => ({ ok: false as const }));
+
+  if (!delivery?.ok) {
+    if (topUp) await prisma.advanceTopUpRequest.updateMany({ where: { id: topUp.id, contractSendingAt: dispatchAt }, data: { contractSendingAt: null } });
+    return { ok: false as const, error: "Contract email could not be sent. Please retry." };
+  }
 
   // Stamp when the offer was actually delivered to the client. This is the
   // flag the UI uses to distinguish a prepared (draft) offer from a sent one,
   // and what the stale-offer expiry cron counts from.
-  await prisma.application.update({
-    where: { id: app.id },
-    data: { offerSentAt: new Date() },
+  await prisma.$transaction(async tx => {
+    await tx.application.update({ where: { id: app.id }, data: { offerSentAt: new Date() } });
+    if (topUp) await tx.advanceTopUpRequest.updateMany({ where: { id: topUp.id, contractSendingAt: dispatchAt }, data: { contractSendingAt: null } });
   });
 
   await logAudit({
@@ -256,6 +280,11 @@ export async function sendOfferReadyNotification(input: {
     where: { applicationId: input.applicationId },
     select: { id: true },
   });
+
+  const topUpOrigin = contact ? null : await prisma.advanceTopUpRequest.findUnique({
+    where: { newApplicationId: input.applicationId }, select: { contactId: true },
+  });
+  const contactId = contact?.id ?? topUpOrigin?.contactId ?? undefined;
 
   // Pull the applicant context the PDF generator needs. Falling back
   // gracefully when fields are missing — the PDF will just show "—"
@@ -325,31 +354,36 @@ export async function sendOfferReadyNotification(input: {
     recommendedWeeklyRemittance: recommended.weeklyRemittance,
     recommendedTotalRepaid: totalRepaid,
   });
-  await sendEmail({
+  const emailResult = await sendEmail({
     to: input.email,
     subject: emailContent.subject,
     html: emailContent.html,
-    contactId: contact?.id,
+    contactId,
     templateId: "offer-ready",
     attachments: pdfAttachment ? [pdfAttachment] : undefined,
   });
 
+  if (!emailResult.success) return { ok: false as const };
+
   // SMS (only if we have a phone)
   if (input.phone) {
-    const { offerReadySms } = await import("@/lib/sms/transactional");
-    const { sendSms } = await import("@/lib/sms/twilio");
-    await sendSms({
-      to: input.phone,
-      body: offerReadySms({
-        firstName: input.firstName,
-        applicationCode: input.applicationCode,
-        offerToken: input.offerToken,
-        approvedAmount: input.approvedAmount,
-      }),
-      contactId: contact?.id,
-      templateId: "offer-ready",
-    });
+    try {
+      const { offerReadySms } = await import("@/lib/sms/transactional");
+      const { sendSms } = await import("@/lib/sms/twilio");
+      await sendSms({
+        to: input.phone,
+        body: offerReadySms({
+          firstName: input.firstName,
+          applicationCode: input.applicationCode,
+          offerToken: input.offerToken,
+          approvedAmount: input.approvedAmount,
+        }),
+        contactId,
+        templateId: "offer-ready",
+      });
+    } catch (error) { console.error("[offer-ready] SMS failed after email was sent:", error); }
   }
+  return { ok: true as const };
 }
 
 /**
@@ -385,6 +419,8 @@ export async function getOfferForApplicant(input: {
       addressCity: true,
       addressState: true,
       addressZip: true,
+      offerSentAt: true,
+      topUpOrigin: { select: { id: true } },
     },
   });
   if (!app) return { ok: false as const, error: "Offer not found" };
@@ -435,6 +471,7 @@ export async function getOfferForApplicant(input: {
   return {
     ok: true as const,
     applicationId: app.id,
+    draft: !!app.topUpOrigin && !app.offerSentAt,
     firstName: app.firstName,
     lastName: app.lastName,
     status: app.offerStatus as "OFFERED" | "ACCEPTED" | "DECLINED",
@@ -504,6 +541,15 @@ export async function acceptOffer(input: {
   }
   if (app.offerStatus !== "OFFERED") {
     return { ok: false as const, error: "Offer not available" };
+  }
+
+  const topUpOrigin = await prisma.advanceTopUpRequest.findUnique({ where: { newApplicationId: app.id } });
+  if (topUpOrigin && !app.offerSentAt) return { ok: false as const, error: "This top-up contract is a draft and has not been sent yet." };
+  if (topUpOrigin && (input.agreedToAgreement !== true || input.agreedToAch !== true || input.scrolledToBottom !== true || !input.signedName?.trim() || !/\s/.test(input.signedName.trim()))) {
+    return { ok: false as const, error: "Read the contract, agree to both authorizations, and sign your full legal name." };
+  }
+  if (!Number.isFinite(input.selectedAmount) || !Number.isInteger(input.selectedTermIndex)) {
+    return { ok: false as const, error: "Invalid offer selection." };
   }
 
   // CFDL gate: NY/CA/UT/VA/GA merchants must sign the state Commercial
@@ -578,8 +624,8 @@ export async function acceptOffer(input: {
   // schedule never landed (e.g. Postgres ran out of connections during
   // the createMany). Either both succeed or neither.
   await prisma.$transaction(async (tx) => {
-    await tx.application.update({
-      where: { id: app.id },
+    const accepted = await tx.application.updateMany({
+      where: { id: app.id, offerStatus: "OFFERED", offerToken: input.token },
       data: {
         offerStatus: "ACCEPTED",
         acceptedAmount: input.selectedAmount,
@@ -590,6 +636,7 @@ export async function acceptOffer(input: {
         fundedAmount: input.selectedAmount,
       },
     });
+    if (accepted.count !== 1) throw new Error("This offer has already been accepted or changed. Refresh the page.");
     if (schedule.length > 0) {
       await tx.payment.createMany({
         data: schedule.map((p) => ({
