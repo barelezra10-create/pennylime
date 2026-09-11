@@ -101,7 +101,7 @@ export default function DataRetentionPage() {
       </S>
 
       <S n="6" t="Customer Rights">
-        Consumers may request access to, correction of, or deletion of their personal information by contacting <a href="mailto:privacy@pennylime.com" className="text-[#15803d] hover:underline">privacy@pennylime.com</a>. Requests are verified and answered within 45 days, extendable to 90 days where reasonably necessary, in accordance with CCPA/CPRA and other applicable state privacy laws. Where a deletion request conflicts with a regulatory retention obligation (BSA, Reg B records), the regulated data is retained for the required period and the consumer is informed; non-regulated personal information is deleted.
+        Consumers may request access to, correction of, or deletion of their personal information by contacting <a href="mailto:info@pennylime.com" className="text-[#15803d] hover:underline">info@pennylime.com</a>. Requests are verified and answered within 45 days, extendable to 90 days where reasonably necessary, in accordance with CCPA/CPRA and other applicable state privacy laws. Where a deletion request conflicts with a regulatory retention obligation (BSA, Reg B records), the regulated data is retained for the required period and the consumer is informed; non-regulated personal information is deleted.
       </S>
 
       <S n="7" t="Legal Holds">
@@ -109,7 +109,7 @@ export default function DataRetentionPage() {
       </S>
 
       <S n="8" t="Service Provider Data">
-        Service providers handling customer data are contractually required to maintain retention and disposal practices substantively equivalent to this policy and to certify destruction or return of customer data upon contract termination. The Vendor Risk Register (maintained by the Head of InfoSec) tracks each provider's deletion commitment.
+        Service providers handling customer data are contractually required to maintain retention and disposal practices substantively equivalent to this policy and to certify destruction or return of customer data upon contract termination. The Vendor Risk Register (maintained by the Head of InfoSec) tracks each provider&apos;s deletion commitment.
       </S>
 
       <S n="9" t="Audit and Verification">
@@ -121,7 +121,7 @@ export default function DataRetentionPage() {
       </S>
 
       <div className="mt-12 pt-6 border-t border-[#e4e4e7] text-[12px] text-[#71717a]">
-        Privacy and deletion requests: <a href="mailto:privacy@pennylime.com" className="text-[#15803d] hover:underline">privacy@pennylime.com</a>. Security inquiries: <a href="mailto:security@pennylime.com" className="text-[#15803d] hover:underline">security@pennylime.com</a>. Document version 1.0.
+        Privacy and deletion requests: <a href="mailto:info@pennylime.com" className="text-[#15803d] hover:underline">info@pennylime.com</a>. Security inquiries: <a href="mailto:security@pennylime.com" className="text-[#15803d] hover:underline">security@pennylime.com</a>. Document version 1.0.
       </div>
     </div>
   );

@@ -58,7 +58,7 @@ export default function PrivacyPage() {
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
           California, Colorado, Connecticut, Virginia, and other state-privacy-law residents may request access to, correction of, or deletion of their personal information by contacting us at{" "}
-          <a href="mailto:privacy@pennylime.com" className="text-[#15803d] hover:underline">privacy@pennylime.com</a>. We respond within 45 days, extendable to 90 days where reasonably necessary. Where a deletion request conflicts with a regulatory retention obligation, the regulated data is retained for the required period and the rest is deleted.
+          <a href="mailto:info@pennylime.com" className="text-[#15803d] hover:underline">info@pennylime.com</a>. We respond within 45 days, extendable to 90 days where reasonably necessary. Where a deletion request conflicts with a regulatory retention obligation, the regulated data is retained for the required period and the rest is deleted.
         </p>
       </div>
     </div>
