@@ -99,7 +99,14 @@ export async function createBankAccount(input: { name: string; receiverUuid: str
   return r.ok ? { ok: true, uuid: String(r.data.uuid) } : r;
 }
 
-export async function createTransaction(input: { bankAccountUuid: string; amountCents: number; type: "Debit" | "Credit"; descriptor?: string; poaFilePath?: string }): Promise<{ ok: true; uuid: string; transactionId: string; status: string } | { ok: false; error: string }> {
+// GoACH date fields arrive as "YYYY-MM-DD" strings (or absent/empty until the
+// ACH actually processes). Normalize to a trimmed string or null.
+function pickDate(v: unknown): string | null {
+  const s = v == null ? "" : String(v).trim();
+  return s.length >= 8 ? s : null;
+}
+
+export async function createTransaction(input: { bankAccountUuid: string; amountCents: number; type: "Debit" | "Credit"; descriptor?: string; poaFilePath?: string }): Promise<{ ok: true; uuid: string; transactionId: string; status: string; depositDate: string | null; effectiveDate: string | null } | { ok: false; error: string }> {
   const { originatorUuid } = cfg();
   const form: Record<string, string> = {
     originator_ach_account_id: originatorUuid,
@@ -109,12 +116,29 @@ export async function createTransaction(input: { bankAccountUuid: string; amount
   };
   if (input.descriptor) form.descriptor = input.descriptor;
   const r = await req("POST", "/ach_transactions", form, input.poaFilePath ? { field: "poa_file", path: input.poaFilePath } : undefined);
-  return r.ok ? { ok: true, uuid: String(r.data.uuid), transactionId: String(r.data.transaction_id ?? ""), status: String(r.data.current_status ?? "") } : r;
+  return r.ok
+    ? {
+        ok: true,
+        uuid: String(r.data.uuid),
+        transactionId: String(r.data.transaction_id ?? ""),
+        status: String(r.data.current_status ?? ""),
+        depositDate: pickDate(r.data.deposit_date),
+        effectiveDate: pickDate(r.data.effective_date),
+      }
+    : r;
 }
 
-export async function getTransaction(uuid: string): Promise<{ ok: true; status: string; returnCode: string | null } | { ok: false; error: string }> {
+export async function getTransaction(uuid: string): Promise<{ ok: true; status: string; returnCode: string | null; depositDate: string | null; effectiveDate: string | null } | { ok: false; error: string }> {
   const r = await req("GET", `/ach_transactions/${uuid}`);
-  return r.ok ? { ok: true, status: String(r.data.current_status ?? ""), returnCode: r.data.return_code != null ? String(r.data.return_code) : null } : r;
+  return r.ok
+    ? {
+        ok: true,
+        status: String(r.data.current_status ?? ""),
+        returnCode: r.data.return_code != null ? String(r.data.return_code) : null,
+        depositDate: pickDate(r.data.deposit_date),
+        effectiveDate: pickDate(r.data.effective_date),
+      }
+    : r;
 }
 
 export async function cancelTransaction(uuid: string): Promise<{ ok: true; status: string } | { ok: false; error: string }> {

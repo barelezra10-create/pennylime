@@ -43,7 +43,7 @@ export async function enforceFirstPaymentBuffer(
 ): Promise<{ shifted: boolean; firstDueDate: Date | null }> {
   const app = await prisma.application.findUnique({
     where: { id: applicationId },
-    select: { fundedAt: true, paymentFrequency: true },
+    select: { fundedAt: true, paymentFrequency: true, goachDepositDate: true },
   });
   if (!app?.fundedAt) return { shifted: false, firstDueDate: null };
 
@@ -54,16 +54,28 @@ export async function enforceFirstPaymentBuffer(
   });
   if (pending.length === 0) return { shifted: false, firstDueDate: null };
 
+  const funded = app.fundedAt;
+  const stamp = (d: Date) => {
+    d.setUTCHours(
+      funded.getUTCHours(),
+      funded.getUTCMinutes(),
+      funded.getUTCSeconds(),
+      funded.getUTCMilliseconds(),
+    );
+    return d;
+  };
   // Earliest allowed first debit: funded + 7 calendar days, snapped to a
   // business day, keeping the funding time-of-day so cron sees it the same way.
-  const funded = app.fundedAt;
-  const minFirst = nextBusinessDay(addDays(funded, MIN_DAYS_AFTER_FUNDING));
-  minFirst.setUTCHours(
-    funded.getUTCHours(),
-    funded.getUTCMinutes(),
-    funded.getUTCSeconds(),
-    funded.getUTCMilliseconds(),
-  );
+  let minFirst = stamp(nextBusinessDay(addDays(funded, MIN_DAYS_AFTER_FUNDING)));
+
+  // Never debit before the advance actually lands. When GoACH reports the
+  // disbursement's deposit/effective date, the first payment must fall on the
+  // business day AFTER it — take whichever floor is later (the 7-day minimum or
+  // the day after deposit), so a delayed deposit pushes the whole schedule out.
+  if (app.goachDepositDate) {
+    const afterDeposit = stamp(nextBusinessDay(addDays(app.goachDepositDate, 1)));
+    if (afterDeposit.getTime() > minFirst.getTime()) minFirst = afterDeposit;
+  }
 
   if (pending[0].dueDate.getTime() >= minFirst.getTime()) {
     return { shifted: false, firstDueDate: pending[0].dueDate };

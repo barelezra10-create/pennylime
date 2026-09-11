@@ -72,6 +72,10 @@ model Application {
   // for every credit sent, persisted as each one succeeds so a retry only ever
   // sends the not-yet-disbursed remainder (never double-pays the borrower).
   goachCreditsJson         String?
+  // The GoACH deposit/effective date of the disbursement — when the advance
+  // actually lands in the borrower's account. The first repayment debit is
+  // held until AFTER this date so we never debit before they've been paid.
+  goachDepositDate         DateTime?
   // Times the borrower used the "skip one payment" feature in /portal.
   // Each skip charges a 5%-of-advance fee + shifts the next pending
   // payment to the end of the schedule. Capped to 1 per advance for now.

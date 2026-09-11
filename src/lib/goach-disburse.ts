@@ -37,7 +37,7 @@ export async function disburseInChunks(input: {
   existingCreditsJson: string | null;
   descriptor?: string;
 }): Promise<
-  | { ok: true; credits: GoachCredit[]; sentThisRun: number }
+  | { ok: true; credits: GoachCredit[]; sentThisRun: number; depositDate: string | null }
   | { ok: false; error: string; credits: GoachCredit[] }
 > {
   let credits: GoachCredit[] = [];
@@ -48,10 +48,14 @@ export async function disburseInChunks(input: {
   }
   const alreadyCents = credits.reduce((s, c) => s + c.amountCents, 0);
   const remainingCents = input.totalCents - alreadyCents;
-  if (remainingCents <= 0) return { ok: true, credits, sentThisRun: 0 };
+  if (remainingCents <= 0) return { ok: true, credits, sentThisRun: 0, depositDate: null };
 
   const chunks = splitDisbursementCents(remainingCents);
   let sentThisRun = 0;
+  // Latest deposit/effective date across the credits — the advance isn't fully
+  // in the borrower's hands until the last chunk deposits. Prefer deposit_date;
+  // fall back to effective_date (the ACH settlement date).
+  let depositAnchor: string | null = null;
   for (const chunkCents of chunks) {
     const tx = await createTransaction({
       bankAccountUuid: input.bankAccountUuid,
@@ -67,11 +71,17 @@ export async function disburseInChunks(input: {
     }
     credits.push({ uuid: tx.uuid, amountCents: chunkCents, status: tx.status });
     sentThisRun++;
+    const d = tx.depositDate ?? tx.effectiveDate;
+    if (d && (!depositAnchor || d > depositAnchor)) depositAnchor = d; // ISO YYYY-MM-DD sorts lexically
     // Persist after EACH success — this is the double-pay guard for retries.
     await prisma.application.update({
       where: { id: input.applicationId },
-      data: { goachCreditsJson: JSON.stringify(credits) },
+      data: {
+        goachCreditsJson: JSON.stringify(credits),
+        // Parse as UTC noon so the calendar date is stable across timezones.
+        ...(depositAnchor ? { goachDepositDate: new Date(`${depositAnchor}T12:00:00Z`) } : {}),
+      },
     });
   }
-  return { ok: true, credits, sentThisRun };
+  return { ok: true, credits, sentThisRun, depositDate: depositAnchor };
 }
