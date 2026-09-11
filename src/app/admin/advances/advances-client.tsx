@@ -328,7 +328,7 @@ export function AdvancesClient({
             return (
               <Link
                 key={a.id}
-                href={`/admin/applications/${a.id}?from=${filter}`}
+                href={a.isTopUp ? `/admin/applications/${a.topUpApplicationId}?from=Pending` : `/admin/applications/${a.id}?from=${filter}`}
                 className="block rounded-xl border border-[#e4e4e7] bg-white p-4 active:bg-[#fafafa]"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -495,7 +495,7 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-right">
                     {a.isTopUp ? (
                       <Link
-                        href={a.topUpContactId ? `/admin/contacts/${a.topUpContactId}` : `/admin/applications/${a.topUpApplicationId}?from=Pending`}
+                        href={`/admin/applications/${a.topUpApplicationId}?from=Pending`}
                         className="inline-flex min-h-7 items-center justify-center whitespace-nowrap rounded-md border border-[#7c3aed] text-[#7c3aed] hover:bg-[#f5f3ff] text-[11px] font-semibold px-2.5 py-1 transition-colors"
                       >
                         Review top-up
