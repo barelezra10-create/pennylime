@@ -596,3 +596,96 @@ export async function getContactMoney(contactId: string) {
     missed: missed.map((m) => ({ ...m, dueDate: m.dueDate.toISOString() })),
   };
 }
+
+/**
+ * Reverse an early payoff done by mistake. executePayoff collapses the advance
+ * into ONE "payoff" debit and WAIVES every other scheduled payment (repurposing
+ * the next unpaid row as the payoff line). This undoes that:
+ *   1. Money — check the live GoACH status and cancel the payoff debit, but
+ *      ONLY if it hasn't settled. If it already settled the cash is gone and
+ *      needs a refund (a separate money-out call), so we refuse and report
+ *      instead of silently restoring.
+ *   2. Schedule — un-waive every collapsed payment back to PENDING and turn the
+ *      repurposed payoff row back into a normal installment (mirrored on a real
+ *      scheduled sibling), so the borrower is back on their original plan.
+ */
+export async function reversePayoff(applicationId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false as const, error: auth.error };
+
+  const payments = await prisma.payment.findMany({
+    where: { applicationId },
+    orderBy: { paymentNumber: "asc" },
+  });
+  const waived = payments.filter((p) => p.status === "WAIVED");
+  // The payoff row is the non-waived payment carrying an ACH transfer with the
+  // largest amount (the collapsed balance), sitting among the waived rows.
+  const payoff = payments
+    .filter((p) => p.goachTransactionUuid && p.status !== "WAIVED")
+    .sort((a, b) => Number(b.amount) - Number(a.amount))[0];
+  if (!payoff || waived.length === 0) {
+    return { success: false as const, error: "No reversible payoff found (expected one payoff charge alongside waived payments)." };
+  }
+
+  // 1) Money: live status, cancel only if not settled.
+  const uuid = payoff.goachTransactionUuid!;
+  const amountStr = `$${Number(payoff.amount).toFixed(2)}`;
+  const { getTransaction, cancelTransaction, mapGoachStatus } = await import("@/lib/goach");
+  const live = await getTransaction(uuid);
+  if (!live.ok) return { success: false as const, error: `Couldn't check the payoff status with GoACH: ${live.error}` };
+  const mapped = mapGoachStatus(live.status, live.returnCode);
+
+  let moneyOutcome: string;
+  if (mapped.isSettled) {
+    return { success: false as const, error: `The ${amountStr} payoff already settled (GoACH: ${live.status}). It can't be canceled — it needs a refund (credit back), a separate action. Confirm and I'll issue the credit and restore the schedule.` };
+  } else if (mapped.isReturned) {
+    moneyOutcome = `not collected (GoACH: ${live.status})`;
+  } else {
+    const c = await cancelTransaction(uuid);
+    if (!c.ok) {
+      return { success: false as const, error: `Couldn't cancel the ${amountStr} debit (GoACH: ${c.error}; status ${live.status}). It may already be in the ACH batch — verify with GoACH before restoring.` };
+    }
+    moneyOutcome = `canceled (GoACH: ${c.status})`;
+  }
+
+  // 2) Restore the schedule.
+  const sibling = waived[0]; // waived is paymentNumber-ordered → first real installment
+  const earliestDue = waived.reduce((min, p) => (p.dueDate < min ? p.dueDate : min), waived[0].dueDate);
+  const restoredDue = new Date(earliestDue.getTime() - 24 * 60 * 60 * 1000);
+
+  await prisma.$transaction([
+    prisma.payment.updateMany({ where: { applicationId, status: "WAIVED" }, data: { status: "PENDING" } }),
+    prisma.payment.update({
+      where: { id: payoff.id },
+      data: {
+        amount: sibling.amount,
+        principal: sibling.principal,
+        interest: sibling.interest,
+        lateFee: 0,
+        collectedAmount: 0,
+        status: "PENDING",
+        dueDate: restoredDue,
+        increaseTransferId: null,
+        increaseTransferStatus: null,
+        goachTransactionUuid: null,
+        processor: null,
+      },
+    }),
+  ]);
+
+  await logAudit({
+    action: "REVERSE_PAYOFF",
+    entityType: "APPLICATION",
+    entityId: applicationId,
+    performedBy: auth.email,
+    details: {
+      payoffPaymentId: payoff.id,
+      payoffAmount: Number(payoff.amount),
+      canceledUuid: uuid,
+      moneyOutcome,
+      restoredPayments: waived.length + 1,
+    },
+  });
+
+  return { success: true as const, moneyOutcome, restoredPayments: waived.length + 1 };
+}

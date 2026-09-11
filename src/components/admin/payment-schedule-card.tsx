@@ -8,6 +8,7 @@ import {
   getPaymentsSummary,
   pushPaymentDueDate,
   retryPayment,
+  reversePayoff,
   sendMissedPaymentNotice,
   skipPaymentToEnd,
   waiveLateFee,
@@ -32,6 +33,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
   const [paymentSummary, setPaymentSummary] = useState<Awaited<ReturnType<typeof getPaymentsSummary>> | null>(null);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const [syncingNow, setSyncingNow] = useState(false);
+  const [reversing, setReversing] = useState(false);
 
   useEffect(() => {
     getPaymentsSummary(applicationId).then(setPaymentSummary);
@@ -86,6 +88,37 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
     n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const hasInflight = paymentSummary.payments.some((p) => p.status === "PROCESSING");
 
+  // Payoff signature: many payments WAIVED (collapsed) + one big in-flight
+  // charge. Surfaces a one-click "Reverse payoff" for mistaken pay-in-full.
+  const waivedCount = paymentSummary.payments.filter((p) => p.status === "WAIVED").length;
+  const payoffRow = paymentSummary.payments
+    .filter((p) => p.status === "PROCESSING")
+    .sort((a, b) => Number(b.amount) - Number(a.amount))[0];
+  const looksLikePayoff = waivedCount >= 2 && !!payoffRow;
+
+  async function runReversePayoff() {
+    if (
+      !confirm(
+        `Reverse the payoff on this advance?\n\nThis cancels the in-flight payoff debit (if it hasn't settled) and restores all waived payments to the normal schedule.`,
+      )
+    )
+      return;
+    setReversing(true);
+    try {
+      const r = await reversePayoff(applicationId);
+      if (r.success) {
+        toast.success(`Payoff reversed — ${r.restoredPayments} payments restored (debit ${r.moneyOutcome}).`);
+        getPaymentsSummary(applicationId).then(setPaymentSummary);
+      } else {
+        toast.error(r.error || "Couldn't reverse the payoff.");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't reverse the payoff.");
+    } finally {
+      setReversing(false);
+    }
+  }
+
   return (
     <div className="bg-white rounded-[10px] p-6 border border-[#e4e4e7]">
       <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
@@ -125,6 +158,22 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
           </div>
         )}
       </div>
+
+      {looksLikePayoff && (
+        <div className="mb-5 flex items-center justify-between flex-wrap gap-3 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-4 py-3">
+          <div className="text-[12px] text-[#9a3412] leading-snug">
+            <span className="font-bold">Payoff detected.</span> This advance was paid in full — {waivedCount} payments were waived and ${fmt(Number(payoffRow.amount))} is being charged. Reverse it to cancel that debit and restore the normal schedule.
+          </div>
+          <button
+            type="button"
+            onClick={runReversePayoff}
+            disabled={reversing}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#c2410c] bg-[#c2410c] px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#9a3412] disabled:opacity-60 transition-colors"
+          >
+            {reversing ? "Reversing…" : "Reverse payoff"}
+          </button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
