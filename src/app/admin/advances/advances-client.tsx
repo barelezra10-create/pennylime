@@ -513,7 +513,7 @@ export function AdvancesClient({
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-[#a1a1aa]">No approved applicants.</td></tr>
               ) : rows.map((a) => (
                 <tr key={a.id} className={`border-t border-[#f4f4f5] ${a.fundingFailed ? "bg-[#fff1f2] hover:bg-[#ffe4e6]" : "hover:bg-[#fafafa]"}`}>
-                  <td className="px-4 py-3 min-w-[180px]">
+                  <td className="px-4 py-3 min-w-[150px] max-w-[240px]">
                     <div className="font-semibold text-black flex flex-wrap items-center gap-1.5">
                       <span>{a.borrowerName}</span>
                       {a.fundingFailed && (
@@ -542,13 +542,11 @@ export function AdvancesClient({
                       )}
                     </div>
                     <div className="text-[11px] font-mono text-[#a1a1aa]">{a.applicationCode}</div>
-                    {a.fundingFailed && a.disburseError && (
-                      <div className="mt-1 max-w-[280px] rounded bg-[#fef2f2] px-2 py-1 text-[11px] leading-snug text-[#b91c1c]">
-                        {(a.approvedAmount ?? 0) > 1000 ? (
-                          <><span className="font-semibold">Over GoACH's $1,000 disbursement limit.</span> Raise the limit with GoACH or lower the advance to fund.</>
-                        ) : (
-                          <><span className="font-semibold">Disbursement error: </span>{a.disburseError}</>
-                        )}
+                    {a.fundingFailed && (
+                      <div className="mt-1 rounded bg-[#fef2f2] px-2 py-1 text-[10px] leading-snug text-[#b91c1c]">
+                        {(a.approvedAmount ?? 0) > 1000
+                          ? "Over GoACH's $1,000 limit — Retry funding splits it into smaller credits."
+                          : "Disbursement didn't go out — click Retry funding."}
                       </div>
                     )}
                   </td>
@@ -560,13 +558,13 @@ export function AdvancesClient({
                   <td className="px-4 py-3 text-[#52525b]">{a.referral || <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{a.bankBalance != null ? money(a.bankBalance) : <span className="text-[#a1a1aa]">—</span>}</td>
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap items-center justify-end gap-1.5 min-w-[150px]">
+                    <div className="flex flex-col items-stretch gap-1.5 w-[112px] ml-auto">
                       {a.fundingFailed && (
                         <button
                           onClick={() => runRetryFunding(a)}
                           disabled={retryingId === a.id}
-                          title="Re-provision a fresh GoACH bank account and re-send the ACH disbursement"
-                          className="whitespace-nowrap rounded-md border border-[#dc2626] bg-[#dc2626] text-white hover:bg-[#b91c1c] text-[11px] font-bold px-2.5 py-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          title="Re-send the ACH disbursement (splits into <=$1,000 credits automatically)"
+                          className="whitespace-nowrap rounded-md border border-[#dc2626] bg-[#dc2626] text-center text-white hover:bg-[#b91c1c] text-[11px] font-bold px-2.5 py-1 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           {retryingId === a.id ? "Funding…" : "Retry funding"}
                         </button>
@@ -574,20 +572,20 @@ export function AdvancesClient({
                       <button
                         onClick={() => runDecision(a, "withdraw")}
                         disabled={decidingId === a.id}
-                        className="rounded-md border border-[#e4e4e7] text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="rounded-md border border-[#e4e4e7] text-center text-[#52525b] hover:bg-[#fafafa] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         Withdraw
                       </button>
                       <button
                         onClick={() => runDecision(a, "cancel")}
                         disabled={decidingId === a.id}
-                        className="rounded-md border border-[#dc2626] text-[#dc2626] hover:bg-[#fef2f2] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="rounded-md border border-[#dc2626] text-center text-[#dc2626] hover:bg-[#fef2f2] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         Cancel
                       </button>
                       <Link
                         href={`/admin/applications/${a.id}?from=Approved`}
-                        className="rounded-md border border-[#15803d] text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
+                        className="rounded-md border border-[#15803d] text-center text-[#15803d] hover:bg-[#f0fdf4] text-[11px] font-semibold px-2.5 py-1 transition-colors"
                       >
                         Review
                       </Link>
