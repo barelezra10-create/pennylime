@@ -13,7 +13,7 @@ vi.mock("@/lib/sms/twilio", () => ({ sendSms: vi.fn() }));
 
 import { rollOneReturnedPayment } from "./nsf-roll-service";
 
-describe("NSF collections threshold", () => {
+describe("NSF manual Default review", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.count.mockResolvedValue(0);
@@ -35,8 +35,22 @@ describe("NSF collections threshold", () => {
       { paymentNumber: 20, dueDate: new Date("2026-09-30"), status: "RETURNED", isLateFee: true },
     ]);
     const result = await rollOneReturnedPayment(`payment-${misses - 1}`, { dryRun: true });
-    expect(result.status).toBe(misses < 5 ? "rolled" : "collections");
-    if (result.status === "collections") expect(result.reason).toContain("5 missed payments");
+    expect(result.status).toBe(misses < 5 ? "rolled" : "skipped");
+    if (result.status === "skipped") expect(result.reason).toContain("5 missed payments");
     expect(mocks.update).not.toHaveBeenCalled();
   });
+  it.each([0, 5])("never automatically defaults at a roll or miss cap (%i previous misses)", async (misses) => {
+    mocks.findUnique.mockResolvedValue({
+      id: "payment-1", status: "RETURNED", amount: 50, principal: 40, interest: 10,
+      collectedAmount: 0, rollCount: 100, isLateFee: false,
+      application: { id: "advance-1", status: "LATE", paymentFrequency: "DAILY" },
+    });
+    mocks.findMany.mockResolvedValue(Array.from({ length: misses }, (_, i) => ({
+      paymentNumber: i + 1, dueDate: new Date("2026-09-01"), status: "REPLACED", isLateFee: false,
+    })));
+    const result = await rollOneReturnedPayment("payment-1");
+    expect(result.status).toBe("skipped");
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
 });

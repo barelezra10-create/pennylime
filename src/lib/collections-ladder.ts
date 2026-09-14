@@ -44,7 +44,7 @@ export type CollectionsTimeline = {
 function labelForEvent(e: TimelineEvent): string {
   const n = (e.notes || "").toLowerCase();
   if (e.eventType === "ESCALATED") return "Escalated to collections";
-  if (e.eventType === "DEFAULTED") return "Marked defaulted, referred for recovery";
+  if (e.eventType === "DEFAULTED") return "Marked Default";
   if (e.eventType === "DUNNING") return "Collections reminder";
   if (e.eventType === "WARNING_SENT") {
     if (n.includes("final-notice")) return "Final pre-legal notice";
@@ -68,8 +68,6 @@ export function buildCollectionsTimeline(input: {
   defaultThresholdDays?: number;
 }): CollectionsTimeline {
   const now = input.now ?? new Date();
-  const escalateDays = input.collectionsThresholdDays ?? COLLECTIONS_ESCALATE_DAYS;
-  const defaultDays = input.defaultThresholdDays ?? DEFAULT_DAYS;
 
   const unpaid = input.payments.filter((p) => p.status === "PENDING" || p.status === "FAILED");
   const outstanding = unpaid.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
@@ -83,7 +81,7 @@ export function buildCollectionsTimeline(input: {
 
   const sent: TimelineStep[] = events.map((e) => ({
     label: labelForEvent(e),
-    channel: "Email + SMS",
+    channel: e.eventType === "DEFAULTED" ? "Staff action" : "Email + SMS",
     date: e.at,
     note: e.notes || undefined,
   }));
@@ -121,9 +119,9 @@ export function buildCollectionsTimeline(input: {
       });
     }
     upcoming.push({
-      label: "Mark defaulted, refer for recovery",
-      channel: "Status change",
-      date: addDays(ref, defaultDays),
+      label: "Mark Default manually",
+      channel: "Staff action",
+      date: null,
     });
   } else if (!isDefaulted) {
     // Still in repayment: project the pre-collections warnings off the oldest
@@ -140,7 +138,7 @@ export function buildCollectionsTimeline(input: {
         upcoming.push({ label: "First past-due warning", channel: "Email + SMS", date: addDays(firstOverdue, OVERDUE_WARN_1_DAYS) });
       if (!has("14-day"))
         upcoming.push({ label: "Second past-due warning", channel: "Email + SMS", date: addDays(firstOverdue, OVERDUE_WARN_2_DAYS) });
-      upcoming.push({ label: "Escalate to collections", channel: "Status + Email + SMS", date: addDays(firstOverdue, escalateDays) });
+      upcoming.push({ label: "Move to Default manually", channel: "Staff action", date: null });
     }
   }
 

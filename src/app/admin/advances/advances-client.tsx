@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { chargePaymentNow, emailUpdatedPaymentTerms } from "@/actions/payments";
+import { markAdvanceDefault } from "@/actions/advance-default";
 import { chargeAllDueToday, type AdvanceRow, type AdvancesSummary } from "@/actions/advances";
 import { withdrawApplication, cancelApplication } from "@/actions/application-decision";
 import { retryFundingWithReprovision } from "@/actions/applications";
@@ -100,6 +101,7 @@ export function AdvancesClient({
     ? (stageParam as Filter)
     : "Active";
   const [search, setSearch] = useState("");
+  const [defaultingId, setDefaultingId] = useState<string | null>(null);
   const [chargingId, setChargingId] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [decidingId, setDecidingId] = useState<string | null>(null);
@@ -166,6 +168,30 @@ export function AdvancesClient({
       ),
     [rows],
   );
+
+  async function moveToDefault(a: AdvanceRow) {
+    if (defaultingId) return;
+    setDefaultingId(a.id);
+    try {
+      const result = await markAdvanceDefault(a.id);
+      if (!result.success) { toast.error(result.error); return; }
+      toast.success(`${a.borrowerName} moved to Default`);
+      router.refresh();
+    } catch {
+      toast.error("Could not move account to Default");
+    } finally {
+      setDefaultingId(null);
+    }
+  }
+
+  function defaultButton(a: AdvanceRow) {
+    if (a.stageTab !== "Active") return null;
+    return <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); void moveToDefault(a); }}
+      disabled={defaultingId !== null}
+      className="rounded-md border border-[#b91c1c] text-[#b91c1c] hover:bg-[#fef2f2] text-[11px] font-semibold px-2.5 py-1 disabled:opacity-40"
+    >{defaultingId === a.id ? "Moving…" : "Default"}</button>;
+  }
 
   async function chargeOne(a: AdvanceRow) {
     if (!a.nextPaymentId) return;
@@ -407,6 +433,7 @@ export function AdvancesClient({
                   )}
                 </div>
 
+                {defaultButton(a)}
                 {showCharge && (
                   <div className="mt-3">
                     <button
@@ -718,6 +745,7 @@ export function AdvancesClient({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
+                      {defaultButton(a)}
                       {showCharge && (
                         <button
                           onClick={() => chargeOne(a)}

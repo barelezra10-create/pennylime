@@ -7,12 +7,11 @@ import { sendSms } from "@/lib/sms/twilio";
 import { paymentRolledSms } from "@/lib/sms/transactional";
 
 // Application statuses where we should NOT roll (already terminal or in
-// collections). A rolled advance that hits the cap moves to COLLECTIONS.
+// collections). Roll caps require manual Default review.
 const NON_ROLLABLE_APP_STATUSES = ["COLLECTIONS", "DEFAULTED", "PAID_OFF", "CANCELED", "REJECTED"];
 
 // Serial delinquency: once this many of an advance's payments have missed
-// (returned or already rolled away), stop rolling and send it to Collections
-// instead — that borrower isn't recovering.
+// (returned or already rolled away), stop rolling and leave the account for manual Default review.
 export const MAX_MISSED_BEFORE_COLLECTIONS = 5;
 
 export type RollOutcome =
@@ -25,7 +24,7 @@ export type RollOutcome =
  * Roll a single RETURNED payment to the end of the schedule (idempotently):
  * mark the original REPLACED, append a fresh PENDING replacement for the
  * outstanding balance plus a separate late-fee charge, and notify the
- * borrower. At MAX_ROLLS the advance escalates to Collections instead.
+ * borrower. At MAX_ROLLS rolling stops for manual Default review.
  *
  * Caller is responsible for refreshing the application status afterward
  * (the payment-status cron does this for every dirty application).
@@ -164,22 +163,7 @@ export async function rollOneReturnedPayment(
     (p) => !p.isLateFee && (p.status === "RETURNED" || p.status === "FAILED" || p.status === "REPLACED"),
   ).length;
   if (missedCount >= MAX_MISSED_BEFORE_COLLECTIONS) {
-    const reason = `${missedCount} missed payments on this advance; escalating to Collections.`;
-    if (!dryRun) {
-      await prisma.application.update({ where: { id: app.id }, data: { status: "COLLECTIONS" } });
-      await prisma.auditLog
-        .create({
-          data: {
-            action: "PAYMENT_SERIAL_MISS_TO_COLLECTIONS",
-            entityType: "APPLICATION",
-            entityId: app.id,
-            performedBy: "system",
-            details: JSON.stringify({ paymentId, missedCount }),
-          },
-        })
-        .catch(() => {});
-    }
-    return { status: "collections", paymentId, reason };
+    return { status: "skipped", paymentId, reason: `${missedCount} missed payments; manual Default review required.` };
   }
 
   const plan = computeRollPlan({
@@ -203,21 +187,7 @@ export async function rollOneReturnedPayment(
   }
 
   if (plan.action === "collections") {
-    if (!dryRun) {
-      await prisma.application.update({ where: { id: app.id }, data: { status: "COLLECTIONS" } });
-      await prisma.auditLog
-        .create({
-          data: {
-            action: "PAYMENT_ROLL_TO_COLLECTIONS",
-            entityType: "APPLICATION",
-            entityId: app.id,
-            performedBy: "system",
-            details: JSON.stringify({ paymentId, rollCount: payment.rollCount, reason: plan.reason }),
-          },
-        })
-        .catch(() => {});
-    }
-    return { status: "collections", paymentId, reason: plan.reason };
+    return { status: "skipped", paymentId, reason: `${plan.reason} Manual Default review required.` };
   }
 
   // Dry run: report what would happen without writing or notifying.

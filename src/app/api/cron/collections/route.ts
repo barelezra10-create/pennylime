@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyCronSecret } from "@/lib/cron-auth";
-import { getLoanRules } from "@/lib/rules-engine";
-import { logAudit } from "@/lib/audit";
 import { sendEmail } from "@/lib/emails/send";
 import { collectionWarningEmail } from "@/lib/emails/collection-warning";
 import { collectionEscalationEmail } from "@/lib/emails/collection-escalation";
@@ -29,23 +27,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ paused: true, resumesOn: pausedUntil.toISOString(), warnings7: 0, warnings14: 0, escalated: 0 });
   }
 
-  const rules = await getLoanRules();
-  const collectionsThreshold = parseInt(rules.collections_threshold_days || "30");
-
   const now = new Date();
-  const day7 = new Date(now);
-  day7.setDate(day7.getDate() - 7);
-  const day14 = new Date(now);
-  day14.setDate(day14.getDate() - 14);
-  const day30 = new Date(now);
-  day30.setDate(day30.getDate() - collectionsThreshold);
 
   let warnings7 = 0;
   let warnings14 = 0;
   let escalated = 0;
   let finalNotices = 0;
   let dunningSent = 0;
-  let defaulted = 0;
+  const defaulted = 0;
 
   // Find all in-repayment applications with failed payments. Includes
   // FUNDED + REPAYING so we don't lose loans that haven't transitioned
@@ -75,7 +64,6 @@ export async function POST(request: NextRequest) {
     // a FAILED payment row. Accounts pushed here by the NSF-roll service carry
     // their misses as REPLACED (not FAILED), so gating on FAILED skipped them.
     if (app.status === "COLLECTIONS") {
-      const defaultThreshold = parseInt(rules.default_threshold_days ?? "90");
 
       // Real outstanding = EVERY unpaid payment (PENDING, FAILED, RETURNED,
       // PROCESSING), excluding only void rows (PAID/REPLACED/CANCELED/WAIVED).
@@ -133,7 +121,7 @@ export async function POST(request: NextRequest) {
       const finalSent = app.collectionEvents.some(
         (e) => e.eventType === "WARNING_SENT" && e.notes?.includes("final-notice"),
       );
-      if (!contactedThisRun && !finalSent && daysSinceEscalation >= FINAL_NOTICE_DAYS && daysSinceEscalation < defaultThreshold) {
+      if (!contactedThisRun && !finalSent && daysSinceEscalation >= FINAL_NOTICE_DAYS) {
         await prisma.collectionEvent.create({
           data: { applicationId: app.id, eventType: "WARNING_SENT", performedBy: "system:collections", notes: `final-notice: ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding` },
         });
@@ -146,7 +134,7 @@ export async function POST(request: NextRequest) {
       // Recurring dunning between milestones: keep hitting them every
       // DUNNING_INTERVAL_DAYS until they pay or default. Skip if we already
       // contacted them this run so we never double-message in one pass.
-      if (!contactedThisRun && daysSinceEscalation < defaultThreshold) {
+      if (!contactedThisRun) {
         const lastComm = app.collectionEvents
           .filter((e) => ["WARNING_SENT", "DUNNING", "ESCALATED"].includes(e.eventType))
           .map((e) => e.createdAt)
@@ -162,27 +150,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Default at threshold days since escalation.
-      if (daysSinceEscalation >= defaultThreshold) {
-        await prisma.application.update({ where: { id: app.id }, data: { status: "DEFAULTED" } });
-        await prisma.collectionEvent.create({
-          data: { applicationId: app.id, eventType: "DEFAULTED", performedBy: "system:collections", notes: `Defaulted after ${daysSinceEscalation} days in collections, $${collectionsOverdue.toFixed(2)} outstanding` },
-        });
-
-        const allPayments = await prisma.payment.findMany({ where: { applicationId: app.id } });
-        const totalPaid = allPayments.filter((p) => p.status === "PAID").reduce((sum, p) => sum + Number(p.amount) + Number(p.lateFee), 0);
-        const totalOwed = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-        const latePaymentCount = allPayments.filter((p) => Number(p.lateFee) > 0).length;
-        if (app.ssnHash) {
-          await prisma.riskProfile.create({
-            data: { applicationId: app.id, ssnHash: app.ssnHash, platform: app.platform ?? "unknown", monthlyIncome: app.monthlyIncome ?? 0, loanAmount: app.loanAmount, loanTermMonths: app.loanTermMonths ?? 12, interestRate: app.interestRate ?? 0, outcome: "DEFAULTED", totalPaid, totalOwed, latePaymentCount, defaultedAt: new Date() },
-          });
-          const { checkAndTriggerRetrain } = await import("@/lib/risk-model");
-          await checkAndTriggerRetrain();
-        }
-        await logAudit({ action: "COLLECTIONS_ESCALATION", entityType: "APPLICATION", entityId: app.id, performedBy: "system:collections", details: { escalatedTo: "DEFAULTED", daysSinceCollections: daysSinceEscalation } });
-        defaulted++;
-      }
+      // Moving to Default is an explicit staff action.
 
       continue;
     }
@@ -211,54 +179,7 @@ export async function POST(request: NextRequest) {
       0
     );
 
-    // 30+ days: escalate to COLLECTIONS
-    if (daysOverdue >= collectionsThreshold && app.status !== "COLLECTIONS") {
-      await prisma.application.update({
-        where: { id: app.id },
-        data: { status: "COLLECTIONS" },
-      });
-
-      await prisma.collectionEvent.create({
-        data: {
-          applicationId: app.id,
-          eventType: "ESCALATED",
-          notes: `Auto-escalated: ${daysOverdue} days overdue, $${totalOverdue.toFixed(2)} outstanding`,
-        },
-      });
-
-      await logAudit({
-        action: "COLLECTIONS_ESCALATION",
-        entityType: "APPLICATION",
-        entityId: app.id,
-        performedBy: "system:collections",
-        details: { daysOverdue, totalOverdue },
-      });
-
-      await sendEmail({
-        to: app.email,
-        ...collectionEscalationEmail({
-          firstName: app.firstName,
-          applicationCode: app.applicationCode,
-          totalOverdue,
-        }),
-        contactId: linkedContact?.id,
-        templateId: "collection-escalation",
-      });
-
-      await sendSms({
-        to: app.phone,
-        body: collectionEscalationSms({
-          firstName: app.firstName,
-          applicationCode: app.applicationCode,
-          totalOverdue,
-        }),
-        contactId: linkedContact?.id,
-        templateId: "collection-escalation",
-      });
-
-      escalated++;
-      continue;
-    }
+    // Overdue accounts stay Active/LATE until staff manually marks Default.
 
     // 14+ days: second warning + set LATE (if not already)
     if (daysOverdue >= 14) {
