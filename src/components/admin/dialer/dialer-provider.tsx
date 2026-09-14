@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Device, Call } from "@twilio/voice-sdk";
+import { sendCallDigit } from "@/lib/voice/dtmf";
+import { toast } from "sonner";
 import { DialerPanel } from "./dialer-panel";
 
 export type DialerState =
@@ -23,6 +25,7 @@ type DialerContextValue = {
   startCall: (opts: { phone: string; name: string; contactId?: string }) => Promise<void>;
   hangUp: () => void;
   toggleMute: () => void;
+  sendDigit: (digit: string) => void;
   dismiss: () => void;
   saveWrapUp: (outcome: string, notes: string) => Promise<void>;
 };
@@ -155,6 +158,15 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
     setMuted(next);
   }, [muted]);
 
+  const sendDigit = useCallback((digit: string) => {
+    if (state.phase !== "in-call") return;
+    try {
+      if (!sendCallDigit(callRef.current, digit)) toast.error("The call is not connected");
+    } catch {
+      toast.error("Could not send the keypad tone. Try again.");
+    }
+  }, [state.phase]);
+
   const dismiss = useCallback(() => setState({ phase: "idle" }), []);
 
   const saveWrapUp = useCallback(
@@ -174,7 +186,7 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <DialerContext.Provider value={{ state, muted, numbers, callerId, setCallerId, startCall, hangUp, toggleMute, dismiss, saveWrapUp }}>
+    <DialerContext.Provider value={{ state, muted, numbers, callerId, setCallerId, startCall, hangUp, toggleMute, sendDigit, dismiss, saveWrapUp }}>
       {children}
       <DialerPanel />
     </DialerContext.Provider>

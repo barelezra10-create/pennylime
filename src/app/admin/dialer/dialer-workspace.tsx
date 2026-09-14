@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { InCallKeypad } from "@/components/admin/dialer/in-call-keypad";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { ContactCalls } from "@/components/admin/dialer/contact-calls";
 import { PlaidMiniPanel } from "@/components/admin/dialer/plaid-mini-panel";
@@ -320,6 +321,10 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
 
         {tab === "dialpad" && (
           <div className="rounded-xl border border-[#e4e4e7] bg-white p-6 max-w-sm">
+            {state.phase === "in-call" ? (
+              <InCallKeypad key={state.startedAt} />
+            ) : (
+              <>
             {numbers.length > 0 && (
               <label className="block mb-3">
                 <span className="text-[11px] font-medium text-[#71717a] uppercase tracking-wide">Call from</span>
@@ -386,6 +391,8 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
                 &#9742; Call
               </button>
             </div>
+              </>
+            )}
           </div>
         )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { InCallKeypad } from "./in-call-keypad";
 import { useDialer } from "./dialer-provider";
 
 const OUTCOMES = [
@@ -42,7 +43,7 @@ export function DialerPanel() {
   if (state.phase === "idle") return null;
 
   return (
-    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 sm:w-80 rounded-xl border border-[#e4e4e7] bg-white shadow-xl p-4">
+    <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 sm:w-80 rounded-xl border border-[#e4e4e7] bg-white shadow-xl p-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[14px] font-semibold text-[#18181b]">{state.name}</p>
@@ -82,6 +83,8 @@ export function DialerPanel() {
             </button>
           </div>
         )}
+
+        {state.phase === "in-call" && <InCallKeypad key={state.startedAt} />}
 
         {state.phase === "wrap-up" && (
           <div className="mt-2 space-y-2">
