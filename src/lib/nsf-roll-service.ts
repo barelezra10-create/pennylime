@@ -13,7 +13,7 @@ const NON_ROLLABLE_APP_STATUSES = ["COLLECTIONS", "DEFAULTED", "PAID_OFF", "CANC
 // Serial delinquency: once this many of an advance's payments have missed
 // (returned or already rolled away), stop rolling and send it to Collections
 // instead — that borrower isn't recovering.
-export const MAX_MISSED_BEFORE_COLLECTIONS = 3;
+export const MAX_MISSED_BEFORE_COLLECTIONS = 5;
 
 export type RollOutcome =
   | { status: "rolled"; paymentId: string; replacementId: string; lateFeeId: string | null }

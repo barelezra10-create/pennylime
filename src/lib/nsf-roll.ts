@@ -6,7 +6,8 @@
 
 export type Frequency = "WEEKLY" | "DAILY";
 
-export const MAX_ROLLS = 3;
+// Allow four failed attempts to roll; the fifth miss escalates to Collections.
+export const MAX_ROLLS = 4;
 export const DEFAULT_LATE_FEE = 25;
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
