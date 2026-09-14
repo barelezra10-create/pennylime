@@ -775,7 +775,9 @@ export function AdvancesClient({
                 {expandedId === a.id && (
                   <tr className="bg-[#fafafa]">
                     <td colSpan={10} className="px-6 py-4">
-                      <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">Payment schedule · {a.borrowerName}</div>
+                      {[...advances.filter((linked) => linked.parentAdvanceId === a.id && linked.schedule.length > 0), a].map((scheduleAdvance) => (
+                        <section key={scheduleAdvance.id} className="mb-5 last:mb-0">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">{scheduleAdvance.parentAdvanceId ? "Top-up payment schedule" : "Payment schedule"} · {scheduleAdvance.borrowerName} · {scheduleAdvance.applicationCode} · {money(scheduleAdvance.fundedAmount)}</div>
                       <div className="overflow-hidden rounded-lg border border-[#e4e4e7] bg-white">
                         <table className="w-full text-[12px]">
                           <thead className="bg-[#f4f4f5] text-[#71717a] text-left">
@@ -788,7 +790,7 @@ export function AdvancesClient({
                             </tr>
                           </thead>
                           <tbody>
-                            {a.schedule.map((s) => (
+                            {scheduleAdvance.schedule.map((s) => (
                               <tr key={s.n} className="border-t border-[#f4f4f5]">
                                 <td className="px-3 py-1.5 text-[#a1a1aa]">{s.n}</td>
                                 <td className="px-3 py-1.5 font-mono text-[#52525b]">{fmtDate(s.dueDate)}</td>
@@ -800,6 +802,8 @@ export function AdvancesClient({
                           </tbody>
                         </table>
                       </div>
+                        </section>
+                      ))}
                     </td>
                   </tr>
                 )}

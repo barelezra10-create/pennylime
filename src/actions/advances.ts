@@ -53,6 +53,7 @@ const STAGE_OF: Record<string, string> = {
 export type AdvanceRow = {
   id: string;
   applicationCode: string;
+  parentAdvanceId?: string | null;
   borrowerName: string;
   status: string;
   stageTab: string;
@@ -135,6 +136,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
     select: {
       id: true,
       applicationCode: true,
+      topUpOrigin: { select: { applicationId: true } },
       firstName: true,
       lastName: true,
       status: true,
@@ -289,6 +291,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
     return {
       id: app.id,
       applicationCode: app.applicationCode,
+      parentAdvanceId: app.topUpOrigin?.applicationId ?? null,
       borrowerName: `${app.firstName} ${app.lastName}`.trim(),
       status: app.status,
       stageTab: STAGE_OF[app.status] ?? "Active",
