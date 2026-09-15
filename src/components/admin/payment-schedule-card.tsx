@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -197,7 +198,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
 
       {/* Payment Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <SortableTable className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100">
               <th className="py-2.5 px-3 text-left text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">#</th>
@@ -495,7 +496,7 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[#71717a] mb-2">
                         Charge history ({atts.length} attempts)
                       </p>
-                      <table className="w-full text-[11px]">
+                      <SortableTable className="w-full text-[11px]">
                         <thead>
                           <tr className="text-[10px] uppercase tracking-wide text-[#a1a1aa]">
                             <th className="text-left py-1">#</th>
@@ -535,14 +536,14 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </SortableTable>
                     </div>
                   </td>
                 </tr>,
               ];
             })}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

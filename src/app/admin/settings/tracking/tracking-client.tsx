@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { PageHeader } from "@/components/admin/page-header";
 import { saveTrackingConfig } from "@/actions/tracking";
@@ -210,7 +211,7 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
               <p className="text-[13px] text-[#a1a1aa]">No events yet. Submit a lead from a landing page or trigger an admin action to populate this log.</p>
             ) : (
               <div className="overflow-x-auto -mx-5">
-                <table className="w-full text-[13px]">
+                <SortableTable className="w-full text-[13px]">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-[0.04em] text-[#a1a1aa] border-b border-[#e4e4e7]">
                       <th className="px-5 py-2">Time</th>
@@ -239,7 +240,7 @@ export function TrackingClient({ config, recentEvents }: { config: Config; recen
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
             )}
           </Card>

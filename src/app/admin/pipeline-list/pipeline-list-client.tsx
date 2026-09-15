@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { PIPELINE_STAGES, STAGE_COLORS } from "@/lib/contact-helpers";
@@ -181,7 +182,7 @@ export function PipelineListClient({ records }: Props) {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
-          <table className="w-full text-[12px]">
+          <SortableTable className="w-full text-[12px]">
             <thead>
               <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">
                 <th className="px-4 py-2.5 text-left font-semibold text-[#52525b] w-[220px]">Person</th>
@@ -304,7 +305,7 @@ export function PipelineListClient({ records }: Props) {
                 ].filter(Boolean);
               })}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
     </div>

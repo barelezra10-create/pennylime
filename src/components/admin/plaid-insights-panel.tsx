@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { toast } from "sonner";
 import { fetchAndStoreIncome, getRecentTransactions, triggerPlaidAssetReport, parsePlaidAssetReportWithAI } from "@/actions/plaid";
@@ -326,7 +327,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
               <p className="text-xs text-[#a1a1aa]">Loading…</p>
             ) : txs && txs.length > 0 ? (
               <div className="overflow-hidden rounded-lg border border-gray-100">
-                <table className="w-full text-xs">
+                <SortableTable className="w-full text-xs">
                   <thead className="bg-[#fafafa] text-[#71717a]">
                     <tr>
                       <th className="text-left font-semibold px-3 py-2">Date</th>
@@ -361,7 +362,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
                       );
                     })}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
             ) : (
               <p className="text-xs text-[#a1a1aa]">No transactions found.</p>

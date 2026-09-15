@@ -1,5 +1,7 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
+
 type PaymentInfo = {
   id: string;
   paymentNumber: number;
@@ -147,7 +149,7 @@ export function StatusDisplay({ application }: { application: StatusApplication 
         <div className="rounded-2xl border bg-white p-6">
           <h2 className="text-lg font-semibold mb-4">Payment History</h2>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <SortableTable className="w-full text-sm">
               <thead>
                 <tr className="text-left">
                   <th className="pb-2 pr-4 text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">#</th>
@@ -173,7 +175,7 @@ export function StatusDisplay({ application }: { application: StatusApplication 
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         </div>
       )}

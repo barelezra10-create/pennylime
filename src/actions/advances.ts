@@ -70,6 +70,7 @@ export type AdvanceRow = {
   // all live payments). fundedAmount is the cash out; this is what they owe back.
   totalDebt: number;
   appliedAt: string;
+  rejectedAt: string | null;
   nextPaymentId: string | null;
   nextDueDate: string | null;
   nextDueAmount: number;
@@ -168,6 +169,14 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       },
     },
   });
+
+  const rejectedIds = apps.filter(app => app.status === "REJECTED").map(app => app.id);
+  const rejectionEvents = rejectedIds.length ? await prisma.auditLog.groupBy({
+    by: ["entityId"],
+    where: { entityType: "APPLICATION", entityId: { in: rejectedIds }, action: "REJECT" },
+    _max: { createdAt: true },
+  }) : [];
+  const rejectedAt = new Map(rejectionEvents.map(event => [event.entityId, event._max.createdAt?.toISOString() ?? null]));
 
   const today0 = startOfToday();
   const todayEnd = endOfToday();
@@ -313,6 +322,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       fundedAmount: num(app.fundedAmount) || num(app.loanAmount),
       totalDebt: Math.round((outstanding + paidToDate) * 100) / 100,
       appliedAt: new Date(app.createdAt).toISOString(),
+      rejectedAt: rejectedAt.get(app.id) ?? null,
       nextPaymentId: nextPending?.id ?? null,
       nextDueDate: nextPending ? new Date(nextPending.dueDate).toISOString() : null,
       nextDueAmount: nextPending ? num(nextPending.amount) + num(nextPending.lateFee) : 0,
@@ -400,6 +410,7 @@ export async function getAdvances(): Promise<{ advances: AdvanceRow[]; summary: 
       fundedAmount: 0,
       totalDebt: 0,
       appliedAt: new Date(t.createdAt).toISOString(),
+      rejectedAt: null,
       nextPaymentId: null,
       nextDueDate: null,
       nextDueAmount: 0,

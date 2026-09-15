@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 
@@ -23,7 +24,7 @@ export function FormTemplatesClient({ templates }: { templates: TemplateItem[] }
       />
 
       <div className="bg-white rounded-xl overflow-hidden border border-[#e4e4e7]">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="border-b border-[#e4e4e7]">
               <th className="text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] px-5 py-3">Name</th>
@@ -52,7 +53,7 @@ export function FormTemplatesClient({ templates }: { templates: TemplateItem[] }
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
         {templates.length === 0 && (
           <div className="text-center py-12 text-[14px] text-[#71717a]">
             No form templates yet. Create one to customize your application flow.

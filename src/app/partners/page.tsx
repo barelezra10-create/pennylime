@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { isPartnerAuthed } from "@/lib/partner-auth";
@@ -214,7 +215,7 @@ async function renderDashboard() {
           <Empty>No funded loans yet.</Empty>
         ) : (
           <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
-            <table className="w-full">
+            <SortableTable className="w-full">
               <thead>
                 <tr className="text-left">
                   <Th>Date</Th>
@@ -245,7 +246,7 @@ async function renderDashboard() {
                   );
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         )}
       </Section>
@@ -258,7 +259,7 @@ async function renderDashboard() {
           </Empty>
         ) : (
           <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
-            <table className="w-full">
+            <SortableTable className="w-full">
               <thead>
                 <tr className="text-left">
                   <Th>Date</Th>
@@ -302,7 +303,7 @@ async function renderDashboard() {
                   );
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         )}
       </Section>

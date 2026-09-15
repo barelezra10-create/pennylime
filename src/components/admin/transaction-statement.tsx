@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { getTransactionStatement, type StatementTx } from "@/actions/plaid";
@@ -165,7 +166,7 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
             Showing {rows.length} of {data.count} transactions. Balance is estimated from the current balance.
           </p>
           <div className="overflow-auto max-h-[520px] rounded-lg border border-gray-100">
-            <table className="w-full text-xs">
+            <SortableTable className="w-full text-xs">
               <thead className="bg-[#fafafa] text-[#71717a] sticky top-0">
                 <tr>
                   <th className="text-left font-semibold px-3 py-2">Date</th>
@@ -200,7 +201,7 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
                   );
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         </>
       ) : (

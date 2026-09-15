@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState, useMemo, Fragment } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -31,6 +32,7 @@ type Filter = "Pending" | "Approved" | "Active" | "Paid" | "Default" | "Rejected
 type SortKey =
   | "borrowerName"
   | "appliedAt"
+  | "rejectedAt"
   | "platform"
   | "monthlyIncome"
   | "requestedAmount"
@@ -52,6 +54,7 @@ type Sort = { key: SortKey; dir: "asc" | "desc" };
 function sortVal(a: AdvanceRow, key: SortKey): number | string {
   switch (key) {
     case "borrowerName": return a.borrowerName.toLowerCase();
+    case "rejectedAt": return a.rejectedAt ? new Date(a.rejectedAt).getTime() : -1;
     case "appliedAt": return new Date(a.appliedAt).getTime();
     case "platform": return (a.platform || "").toLowerCase();
     case "monthlyIncome": return a.monthlyIncome ?? -1;
@@ -135,6 +138,7 @@ export function AdvancesClient({
     });
     if (sort) {
       out.sort((x, y) => {
+        if (sort.key === "rejectedAt" && (!x.rejectedAt || !y.rejectedAt)) return x.rejectedAt ? -1 : y.rejectedAt ? 1 : 0;
         const vx = sortVal(x, sort.key);
         const vy = sortVal(y, sort.key);
         let cmp: number;
@@ -142,6 +146,8 @@ export function AdvancesClient({
         else cmp = String(vx).localeCompare(String(vy));
         return sort.dir === "asc" ? cmp : -cmp;
       });
+    } else if (filter === "Rejected") {
+      out.sort((a, b) => (b.rejectedAt ? Date.parse(b.rejectedAt) : -1) - (a.rejectedAt ? Date.parse(a.rejectedAt) : -1));
     } else if (filter === "Pending" || filter === "Unqualified") {
       // Default for the intake tabs: newest applications first.
       out.sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
@@ -293,11 +299,11 @@ export function AdvancesClient({
 
   function SortHeader({ label, k, align = "left" }: { label: string; k: SortKey; align?: "left" | "right" | "center" }) {
     const active = sort?.key === k;
-    const arrow = active ? (sort!.dir === "asc" ? "↑" : "↓") : "";
+    const arrow = active ? (sort!.dir === "asc" ? "↑" : "↓") : "↕";
     const textAlign = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
     const justify = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
     return (
-      <th className={`font-semibold px-4 py-2.5 ${textAlign}`}>
+      <th aria-sort={active ? (sort!.dir === "asc" ? "ascending" : "descending") : "none"} className={`font-semibold px-4 py-2.5 ${textAlign}`}>
         <button
           onClick={() => toggleSort(k)}
           className={`inline-flex w-full items-center gap-1 ${justify} whitespace-nowrap hover:text-[#15803d] transition-colors ${active ? "text-[#15803d]" : ""}`}
@@ -647,7 +653,7 @@ export function AdvancesClient({
             <thead className="bg-[#fafafa] text-[#71717a] text-left">
               <tr>
                 <SortHeader label="Customer" k="borrowerName" />
-                {filter === "Rejected" && <SortHeader label="Applied" k="appliedAt" />}
+                {filter === "Rejected" && <><SortHeader label="Applied" k="appliedAt" /><SortHeader label="Rejected" k="rejectedAt" /></>}
                 <SortHeader label="Status" k="status" />
                 <SortHeader label="Amount" k="amount" align="right" />
                 {filter !== "Rejected" && <SortHeader label="Total debt" k="totalDebt" align="right" />}
@@ -661,7 +667,7 @@ export function AdvancesClient({
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
+                <tr><td colSpan={filter === "Rejected" ? 11 : 10} className="px-4 py-10 text-center text-[#a1a1aa]">No advances match.</td></tr>
               ) : rows.map((a) => {
                 const isFunded = ["Active", "Default"].includes(a.stageTab);
                 const showCharge = ["Active", "Default"].includes(a.stageTab);
@@ -703,7 +709,7 @@ export function AdvancesClient({
                     )}
                   </td>
                   {filter === "Rejected" && (
-                    <td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{fmtDate(a.appliedAt)}</td>
+                    <><td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{new Date(a.appliedAt).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" })}</td><td className="px-4 py-3 text-[#52525b] font-mono whitespace-nowrap">{a.rejectedAt ? new Date(a.rejectedAt).toLocaleDateString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", year: "numeric" }) : "Not recorded"}</td></>
                   )}
                   <td className="px-4 py-3">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[a.status] || "bg-[#f4f4f5] text-[#71717a]"}`}>
@@ -774,12 +780,12 @@ export function AdvancesClient({
                 </tr>
                 {expandedId === a.id && (
                   <tr className="bg-[#fafafa]">
-                    <td colSpan={10} className="px-6 py-4">
+                    <td colSpan={filter === "Rejected" ? 11 : 10} className="px-6 py-4">
                       {[...advances.filter((linked) => linked.parentAdvanceId === a.id && linked.schedule.length > 0), a].map((scheduleAdvance) => (
                         <section key={scheduleAdvance.id} className="mb-5 last:mb-0">
                       <div className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#71717a] mb-2">{scheduleAdvance.parentAdvanceId ? "Top-up payment schedule" : "Payment schedule"} · {scheduleAdvance.borrowerName} · {scheduleAdvance.applicationCode} · {money(scheduleAdvance.fundedAmount)}</div>
                       <div className="overflow-hidden rounded-lg border border-[#e4e4e7] bg-white">
-                        <table className="w-full text-[12px]">
+                        <SortableTable className="w-full text-[12px]">
                           <thead className="bg-[#f4f4f5] text-[#71717a] text-left">
                             <tr>
                               <th className="font-semibold px-3 py-1.5">#</th>
@@ -793,14 +799,14 @@ export function AdvancesClient({
                             {scheduleAdvance.schedule.map((s) => (
                               <tr key={s.n} className="border-t border-[#f4f4f5]">
                                 <td className="px-3 py-1.5 text-[#a1a1aa]">{s.n}</td>
-                                <td className="px-3 py-1.5 font-mono text-[#52525b]">{fmtDate(s.dueDate)}</td>
+                                <td data-sort-value={s.dueDate} className="px-3 py-1.5 font-mono text-[#52525b]">{fmtDate(s.dueDate)}</td>
                                 <td className="px-3 py-1.5 text-right tabular-nums">{money2(s.amount)}</td>
                                 <td className="px-3 py-1.5"><span className={lastPayStyle(s.status)}>{s.status}</span></td>
-                                <td className="px-3 py-1.5 text-[#a1a1aa] font-mono">{s.paidAt ? fmtDate(s.paidAt) : "—"}</td>
+                                <td data-sort-value={s.paidAt || ""} className="px-3 py-1.5 text-[#a1a1aa] font-mono">{s.paidAt ? fmtDate(s.paidAt) : "—"}</td>
                               </tr>
                             ))}
                           </tbody>
-                        </table>
+                        </SortableTable>
                       </div>
                         </section>
                       ))}

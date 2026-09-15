@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getPortalApplicationId } from "@/lib/portal-auth";
@@ -194,7 +195,7 @@ export default async function PortalDashboard() {
             </p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[13px]">
+            <SortableTable className="w-full text-[13px]">
               <thead className="bg-[#fafafa]">
                 <tr>
                   <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.06em] text-[#a1a1aa]">#</th>
@@ -227,7 +228,7 @@ export default async function PortalDashboard() {
                   );
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         </div>
       )}

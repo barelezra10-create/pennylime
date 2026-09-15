@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -81,7 +82,7 @@ export function CampaignsClient({ campaigns }: { campaigns: Campaign[] }) {
             <p className="text-[13px]">Create your first campaign to start sending.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <SortableTable className="w-full">
             <thead>
               <tr className="border-b border-[#e4e4e7]">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a1a1aa]">Name</th>
@@ -113,7 +114,7 @@ export function CampaignsClient({ campaigns }: { campaigns: Campaign[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         )}
       </div>
 

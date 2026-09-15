@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
@@ -25,7 +26,7 @@ export default async function TicketsPage() {
       <PageHeader title="Support Tickets" description={`${openCount} open · ${tickets.length} most recent`} />
 
       <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="bg-[#fafafa]">
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Created</th>
@@ -71,7 +72,7 @@ export default async function TicketsPage() {
               ))
             )}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

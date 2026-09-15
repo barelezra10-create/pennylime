@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { PageHeader } from "@/components/admin/page-header";
 import { EmptyState } from "@/components/admin/empty-state";
 import { StatCard } from "@/components/admin/stat-card";
@@ -84,7 +85,7 @@ export function AbandonedClient({ contacts, total, stats }: Props) {
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
-          <table className="w-full text-sm">
+          <SortableTable className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">
                 <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Name</th>
@@ -133,7 +134,7 @@ export function AbandonedClient({ contacts, total, stats }: Props) {
                 );
               })}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
@@ -63,7 +64,7 @@ export function SmsSequencesClient({ sequences }: { sequences: Sequence[] }) {
             <p className="text-[13px]">Create a sequence to automate text outreach.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <SortableTable className="w-full">
             <thead>
               <tr className="border-b border-[#e4e4e7]">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a1a1aa]">Name</th>
@@ -100,7 +101,7 @@ export function SmsSequencesClient({ sequences }: { sequences: Sequence[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         )}
       </div>
     </div>

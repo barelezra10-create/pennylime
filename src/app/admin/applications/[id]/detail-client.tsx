@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -1128,7 +1129,7 @@ export function DetailClient({
                   View signed schedule ({achAuth.schedule.length} payments)
                 </summary>
                 <div className="mt-3 rounded-lg border border-[#e4e4e7] overflow-hidden">
-                  <table className="w-full text-[12px]">
+                  <SortableTable className="w-full text-[12px]">
                     <thead className="bg-[#fafafa]">
                       <tr>
                         <th className="text-left px-3 py-1.5">#</th>
@@ -1145,7 +1146,7 @@ export function DetailClient({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </SortableTable>
                 </div>
               </details>
             </div>
@@ -1320,7 +1321,7 @@ export function DetailClient({
                   <div>
                     <p className="text-[11px] uppercase tracking-[0.05em] text-[#71717a] font-semibold mb-2">Key factors</p>
                     <div className="rounded-lg border border-[#e4e4e7] overflow-hidden">
-                      <table className="w-full text-[12px]">
+                      <SortableTable className="w-full text-[12px]">
                         <thead className="bg-[#fafafa]">
                           <tr>
                             <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider text-[#a1a1aa] font-semibold">Factor</th>
@@ -1343,7 +1344,7 @@ export function DetailClient({
                             </tr>
                           ))}
                         </tbody>
-                      </table>
+                      </SortableTable>
                     </div>
                   </div>
                 )}

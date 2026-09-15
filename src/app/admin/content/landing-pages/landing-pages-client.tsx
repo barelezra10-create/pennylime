@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -58,7 +59,7 @@ export function LandingPagesClient({ pages }: { pages: LandingPageItem[] }) {
       </div>
 
       <div className="bg-white rounded-xl overflow-hidden border border-[#e4e4e7]">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="border-b border-[#f4f4f5]">
               <th className="text-left text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] px-4 py-3">Slug</th>
@@ -93,7 +94,7 @@ export function LandingPagesClient({ pages }: { pages: LandingPageItem[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
         {filtered.length === 0 && (
           <p className="text-center text-[#71717a] text-[14px] py-12">No landing pages found.</p>
         )}

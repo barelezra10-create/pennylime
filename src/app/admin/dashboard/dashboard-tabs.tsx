@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -440,7 +441,7 @@ function PaidMediaTab({
         ) : (
           <Card>
             <div className="overflow-x-auto -mx-5">
-              <table className="w-full text-[12px]">
+              <SortableTable className="w-full text-[12px]">
                 <thead>
                   <tr className="text-left text-[10px] uppercase tracking-[0.04em] text-[#a1a1aa] border-b border-[#e4e4e7]">
                     <th className="px-5 py-2">Date</th>
@@ -467,7 +468,7 @@ function PaidMediaTab({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
           </Card>
         )}

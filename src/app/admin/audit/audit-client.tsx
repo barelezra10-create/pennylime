@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState, useEffect } from "react";
 import { getAuditLogs } from "@/actions/audit";
 import { PageHeader } from "@/components/admin/page-header";
@@ -71,7 +72,7 @@ export default function AuditClient() {
         <div className="py-12 text-center text-[#a1a1aa]">Loading...</div>
       ) : (
         <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
-          <table className="w-full">
+          <SortableTable className="w-full">
             <thead>
               <tr className="bg-[#fafafa]">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Time</th>
@@ -102,7 +103,7 @@ export default function AuditClient() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
     </div>

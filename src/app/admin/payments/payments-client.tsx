@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getAllPayments } from "@/actions/payments";
@@ -73,7 +74,7 @@ export function PaymentsClient() {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
-          <table className="w-full text-[13px]">
+          <SortableTable className="w-full text-[13px]">
             <thead>
               <tr className="bg-[#fafafa]">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">#</th>
@@ -111,7 +112,7 @@ export function PaymentsClient() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
     </div>

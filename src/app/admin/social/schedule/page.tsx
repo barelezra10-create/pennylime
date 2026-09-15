@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -84,7 +85,7 @@ export default async function SocialSchedulePage() {
       <section>
         <h2 className="text-lg font-semibold mb-3">Upcoming</h2>
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <SortableTable className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
               <tr>
                 <th className="px-4 py-3 w-32">Date (UTC)</th>
@@ -123,7 +124,7 @@ export default async function SocialSchedulePage() {
                 </tr>
               )}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
         <p className="text-xs text-gray-500 mt-3">
           Order: least-recently-used first, then lowest use count. Rows highlighted green are intro/&quot;who we are&quot; topics, which publish first.

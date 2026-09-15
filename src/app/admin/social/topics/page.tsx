@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import { addTopic, toggleTopic } from "./actions";
 
@@ -42,7 +43,7 @@ export default async function SocialTopicsPage() {
       </form>
 
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+        <SortableTable className="w-full text-sm">
           <thead className="bg-gray-50 text-left">
             <tr>
               <th className="px-4 py-2">Topic</th>
@@ -71,7 +72,7 @@ export default async function SocialTopicsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

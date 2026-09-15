@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
 import { TRANSACTIONAL_CATALOG } from "@/lib/notifications/transactional-catalog";
@@ -14,7 +15,7 @@ export default function TransactionalPage() {
       <TestSendForm />
 
       <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="border-b border-[#e4e4e7]">
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a1a1aa]">Notification</th>
@@ -59,7 +60,7 @@ export default function TransactionalPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

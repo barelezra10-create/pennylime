@@ -1,5 +1,6 @@
 "use client";
 
+import { compareTableValues, type SortValue } from "@/lib/table-sort";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
@@ -46,6 +47,22 @@ interface ContactsClientProps {
 }
 
 const PAGE_SIZE = 50;
+const SORT_COLUMNS = ["Contact", "Stage", "Advance", "Status", "Source", "Progress", "Payment", "Balance", "Next due"];
+function contactSortValue(contact: Contact, column: string): SortValue {
+  const loan = contact.loan;
+  switch (column) {
+    case "Contact": return `${contact.firstName} ${contact.lastName || ""}`;
+    case "Stage": return contact.stage;
+    case "Advance": return loan.hasLoan ? loan.fundedAmount || loan.loanAmount : contact.loanAmountIntent;
+    case "Status": return loan.applicationStatus || null;
+    case "Source": return contact.source || contact.referrer;
+    case "Progress": return loan.hasLoan ? loan.progressPct : null;
+    case "Payment": return loan.hasLoan ? loan.perPaymentAmount : null;
+    case "Balance": return loan.hasLoan ? loan.remainingAmount : null;
+    case "Next due": return loan.nextDue ? Date.parse(loan.nextDue.date) : null;
+    default: return null;
+  }
+}
 
 export function ContactsClient({ contacts, total, metrics }: ContactsClientProps) {
   const router = useRouter();
@@ -53,6 +70,8 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
   const [stageFilter, setStageFilter] = useState<string>("ALL");
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [sortColumn, setSortColumn] = useState("");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const unreadCount = useMemo(
     () => contacts.filter((c) => c.hasUnread).length,
@@ -81,15 +100,15 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
       result = result.filter((c) => c.hasUnread);
     }
 
-    // Pin contacts with unread messages to the top so the admin sees them
-    // first even when sorting by other criteria.
+    // Default order prioritizes unread messages; an explicit sort covers all pages.
     return [...result].sort((a, b) => {
+      if (sortColumn) return compareTableValues(contactSortValue(a, sortColumn), contactSortValue(b, sortColumn), sortDirection);
       if ((a.hasUnread ? 1 : 0) !== (b.hasUnread ? 1 : 0)) {
         return a.hasUnread ? -1 : 1;
       }
       return 0;
     });
-  }, [contacts, search, stageFilter, unreadOnly]);
+  }, [contacts, search, stageFilter, unreadOnly, sortColumn, sortDirection]);
 
   // Top KPIs from filtered set: total active loan principal, total remaining, # late
   const kpis = useMemo(() => {
@@ -202,6 +221,13 @@ export function ContactsClient({ contacts, total, metrics }: ContactsClientProps
       {/* Table */}
       <div className="bg-white rounded-xl border border-[#e4e4e7] overflow-hidden">
         <div className="overflow-x-auto">
+          <div className="flex items-center justify-end gap-2 p-3 text-xs">
+            <label>Sort by <select aria-label="Sort contacts by" value={sortColumn} onChange={event => { setSortColumn(event.target.value); setPage(1); }} className="rounded border p-1">
+              <option value="">Default order</option>
+              {SORT_COLUMNS.map(column => <option key={column}>{column}</option>)}
+            </select></label>
+            {sortColumn && <button type="button" onClick={() => { setSortDirection(value => value === "asc" ? "desc" : "asc"); setPage(1); }}>{sortDirection === "asc" ? "↑ Ascending" : "↓ Descending"}</button>}
+          </div>
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#e4e4e7] bg-[#fafafa]">

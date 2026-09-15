@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import React, { useState } from "react";
 import type { MonthlyPL } from "@/lib/monthly-pl";
 
@@ -72,7 +73,7 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-[12px] border-collapse">
+          <SortableTable className="w-full text-[12px] border-collapse">
             <thead>
               <tr className="border-b border-[#e4e4e7]">
                 <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider text-[#a1a1aa] font-semibold whitespace-nowrap">
@@ -160,11 +161,12 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                       <tr className="border-b border-[#f4f4f5] bg-[#fafafa]">
                         <td colSpan={colCount} className="px-3 pb-3 pt-1">
                           <div className="pl-6 max-h-64 overflow-y-auto">
-                            <table className="w-full text-[11px]">
+                            <SortableTable className="w-full text-[11px]">
+                              <thead><tr><th className="text-left">Date</th><th className="text-left">Description</th><th className="text-right">Amount</th></tr></thead>
                               <tbody>
                                 {items.map((it, i) => (
                                   <tr key={i} className="border-b border-[#efefef] last:border-0">
-                                    <td className="py-1 pr-3 text-[#a1a1aa] tabular-nums whitespace-nowrap w-14">
+                                    <td data-sort-value={it.date} className="py-1 pr-3 text-[#a1a1aa] tabular-nums whitespace-nowrap w-14">
                                       {fmtDay(it.date)}
                                     </td>
                                     <td className="py-1 pr-3 text-[#52525b]">{it.description || "-"}</td>
@@ -174,7 +176,7 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                                   </tr>
                                 ))}
                               </tbody>
-                            </table>
+                            </SortableTable>
                           </div>
                         </td>
                       </tr>
@@ -212,7 +214,7 @@ export function MonthlyPLPanel({ json }: { json: string | null }) {
                 </td>
               </tr>
             </tfoot>
-          </table>
+          </SortableTable>
         </div>
       )}
     </div>

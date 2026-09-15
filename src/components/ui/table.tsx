@@ -1,5 +1,7 @@
 "use client"
 
+import { SortableTable } from "./sortable-table"
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
@@ -10,7 +12,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
       data-slot="table-container"
       className="relative w-full overflow-x-auto"
     >
-      <table
+      <SortableTable
         data-slot="table"
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
@@ -103,6 +105,9 @@ function TableCaption({
     />
   )
 }
+
+TableBody.displayName = "TableBody"
+TableRow.displayName = "TableRow"
 
 export {
   Table,

@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/admin/status-badge";
 import type { ApplicationWithDocuments } from "@/types";
@@ -68,7 +69,7 @@ export function ApplicationTable({
 
   return (
     <div className="bg-white rounded-2xl overflow-x-auto">
-      <table className="w-full min-w-[1100px]">
+      <SortableTable className="w-full min-w-[1100px]">
         <thead>
           <tr>
             <th className="text-left text-[11px] font-semibold text-[#a1a1aa] uppercase tracking-[0.05em] px-4 py-3.5">
@@ -185,7 +186,7 @@ export function ApplicationTable({
             );
           })}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   );
 }

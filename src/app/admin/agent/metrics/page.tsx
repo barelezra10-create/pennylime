@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/admin/page-header";
 
@@ -47,7 +48,7 @@ export default async function AgentMetricsPage() {
 
       <h2 className="text-[14px] font-bold text-black mb-3">By channel</h2>
       <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7] mb-8">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="bg-[#fafafa]">
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Channel</th>
@@ -74,12 +75,12 @@ export default async function AgentMetricsPage() {
               ))
             )}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
 
       <h2 className="text-[14px] font-bold text-black mb-3">Tool calls</h2>
       <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="bg-[#fafafa]">
               <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Tool</th>
@@ -106,7 +107,7 @@ export default async function AgentMetricsPage() {
               ))
             )}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

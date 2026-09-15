@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import Link from "next/link";
 
 interface ToolPageItem { id: string; title: string; slug: string; toolComponent: string; published: boolean; updatedAt: string; }
@@ -12,7 +13,7 @@ export function ToolsClient({ tools }: { tools: ToolPageItem[] }) {
         <Link href="/admin/content/tools/new" className="bg-[#15803d] text-white text-[13px] font-medium px-4 py-2 rounded-lg hover:bg-[#166534]">New Tool Page</Link>
       </div>
       <div className="bg-white rounded-[10px] overflow-hidden">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead><tr className="border-b border-[#f4f4f5]"><th className="text-left text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] px-4 py-3">Title</th><th className="text-left text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] px-4 py-3">Component</th><th className="text-left text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] px-4 py-3">Status</th></tr></thead>
           <tbody>
             {tools.map((t) => (
@@ -23,7 +24,7 @@ export function ToolsClient({ tools }: { tools: ToolPageItem[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
         {tools.length === 0 && <p className="text-center text-[#71717a] text-[14px] py-12">No tool pages yet.</p>}
       </div>
     </div>

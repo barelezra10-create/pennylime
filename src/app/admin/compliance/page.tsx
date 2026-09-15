@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/admin/page-header";
 import Link from "next/link";
@@ -143,7 +144,7 @@ export default async function CompliancePage() {
         ) : null}
 
         <div className="bg-white border border-[#e4e4e7] rounded-xl overflow-hidden">
-          <table className="w-full text-[13px]">
+          <SortableTable className="w-full text-[13px]">
             <thead className="bg-[#fafafa]">
               <tr>
                 <Th>State</Th>
@@ -197,7 +198,7 @@ export default async function CompliancePage() {
                 ))
               )}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </section>
 
@@ -226,7 +227,7 @@ export default async function CompliancePage() {
         </div>
 
         <div className="bg-white border border-[#e4e4e7] rounded-xl overflow-hidden">
-          <table className="w-full text-[13px]">
+          <SortableTable className="w-full text-[13px]">
             <thead className="bg-[#fafafa]">
               <tr>
                 <Th>Status</Th>
@@ -272,7 +273,7 @@ export default async function CompliancePage() {
                 ))
               )}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </section>
     </div>

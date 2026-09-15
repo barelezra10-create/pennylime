@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createTeamMember, updateTeamMemberRole, deleteTeamMember } from "@/actions/team";
@@ -82,7 +83,7 @@ export function TeamClient({ members }: { members: Member[] }) {
 
       {/* Team list */}
       <div className="bg-white rounded-xl overflow-hidden border border-[#e4e4e7]">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="border-b border-[#e4e4e7]">
               <th className="text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa] px-5 py-3">Name</th>
@@ -115,7 +116,7 @@ export function TeamClient({ members }: { members: Member[] }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

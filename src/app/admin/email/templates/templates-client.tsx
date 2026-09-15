@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/admin/page-header";
 
@@ -29,7 +30,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
             <p className="text-[13px]">Create reusable email templates to speed up your campaigns.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <SortableTable className="w-full">
             <thead>
               <tr className="border-b border-[#e4e4e7]">
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[#a1a1aa]">Name</th>
@@ -59,7 +60,7 @@ export function TemplatesClient({ templates }: { templates: Template[] }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         )}
       </div>
     </div>

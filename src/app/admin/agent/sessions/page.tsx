@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
@@ -138,7 +139,7 @@ export default async function AgentSessionsPage({
       </div>
 
       <div className="overflow-hidden rounded-xl bg-white border border-[#e4e4e7]">
-        <table className="w-full">
+        <SortableTable className="w-full">
           <thead>
             <tr className="bg-[#fafafa]">
               <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.05em] text-[#a1a1aa]">Status</th>
@@ -244,7 +245,7 @@ export default async function AgentSessionsPage({
               })
             )}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     </div>
   );

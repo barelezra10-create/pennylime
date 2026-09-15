@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -71,7 +72,7 @@ export function AuditReturnsButton() {
           {report.rows.length === 0 ? (
             <p className="text-[#71717a]">Nothing to check.</p>
           ) : (
-            <table className="w-full">
+            <SortableTable className="w-full">
               <thead>
                 <tr className="text-[10px] uppercase tracking-wide text-[#71717a] border-b border-[#f4f4f5]">
                   <th className="text-left py-1">Borrower</th>
@@ -97,7 +98,7 @@ export function AuditReturnsButton() {
                   );
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           )}
         </div>
       )}

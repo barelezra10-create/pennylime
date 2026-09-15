@@ -1,5 +1,6 @@
 "use client";
 
+import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -94,7 +95,7 @@ export function IncomeByPlatformPanel({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-[12px] border-collapse">
+          <SortableTable className="w-full text-[12px] border-collapse">
             <thead>
               <tr className="border-b border-[#e4e4e7]">
                 <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider text-[#a1a1aa] font-semibold whitespace-nowrap">
@@ -161,7 +162,7 @@ export function IncomeByPlatformPanel({
                 </td>
               </tr>
             </tfoot>
-          </table>
+          </SortableTable>
         </div>
       )}
     </div>

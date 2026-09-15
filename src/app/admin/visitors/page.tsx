@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import { PageHeader } from "@/components/admin/page-header";
 import { detectSource } from "@/lib/tracking/source-detect";
@@ -228,7 +229,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
             No visitors {sourceFilter ? `from ${sourceFilter} ` : ""}in the last {windowDays} days.
           </div>
         ) : (
-          <table className="w-full text-[13px]">
+          <SortableTable className="w-full text-[13px]">
             <thead>
               <tr className="text-left">
                 <Th>Last seen</Th>
@@ -312,7 +313,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
                 );
               })}
             </tbody>
-          </table>
+          </SortableTable>
         )}
       </div>
     </div>

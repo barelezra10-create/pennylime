@@ -1,3 +1,4 @@
+import { SortableTable } from "@/components/ui/sortable-table";
 import { prisma } from "@/lib/db";
 import { PublishReelButton } from "./publish-reel-button";
 import { ScheduleGiveawayButton } from "./schedule-giveaway-button";
@@ -49,7 +50,7 @@ export default async function SocialAdminPage() {
       <section>
         <h2 className="text-base font-semibold text-gray-800 mb-3">Account Health</h2>
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <SortableTable className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wide text-xs">
@@ -124,7 +125,7 @@ export default async function SocialAdminPage() {
                 })
               )}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </section>
 
@@ -199,7 +200,7 @@ export default async function SocialAdminPage() {
           Today&apos;s Engagement
         </h2>
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <SortableTable className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-gray-500 uppercase tracking-wide text-xs">
@@ -230,7 +231,7 @@ export default async function SocialAdminPage() {
                 ))
               )}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </section>
 
