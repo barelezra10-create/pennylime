@@ -10,7 +10,7 @@ export default function SmsTermsPage() {
         SMS Terms &amp; Opt-In Policy
       </h1>
       <div className="space-y-6">
-        <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: June 2026</p>
+        <p className="text-[15px] text-[#71717a] leading-relaxed">Last updated: September 15, 2026</p>
 
         <p className="text-[15px] text-[#71717a] leading-relaxed">
           PennyLime is owned and operated by 770 Technology LLC, a Florida limited liability company (EIN 42-2071573), with principal place of business at 1300 Monad Terrace, Unit 9B, Miami Beach, FL 33139. This policy explains how PennyLime sends text messages, what they contain, and how you can stop them.
@@ -20,7 +20,7 @@ export default function SmsTermsPage() {
           How You Opt In
         </h2>
         <p className="text-[15px] text-[#71717a] leading-relaxed">
-          You opt in on our website during the cash-advance application at <a href="/apply" className="text-[#15803d] hover:underline">pennylime.com/apply</a>. After you enter your mobile number, you tap <strong className="text-[#1a1a1a]">&ldquo;Send code&rdquo;</strong> beneath the disclosure: <em>&ldquo;By tapping &lsquo;Send code&rsquo; you agree to receive an automated SMS from PennyLime.&rdquo;</em> We then text you a one-time passcode, which you enter to verify the number. This confirms both that you own the number and that you consent to receive messages (double opt-in). Consent is not a condition of receiving an advance, and we do not share your number with third parties for their marketing.
+          You opt in during the application at <a href="/apply" className="text-[#15803d] hover:underline">pennylime.com/apply</a> by entering your mobile number and selecting the separate SMS consent checkbox beneath the phone field. The checkbox is unchecked by default and optional. It authorizes automated account and payment text messages from PennyLime (770 Technology LLC), including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices. You can submit your application without selecting this checkbox. Consent is not a condition of receiving an advance. Requesting or entering a one-time verification code does not by itself enroll you in ongoing account or payment texts. We do not share your number with third parties for their marketing.
         </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
@@ -35,7 +35,7 @@ export default function SmsTermsPage() {
           <li>Funding confirmations</li>
           <li>Upcoming payment reminders</li>
           <li>Failed-payment and late-fee notices</li>
-          <li>One-time verification codes</li>
+          <li>Payment confirmations</li>
         </ul>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">

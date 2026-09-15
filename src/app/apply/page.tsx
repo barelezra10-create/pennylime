@@ -719,9 +719,10 @@ function StepInfo({
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#c4c4c8] text-[#15803d] focus:ring-[#15803d]/30"
             />
             <span className="text-[12px] leading-snug text-[#52525b]">
-              I agree to receive account and payment text messages from PennyLime at this number.
+              I agree to receive automated account and payment text messages from PennyLime (770 Technology LLC) at this number, including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices.
               Msg &amp; data rates may apply, msg frequency varies. Reply STOP to opt out, HELP for help.
-              See our <a href="/terms" target="_blank" className="underline text-[#15803d]">Terms</a> and{" "}
+              Consent is optional and is not a condition of receiving an advance.
+              See our <a href="/sms-terms" target="_blank" className="underline text-[#15803d]">SMS Terms</a> and{" "}
               <a href="/privacy" target="_blank" className="underline text-[#15803d]">Privacy Policy</a>.
             </span>
           </label>
