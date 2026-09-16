@@ -188,6 +188,7 @@ export async function executeSkip(): Promise<
   if (!prov.ok) return { ok: false, error: prov.error };
 
   const tx = await createTransaction({
+    applicationId: app.id,
     bankAccountUuid: prov.bankAccountUuid,
     amountCents: Math.round(quote.feeAmount * 100),
     type: "Debit",

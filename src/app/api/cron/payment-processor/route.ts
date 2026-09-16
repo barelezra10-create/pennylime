@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     include: { application: true },
   });
 
-  const results: { paymentId: string; success: boolean; error?: string }[] = [];
+  const results: { paymentId: string; success: boolean; error?: string; skipped?: boolean }[] = [];
 
   for (const payment of duePayments) {
     // Set to PROCESSING first to prevent double-debit
@@ -83,6 +83,9 @@ export async function POST(request: NextRequest) {
       }
 
       results.push({ paymentId: payment.id, success: true });
+    } else if (result.skipped) {
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: payment.status } });
+      results.push({ paymentId: payment.id, success: false, skipped: true, error: result.error });
     } else {
       // Revert to FAILED if ACH initiation fails
       await prisma.payment.update({
@@ -138,6 +141,8 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     processed: duePayments.length,
     succeeded: results.filter((r) => r.success).length,
-    failed: results.filter((r) => !r.success).length,
+    failed: results.filter((r) => !r.success && !r.skipped).length,
+    skipped: results.filter((r) => r.skipped).length,
+    skippedPayments: results.filter((r) => r.skipped),
   });
 }

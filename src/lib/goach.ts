@@ -106,7 +106,16 @@ function pickDate(v: unknown): string | null {
   return s.length >= 8 ? s : null;
 }
 
-export async function createTransaction(input: { bankAccountUuid: string; amountCents: number; type: "Debit" | "Credit"; descriptor?: string; poaFilePath?: string }): Promise<{ ok: true; uuid: string; transactionId: string; status: string; depositDate: string | null; effectiveDate: string | null } | { ok: false; error: string }> {
+type TransactionInput = { bankAccountUuid: string; amountCents: number; descriptor?: string; poaFilePath?: string } & (
+  { type: "Credit" } | { type: "Debit"; applicationId: string; paymentId?: string }
+);
+
+export async function createTransaction(input: TransactionInput): Promise<{ ok: true; uuid: string; transactionId: string; status: string; depositDate: string | null; effectiveDate: string | null } | { ok: false; error: string; skipped?: boolean }> {
+  if (input.type === "Debit") {
+    const { checkGoachDebitBalance } = await import("@/lib/goach-balance-check");
+    const balance = await checkGoachDebitBalance(input);
+    if (!balance.ok) return balance;
+  }
   const { originatorUuid } = cfg();
   const form: Record<string, string> = {
     originator_ach_account_id: originatorUuid,

@@ -211,6 +211,7 @@ export async function executePayoff(): Promise<
   if (!prov.ok) return { ok: false, error: prov.error };
 
   const tx = await createTransaction({
+    applicationId: app.id,
     bankAccountUuid: prov.bankAccountUuid,
     amountCents: Math.round(quote.payoffAmount * 100),
     type: "Debit",
@@ -249,6 +250,7 @@ export async function executePayoff(): Promise<
       await tx.payment.update({
         where: { id: nextUnpaid.id },
         data: {
+          increaseLastError: null,
           amount: quote.payoffAmount,
           principal: quote.outstandingPrincipal,
           interest: quote.accruedInterestSinceLastPayment,
@@ -269,6 +271,7 @@ export async function executePayoff(): Promise<
       await tx.payment.create({
         data: {
           applicationId: app.id,
+          increaseLastError: null,
           amount: quote.payoffAmount,
           principal: quote.outstandingPrincipal,
           interest: quote.accruedInterestSinceLastPayment,

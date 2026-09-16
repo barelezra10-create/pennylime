@@ -125,6 +125,8 @@ export async function completeBankUpdate(input: {
       plaidItemId: input.itemId || undefined,
       plaidAccountId: input.accountId || null,
       plaidLinkStale: false,
+      bankAccountNumberManual: null,
+      bankRoutingNumberManual: null,
       plaidAssetReportToken: null,
       bankInfoMismatch: false,
       goachBankAccountUuid: null,

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
   let retried = 0;
   let errors = 0;
+  const skipped: Array<{ paymentId: string; reason: string }> = [];
 
   // After this many failed retries, the cron stops re-charging and
   // hands off to the collections flow. Persistent failures (closed
@@ -85,6 +86,9 @@ export async function POST(request: NextRequest) {
       });
 
       retried++;
+    } else if (result.skipped) {
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: payment.status } });
+      skipped.push({ paymentId: payment.id, reason: result.error });
     } else {
       await prisma.payment.update({
         where: { id: payment.id },
@@ -98,5 +102,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ found: failedPayments.length, retried, errors });
+  return NextResponse.json({ found: failedPayments.length, retried, errors, skipped });
 }

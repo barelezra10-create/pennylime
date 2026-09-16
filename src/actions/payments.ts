@@ -116,7 +116,9 @@ export async function retryPayment(paymentId: string) {
     // Revert to FAILED if ACH initiation fails
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { status: "FAILED" },
+      data: result.skipped
+        ? { status: payment.status, retryCount: payment.retryCount, lastRetryAt: payment.lastRetryAt }
+        : { status: "FAILED" },
     });
     return { success: false, error: result.error };
   }
@@ -255,16 +257,16 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
     await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
     return { success: false, error: prov.error };
   }
-  const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents: Math.round(amount * 100), type: "Debit", descriptor: "PENNYLIME COLLECT" });
+  const tx = await createTransaction({ applicationId: payment.applicationId, paymentId, bankAccountUuid: prov.bankAccountUuid, amountCents: Math.round(amount * 100), type: "Debit", descriptor: "PENNYLIME COLLECT" });
   if (!tx.ok) {
-    await prisma.payment.update({ where: { id: paymentId }, data: { status: "PENDING" } });
+    await prisma.payment.update({ where: { id: paymentId }, data: { status: tx.skipped ? payment.status : "PENDING" } });
     return { success: false, error: tx.error };
   }
   // DEBIT HAS FIRED beyond this point — never revert to PENDING on write failure.
   try {
     await prisma.payment.update({
       where: { id: paymentId },
-      data: { processor: "goach", achTransferId: tx.uuid, increaseTransferId: tx.uuid, increaseTransferStatus: "pending_submission", goachTransactionUuid: tx.uuid },
+      data: { increaseLastError: null, processor: "goach", achTransferId: tx.uuid, increaseTransferId: tx.uuid, increaseTransferStatus: "pending_submission", goachTransactionUuid: tx.uuid },
     });
     const { recordAttemptStart } = await import("@/lib/payment-attempts");
     await recordAttemptStart({ paymentId, initiatedBy: `admin:${auth.email}`, amount, transferId: tx.uuid });

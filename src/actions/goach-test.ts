@@ -119,6 +119,7 @@ export async function fireGoachTestDebit(input: { amountCents: number }): Promis
     bankAccountUuid: app.goachBankAccountUuid,
     amountCents: Math.abs(input.amountCents),
     type: "Debit",
+    applicationId: PLAID_TEST_APP_ID,
     descriptor: "PENNYLIME TEST",
   });
 }

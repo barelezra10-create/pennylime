@@ -275,6 +275,11 @@ export function PaymentScheduleCard({ applicationId }: { applicationId: string }
                     {isReplaced && (
                       <p className="mt-1 text-[10px] text-[#71717a] leading-tight">Moved to end of schedule (NSF)</p>
                     )}
+                    {(payment as { increaseLastError?: string | null }).increaseLastError?.startsWith("Balance check:") && (
+                      <p className="mt-1 text-xs text-[#b45309] max-w-[220px]">
+                        {(payment as { increaseLastError?: string | null }).increaseLastError}
+                      </p>
+                    )}
                     {payment.status === "RETURNED" && (payment as any).increaseReturnReason && (
                       <p className="mt-1 text-[10px] text-[#dc2626] leading-tight max-w-[180px]">
                         {(payment as any).increaseReturnReason}

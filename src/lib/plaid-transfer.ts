@@ -10,7 +10,7 @@ import { prisma } from "@/lib/db";
  * Returns the transfer id on success.
  */
 export async function initiateACHDebit(paymentId: string): Promise<
-  { success: true; transferId: string; processor: "increase" | "goach" } | { success: false; error: string }
+  { success: true; transferId: string; processor: "increase" | "goach" } | { success: false; error: string; skipped?: boolean }
 > {
   const payment = await prisma.payment.findUnique({
     where: { id: paymentId },
@@ -18,9 +18,6 @@ export async function initiateACHDebit(paymentId: string): Promise<
   });
 
   if (!payment) return { success: false, error: "Payment not found" };
-  if (!payment.application.plaidAccessToken) {
-    return { success: false, error: "No bank connection on application" };
-  }
 
   const totalAmount = Number(payment.amount) + Number(payment.lateFee);
   const amountCents = Math.round(totalAmount * 100);
@@ -32,8 +29,8 @@ export async function initiateACHDebit(paymentId: string): Promise<
   const { ensureGoachBankAccount } = await import("@/lib/goach-provision");
   const prov = await ensureGoachBankAccount(payment.applicationId);
   if (!prov.ok) return { success: false, error: prov.error };
-  const tx = await createTransaction({ bankAccountUuid: prov.bankAccountUuid, amountCents, type: "Debit", descriptor: "PENNYLIME PMT" });
-  if (!tx.ok) return { success: false, error: tx.error };
+  const tx = await createTransaction({ applicationId: payment.applicationId, paymentId, bankAccountUuid: prov.bankAccountUuid, amountCents, type: "Debit", descriptor: "PENNYLIME PMT" });
+  if (!tx.ok) return { success: false, error: tx.error, skipped: tx.skipped };
   return { success: true, transferId: tx.uuid, processor: "goach" as const };
 }
 

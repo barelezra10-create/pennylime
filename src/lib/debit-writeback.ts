@@ -20,6 +20,7 @@ export async function applyDebitInitiation(paymentId: string, transferId: string
       achTransferId: transferId,
       increaseTransferId: transferId,
       increaseTransferStatus: "pending_submission",
+      increaseLastError: null,
       ...(processor === "goach" ? { goachTransactionUuid: transferId } : {}),
     },
   });
