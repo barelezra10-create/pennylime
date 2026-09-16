@@ -52,10 +52,8 @@ export async function fetchAndStoreIncome(applicationId: string) {
     const startDate = threeMonthsAgo.toISOString().split("T")[0];
     const endDate = now.toISOString().split("T")[0];
 
-    // Snapshot account metadata is sufficient on submit. Live Balance is reserved
-    // for the explicit admin refresh and collections workflow.
-    const [balResp, idResp, itemResp] = await Promise.all([
-      plaidClient.accountsGet({ access_token: accessToken }),
+    // Identity supplies account metadata; the Asset Report supplies balances.
+    const [idResp, itemResp] = await Promise.all([
       plaidClient.identityGet({ access_token: accessToken }),
       plaidClient.itemGet({ access_token: accessToken }),
     ]);
@@ -136,19 +134,14 @@ export async function fetchAndStoreIncome(applicationId: string) {
 
     // ── Account info (resolve the linked account; fall back to first) ──
     const account =
-      balResp.data.accounts.find((a) => a.account_id === application.plaidAccountId) ??
-      balResp.data.accounts[0];
-    const availableBalance = account?.balances?.available ?? null;
-    const bankBalance = account?.balances?.current ?? null;
+      idResp.data.accounts.find((a) => a.account_id === application.plaidAccountId) ??
+      idResp.data.accounts[0];
     const plaidAccountName = account?.name ?? null;
     const plaidAccountMask = account?.mask ?? null;
     const plaidAccountSubtype = account?.subtype ?? null;
 
     // ── Identity (first owner on the account) ──
-    const idAccount =
-      idResp.data.accounts.find((a) => a.account_id === application.plaidAccountId) ??
-      idResp.data.accounts[0];
-    const owner = idAccount?.owners?.[0];
+    const owner = account?.owners?.[0];
     const plaidIdentityName = owner?.names?.[0] ?? null;
     const plaidIdentityAddress = formatAddress(owner?.addresses?.[0]);
     const plaidIdentityEmail = owner?.emails?.[0]?.data ?? null;
@@ -175,8 +168,6 @@ export async function fetchAndStoreIncome(applicationId: string) {
         ...(monthlyIncome != null ? {
           monthlyIncome, avgWeeklyIncome, depositCount90d, largestDeposit, depositCadence,
         } : {}),
-        bankBalance,
-        availableBalance,
         plaidAccountName,
         plaidAccountMask,
         plaidAccountSubtype,
@@ -185,7 +176,6 @@ export async function fetchAndStoreIncome(applicationId: string) {
         plaidIdentityAddress,
         plaidIdentityEmail,
         plaidIdentityPhone,
-        lastPlaidRefresh: new Date(),
       },
     });
 
@@ -201,10 +191,6 @@ export async function fetchAndStoreIncome(applicationId: string) {
       `[plaid income] ${isDecryptFailure ? "DECRYPT" : "API"} failure for app ${applicationId}:`,
       msg,
     );
-    await prisma.application.update({
-      where: { id: applicationId },
-      data: { lastPlaidRefresh: new Date() },
-    }).catch(() => null);
     return {
       success: false,
       error: isDecryptFailure
@@ -670,8 +656,18 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
     const plaidIdentityName = owner?.names?.[0] ?? null;
     const balances = account.balances;
 
-    // Re-reading an immutable report must not overwrite a later AI/manual
-    // analysis or a newer live balance. Seed only an unanalyzed application.
+    // Seed the report balance independently of income analysis. An immutable
+    // report must never overwrite an existing (possibly live) balance.
+    await prisma.application.updateMany({
+      where: { id: applicationId, bankBalance: null, availableBalance: null },
+      data: {
+        bankBalance: balances?.current ?? null,
+        availableBalance: balances?.available ?? null,
+        lastPlaidRefresh: new Date(),
+      },
+    });
+
+    // Preserve later AI/manual income analysis when reading the report again.
     await prisma.application.updateMany({
       where: { id: applicationId, monthlyIncome: null },
       data: {
@@ -681,13 +677,10 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
         depositCount90d,
         largestDeposit,
         depositCadence,
-        bankBalance: balances?.current ?? null,
-        availableBalance: balances?.available ?? null,
         plaidAccountName: account.name ?? null,
         plaidAccountMask: account.mask ?? null,
         plaidIdentityName: plaidIdentityName ?? undefined,
         preferredChargeDay: bestDay?.dayOfWeek ?? null,
-        lastPlaidRefresh: new Date(),
       },
     });
 
