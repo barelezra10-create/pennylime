@@ -1,5 +1,6 @@
 "use server";
 
+import { readIdentityReceipt } from "@/lib/plaid-identity-receipt";
 import { prisma } from "@/lib/db";
 import { getLoanRules, evaluateApplication } from "@/lib/rules-engine";
 import { encrypt, hashSSN, decrypt } from "@/lib/encryption";
@@ -44,6 +45,7 @@ const submitSchema = z.object({
   plaidItemId: z.string().min(1, "Bank link is required").max(200),
   plaidAccountId: z.string().max(200).optional(),
   plaidUserToken: z.string().max(500).optional(),
+  identityReceipt: z.string().max(100_000).optional(),
   identityNeedsReview: z.boolean().optional(),
   plaidIdentityName: z.string().max(200).optional(),
   workerType: z.string().max(80).optional(),
@@ -93,6 +95,10 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
     }
   }
 
+  const identity = readIdentityReceipt(data.identityReceipt, {
+    encryptedAccessToken: data.plaidAccessToken, firstName: data.firstName, lastName: data.lastName,
+  }, data.plaidAccountId);
+
   const applicationCode = generateApplicationCode();
 
   const application = await prisma.application.create({
@@ -113,8 +119,9 @@ export async function submitApplication(input: z.infer<typeof submitSchema>) {
       plaidAccountId: data.plaidAccountId || null,
       plaidItemId: data.plaidItemId,
       plaidUserToken: data.plaidUserToken || null,
-      identityNeedsReview: data.identityNeedsReview ?? false,
-      plaidIdentityName: data.plaidIdentityName || null,
+      // Missing/invalid receipts (including older open forms) require review;
+      // never trust client-supplied verification flags or repeat Identity here.
+      ...(identity ?? { identityNeedsReview: true }),
       workerType: data.workerType || null,
       businessType: data.businessType || null,
       paymentFrequency: data.paymentFrequency || "WEEKLY",

@@ -1,5 +1,6 @@
 "use server";
 
+import { createIdentityReceipt } from "@/lib/plaid-identity-receipt";
 import { prisma } from "@/lib/db";
 import { plaidClient } from "@/lib/plaid";
 import { decrypt } from "@/lib/encryption";
@@ -16,23 +17,6 @@ function classifyCadence(depositCount90d: number): string {
   if (depositCount90d >= 5) return "biweekly";
   if (depositCount90d >= 2) return "monthly";
   return "irregular";
-}
-
-function formatAddress(addr?: {
-  data?: {
-    street?: string | null;
-    city?: string | null;
-    region?: string | null;
-    postal_code?: string | null;
-    country?: string | null;
-  };
-}): string | null {
-  const d = addr?.data;
-  if (!d) return null;
-  const line1 = d.street ?? "";
-  const cityState = [d.city, d.region].filter(Boolean).join(", ");
-  const tail = [cityState, d.postal_code].filter(Boolean).join(" ");
-  return [line1, tail].filter(Boolean).join(", ") || null;
 }
 
 export async function fetchAndStoreIncome(applicationId: string) {
@@ -52,11 +36,8 @@ export async function fetchAndStoreIncome(applicationId: string) {
     const startDate = threeMonthsAgo.toISOString().split("T")[0];
     const endDate = now.toISOString().split("T")[0];
 
-    // Identity supplies account metadata; the Asset Report supplies balances.
-    const [idResp, itemResp] = await Promise.all([
-      plaidClient.identityGet({ access_token: accessToken }),
-      plaidClient.itemGet({ access_token: accessToken }),
-    ]);
+    // Identity metadata was saved from the early verification receipt.
+    const itemResp = await plaidClient.itemGet({ access_token: accessToken });
 
     // ── Income & cadence ──
     // Prefer Plaid Bank Income (production-enabled): one call returns a
@@ -132,21 +113,6 @@ export async function fetchAndStoreIncome(applicationId: string) {
       }
     }
 
-    // ── Account info (resolve the linked account; fall back to first) ──
-    const account =
-      idResp.data.accounts.find((a) => a.account_id === application.plaidAccountId) ??
-      idResp.data.accounts[0];
-    const plaidAccountName = account?.name ?? null;
-    const plaidAccountMask = account?.mask ?? null;
-    const plaidAccountSubtype = account?.subtype ?? null;
-
-    // ── Identity (first owner on the account) ──
-    const owner = account?.owners?.[0];
-    const plaidIdentityName = owner?.names?.[0] ?? null;
-    const plaidIdentityAddress = formatAddress(owner?.addresses?.[0]);
-    const plaidIdentityEmail = owner?.emails?.[0]?.data ?? null;
-    const plaidIdentityPhone = owner?.phone_numbers?.[0]?.data ?? null;
-
     // ── Institution name (item -> institution lookup) ──
     let plaidInstitutionName: string | null = null;
     const institutionId = itemResp.data.item.institution_id ?? null;
@@ -168,14 +134,7 @@ export async function fetchAndStoreIncome(applicationId: string) {
         ...(monthlyIncome != null ? {
           monthlyIncome, avgWeeklyIncome, depositCount90d, largestDeposit, depositCadence,
         } : {}),
-        plaidAccountName,
-        plaidAccountMask,
-        plaidAccountSubtype,
         plaidInstitutionName,
-        plaidIdentityName,
-        plaidIdentityAddress,
-        plaidIdentityEmail,
-        plaidIdentityPhone,
       },
     });
 
@@ -345,6 +304,7 @@ export async function verifyApplicantIdentity(input: {
       match,
       matchedName,
       allNames,
+      identityReceipt: createIdentityReceipt(input, idResp.data.accounts, match),
     };
   } catch (err) {
     return {

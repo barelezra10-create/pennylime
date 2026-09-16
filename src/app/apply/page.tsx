@@ -2896,8 +2896,8 @@ function StepVerified({
   plaidAccessToken: string | null;
   firstName: string;
   lastName: string;
-  setIdentityResult: (r: { needsReview: boolean; matchedName: string | null }) => void;
-  identityResult: { needsReview: boolean; matchedName: string | null } | null;
+  setIdentityResult: (r: { needsReview: boolean; matchedName: string | null; identityReceipt?: string }) => void;
+  identityResult: { needsReview: boolean; matchedName: string | null; identityReceipt?: string } | null;
   previewMode: boolean;
   onNext: () => void;
   onBack: () => void;
@@ -2926,6 +2926,7 @@ function StepVerified({
           setIdentityResult({
             needsReview: !res.match,
             matchedName: res.matchedName,
+            identityReceipt: res.identityReceipt,
           });
         } else {
           // If the verification call itself errors, flag for review rather than
@@ -3548,7 +3549,7 @@ function ApplyPageInner() {
   const [plaidItemId, setPlaidItemId] = useState<string | null>(null);
   const [plaidUserToken, setPlaidUserToken] = useState<string | null>(null);
   const [plaidPreviewIncome, setPlaidPreviewIncome] = useState<PreviewIncome | null>(null);
-  const [identityResult, setIdentityResult] = useState<{ needsReview: boolean; matchedName: string | null } | null>(null);
+  const [identityResult, setIdentityResult] = useState<{ needsReview: boolean; matchedName: string | null; identityReceipt?: string } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [applicationCode, setApplicationCode] = useState<string | null>(null);
@@ -3705,6 +3706,7 @@ function ApplyPageInner() {
         plaidItemId,
         plaidAccountId: plaidAccountId ?? undefined,
         plaidUserToken: plaidUserToken ?? undefined,
+        identityReceipt: identityResult?.identityReceipt,
         identityNeedsReview: identityResult?.needsReview ?? true,
         plaidIdentityName: identityResult?.matchedName ?? undefined,
         workerType,
