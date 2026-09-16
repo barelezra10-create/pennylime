@@ -3,7 +3,7 @@
 import { SortableTable } from "@/components/ui/sortable-table";
 import { useState } from "react";
 import { toast } from "sonner";
-import { fetchAndStoreIncome, getRecentTransactions, triggerPlaidAssetReport, parsePlaidAssetReportWithAI } from "@/actions/plaid";
+import { refreshPlaidBalance, getRecentTransactions, triggerPlaidAssetReport, parsePlaidAssetReportWithAI } from "@/actions/plaid";
 import { TransactionStatement } from "@/components/admin/transaction-statement";
 
 type Tx = {
@@ -64,6 +64,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
   const [refreshing, setRefreshing] = useState(false);
   const [pullingAssets, setPullingAssets] = useState(false);
   const [loadingTxs, setLoadingTxs] = useState(false);
+  const [reportAsOf, setReportAsOf] = useState<string | null>(null);
   const [txs, setTxs] = useState<Tx[] | null>(null);
   const [showTxs, setShowTxs] = useState(false);
 
@@ -73,9 +74,9 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
   async function handleRefresh() {
     setRefreshing(true);
     try {
-      const result = await fetchAndStoreIncome(application.id);
+      const result = await refreshPlaidBalance(application.id);
       if (result.success) {
-        toast.success("Plaid data refreshed");
+        toast.success("Live balance refreshed");
         // Trigger server component re-render so cached fields update.
         window.location.reload();
       } else {
@@ -139,6 +140,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
       const r = await getRecentTransactions(application.id);
       if (r.ok) {
         setTxs(r.transactions);
+        setReportAsOf(r.asOf);
       } else {
         toast.error(r.error || "Failed to load transactions");
       }
@@ -190,6 +192,14 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <a
+            href={`/api/admin/applications/${encodeURIComponent(application.id)}/asset-report/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#15803d] text-white px-3 py-1.5 text-xs font-semibold hover:bg-[#166534]"
+          >
+            View Asset Report PDF
+          </a>
           <button
             onClick={handlePullAssets}
             disabled={pullingAssets || refreshing || parsingAi}
@@ -226,7 +236,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
             <svg className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
             </svg>
-            {refreshing ? "Refreshing..." : "Refresh"}
+            {refreshing ? "Refreshing..." : "Refresh live balance"}
           </button>
         </div>
       </div>
@@ -303,19 +313,20 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
         </Section>
       </div>
 
-      {/* ── Recent transactions (lazy loaded) ── */}
+      {reportAsOf && <p className="text-xs text-[#71717a] mt-3">Transactions from the saved report dated {new Date(reportAsOf).toLocaleDateString()}.</p>}
+      {/* ── Saved transactions (lazy loaded) ── */}
       <div className="mt-6 pt-5 border-t border-gray-100">
         {!showTxs ? (
           <button
             onClick={handleLoadTransactions}
             className="text-sm font-medium text-[#15803d] hover:text-[#166534]"
           >
-            Show recent transactions →
+            Show saved transactions →
           </button>
         ) : (
           <>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-black">Recent transactions</h3>
+              <h3 className="text-sm font-semibold text-black">Saved transactions</h3>
               <button
                 onClick={() => setShowTxs(false)}
                 className="text-xs text-[#71717a] hover:text-black"

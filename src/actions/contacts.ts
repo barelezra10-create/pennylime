@@ -140,7 +140,7 @@ export async function getContact(id: string) {
       application: {
         include: {
           payments: { orderBy: { paymentNumber: "asc" } },
-          documents: { orderBy: { createdAt: "desc" } },
+          documents: { where: { documentType: { not: "PLAID_ASSET_REPORT_JSON" } }, orderBy: { createdAt: "desc" } },
         },
       },
       activities: { orderBy: { createdAt: "desc" }, take: 50 },
@@ -164,7 +164,7 @@ export async function getContact(id: string) {
         orderBy: { createdAt: "desc" },
         include: {
           payments: { orderBy: { paymentNumber: "asc" } },
-          documents: { orderBy: { createdAt: "desc" } },
+          documents: { where: { documentType: { not: "PLAID_ASSET_REPORT_JSON" } }, orderBy: { createdAt: "desc" } },
         },
       })
     : linkedApp ? [linkedApp] : [];

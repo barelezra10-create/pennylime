@@ -9,16 +9,14 @@ const PRESETS: { label: string; days: number }[] = [
   { label: "30 days", days: 30 },
   { label: "60 days", days: 60 },
   { label: "90 days", days: 90 },
-  { label: "6 months", days: 180 },
-  { label: "1 year", days: 365 },
 ];
 
 const money = (n: number) =>
-  `$${Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function rangeFor(days: number): { startDate: string; endDate: string } {
-  const end = new Date();
-  const start = new Date();
+function rangeFor(days: number, asOf?: string): { startDate: string; endDate: string } {
+  const end = asOf ? new Date(asOf) : new Date();
+  const start = new Date(end);
   start.setDate(start.getDate() - days);
   return {
     startDate: start.toISOString().split("T")[0],
@@ -39,12 +37,14 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
     totalOut: number;
     net: number;
     count: number;
+    asOf: string;
+    daysAvailable: number;
   } | null>(null);
 
   async function load(nextDays: number) {
     setLoading(true);
     try {
-      const { startDate, endDate } = rangeFor(nextDays);
+      const { startDate, endDate } = data ? rangeFor(nextDays, data.asOf) : { startDate: "0000-01-01", endDate: "9999-12-31" };
       const r = await getTransactionStatement(applicationId, startDate, endDate);
       if (r.ok) {
         setData({
@@ -54,6 +54,8 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
           totalOut: r.totalOut,
           net: r.net,
           count: r.count,
+          asOf: r.asOf,
+          daysAvailable: r.daysAvailable,
         });
       } else {
         toast.error(r.error || "Failed to load statement");
@@ -96,7 +98,7 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
           onClick={handleOpen}
           className="text-sm font-medium text-[#15803d] hover:text-[#166534]"
         >
-          View full statement →
+          View saved statement →
         </button>
       </div>
     );
@@ -105,7 +107,7 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
   return (
     <div className="mt-4 pt-4 border-t border-gray-100">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-black">Full statement</h3>
+        <h3 className="text-sm font-semibold text-black">Saved statement</h3>
         <button onClick={() => setOpen(false)} className="text-xs text-[#71717a] hover:text-black">
           Hide
         </button>
@@ -148,13 +150,17 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
         />
       </div>
 
+      {data && <p className="text-xs text-[#71717a] mb-3">
+        Saved report as of {new Date(data.asOf).toLocaleDateString()}. {data.daysAvailable} days of history available.
+        Date ranges end at the report date; this is not a live bank feed.
+      </p>}
       {/* Totals */}
       {data && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
           <Totals label="Money in" value={money(data.totalIn)} accent="text-[#15803d]" />
           <Totals label="Money out" value={money(data.totalOut)} accent="text-black" />
-          <Totals label="Net" value={`${data.net < 0 ? "−" : ""}${money(data.net)}`} accent={data.net < 0 ? "text-[#b91c1c]" : "text-[#15803d]"} />
-          <Totals label="Current balance" value={data.currentBalance == null ? "—" : money(data.currentBalance)} accent="text-black" />
+          <Totals label="Net" value={money(data.net)} accent={data.net < 0 ? "text-[#b91c1c]" : "text-[#15803d]"} />
+          <Totals label="Balance at report date" value={data.currentBalance == null ? "—" : money(data.currentBalance)} accent="text-black" />
         </div>
       )}
 
@@ -163,7 +169,7 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
       ) : data && rows.length > 0 ? (
         <>
           <p className="text-[11px] text-[#a1a1aa] mb-1.5">
-            Showing {rows.length} of {data.count} transactions. Balance is estimated from the current balance.
+            Showing {rows.length} of {data.count} transactions. Balances are reported end-of-day amounts; transactions on the same day share a balance.
           </p>
           <div className="overflow-auto max-h-[520px] rounded-lg border border-gray-100">
             <SortableTable className="w-full text-xs">
@@ -173,7 +179,7 @@ export function TransactionStatement({ applicationId }: { applicationId: string 
                   <th className="text-left font-semibold px-3 py-2">Description</th>
                   <th className="text-left font-semibold px-3 py-2">Category</th>
                   <th className="text-right font-semibold px-3 py-2">Amount</th>
-                  <th className="text-right font-semibold px-3 py-2">Balance</th>
+                  <th className="text-right font-semibold px-3 py-2">End-of-day balance</th>
                 </tr>
               </thead>
               <tbody>

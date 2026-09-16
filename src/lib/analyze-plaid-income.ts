@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { plaidClient } from "@/lib/plaid";
+import { getCachedAssetReportPdf } from "@/lib/plaid-report-cache";
 import { incomeByPlatform } from "@/lib/income-by-platform";
 import { buildMonthlyPL } from "@/lib/monthly-pl";
 
@@ -27,11 +27,7 @@ export async function analyzeAndStorePlaidIncome(
   // Asset report token is stored plaintext (not encrypted like the access token).
   let pdfBuffer: Buffer;
   try {
-    const resp = await plaidClient.assetReportPdfGet(
-      { asset_report_token: app.plaidAssetReportToken },
-      { responseType: "arraybuffer" },
-    );
-    pdfBuffer = Buffer.from(resp.data as ArrayBuffer);
+    pdfBuffer = (await getCachedAssetReportPdf(applicationId)).buffer;
     if (!pdfBuffer.length) return { ok: false, error: "Plaid returned an empty asset report" };
   } catch (err) {
     const data = (err as { response?: { data?: { error_code?: string; error_message?: string } } })?.response?.data;

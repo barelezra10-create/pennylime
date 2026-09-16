@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { plaidClient } from "@/lib/plaid";
 import { decrypt } from "@/lib/encryption";
+import { isPlaidProductEnabled } from "@/lib/plaid-products";
 
 export type AmbiguousCounterparty = {
   counterpartyName: string;
@@ -35,6 +36,7 @@ const MIN_TOTAL_FOR_AMBIGUOUS = 50;
  * UI can show progress and skip-to-end on re-entry.
  */
 export async function getAmbiguousCounterparties(applicationId: string) {
+  if (!isPlaidProductEnabled("transactions")) return { ok: true as const, ambiguous: [] as AmbiguousCounterparty[] };
   const app = await prisma.application.findUnique({
     where: { id: applicationId },
     select: { plaidAccessToken: true, plaidAccountId: true, classifications: true },
@@ -143,6 +145,7 @@ export async function getAmbiguousCounterparties(applicationId: string) {
  * can collect classifications and submit them with the application.
  */
 export async function getAmbiguousCounterpartiesByToken(encryptedAccessToken: string) {
+  if (!isPlaidProductEnabled("transactions")) return { ok: true as const, ambiguous: [] as AmbiguousCounterparty[] };
   let accessToken: string;
   try {
     accessToken = decrypt(encryptedAccessToken);
@@ -322,6 +325,7 @@ export async function setTransactionClassification(input: {
  * row for admin visibility and to feed the underwriting model.
  */
 export async function recomputeRefinedIncome(applicationId: string) {
+  if (!isPlaidProductEnabled("transactions")) return { ok: false as const, error: "Use the saved Asset Report income analysis." };
   const app = await prisma.application.findUnique({
     where: { id: applicationId },
     select: {

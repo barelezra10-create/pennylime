@@ -274,7 +274,7 @@ export async function getApplications(status?: string) {
   return prisma.application.findMany({
     where,
     include: {
-      documents: true,
+      documents: { where: { documentType: { not: "PLAID_ASSET_REPORT_JSON" } } },
       payments: { select: { amount: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -285,7 +285,7 @@ export async function getApplicationById(id: string) {
   const app = await prisma.application.findUnique({
     where: { id },
     include: {
-      documents: true,
+      documents: { where: { documentType: { not: "PLAID_ASSET_REPORT_JSON" } } },
       contact: {
         select: {
           source: true,
@@ -361,7 +361,7 @@ export async function approveApplication(
 
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
-    include: { documents: true },
+    include: { documents: { where: { documentType: { not: "PLAID_ASSET_REPORT_JSON" } } } },
   });
 
   if (!application) return { success: false, error: "Application not found" };

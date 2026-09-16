@@ -99,7 +99,13 @@ export async function POST(req: NextRequest) {
       user_id: userId,
       user_token: userToken,
       client_name: "PennyLime",
-      products: productList.length > 0 ? productList : [Products.Auth, Products.Identity],
+      // Keep ownership verification early, but only bill Auth when ACH
+      // provisioning actually calls /auth/get. Optional Auth collects consent
+      // now; a bank that cannot provide it may need update mode before funding.
+      products: productList.filter((product) => product !== Products.Auth).length > 0
+        ? productList.filter((product) => product !== Products.Auth)
+        : [Products.Identity, Products.Assets],
+      optional_products: [Products.Auth],
       country_codes: [CountryCode.Us],
       language: "en",
       webhook: process.env.PLAID_WEBHOOK_URL,

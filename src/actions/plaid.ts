@@ -4,6 +4,11 @@ import { prisma } from "@/lib/db";
 import { plaidClient } from "@/lib/plaid";
 import { decrypt } from "@/lib/encryption";
 import { CountryCode } from "plaid";
+import { getCachedAssetReport, getCachedAssetReportPdf } from "@/lib/plaid-report-cache";
+import { isPlaidProductEnabled } from "@/lib/plaid-products";
+import { requireNonSupportRole } from "@/lib/auth-helpers";
+import { refreshBankBalance } from "@/lib/refresh-bank-balance";
+import { statementFromAssetReport } from "@/lib/plaid-statement";
 
 function classifyCadence(depositCount90d: number): string {
   // 90 days ≈ 13 weeks. Buckets are conservative — pick the heavier signal.
@@ -47,11 +52,10 @@ export async function fetchAndStoreIncome(applicationId: string) {
     const startDate = threeMonthsAgo.toISOString().split("T")[0];
     const endDate = now.toISOString().split("T")[0];
 
-    // Pull balances, identity, and item info in parallel — these always work
-    // when the corresponding Plaid products are enabled. Transactions is
-    // pulled separately and gracefully skipped if not approved yet.
+    // Snapshot account metadata is sufficient on submit. Live Balance is reserved
+    // for the explicit admin refresh and collections workflow.
     const [balResp, idResp, itemResp] = await Promise.all([
-      plaidClient.accountsBalanceGet({ access_token: accessToken }),
+      plaidClient.accountsGet({ access_token: accessToken }),
       plaidClient.identityGet({ access_token: accessToken }),
       plaidClient.itemGet({ access_token: accessToken }),
     ]);
@@ -68,7 +72,7 @@ export async function fetchAndStoreIncome(applicationId: string) {
     let largestDeposit: number | null = null;
     let depositCadence: string | null = null;
 
-    if (application.plaidUserToken) {
+    if (application.plaidUserToken && isPlaidProductEnabled("income_verification")) {
       try {
         const stored = application.plaidUserToken;
         // Same usr_-prefix heuristic as the link-token route. Accounts post
@@ -108,7 +112,7 @@ export async function fetchAndStoreIncome(applicationId: string) {
 
     // Legacy fallback: Transactions endpoint (used pre-Bank-Income or
     // when income_verification product isn't on this Link session).
-    if (monthlyIncome == null) {
+    if (monthlyIncome == null && isPlaidProductEnabled("transactions")) {
       try {
         const txResp = await plaidClient.transactionsGet({
           access_token: accessToken,
@@ -168,11 +172,9 @@ export async function fetchAndStoreIncome(applicationId: string) {
     await prisma.application.update({
       where: { id: applicationId },
       data: {
-        monthlyIncome,
-        avgWeeklyIncome,
-        depositCount90d,
-        largestDeposit,
-        depositCadence,
+        ...(monthlyIncome != null ? {
+          monthlyIncome, avgWeeklyIncome, depositCount90d, largestDeposit, depositCadence,
+        } : {}),
         bankBalance,
         availableBalance,
         plaidAccountName,
@@ -249,61 +251,11 @@ export async function getPlaidAchNumbers(applicationId: string): Promise<
   return { ok: true, routingNumber: targetAccount.routing, accountNumber: targetAccount.account };
 }
 
-/**
- * Fetch the 30 most recent transactions for a given application's linked
- * Plaid account. Used live by the admin application detail page so reviewers
- * can see actual deposit pattern + spending. Not persisted — fresh on each
- * call (Plaid sandbox is free; production charges per call so we can switch
- * to caching later if cost becomes a concern).
- */
+/** The 30 latest transactions within the saved report, not a live bank feed. */
 export async function getRecentTransactions(applicationId: string) {
-  const application = await prisma.application.findUnique({
-    where: { id: applicationId },
-    select: { plaidAccessToken: true, plaidAccountId: true },
-  });
-  if (!application?.plaidAccessToken) {
-    return { ok: false as const, error: "No Plaid connection" };
-  }
-
-  let accessToken: string;
-  try {
-    accessToken = decrypt(application.plaidAccessToken);
-  } catch (err) {
-    return { ok: false as const, error: err instanceof Error ? err.message : "decrypt failed" };
-  }
-
-  try {
-    const now = new Date();
-    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-    const resp = await plaidClient.transactionsGet({
-      access_token: accessToken,
-      start_date: threeMonthsAgo.toISOString().split("T")[0],
-      end_date: now.toISOString().split("T")[0],
-      options: { count: 30, offset: 0 },
-    });
-
-    const txs = resp.data.transactions
-      .filter(
-        (tx) =>
-          !application.plaidAccountId || tx.account_id === application.plaidAccountId
-      )
-      .map((tx) => ({
-        id: tx.transaction_id,
-        date: tx.date,
-        name: tx.name,
-        merchantName: tx.merchant_name ?? null,
-        amount: tx.amount,
-        category: tx.personal_finance_category?.primary ?? tx.category?.[0] ?? null,
-        pending: tx.pending,
-      }));
-
-    return { ok: true as const, transactions: txs };
-  } catch (err) {
-    return {
-      ok: false as const,
-      error: err instanceof Error ? err.message : "Failed to fetch transactions",
-    };
-  }
+  const result = await getTransactionStatement(applicationId, "0000-01-01", "9999-12-31");
+  if (!result.ok) return result;
+  return { ok: true as const, transactions: result.transactions.slice(0, 30), asOf: result.asOf };
 }
 
 export type StatementTx = {
@@ -314,7 +266,7 @@ export type StatementTx = {
   amount: number; // Plaid convention: positive = money out, negative = money in
   category: string | null;
   pending: boolean;
-  balanceAfter: number | null; // estimated running balance after this tx
+  balanceAfter: number | null; // reported ending daily balance, not a running balance
 };
 
 export type TransactionStatement = {
@@ -325,122 +277,29 @@ export type TransactionStatement = {
   totalOut: number;
   net: number;
   count: number;
+  asOf: string;
+  daysAvailable: number;
+  daysRequested: number;
 } | { ok: false; error: string };
 
-/**
- * Full transaction statement for the linked Plaid account over a date range.
- * Unlike getRecentTransactions (30 most recent), this paginates the entire
- * window so reviewers get a complete underwriting statement. Running balance
- * is estimated by walking backwards from the account's current balance
- * (Plaid does not return a per-transaction balance), so it is approximate for
- * pending items but accurate for settled history. Read-only, not persisted.
- */
+/** Read the immutable report for the requested range without paid live checks. */
 export async function getTransactionStatement(
-  applicationId: string,
-  startDate: string,
-  endDate: string,
+  applicationId: string, startDate: string, endDate: string,
 ): Promise<TransactionStatement> {
-  const application = await prisma.application.findUnique({
-    where: { id: applicationId },
-    select: { plaidAccessToken: true, plaidAccountId: true },
-  });
-  if (!application?.plaidAccessToken) return { ok: false, error: "No Plaid connection" };
-
-  let accessToken: string;
-  try {
-    accessToken = decrypt(application.plaidAccessToken);
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "decrypt failed" };
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { ok: false, error: auth.error };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate) || startDate > endDate) {
+    return { ok: false, error: "Invalid date range" };
   }
-
   try {
-    // Seed the running balance from the account's current balance.
-    let currentBalance: number | null = null;
-    try {
-      const balResp = await plaidClient.accountsBalanceGet({ access_token: accessToken });
-      const acct = application.plaidAccountId
-        ? balResp.data.accounts.find((a) => a.account_id === application.plaidAccountId)
-        : balResp.data.accounts[0];
-      currentBalance = acct?.balances?.current ?? null;
-    } catch {
-      currentBalance = null;
-    }
-
-    // Paginate the full window (Plaid caps at 500 per page). Cap total pages
-    // so an unusually busy account can't run unbounded.
-    const pageSize = 500;
-    const maxPages = 12; // up to 6,000 transactions
-    let offset = 0;
-    let total = Infinity;
-    const raw: Array<{
-      transaction_id: string;
-      date: string;
-      name: string;
-      merchant_name?: string | null;
-      amount: number;
-      personal_finance_category?: { primary?: string } | null;
-      category?: string[] | null;
-      pending: boolean;
-      account_id: string;
-    }> = [];
-    for (let page = 0; page < maxPages && offset < total; page++) {
-      const resp = await plaidClient.transactionsGet({
-        access_token: accessToken,
-        start_date: startDate,
-        end_date: endDate,
-        options: { count: pageSize, offset },
-      });
-      total = resp.data.total_transactions;
-      for (const tx of resp.data.transactions) raw.push(tx as (typeof raw)[number]);
-      offset += resp.data.transactions.length;
-      if (resp.data.transactions.length === 0) break;
-    }
-
-    // Filter to the linked account, newest first.
-    const filtered = raw
-      .filter((tx) => !application.plaidAccountId || tx.account_id === application.plaidAccountId)
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-
-    // Walk newest -> oldest, seeding from current balance. balanceAfter for
-    // the newest tx is the current balance; each older tx's balanceAfter is
-    // the running value before the newer tx was applied (+ amount, since a
-    // positive amount = money that left the account).
-    let running = currentBalance;
-    const transactions: StatementTx[] = filtered.map((tx) => {
-      const balanceAfter = running;
-      if (running != null) running = Math.round((running + tx.amount) * 100) / 100;
-      return {
-        id: tx.transaction_id,
-        date: tx.date,
-        name: tx.name,
-        merchantName: tx.merchant_name ?? null,
-        amount: tx.amount,
-        category: tx.personal_finance_category?.primary ?? tx.category?.[0] ?? null,
-        pending: tx.pending,
-        balanceAfter,
-      };
+    const app = await prisma.application.findUnique({
+      where: { id: applicationId }, select: { plaidAccountId: true },
     });
-
-    let totalIn = 0;
-    let totalOut = 0;
-    for (const tx of transactions) {
-      if (tx.amount < 0) totalIn += -tx.amount;
-      else totalOut += tx.amount;
-    }
-    totalIn = Math.round(totalIn * 100) / 100;
-    totalOut = Math.round(totalOut * 100) / 100;
-
-    return {
-      ok: true,
-      transactions,
-      currentBalance,
-      totalIn,
-      totalOut,
-      net: Math.round((totalIn - totalOut) * 100) / 100,
-      count: transactions.length,
-    };
+    if (!app) return { ok: false, error: "Application not found" };
+    const report = await getCachedAssetReport(applicationId);
+    return { ok: true, ...statementFromAssetReport(report, app.plaidAccountId, startDate, endDate) };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Failed to fetch statement" };
+    return { ok: false, error: err instanceof Error ? err.message : "Could not load Asset Report" };
   }
 }
 
@@ -519,6 +378,10 @@ export async function verifyApplicantIdentity(input: {
  * the server's encryption key, so no protected data is at risk.
  */
 export async function previewPlaidIncome(input: { encryptedAccessToken: string }) {
+  if (!isPlaidProductEnabled("transactions")) {
+    return { ok: false as const, error: "Income will be available after your application is submitted." };
+  }
+
   let accessToken: string;
   try {
     accessToken = decrypt(input.encryptedAccessToken);
@@ -530,8 +393,8 @@ export async function previewPlaidIncome(input: { encryptedAccessToken: string }
     const now = new Date();
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
 
-    // Balance always available; transactions may not be (production gating).
-    const balResp = await plaidClient.accountsBalanceGet({ access_token: accessToken });
+    // This optional preview uses a cached balance; never pay for a live check.
+    const balResp = await plaidClient.accountsGet({ access_token: accessToken });
     const balance = balResp.data.accounts[0]?.balances?.current ?? null;
 
     let monthlyIncome = 0;
@@ -592,6 +455,8 @@ export async function previewPlaidIncome(input: { encryptedAccessToken: string }
  *   3. Return the resulting income summary or a clear error.
  */
 export async function triggerPlaidAssetReport(applicationId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false as const, error: auth.error };
   // Step 1: ensure a report exists.
   const created = await createAssetReport(applicationId);
   if (!created.success) {
@@ -643,6 +508,8 @@ export async function triggerPlaidAssetReport(applicationId: string) {
  * came from Plaid built-in, Plaid PDF + AI, or manual statement upload.
  */
 export async function parsePlaidAssetReportWithAI(applicationId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false as const, error: auth.error };
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
     select: { id: true, plaidAssetReportToken: true },
@@ -651,43 +518,14 @@ export async function parsePlaidAssetReportWithAI(applicationId: string) {
     return { success: false as const, error: "No asset report yet — click Pull Asset Report first." };
   }
 
-  // 1. Fetch the PDF from Plaid.
   let pdfBuffer: Buffer;
+  let savedDocId: string;
   try {
-    const response = await plaidClient.assetReportPdfGet(
-      { asset_report_token: application.plaidAssetReportToken },
-      { responseType: "arraybuffer" },
-    );
-    pdfBuffer = Buffer.from(response.data as ArrayBuffer);
-    if (pdfBuffer.length === 0) {
-      return { success: false as const, error: "Plaid returned an empty PDF." };
-    }
+    const cached = await getCachedAssetReportPdf(applicationId);
+    pdfBuffer = cached.buffer;
+    savedDocId = cached.documentId;
   } catch (err) {
-    console.error("assetReportPdfGet failed:", err);
-    const message = err instanceof Error ? err.message : "Plaid PDF fetch failed";
-    return { success: false as const, error: message };
-  }
-
-  // 2. Save the PDF as a Document for admin review.
-  let savedDocId: string | null = null;
-  try {
-    const { storage } = await import("@/lib/storage");
-    const filename = `plaid-asset-report-${applicationId.slice(0, 8)}-${Date.now()}.pdf`;
-    const storagePath = await storage.upload(pdfBuffer, filename);
-    const doc = await prisma.document.create({
-      data: {
-        applicationId,
-        fileName: filename,
-        mimeType: "application/pdf",
-        fileSize: pdfBuffer.length,
-        storagePath,
-        documentType: "PLAID_ASSET_REPORT_PDF",
-      },
-    });
-    savedDocId = doc.id;
-  } catch (err) {
-    console.error("Failed to save asset report PDF as Document:", err);
-    // Non-blocking — continue with the parse even if storage failed.
+    return { success: false as const, error: err instanceof Error ? err.message : "Could not load saved report" };
   }
 
   // 3. Parse with the same Gemini pipeline bank statements use.
@@ -756,41 +594,27 @@ export async function parsePlaidAssetReportWithAI(applicationId: string) {
 }
 
 export async function createAssetReport(applicationId: string) {
-  const application = await prisma.application.findUnique({
-    where: { id: applicationId },
-    select: { id: true, plaidAccessToken: true, plaidAssetReportToken: true },
-  });
-  if (!application?.plaidAccessToken) {
-    return { success: false as const, error: "No Plaid connection" };
-  }
-  // Don't double-create — if we already have a token in flight, just
-  // re-trigger the get path (webhook may have fired earlier).
-  if (application.plaidAssetReportToken) {
-    return { success: true as const, alreadyCreated: true, token: application.plaidAssetReportToken };
-  }
   try {
-    const accessToken = decrypt(application.plaidAccessToken);
-    const response = await plaidClient.assetReportCreate({
-      access_tokens: [accessToken],
-      days_requested: 90,
-      options: {
-        client_report_id: applicationId,
-        // Optional but useful for audit reports — admin's name as report owner.
-        webhook: process.env.PLAID_WEBHOOK_URL,
-      },
-    });
-    const token = response.data.asset_report_token;
-    await prisma.application.update({
-      where: { id: applicationId },
-      data: { plaidAssetReportToken: token },
-    });
-    return { success: true as const, token, alreadyCreated: false };
+    return await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`plaid-report:${applicationId}`}, 0))::text`;
+      const application = await tx.application.findUnique({
+        where: { id: applicationId },
+        select: { plaidAccessToken: true, plaidAssetReportToken: true },
+      });
+      if (!application?.plaidAccessToken) return { success: false as const, error: "No Plaid connection" };
+      if (application.plaidAssetReportToken) {
+        return { success: true as const, alreadyCreated: true, token: application.plaidAssetReportToken };
+      }
+      const response = await plaidClient.assetReportCreate({
+        access_tokens: [decrypt(application.plaidAccessToken)], days_requested: 90,
+        options: { client_report_id: applicationId, webhook: process.env.PLAID_WEBHOOK_URL },
+      }, { timeout: 30_000 });
+      const token = response.data.asset_report_token;
+      await tx.application.update({ where: { id: applicationId }, data: { plaidAssetReportToken: token } });
+      return { success: true as const, token, alreadyCreated: false };
+    }, { maxWait: 5_000, timeout: 60_000 });
   } catch (err) {
-    console.error("createAssetReport error:", err);
-    return {
-      success: false as const,
-      error: err instanceof Error ? err.message : "asset report create failed",
-    };
+    return { success: false as const, error: err instanceof Error ? err.message : "Asset report create failed" };
   }
 }
 
@@ -808,11 +632,7 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
     return { success: false as const, error: "No asset report token — call createAssetReport first" };
   }
   try {
-    const response = await plaidClient.assetReportGet({
-      asset_report_token: application.plaidAssetReportToken,
-      include_insights: true,
-    });
-    const report = response.data.report;
+    const report = await getCachedAssetReport(applicationId);
     const item = report.items?.[0];
     if (!item) return { success: false as const, error: "Asset report has no items" };
 
@@ -850,8 +670,10 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
     const plaidIdentityName = owner?.names?.[0] ?? null;
     const balances = account.balances;
 
-    await prisma.application.update({
-      where: { id: applicationId },
+    // Re-reading an immutable report must not overwrite a later AI/manual
+    // analysis or a newer live balance. Seed only an unanalyzed application.
+    await prisma.application.updateMany({
+      where: { id: applicationId, monthlyIncome: null },
       data: {
         monthlyIncome,
         totalIncome: monthlyIncome * 3,
@@ -869,12 +691,15 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
       },
     });
 
+    const stored = await prisma.application.findUnique({
+      where: { id: applicationId },
+      select: { monthlyIncome: true, depositCount90d: true, depositCadence: true },
+    });
     return {
       success: true as const,
-      monthlyIncome,
-      depositCount90d,
-      cadence: depositCadence,
-      preferredChargeDay: bestDay,
+      monthlyIncome: stored?.monthlyIncome == null ? monthlyIncome : Number(stored.monthlyIncome),
+      depositCount90d: stored?.depositCount90d ?? depositCount90d,
+      cadence: stored?.depositCadence ?? depositCadence,
     };
   } catch (err) {
     console.error("fetchAssetReportAndStoreIncome error:", err);
@@ -883,4 +708,12 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
       error: err instanceof Error ? err.message : "asset report fetch failed",
     };
   }
+}
+
+/** Explicit live refresh, separate from immutable reports and income analysis. */
+export async function refreshPlaidBalance(applicationId: string) {
+  const auth = await requireNonSupportRole();
+  if (!auth.ok) return { success: false as const, error: auth.error };
+  const result = await refreshBankBalance(applicationId);
+  return result.ok ? { success: true as const } : { success: false as const, error: result.error };
 }
