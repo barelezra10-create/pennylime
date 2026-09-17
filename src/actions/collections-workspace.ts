@@ -9,6 +9,7 @@ import {
 } from "@/lib/settlement-plan";
 import { easternDateString } from "@/lib/eastern-time";
 import { buildCollectionsTimeline } from "@/lib/collections-ladder";
+import { collectionCommunications } from "@/lib/collection-history";
 import type { Prisma } from "@/generated/prisma/client";
 
 async function staff() {
@@ -124,14 +125,15 @@ export async function getCollectionAccount(id: string) {
       collectionCase: true,
       contact: { select: { id: true } },
       payments: {
-        select: paymentSelect,
+        select: { ...paymentSelect, increaseLastError: true, retryCount: true, attempts: { orderBy: { attemptNumber: "desc" }, select: { id: true, attemptNumber: true, initiatedAt: true, initiatedBy: true, amount: true, increaseTransferStatus: true, finalStatus: true, settledAt: true, returnReason: true } } },
         orderBy: [{ dueDate: "asc" }, { paymentNumber: "asc" }],
       },
-      collectionEvents: { orderBy: { createdAt: "desc" }, take: 100 },
+      collectionEvents: { orderBy: { createdAt: "desc" } },
       settlements: { orderBy: { createdAt: "desc" } },
     },
   });
   if (!app) throw new Error("Account not found");
+  const communications = await collectionCommunications({ contactId: app.contact?.id ?? null, email: app.email, phone: app.phone });
   const payments = app.payments.map((p) => ({
     ...p,
     amount: Number(p.amount),
@@ -171,7 +173,8 @@ export async function getCollectionAccount(id: string) {
     followUpAt: app.collectionCase?.followUpAt?.toISOString() ?? null,
     bankBalance: app.bankBalance === null ? null : Number(app.bankBalance),
     bankBalanceUpdatedAt: app.lastPlaidRefresh?.toISOString() ?? null,
-    payments: payments.map((p) => ({ ...p, dueDate: p.dueDate.toISOString() })),
+    communications,
+    payments: payments.map((p) => ({ ...p, dueDate: p.dueDate.toISOString(), attempts: p.attempts.map(a => ({ ...a, amount: Number(a.amount), initiatedAt: a.initiatedAt.toISOString(), settledAt: a.settledAt?.toISOString() ?? null })) })),
     events: app.collectionEvents.map((e) => ({
       id: e.id,
       type: e.eventType,

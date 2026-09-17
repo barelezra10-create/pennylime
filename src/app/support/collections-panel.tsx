@@ -483,7 +483,7 @@ function AccountDetail({
         </p>
       )}
       <div className="mb-5 flex gap-1 overflow-x-auto border-b border-zinc-200">
-        {["Overview", "Settlement", "Payments", "History"].map((t) => (
+        {["Overview", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -767,6 +767,8 @@ function AccountDetail({
             ) && <SettlementComposer detail={d} busy={busy} run={run} />}
         </div>
       )}
+      {tab === "Communications" && <Communications rows={d.communications} />}
+      {tab === "Failed payments" && <FailedPayments payments={d.payments} />}
       {tab === "Payments" && (
         <div className="space-y-3">
           <p className="text-xs text-zinc-500">
@@ -858,6 +860,14 @@ function PaymentRow({
         </div>
         <Badge text={p.status} />
       </div>
+      {p.attempts.length > 0 && <details className="mt-3 border-t border-zinc-100 pt-3 text-xs">
+        <summary className="cursor-pointer font-medium text-green-700">Payment attempts ({p.attempts.length})</summary>
+        <div className="mt-2 space-y-2">{p.attempts.map(a => <div key={a.id} className="rounded-lg bg-zinc-50 p-3">
+          <p className="font-semibold">Attempt {a.attemptNumber} · {money(a.amount)} · {a.finalStatus || a.increaseTransferStatus || "Processing"}</p>
+          {a.returnReason && <p className="mt-1 text-red-700">{a.returnReason}</p>}
+          <p className="mt-1 text-zinc-500">{new Date(a.initiatedAt).toLocaleString()} · {a.initiatedBy}</p>
+        </div>)}</div>
+      </details>}
       {canManage && outstanding > 0 && (
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="flex-1 text-[11px] text-zinc-500">
@@ -1046,4 +1056,47 @@ function SettlementComposer({
       </button>
     </div>
   );
+}
+
+function Communications({ rows }: { rows: CollectionDetail["communications"] }) {
+  const [channel, setChannel] = useState("All");
+  const [query, setQuery] = useState("");
+  const [limit, setLimit] = useState(20);
+  const filtered = rows.filter(r => (channel === "All" || r.channel === channel) && `${r.title} ${r.body} ${r.status || ""} ${r.by || ""}`.toLowerCase().includes(query.toLowerCase()));
+  return <div className="space-y-3">
+    <p className="text-xs text-zinc-500">Stored customer communications and CRM activity, newest first. Delivery events may appear alongside messages.</p>
+    <div className="flex flex-wrap gap-2">
+      <input aria-label="Search communications" placeholder="Search messages, notes, or agent…" value={query} onChange={e => {setQuery(e.target.value);setLimit(20);}} className="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white p-2 text-sm" />
+      <select aria-label="Communication channel" value={channel} onChange={e => {setChannel(e.target.value);setLimit(20);}} className="rounded-lg border border-zinc-200 bg-white p-2 text-sm">{["All", "Calls", "SMS", "Email", "Chat", "Tickets", "Activity"].map(c => <option key={c}>{c}</option>)}</select>
+    </div>
+    <p className="text-xs text-zinc-500">{filtered.length} records</p>
+    {!filtered.length && <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">No communications found{query || channel !== "All" ? " for this filter" : " for this account"}.</p>}
+    {filtered.slice(0,limit).map(r => <article key={r.id} className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-semibold text-green-700">{r.channel}</span>{r.status && <Badge text={r.status} />}</div>
+      <p className="mt-2 break-words text-sm font-semibold">{r.title}</p>
+      {r.body && <details className="mt-2 text-sm"><summary className="cursor-pointer text-green-700">View message / details</summary><p className="mt-2 whitespace-pre-wrap break-words text-zinc-600">{r.body}</p></details>}
+      <p className="mt-2 text-[11px] text-zinc-500">{new Date(r.date).toLocaleString()}{r.by ? ` · ${r.by}` : ""}</p>
+    </article>)}
+    {filtered.length > limit && <button onClick={() => setLimit(n => n + 20)} className="rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm">Load more ({filtered.length-limit} remaining)</button>}
+  </div>;
+}
+
+function FailedPayments({ payments }: { payments: CollectionDetail["payments"] }) {
+  const failures = payments.flatMap<{ id: string; payment: number; amount: number; date: string; status: string; reason: string; by: string | null; attempt: number | null; current: string; replaced: boolean }>(p => {
+    const attempts = p.attempts.filter(a => ["FAILED", "RETURNED", "REJECTED"].includes((a.finalStatus || a.increaseTransferStatus || "").toUpperCase()));
+    if (attempts.length) return attempts.map(a => ({ id: a.id, payment: p.paymentNumber, amount: a.amount, date: a.initiatedAt, status: a.finalStatus || a.increaseTransferStatus || "FAILED", reason: a.returnReason || "No failure reason recorded.", by: a.initiatedBy, attempt: a.attemptNumber, current: p.status, replaced: !!p.supersededBySettlementId }));
+    if (["FAILED", "RETURNED", "REJECTED"].includes(p.status) || p.increaseReturnReason || p.increaseLastError) return [{ id: p.id, payment: p.paymentNumber, amount: p.amount, date: p.dueDate, status: ["FAILED", "RETURNED", "REJECTED"].includes(p.status) ? p.status : "Failure recorded", reason: p.increaseReturnReason || p.increaseLastError || "No failure reason recorded.", by: null, attempt: null, current: p.status, replaced: !!p.supersededBySettlementId }];
+    return [];
+  }).sort((a,b) => b.date.localeCompare(a.date));
+  return <div className="space-y-3">
+    <p className="text-sm font-semibold">{failures.length} recorded failed or returned attempts</p>
+    <p className="text-xs text-zinc-500">Historical failures remain visible after retries or settlements. Attempt dates show when the debit was initiated; older records without an attempt show the payment due date.</p>
+    {!failures.length && <p className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500">No failed payments recorded for this account.</p>}
+    {failures.map(f => <article key={f.id} className="rounded-xl border border-red-100 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">Payment #{f.payment} · {money(f.amount)}{f.attempt ? ` · Attempt ${f.attempt}` : ""}</p><Badge text={f.status} /></div>
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm text-red-700">{f.reason}</p>
+      <p className="mt-2 text-xs text-zinc-500">{f.attempt ? "Attempt initiated" : "Payment due"}: {new Date(f.date).toLocaleString()}{f.by ? ` · ${f.by}` : ""}</p>
+      <p className="mt-1 text-xs text-zinc-500">Current payment status: {f.current}{f.replaced ? " · Replaced by signed settlement" : ""}</p>
+    </article>)}
+  </div>;
 }
