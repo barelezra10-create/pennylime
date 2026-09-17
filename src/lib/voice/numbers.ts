@@ -20,19 +20,29 @@ export async function listOwnedVoiceNumbers(): Promise<OwnedNumber[]> {
   if (!cfg.twilioAccountSid || !cfg.twilioAuthToken) return [];
 
   const auth = Buffer.from(`${cfg.twilioAccountSid}:${cfg.twilioAuthToken}`).toString("base64");
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${cfg.twilioAccountSid}/IncomingPhoneNumbers.json?PageSize=100`,
-    { headers: { Authorization: `Basic ${auth}` } }
-  );
-  if (!res.ok) return cache?.nums ?? [];
-
-  const json = (await res.json().catch(() => null)) as
-    | { incoming_phone_numbers?: Array<{ phone_number: string; friendly_name?: string; capabilities?: { voice?: boolean } }> }
-    | null;
-
-  const nums: OwnedNumber[] = (json?.incoming_phone_numbers ?? [])
-    .filter((n) => n.capabilities?.voice !== false)
-    .map((n) => ({ number: n.phone_number, label: n.friendly_name || n.phone_number }));
+  const nums: OwnedNumber[] = [];
+  let next: string | null = `https://api.twilio.com/2010-04-01/Accounts/${cfg.twilioAccountSid}/IncomingPhoneNumbers.json?PageSize=100`;
+  const seen = new Set<string>();
+  try {
+    while (next) {
+      if (seen.has(next)) return cache?.nums ?? [];
+      seen.add(next);
+      const res = await fetch(next, { headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(10000) });
+      if (!res.ok) return cache?.nums ?? [];
+      const json = await res.json() as {
+        incoming_phone_numbers?: Array<{ phone_number: string; friendly_name?: string; capabilities?: { voice?: boolean } }>;
+        next_page_uri?: string | null;
+      };
+      nums.push(...(json.incoming_phone_numbers ?? []).filter(n => n.capabilities?.voice === true)
+        .map(n => ({ number: n.phone_number, label: n.friendly_name || n.phone_number })));
+      if (json.next_page_uri) {
+        const url = new URL(json.next_page_uri, "https://api.twilio.com");
+        // Never forward credentials outside the account’s Twilio endpoint.
+        if (url.origin !== "https://api.twilio.com" || !url.pathname.startsWith(`/2010-04-01/Accounts/${cfg.twilioAccountSid}/IncomingPhoneNumbers`)) return cache?.nums ?? [];
+        next = url.href;
+      } else next = null;
+    }
+  } catch { return cache?.nums ?? []; }
 
   cache = { at: Date.now(), nums };
   return nums;

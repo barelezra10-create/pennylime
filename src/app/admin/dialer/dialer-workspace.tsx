@@ -334,6 +334,7 @@ export function DialerWorkspace({ contacts }: { contacts: ContactRow[] }) {
                   aria-label="Outbound caller ID number"
                   className="mt-1 w-full rounded-lg border border-[#e4e4e7] px-2 py-1.5 text-[13px]"
                 >
+                  <option value="">Auto · match customer’s state</option>
                   {numbers.map((n) => (
                     <option key={n.number} value={n.number}>
                       {n.label === n.number ? n.number : `${n.label} (${n.number})`}

@@ -447,6 +447,7 @@ function AccountDetail({
               value={callerId ?? ""}
               onChange={(e) => setCallerId(e.target.value)}
             >
+              <option value="">Auto · match customer’s state</option>
               {numbers.map((n) => (
                 <option key={n.number} value={n.number}>
                   {n.label || n.number}

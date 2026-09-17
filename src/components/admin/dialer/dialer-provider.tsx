@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { Device, Call } from "@twilio/voice-sdk";
 import { sendCallDigit } from "@/lib/voice/dtmf";
 import { toast } from "sonner";
+import { selectCallerId } from "@/lib/voice/caller-id";
 import { DialerPanel } from "./dialer-panel";
 
 export type DialerState =
@@ -21,6 +22,7 @@ type DialerContextValue = {
   muted: boolean;
   numbers: OwnedNumber[];
   callerId: string | null;
+  activeCallerId: string | null;
   setCallerId: (n: string) => void;
   startCall: (opts: { phone: string; name: string; contactId?: string }) => Promise<void>;
   hangUp: () => void;
@@ -30,7 +32,7 @@ type DialerContextValue = {
   saveWrapUp: (outcome: string, notes: string) => Promise<void>;
 };
 
-const CALLER_ID_KEY = "pl_dialer_caller_id";
+// Empty selection means automatic matching; manual choices last for this session.
 
 const DialerContext = createContext<DialerContextValue | null>(null);
 
@@ -46,6 +48,9 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   const [numbers, setNumbers] = useState<OwnedNumber[]>([]);
   const [callerId, setCallerIdState] = useState<string | null>(null);
   const callerIdRef = useRef<string | null>(null);
+  const [activeCallerId, setActiveCallerId] = useState<string | null>(null);
+  const inventoryRef = useRef<{ numbers: OwnedNumber[]; default: string | null }>({ numbers: [], default: null });
+  const startingRef = useRef(false);
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
   const startedAtRef = useRef<number>(0);
@@ -53,7 +58,7 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => () => { deviceRef.current?.destroy(); }, []);
 
   // Load the account's owned voice numbers for the outbound caller-ID picker,
-  // and restore the agent's last choice.
+  // Automatic state matching is the default, including for previously saved caller IDs.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -63,12 +68,9 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
         const data = (await res.json()) as { numbers: OwnedNumber[]; default: string | null };
         if (cancelled) return;
         setNumbers(data.numbers || []);
-        const saved = typeof window !== "undefined" ? window.localStorage.getItem(CALLER_ID_KEY) : null;
-        const valid = saved && data.numbers?.some((n) => n.number === saved) ? saved : data.default;
-        callerIdRef.current = valid;
-        setCallerIdState(valid);
+        inventoryRef.current = data;
       } catch {
-        /* dialer still works with the server default */
+        /* Retry loading inventory when a call starts. */
       }
     })();
     return () => { cancelled = true; };
@@ -77,7 +79,6 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   const setCallerId = useCallback((n: string) => {
     callerIdRef.current = n;
     setCallerIdState(n);
-    if (typeof window !== "undefined") window.localStorage.setItem(CALLER_ID_KEY, n);
   }, []);
 
   const getDevice = useCallback(async (): Promise<Device> => {
@@ -102,16 +103,30 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
 
   const startCall = useCallback(
     async (opts: { phone: string; name: string; contactId?: string }) => {
-      if (callRef.current) return; // one call at a time
+      if (callRef.current || startingRef.current) return; // one call at a time
+      startingRef.current = true;
+      setActiveCallerId(null);
       setState({ phase: "connecting", name: opts.name, phone: opts.phone });
       setMuted(false);
       try {
+        // Resolve for every call, including queue calls and rapid calls before inventory loads.
+        {
+          const res = await fetch("/api/voice/numbers");
+          if (!res.ok) throw new Error("Could not load outbound phone numbers.");
+          inventoryRef.current = await res.json();
+          setNumbers(inventoryRef.current.numbers);
+        }
+        const manualNumber = callerIdRef.current;
+        const choice = selectCallerId({ to: opts.phone, numbers: inventoryRef.current.numbers, defaultNumber: inventoryRef.current.default, manualNumber });
+        if (!choice.number) throw new Error("No owned voice number is available. Check the voice settings.");
+        setActiveCallerId(choice.number);
         const device = await getDevice();
         const call = await device.connect({
           params: {
             To: opts.phone,
             contactId: opts.contactId || "",
-            callerId: callerIdRef.current || "",
+            callerId: choice.number,
+            callerIdMode: manualNumber ? "manual" : "auto",
           },
         });
         callRef.current = call;
@@ -141,6 +156,8 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
           phone: opts.phone,
           message: err instanceof Error ? err.message : "Could not start call",
         });
+      } finally {
+        startingRef.current = false;
       }
     },
     [getDevice]
@@ -186,7 +203,7 @@ export function DialerProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <DialerContext.Provider value={{ state, muted, numbers, callerId, setCallerId, startCall, hangUp, toggleMute, sendDigit, dismiss, saveWrapUp }}>
+    <DialerContext.Provider value={{ state, muted, numbers, callerId, activeCallerId, setCallerId, startCall, hangUp, toggleMute, sendDigit, dismiss, saveWrapUp }}>
       {children}
       <DialerPanel />
     </DialerContext.Provider>

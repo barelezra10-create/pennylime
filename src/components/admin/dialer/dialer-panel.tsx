@@ -28,7 +28,7 @@ function Timer({ since }: { since: number }) {
 }
 
 export function DialerPanel() {
-  const { state, muted, hangUp, toggleMute, dismiss, saveWrapUp } = useDialer();
+  const { state, activeCallerId, muted, hangUp, toggleMute, dismiss, saveWrapUp } = useDialer();
   const [outcome, setOutcome] = useState("answered");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -48,6 +48,7 @@ export function DialerPanel() {
         <div>
           <p className="text-[14px] font-semibold text-[#18181b]">{state.name}</p>
           <p className="text-[12px] text-[#71717a]">{state.phone}</p>
+          {activeCallerId && <p className="mt-1 text-[11px] text-[#15803d]">Calling from {activeCallerId}</p>}
         </div>
         {(state.phase === "wrap-up" || state.phase === "error") && (
           <button onClick={dismiss} aria-label="Dismiss" className="text-[#a1a1aa] hover:text-[#18181b] text-[16px] leading-none">
