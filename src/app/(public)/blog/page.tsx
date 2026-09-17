@@ -5,13 +5,17 @@ import { ArticleCard } from "@/components/content/article-card";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { generateMeta } from "@/lib/seo";
 import Link from "next/link";
+import { paginationPage, paginationPath } from "@/lib/pagination";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = generateMeta({ title: "Blog", description: "Guides, tips, and resources for drivers, sellers, and operators seeking funding.", path: "/blog" }) as Metadata;
-
-export default async function BlogPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }): Promise<Metadata> {
   const { page } = await searchParams;
-  const currentPage = parseInt(page || "1", 10);
+  return generateMeta({ title: "Blog", description: "Guides, tips, and resources for drivers, sellers, and operators seeking funding.", path: paginationPath("/blog", paginationPage(page)) }) as Metadata;
+}
+
+export default async function BlogPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
+  const { page } = await searchParams;
+  const currentPage = paginationPage(page);
   const [{ articles, totalPages }, categories] = await Promise.all([
     getPublishedArticles(undefined, currentPage),
     getCategories(),

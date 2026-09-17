@@ -7,7 +7,7 @@ export const dynamicParams = true;
 import { getPlatformPageBySlug, getPublishedPlatformPages } from "@/actions/content";
 import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/seo/breadcrumbs";
-import { JsonLd, cashAdvanceProductSchema, faqSchema, breadcrumbSchema } from "@/components/seo/json-ld";
+import { JsonLd, cashAdvanceProductSchema, faqSchema } from "@/components/seo/json-ld";
 import { FaqAccordion } from "@/components/content/faq-accordion";
 import { ContentCta } from "@/components/content/content-cta";
 import { PlatformLogo } from "@/components/platform-logo";
@@ -117,14 +117,7 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
         audience: { "@type": "BusinessAudience", audienceType: "OnlyFans creators with verifiable business earnings" },
         feesAndCommissionsSpecification: "The approved offer and agreement disclose the total repayment, fees, and remittance schedule before acceptance.",
       } : productSchema} />
-      <JsonLd data={faqSchema(faqs)} />
-      <JsonLd
-        data={breadcrumbSchema([
-          { name: "Home", url: "https://pennylime.com/" },
-          { name: "Cash Advance", url: "https://pennylime.com/cash-advance" },
-          { name: platform.platformName, url: pageUrl },
-        ])}
-      />
+      {isOnlyFans && faqs.length > 0 && <JsonLd data={faqSchema(faqs)} />}
 
       <main className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-16">
         {isOnlyFans && (

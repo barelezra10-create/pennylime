@@ -97,7 +97,7 @@ export function cashAdvanceProductSchema(options?: { platformName?: string; page
     image: "https://pennylime.com/lime-mark-512.png",
     amount: { "@type": "MonetaryAmount", currency: "USD", minValue: 500, maxValue: 10000 },
     feesAndCommissionsSpecification:
-      "Weekly compound rate of 3% to 7% based on risk assessment. No origination fees, no prepayment penalty.",
+      "Weekly compound rate of 4% to 10% based on risk assessment. No origination fees, no prepayment penalty.",
     areaServed: { "@type": "Country", name: "United States" },
     audience: options?.platformName
       ? { "@type": "BusinessAudience", audienceType: `${options.platformName} gig workers` }

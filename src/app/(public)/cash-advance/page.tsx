@@ -5,7 +5,6 @@ import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { generateMeta } from "@/lib/seo";
 import {
   JsonLd,
-  breadcrumbSchema,
   platformItemListSchema,
   cashAdvanceProductSchema,
 } from "@/components/seo/json-ld";
@@ -29,12 +28,6 @@ export default async function CashAdvanceHubPage() {
     <div className="min-h-screen bg-[#fafaf7]">
       <JsonLd data={cashAdvanceProductSchema({ pageUrl: "https://pennylime.com/cash-advance" })} />
       <JsonLd data={platformItemListSchema(platforms.map((p) => ({ platformName: p.platformName, slug: p.slug })))} />
-      <JsonLd
-        data={breadcrumbSchema([
-          { name: "Home", url: "https://pennylime.com/" },
-          { name: "Cash Advance", url: "https://pennylime.com/cash-advance" },
-        ])}
-      />
 
       <header className="bg-gradient-to-b from-[#f0fdf4] to-[#fafaf7] border-b border-[#e4e4e7]">
         <div className="max-w-5xl mx-auto px-5 md:px-8 py-12 md:py-20">

@@ -6,19 +6,21 @@ import { Breadcrumbs } from "@/components/seo/breadcrumbs";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { generateMeta } from "@/lib/seo";
+import { paginationPage, paginationPath } from "@/lib/pagination";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string | string[] }> }): Promise<Metadata> {
   const { slug } = await params;
+  const { page } = await searchParams;
   const categories = await getCategories();
   const category = categories.find((c) => c.slug === slug);
   if (!category) return {};
-  return generateMeta({ title: category.name, description: category.description || `Articles about ${category.name}`, path: `/blog/category/${slug}` }) as Metadata;
+  return generateMeta({ title: category.name, description: category.description || `Articles about ${category.name}`, path: paginationPath(`/blog/category/${slug}`, paginationPage(page)) }) as Metadata;
 }
 
-export default async function CategoryPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }) {
+export default async function CategoryPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string | string[] }> }) {
   const { slug } = await params;
   const { page } = await searchParams;
-  const currentPage = parseInt(page || "1", 10);
+  const currentPage = paginationPage(page);
   const categories = await getCategories();
   const category = categories.find((c) => c.slug === slug);
   if (!category) notFound();

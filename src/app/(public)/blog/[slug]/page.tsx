@@ -44,8 +44,15 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const { articles: related } = await getPublishedArticles(undefined, 1, 6);
   const relatedFiltered = related.filter((a) => a.id !== article.id).slice(0, 3);
 
+  // The template already renders the article title as its H1. Remove only
+  // an exact leading duplicate from imported body content; retain all other HTML.
+  const duplicateTitle = `<h1>${article.title}</h1>`;
+  const body = article.body.startsWith(duplicateTitle)
+    ? article.body.slice(duplicateTitle.length)
+    : article.body;
+
   // Add IDs to headings for TOC links
-  const bodyWithIds = article.body.replace(
+  const bodyWithIds = body.replace(
     /<(h[23])>(.*?)<\/\1>/g,
     (_, tag, text) => {
       const id = text.toLowerCase().replace(/<[^>]*>/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
