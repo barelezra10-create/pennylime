@@ -1,5 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { DialerProvider } from "@/components/admin/dialer/dialer-provider";
+import { redirect } from "next/navigation";
 import { SupportSignOut } from "./support-sign-out";
 
 export default async function SupportLayout({
@@ -10,13 +12,14 @@ export default async function SupportLayout({
   const session = await getServerSession(authOptions);
 
   if (!session) {
-    return <>{children}</>;
+    redirect("/admin/login?callbackUrl=/support");
   }
 
   const userName = session.user?.name || session.user?.email || "Agent";
   const userEmail = session.user?.email || "";
 
   return (
+    <DialerProvider>
     <div className="min-h-screen bg-[#f8f8f6]">
       <header className="sticky top-0 z-30 bg-white border-b border-[#e4e4e7]">
         <div className="px-6">
@@ -48,5 +51,6 @@ export default async function SupportLayout({
       </header>
       <main className="p-4 lg:p-6 max-w-[1400px] mx-auto">{children}</main>
     </div>
+    </DialerProvider>
   );
 }

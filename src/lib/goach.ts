@@ -112,6 +112,25 @@ type TransactionInput = { bankAccountUuid: string; amountCents: number; descript
 
 export async function createTransaction(input: TransactionInput): Promise<{ ok: true; uuid: string; transactionId: string; status: string; depositDate: string | null; effectiveDate: string | null } | { ok: false; error: string; skipped?: boolean }> {
   if (input.type === "Debit") {
+    if (input.paymentId) {
+      const { prisma } = await import("@/lib/db");
+      const payment = await prisma.payment.findUnique({ where: { id: input.paymentId }, select: { applicationId: true, supersededBySettlementId: true, settlementId: true, dueDate: true, status: true, amount: true, lateFee: true, collectedAmount: true } });
+      if (!payment || payment.applicationId !== input.applicationId || payment.supersededBySettlementId || ["PAID", "CANCELED", "WAIVED", "REPLACED"].includes(payment.status)) return { ok: false, skipped: true, error: "This payment is no longer collectible." };
+      if (payment.settlementId) {
+        const remainingCents = Math.max(0, Math.round(Number(payment.amount) * 100) + Math.round(Number(payment.lateFee) * 100) - Math.round(Number(payment.collectedAmount) * 100));
+        if (input.amountCents > remainingCents) return { ok: false, skipped: true, error: "Debit exceeds the remaining signed installment." };
+        const { easternDateString } = await import("@/lib/eastern-time");
+        const agreement = await prisma.settlementAgreement.findUnique({ where: { id: payment.settlementId }, select: { status: true } });
+        if (agreement?.status !== "ACTIVE" || easternDateString(payment.dueDate) > easternDateString()) return { ok: false, skipped: true, error: "Settlement payment is not authorized for collection yet." };
+      }
+    }
+    // Legacy payoff/skip debits have no payment row. Do not let them bypass
+    // a pending or signed replacement schedule.
+    if (!input.paymentId) {
+      const { prisma } = await import("@/lib/db");
+      const settlement = await prisma.settlementAgreement.findFirst({ where: { applicationId: input.applicationId, status: { in: ["DRAFT", "SENT", "ACTIVE"] } }, select: { id: true } });
+      if (settlement) return { ok: false, skipped: true, error: "Use the settlement payment schedule to collect this account." };
+    }
     const { checkGoachDebitBalance } = await import("@/lib/goach-balance-check");
     const balance = await checkGoachDebitBalance(input);
     if (!balance.ok) return balance;

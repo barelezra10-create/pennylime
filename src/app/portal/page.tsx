@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SortableTable } from "@/components/ui/sortable-table";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -37,6 +38,7 @@ export default async function PortalDashboard() {
     where: { id: applicationId },
     include: {
       payments: { orderBy: { paymentNumber: "asc" } },
+      settlements: { where: { status: { not: "DRAFT" } }, orderBy: { createdAt: "desc" }, select: { id: true, status: true, total: true } },
       documents: {
         where: { documentType: "SIGNED_AGREEMENT_PDF" },
         orderBy: { createdAt: "desc" },
@@ -54,7 +56,7 @@ export default async function PortalDashboard() {
   // otherwise inflate the borrower's "total" and "remaining" figures
   // long after they've actually paid off.
   const obligatedPayments = app.payments.filter(
-    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "RETURNED",
+    (p) => p.status !== "WAIVED" && p.status !== "CANCELED" && p.status !== "REPLACED" && (p.status !== "RETURNED" || !!p.settlementId),
   );
   const totalRepay = obligatedPayments.reduce((s, p) => s + Number(p.amount) + Number(p.lateFee), 0);
   const paidPayments = obligatedPayments.filter((p) => p.status === "PAID" || p.paidAt);
@@ -78,6 +80,7 @@ export default async function PortalDashboard() {
 
   return (
     <div className="max-w-4xl mx-auto px-5 py-8 lg:px-8 lg:py-12">
+      {app.settlements.length > 0 && <section className="mb-6 rounded-xl border border-green-200 bg-white p-5"><h2 className="font-semibold">Settlement agreements</h2><div className="mt-3 space-y-2">{app.settlements.map(s => <Link key={s.id} href={`/portal/settlements/${s.id}`} className="flex justify-between gap-3 text-sm text-green-700"><span>{fmtMoney(Number(s.total))} · {s.status === "ACTIVE" ? "Signed agreement" : s.status.toLowerCase()}</span><span>Review agreement →</span></Link>)}</div></section>}
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[#e4e4e7] pb-5 mb-8">
         <span className="text-xl font-bold tracking-tight">

@@ -162,6 +162,8 @@ model Application {
   documents       Document[]
   payments        Payment[]
   collectionEvents CollectionEvent[]
+  collectionCase CollectionCase?
+  settlements SettlementAgreement[]
   contact         Contact?
 
   @@index([status])
@@ -221,6 +223,8 @@ model AdminUser {
 }
 
 model Payment {
+  settlementId String?
+  supersededBySettlementId String?
   id              String    @id @default(uuid())
   applicationId   String
   amount          Decimal
@@ -1521,4 +1525,43 @@ model JobApplicant {
 
   @@index([status])
   @@index([createdAt])
+}
+
+
+model CollectionCase {
+  applicationId String @id
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  ownerEmail String?
+  followUpAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([ownerEmail, followUpAt])
+}
+
+model SettlementAgreement {
+  id String @id @default(uuid())
+  applicationId String
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  status String @default("DRAFT")
+  total Decimal
+  installmentCount Int
+  frequency String
+  firstPaymentDate DateTime
+  scheduleJson String
+  previousScheduleJson String
+  originalBalance Decimal
+  agreementText String
+  authorizationText String
+  agreementHash String
+  createdBy String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  sentAt DateTime?
+  sendStartedAt DateTime?
+  signedAt DateTime?
+  signedName String?
+  signedIp String?
+  signedUserAgent String?
+  canceledAt DateTime?
+  @@index([applicationId, createdAt])
+  @@index([status])
 }

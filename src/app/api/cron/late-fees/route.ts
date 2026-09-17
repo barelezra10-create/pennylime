@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
   const overduePayments = await prisma.payment.findMany({
     where: {
       status: "FAILED",
+      settlementId: null,
+      supersededBySettlementId: null,
       dueDate: { lte: graceDate },
       lateFee: 0,
     },
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
     // second's updateMany returns count: 0 and we skip the rest of the
     // loop (no duplicate fee, no duplicate email/SMS).
     const updated = await prisma.payment.updateMany({
-      where: { id: payment.id, lateFee: 0 },
+      where: { id: payment.id, lateFee: 0, status: "FAILED", settlementId: null, supersededBySettlementId: null },
       data: { lateFee: lateFeeAmount },
     });
     if (updated.count === 0) continue;

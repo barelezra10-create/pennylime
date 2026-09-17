@@ -59,10 +59,13 @@ async function computeSkipQuote(applicationId: string): Promise<SkipQuote> {
       fundedAmount: true,
       loanAmount: true,
       skipsUsed: true,
+      settlements: { where: { status: { in: ["DRAFT", "SENT", "ACTIVE"] } }, select: { id: true }, take: 1 },
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
           id: true,
+          settlementId: true,
+          supersededBySettlementId: true,
           paymentNumber: true,
           amount: true,
           lateFee: true,
@@ -74,6 +77,7 @@ async function computeSkipQuote(applicationId: string): Promise<SkipQuote> {
     },
   });
   if (!app) return { ok: false, error: "Application not found" };
+  if (app.settlements.length > 0 || app.payments.some(p => p.settlementId || p.supersededBySettlementId)) return { ok: false, error: "Contact your collections manager to change or pay off your settlement schedule." };
 
   if (app.skipsUsed >= MAX_SKIPS) {
     return { ok: false, error: "You've already used your one skip on this advance." };

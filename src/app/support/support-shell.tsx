@@ -5,18 +5,20 @@ import { getInboxBadges } from "@/actions/inbox-badges";
 import { countOpenTickets } from "@/actions/tickets";
 import { ChatsClient } from "@/app/admin/chats/chats-client";
 import { EmailsPanel } from "@/app/support/emails-panel";
+import { CollectionsPanel } from "./collections-panel";
 import { TicketsPanel } from "@/app/support/tickets-panel";
 
-type Tab = "chats" | "emails" | "tickets";
+type Tab = "collections" | "chats" | "emails" | "tickets";
 
 const TABS: { key: Tab; label: string }[] = [
+  { key: "collections", label: "Overdue & defaults" },
   { key: "chats", label: "Chats" },
   { key: "emails", label: "Emails" },
   { key: "tickets", label: "Tickets" },
 ];
 
-export function SupportShell({ me }: { me: string | null }) {
-  const [activeTab, setActiveTab] = useState<Tab>("chats");
+export function SupportShell({ me, canManage }: { me: string | null; canManage: boolean }) {
+  const [activeTab, setActiveTab] = useState<Tab>("collections");
   const [pendingChats, setPendingChats] = useState(0);
   const [unrepliedEmails, setUnrepliedEmails] = useState(0);
   const [openTickets, setOpenTickets] = useState(0);
@@ -84,7 +86,7 @@ export function SupportShell({ me }: { me: string | null }) {
       </div>
 
       {/* Tab pills */}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -102,6 +104,7 @@ export function SupportShell({ me }: { me: string | null }) {
       </div>
 
       {/* Tab content */}
+      {activeTab === "collections" && <CollectionsPanel me={me} canManage={canManage} />}
       {activeTab === "chats" && <ChatsClient />}
       {activeTab === "emails" && <EmailsPanel />}
       {activeTab === "tickets" && <TicketsPanel me={me} />}

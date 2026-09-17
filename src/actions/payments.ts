@@ -35,7 +35,7 @@ export async function getPaymentsSummary(applicationId: string) {
     (p) =>
       p.status !== "WAIVED" &&
       p.status !== "CANCELED" &&
-      p.status !== "RETURNED" &&
+      (p.status !== "RETURNED" || !!p.settlementId) &&
       p.status !== "REPLACED",
   );
   const totalOwed = obligatedPayments.reduce((s, p) => s + Number(p.amount), 0);
@@ -88,15 +88,17 @@ export async function retryPayment(paymentId: string) {
     return { success: false, error: `Payment is ${payment.status} and not overdue, nothing to recharge.` };
   }
 
-  // Mark as PROCESSING so cron doesn't double-debit
-  await prisma.payment.update({
-    where: { id: paymentId },
+  // Claim only the schedule row we read; settlement replacement wins over stale clicks.
+  const claimed = await prisma.payment.updateMany({
+    where: { id: paymentId, status: payment.status, supersededBySettlementId: null },
     data: {
       status: "PROCESSING",
       retryCount: { increment: 1 },
       lastRetryAt: new Date(),
     },
   });
+
+  if (!claimed.count) return { success: false, error: "Payment changed or is already processing. Refresh and try again." };
 
   // Initiate the ACH debit
   const { initiateACHDebit } = await import("@/lib/plaid-transfer");
@@ -109,7 +111,7 @@ export async function retryPayment(paymentId: string) {
     await recordAttemptStart({
       paymentId,
       initiatedBy: `admin:${auth.email}`,
-      amount: Number(payment.amount) + Number(payment.lateFee),
+      amount: result.amount,
       transferId: result.transferId,
     });
   } else {
@@ -151,11 +153,13 @@ export async function chargePaymentNow(paymentId: string) {
     return { success: false, error: `Payment is ${payment.status}, can only charge PENDING` };
   }
 
-  // Lock to PROCESSING first so the daily cron can't double-debit.
-  await prisma.payment.update({
-    where: { id: paymentId },
+  // Atomic claim also prevents charging installments replaced by a settlement.
+  const claimed = await prisma.payment.updateMany({
+    where: { id: paymentId, status: "PENDING", supersededBySettlementId: null },
     data: { status: "PROCESSING" },
   });
+
+  if (!claimed.count) return { success: false, error: "Payment changed or is already processing. Refresh and try again." };
 
   const { initiateACHDebit } = await import("@/lib/plaid-transfer");
   const result = await initiateACHDebit(paymentId);
@@ -177,7 +181,7 @@ export async function chargePaymentNow(paymentId: string) {
   await recordAttemptStart({
     paymentId,
     initiatedBy: `admin:${auth.email}`,
-    amount: Number(payment.amount) + Number(payment.lateFee),
+    amount: result.amount,
     transferId: result.transferId,
   });
 
@@ -219,6 +223,10 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
   });
   if (!payment) return { success: false, error: "Payment not found" };
 
+  if (payment.supersededBySettlementId || !["PENDING", "FAILED", "LATE", "RETURNED", "COLLECTIONS"].includes(payment.status)) {
+    return { success: false, error: "This payment is no longer collectible." };
+  }
+
   // Guard: don't double-charge while another debit is in flight on
   // the same Payment. Same guard the early-payoff path uses.
   if (payment.status === "PROCESSING") {
@@ -235,11 +243,13 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
     };
   }
 
-  // Lock to PROCESSING so concurrent admin clicks can't double-debit.
-  await prisma.payment.update({
-    where: { id: paymentId },
+  // Claim the exact current row before initiating any debit.
+  const claimed = await prisma.payment.updateMany({
+    where: { id: paymentId, status: payment.status, supersededBySettlementId: null, collectedAmount: payment.collectedAmount },
     data: { status: "PROCESSING" },
   });
+
+  if (!claimed.count) return { success: false, error: "Payment changed or is already processing. Refresh and try again." };
 
   const { goachProductionReady } = await import("@/lib/payment-processor");
   if (!goachProductionReady()) {
@@ -345,6 +355,7 @@ export async function pushPaymentDueDate(paymentId: string, days: number) {
 
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) return { success: false, error: "Payment not found" };
+  if (payment.settlementId || payment.supersededBySettlementId) return { success: false, error: "Prepare a new signed settlement to change this payment schedule." };
   if (!RESCHEDULABLE_STATUSES.has(payment.status)) {
     return { success: false, error: `Can't push a ${payment.status} payment.` };
   }
@@ -397,6 +408,7 @@ export async function skipPaymentToEnd(paymentId: string) {
 
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) return { success: false, error: "Payment not found" };
+  if (payment.settlementId || payment.supersededBySettlementId) return { success: false, error: "Prepare a new signed settlement to change this payment schedule." };
   if (!RESCHEDULABLE_STATUSES.has(payment.status)) {
     return { success: false, error: `Can't skip a ${payment.status} payment.` };
   }

@@ -49,10 +49,13 @@ async function computeQuote(applicationId: string): Promise<PayoffQuote> {
       fundedAt: true,
       fundedAmount: true,
       loanAmount: true,
+      settlements: { where: { status: { in: ["DRAFT", "SENT", "ACTIVE"] } }, select: { id: true }, take: 1 },
       payments: {
         orderBy: { paymentNumber: "asc" },
         select: {
           id: true,
+          settlementId: true,
+          supersededBySettlementId: true,
           amount: true,
           principal: true,
           interest: true,
@@ -65,6 +68,7 @@ async function computeQuote(applicationId: string): Promise<PayoffQuote> {
     },
   });
   if (!app) return { ok: false, error: "Application not found" };
+  if (app.settlements.length > 0 || app.payments.some(p => p.settlementId || p.supersededBySettlementId)) return { ok: false, error: "Contact your collections manager to change or pay off your settlement schedule." };
 
   const allPaid = app.payments.every((p) => p.status === "PAID" || p.paidAt);
   if (allPaid || app.status === "PAID_OFF") {

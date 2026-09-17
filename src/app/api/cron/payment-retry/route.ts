@@ -51,10 +51,11 @@ export async function POST(request: NextRequest) {
       continue;
     }
 
-    await prisma.payment.update({
-      where: { id: payment.id },
+    const claimed = await prisma.payment.updateMany({
+      where: { id: payment.id, status: payment.status, supersededBySettlementId: null },
       data: { status: "PROCESSING" },
     });
+    if (!claimed.count) continue;
 
     const result = await initiateACHDebit(payment.id);
 
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       await recordAttemptStart({
         paymentId: payment.id,
         initiatedBy: "system:payment-retry",
-        amount: Number(payment.amount) + Number(payment.lateFee),
+        amount: result.amount,
         transferId: result.transferId,
       });
 

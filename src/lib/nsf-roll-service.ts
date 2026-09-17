@@ -53,6 +53,8 @@ export async function rollOneReturnedPayment(
   });
   if (!payment) return { status: "skipped", paymentId, reason: "not found" };
 
+  if (payment.settlementId || payment.supersededBySettlementId) return { status: "skipped", paymentId, reason: "Settlement schedule requires a new signed agreement to change." };
+
   // Roll a genuinely uncollected, non-late-fee payment on an active advance.
   // RETURNED = the bank bounced it (NSF, borrower's fault -> late fee applies).
   // FAILED = we couldn't even submit the debit; it otherwise sits stuck forever
