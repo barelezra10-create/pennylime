@@ -45,11 +45,20 @@ export default async function CashAdvancePlatformPage({ params }: { params: Prom
   const faqs: FaqEntry[] = JSON.parse(platform.faqEntries);
   const isOnlyFans = slug === "onlyfans-creators";
   const creatorSlugs = ["patreon-creators", "twitch-streamers", "youtube-creators", "upwork-freelancers", "fiverr-freelancers", "etsy-sellers"];
+  // Small related-link pilot: connect grocery shoppers and video creators
+  // to relevant peers while keeping the existing selection on other pages.
+  const relatedBySlug: Record<string, string[]> = {
+    "shipt-shoppers": ["instacart-shoppers", "walmart-spark-drivers", "doordash-dashers", "grubhub-drivers", "gopuff-drivers", "favor-runners"],
+    "instacart-shoppers": ["shipt-shoppers", "walmart-spark-drivers", "doordash-dashers", "grubhub-drivers", "gopuff-drivers", "favor-runners"],
+    "twitch-streamers": ["youtube-creators", "patreon-creators", "onlyfans-creators", "upwork-freelancers", "fiverr-freelancers", "etsy-sellers"],
+    "youtube-creators": ["twitch-streamers", "patreon-creators", "onlyfans-creators", "upwork-freelancers", "fiverr-freelancers", "etsy-sellers"],
+    "patreon-creators": ["twitch-streamers", "youtube-creators", "onlyfans-creators", "upwork-freelancers", "fiverr-freelancers", "etsy-sellers"],
+  };
   // Pull a few sibling platforms for the "related platforms" section
   // at the bottom — internal linking is huge for crawl + equity flow.
   const allPlatforms = await getPublishedPlatformPages();
   const currentPlatformIndex = allPlatforms.findIndex(p => p.slug === slug);
-  const relatedOrder = isOnlyFans ? creatorSlugs : [
+  const relatedOrder = isOnlyFans ? creatorSlugs : relatedBySlug[slug] ?? [
     ...allPlatforms.slice(currentPlatformIndex + 1),
     ...allPlatforms.slice(0, currentPlatformIndex),
   ].map(p => p.slug);
