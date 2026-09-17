@@ -34,7 +34,7 @@ export default async function HubOgImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          padding: "72px 80px",
+          padding: "48px 64px",
           backgroundColor: "#fafaf7",
           backgroundImage:
             "linear-gradient(135deg, #f0fdf4 0%, #fafaf7 65%, #fafaf7 100%)",
@@ -57,12 +57,12 @@ export default async function HubOgImage() {
         <div
           style={{
             display: "flex",
-            fontSize: 78,
+            fontSize: 64,
             fontWeight: 800,
             letterSpacing: "-0.03em",
             color: "#0a0a0a",
             lineHeight: 1.05,
-            marginTop: 56,
+            marginTop: 32,
             maxWidth: 1000,
           }}
         >
@@ -72,10 +72,10 @@ export default async function HubOgImage() {
         <div
           style={{
             display: "flex",
-            fontSize: 26,
+            fontSize: 22,
             fontWeight: 500,
             color: "#52525b",
-            marginTop: 24,
+            marginTop: 16,
             maxWidth: 980,
           }}
         >
@@ -87,8 +87,8 @@ export default async function HubOgImage() {
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: 12,
-            marginTop: 48,
+            gap: 10,
+            marginTop: 24,
             maxWidth: 1040,
           }}
         >
@@ -97,7 +97,7 @@ export default async function HubOgImage() {
               key={name}
               style={{
                 display: "flex",
-                padding: "10px 18px",
+                padding: "8px 16px",
                 borderRadius: 999,
                 backgroundColor: "#ffffff",
                 border: "1px solid #e4e4e7",
@@ -124,11 +124,11 @@ export default async function HubOgImage() {
             style={{
               display: "flex",
               alignItems: "center",
-              padding: "14px 26px",
+              padding: "10px 20px",
               backgroundColor: "#15803d",
               color: "#ffffff",
               borderRadius: 14,
-              fontSize: 26,
+              fontSize: 22,
               fontWeight: 700,
             }}
           >

@@ -18,9 +18,10 @@ export const contentType = "image/png";
 export default async function PlatformOgImage({
   params,
 }: {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }) {
-  const platform = await getPlatformPageBySlug(params.slug);
+  const { slug } = await params;
+  const platform = await getPlatformPageBySlug(slug);
   const platformName = platform?.platformName ?? "Gig Workers";
   const headline = platform?.heroHeadline ?? `Cash advances for ${platformName} workers`;
   const brandColor = `#${getPlatformBrandColor(platformName)}`;
