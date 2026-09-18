@@ -24,25 +24,49 @@ describe("live debit balance gate", () => {
     expect(mocks.attempt).toHaveBeenCalledWith({ data: expect.objectContaining({ attemptNumber: 3, finalStatus: "SKIPPED", increaseTransferStatus: "not_submitted", amount: 100.01 }) });
     expect(mocks.updatePayment).toHaveBeenCalledWith({ where: { id: "payment" }, data: { increaseLastError: expect.stringContaining("No charge was sent") } });
   });
-  it.each([null, NaN, Infinity])("holds unverifiable available balance %s without using current balance", async (balance) => {
+  it.each([null, NaN, Infinity])("allows unavailable available balance %s without using current balance", async (balance) => {
     mocks.balance.mockResolvedValue(response(balance));
-    expect(await checkGoachDebitBalance(input)).toMatchObject({ ok: false, skipped: true, error: expect.stringContaining("could not be verified") });
+    expect(await checkGoachDebitBalance(input)).toEqual({ ok: true });
   });
   it("never uses another linked account or a different currency", async () => {
     mocks.balance.mockResolvedValue(response(9999, "other"));
-    expect((await checkGoachDebitBalance(input)).ok).toBe(false);
+    expect((await checkGoachDebitBalance(input)).ok).toBe(true);
     mocks.balance.mockResolvedValue(response(9999, "selected", "CAD"));
-    expect((await checkGoachDebitBalance(input)).ok).toBe(false);
+    expect((await checkGoachDebitBalance(input)).ok).toBe(true);
   });
-  it.each([{ ...app, plaidAccessToken: null }, { ...app, plaidAccountId: null }, { ...app, bankAccountNumberManual: "manual" }, { ...app, goachBankAccountUuid: "other" }])("holds an unverified payment-bank mapping", async (value) => {
+  it.each([{ ...app, plaidAccessToken: null }, { ...app, plaidAccountId: null }, { ...app, bankAccountNumberManual: "manual" }])("allows a matched payment bank without a usable Plaid connection", async (value) => {
     mocks.app.mockResolvedValue(value);
-    expect((await checkGoachDebitBalance(input)).ok).toBe(false);
+    expect((await checkGoachDebitBalance(input)).ok).toBe(true);
     expect(mocks.balance).not.toHaveBeenCalled();
   });
-  it("holds when Plaid fails, and records an application update for portal debits", async () => {
+  it("allows when Plaid fails and audits the unverified balance for portal debits", async () => {
     mocks.balance.mockRejectedValue(new Error("unavailable"));
-    expect((await checkGoachDebitBalance({ ...input, paymentId: undefined })).ok).toBe(false);
-    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ entityId: "app", action: "PAYMENT_SKIPPED_BALANCE" }));
+    expect((await checkGoachDebitBalance({ ...input, paymentId: undefined })).ok).toBe(true);
+    expect(mocks.audit).toHaveBeenCalledWith(expect.objectContaining({ entityId: "app", action: "PAYMENT_BALANCE_UNAVAILABLE" }));
     expect(mocks.attempt).not.toHaveBeenCalled();
   });
+});
+
+it.each([null, { ...app, goachBankAccountUuid: "other" }])("still blocks missing applications and mismatched payment banks", async value => {
+  mocks.app.mockResolvedValue(value);
+  expect((await checkGoachDebitBalance(input)).ok).toBe(false);
+  expect(mocks.balance).not.toHaveBeenCalled();
+});
+it.each([0, -1, 1.5, NaN])("blocks invalid amount %s", async amountCents => {
+  expect((await checkGoachDebitBalance({...input,amountCents})).ok).toBe(false);
+});
+it("blocks a known shortage even when storing the balance fails", async () => {
+  mocks.balance.mockResolvedValue(response(0));
+  mocks.updateApp.mockRejectedValue(new Error("database unavailable"));
+  expect((await checkGoachDebitBalance(input)).ok).toBe(false);
+});
+it("allows ITEM_LOGIN_REQUIRED without recording a skipped payment", async () => {
+  mocks.balance.mockRejectedValue({response:{data:{error_code:"ITEM_LOGIN_REQUIRED"}}});
+  expect(await checkGoachDebitBalance(input)).toEqual({ok:true});
+  expect(mocks.attempt).not.toHaveBeenCalled();
+  expect(mocks.updatePayment).not.toHaveBeenCalled();
+});
+it("does not treat an account lookup error as an unavailable Plaid balance", async () => {
+  mocks.app.mockRejectedValue(new Error("database unavailable"));
+  expect((await checkGoachDebitBalance(input)).ok).toBe(false);
 });
