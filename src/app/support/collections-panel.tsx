@@ -936,7 +936,6 @@ function SettlementComposer({
   const [frequency, setFrequency] =
     useState<SettlementTerms["frequency"]>("WEEKLY");
   const [firstDate, setFirstDate] = useState("");
-  const [expires, setExpires] = useState("");
   let plan: { date: string; amount: number }[] = [];
   let validation = "";
   try {
@@ -953,7 +952,7 @@ function SettlementComposer({
     <div className="rounded-xl border border-green-200 bg-white p-5">
       <h3 className="text-base font-semibold">Prepare a new settlement</h3>
       <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-        Uses the client’s existing signed advance contract. The revised amount and payment schedule are filled in automatically. Saving a draft does not send it or change payments.
+        Uses the client’s existing signed advance contract. The revised amount and payment schedule are filled in automatically. Send the contract to the client for signature. Payments change only after the client signs.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <label className="text-xs text-zinc-500">
@@ -1003,15 +1002,7 @@ function SettlementComposer({
             onChange={(e) => setFirstDate(e.target.value)}
           />
         </label>
-        <label className="col-span-2 text-xs text-zinc-500">
-          Signing deadline (before first payment)
-          <input
-            type="datetime-local"
-            className={`${inputClass} mt-1`}
-            value={expires}
-            onChange={(e) => setExpires(e.target.value)}
-          />
-        </label>
+
       </div>
       {firstDate && validation && (
         <p className="mt-2 text-xs text-amber-700">{validation}</p>
@@ -1035,26 +1026,27 @@ function SettlementComposer({
           busy ||
           detail.processing ||
           !!validation ||
-          !expires ||
           Number(total) > detail.outstanding
         }
         className={`${buttonClass} mt-4 !bg-green-700 !text-white`}
         onClick={() =>
           run(
-            () =>
-              createSettlementDraft({
+            async () => {
+              const draft = await createSettlementDraft({
                 applicationId: detail.id,
                 total: Number(total),
                 count: Number(count),
                 frequency,
                 firstDate,
-                expiresAt: new Date(expires).toISOString(),
-              }),
-            "Draft saved. Review the agreement before sending it.",
+              });
+              if (!draft.ok) return draft;
+              return sendSettlementAgreement(draft.id);
+            },
+            "Contract sent to the client for signature.",
           )
         }
       >
-        <FileSignature size={14} /> Save settlement draft
+        <FileSignature size={14} /> Send contract
       </button>
     </div>
   );

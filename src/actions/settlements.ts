@@ -57,14 +57,15 @@ function refresh() {
 export async function createSettlementDraft(
   input: SettlementTerms & {
     applicationId: string;
-    expiresAt: string;
+    expiresAt?: string;
   },
 ) {
   const auth = await requireNonSupportRole();
   if (!auth.ok) return { ok: false as const, error: auth.error };
   try {
     const schedule = buildSettlementPlan(input);
-    const expiresAt = new Date(input.expiresAt);
+    // Offers become stale when their first scheduled payment date arrives.
+    const expiresAt = new Date(input.expiresAt ?? new Date(new Date(`${input.firstDate}T00:00:00Z`).getTime() - 1).toISOString());
     if (
       !Number.isFinite(expiresAt.getTime()) ||
       expiresAt <= new Date() ||

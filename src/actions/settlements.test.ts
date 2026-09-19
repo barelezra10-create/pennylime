@@ -199,11 +199,12 @@ it("snapshots the original signed contract when preparing a daily amendment", as
  m.read.mockResolvedValue(Buffer.from("%PDF-1.7 original"));
  m.sourceApp.mockResolvedValue({id:"app",...fixture().application,applicationCode:"PL-TEST"});
  m.create.mockResolvedValue({id:"new-settlement"});
- const result=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05"});
+ const result=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07"});
  expect(result).toEqual({ok:true,id:"new-settlement"});
  const data=m.create.mock.calls[0][0].data;
  expect(data.baseContractPdf).toEqual(new Uint8Array(Buffer.from("%PDF-1.7 original")));
  expect(data.baseContractHash).toHaveLength(64);
+ expect(data.expiresAt.toISOString()).toBe("2030-01-06T23:59:59.999Z");
  expect(data.agreementText).toContain("SETTLEMENT PAYMENT AMENDMENT");
  expect(data.agreementText).toContain("PennyLime account: PL-TEST");
  expect(data.agreementText).toContain("Settlement total: $60.00");
