@@ -185,7 +185,6 @@ describe("settlement signing", () => {
           frequency: "WEEKLY",
           firstDate: "2030-01-07",
           expiresAt: "2030-01-05",
-          agreementText: "Reviewed agreement text",
         })
       ).ok,
     ).toBe(false);
@@ -198,19 +197,23 @@ describe("settlement signing", () => {
 it("snapshots the original signed contract when preparing a daily amendment", async () => {
  m.document.mockResolvedValue({storagePath:"original.pdf",fileName:"original-advance.pdf"});
  m.read.mockResolvedValue(Buffer.from("%PDF-1.7 original"));
- m.sourceApp.mockResolvedValue({id:"app",...fixture().application});
+ m.sourceApp.mockResolvedValue({id:"app",...fixture().application,applicationCode:"PL-TEST"});
  m.create.mockResolvedValue({id:"new-settlement"});
- const result=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05",agreementText:"Reviewed settlement terms with no additional funds advanced."});
+ const result=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05"});
  expect(result).toEqual({ok:true,id:"new-settlement"});
  const data=m.create.mock.calls[0][0].data;
  expect(data.baseContractPdf).toEqual(new Uint8Array(Buffer.from("%PDF-1.7 original")));
  expect(data.baseContractHash).toHaveLength(64);
- expect(data.agreementText).toContain("SETTLEMENT AMENDMENT");
+ expect(data.agreementText).toContain("SETTLEMENT PAYMENT AMENDMENT");
+ expect(data.agreementText).toContain("PennyLime account: PL-TEST");
+ expect(data.agreementText).toContain("Settlement total: $60.00");
+ expect(data.agreementText).toContain("Daily (Monday–Friday)");
+ expect(data.agreementText).toContain("2030-01-08 — $30.00");
  expect(JSON.parse(data.scheduleJson).map((p:{date:string})=>p.date)).toEqual(["2030-01-07","2030-01-08"]);
 });
 it("does not create a standalone settlement without the original contract",async()=>{
  m.document.mockResolvedValue(null);
- const r=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05",agreementText:"Reviewed settlement terms with no additional funds advanced."});
+ const r=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05"});
  expect(r.ok).toBe(false);expect(m.create).not.toHaveBeenCalled();
 });
 

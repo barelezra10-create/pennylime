@@ -10,6 +10,7 @@ import {
 import { easternDateString } from "@/lib/eastern-time";
 import { buildCollectionsTimeline } from "@/lib/collections-ladder";
 import { collectionCommunications } from "@/lib/collection-history";
+import { accountWorkspace, type SupportWorkspace } from "@/lib/support-workspace";
 import { paymentProgress } from "@/lib/payment-progress";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -31,7 +32,7 @@ const paymentSelect = {
   settlementId: true,
   supersededBySettlementId: true,
 } satisfies Prisma.PaymentSelect;
-export async function getCollectionsQueue() {
+export async function getCollectionsQueue(workspace: SupportWorkspace = "collections") {
   await staff();
   const apps = await prisma.application.findMany({
     where: {
@@ -79,6 +80,7 @@ export async function getCollectionsQueue() {
         settlementStatus: app.settlements[0]?.status ?? null,
       };
     })
+    .filter(account => accountWorkspace(account) === workspace)
     .sort(
       (a, b) =>
         b.daysOverdue - a.daysOverdue ||

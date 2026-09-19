@@ -13,6 +13,7 @@ import {
   collectionBalance,
   settlementSnapshot,
   settlementAchText,
+  settlementAmendmentText,
   paymentOutstanding,
   COLLECTION_ACCOUNT_STATUSES,
   type SettlementTerms,
@@ -56,7 +57,6 @@ function refresh() {
 export async function createSettlementDraft(
   input: SettlementTerms & {
     applicationId: string;
-    agreementText: string;
     expiresAt: string;
   },
 ) {
@@ -64,11 +64,6 @@ export async function createSettlementDraft(
   if (!auth.ok) return { ok: false as const, error: auth.error };
   try {
     const schedule = buildSettlementPlan(input);
-    const text = input.agreementText.trim();
-    if (text.length < 40 || text.length > 50000)
-      throw new Error(
-        "Enter the reviewed settlement agreement text (40–50,000 characters).",
-      );
     const expiresAt = new Date(input.expiresAt);
     if (
       !Number.isFinite(expiresAt.getTime()) ||
@@ -83,7 +78,7 @@ export async function createSettlementDraft(
     const baseContractPdf = await storage.read(original.storagePath);
     if (!baseContractPdf.subarray(0, 5).equals(Buffer.from("%PDF-"))) throw new Error("The original advance contract is not a valid PDF. Regenerate it before continuing.");
     const baseContractHash = createHash("sha256").update(baseContractPdf).digest("hex");
-    const agreementText = `SETTLEMENT AMENDMENT TO EXISTING ADVANCE AGREEMENT\n\nThis settlement is an amendment to the attached signed advance agreement (${original.fileName}). No new advance is funded. Upon acceptance, the settlement total and replacement payment schedule shown here replace the prior unpaid payment schedule for this account. All other terms of the original agreement remain in effect except as expressly amended by the reviewed terms below.\n\nReviewed settlement terms\n${text}`;
+
     const id = await prisma.$transaction(
       async (tx) => {
         const app = await tx.application.findUnique({
@@ -100,6 +95,7 @@ export async function createSettlementDraft(
           );
         if (input.total > balance.outstanding || !balance.outstanding)
           throw new Error("The settlement must not exceed the unpaid balance.");
+        const agreementText = settlementAmendmentText({total:input.total,frequency:input.frequency,applicationCode:app.applicationCode,schedule});
         const authorizationText = settlementAchText(input.total, input.count);
         const scheduleJson = JSON.stringify(schedule);
         const agreementHash = createHash("sha256")

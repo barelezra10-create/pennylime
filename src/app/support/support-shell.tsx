@@ -8,17 +8,18 @@ import { EmailsPanel } from "@/app/support/emails-panel";
 import { CollectionsPanel } from "./collections-panel";
 import { TicketsPanel } from "@/app/support/tickets-panel";
 
-type Tab = "collections" | "chats" | "emails" | "tickets";
+type Tab = "active" | "collections" | "chats" | "emails" | "tickets";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "collections", label: "Clients & collections" },
+  { key: "active", label: "Active clients" },
+  { key: "collections", label: "Collections" },
   { key: "chats", label: "Chats" },
   { key: "emails", label: "Emails" },
   { key: "tickets", label: "Tickets" },
 ];
 
 export function SupportShell({ me, canManage }: { me: string | null; canManage: boolean }) {
-  const [activeTab, setActiveTab] = useState<Tab>("collections");
+  const [activeTab, setActiveTab] = useState<Tab>("active");
   const [pendingChats, setPendingChats] = useState(0);
   const [unrepliedEmails, setUnrepliedEmails] = useState(0);
   const [openTickets, setOpenTickets] = useState(0);
@@ -104,7 +105,7 @@ export function SupportShell({ me, canManage }: { me: string | null; canManage: 
       </div>
 
       {/* Tab content */}
-      {activeTab === "collections" && <CollectionsPanel me={me} canManage={canManage} />}
+      {(activeTab === "active" || activeTab === "collections") && <CollectionsPanel key={activeTab} workspace={activeTab} me={me} canManage={canManage} />}
       {activeTab === "chats" && <ChatsClient />}
       {activeTab === "emails" && <EmailsPanel />}
       {activeTab === "tickets" && <TicketsPanel me={me} />}

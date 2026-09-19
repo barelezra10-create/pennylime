@@ -23,6 +23,7 @@ import {
   sendSettlementAgreement,
   cancelSettlementAgreement,
 } from "@/actions/settlements";
+import type { SupportWorkspace } from "@/lib/support-workspace";
 import { sendSupportAccountEmail } from "@/actions/support-email";
 import { markAdvanceDefault } from "@/actions/advance-default";
 import { CallButton } from "@/components/admin/dialer/call-button";
@@ -30,6 +31,7 @@ import { ContactCalls } from "@/components/admin/dialer/contact-calls";
 import { useDialer } from "@/components/admin/dialer/dialer-provider";
 import {
   buildSettlementPlan,
+  settlementAmendmentText,
   paymentOutstanding,
   type SettlementTerms,
 } from "@/lib/settlement-plan";
@@ -62,11 +64,13 @@ function Badge({ text }: { text: string }) {
 }
 
 export function CollectionsPanel({
+  workspace = "collections",
   me,
   canManage,
 }: {
   me: string | null;
   canManage: boolean;
+  workspace?: SupportWorkspace;
 }) {
   const [rows, setRows] = useState<CollectionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +84,7 @@ export function CollectionsPanel({
   const detailRequest = useRef(0);
   const load = useCallback(
     () =>
-      getCollectionsQueue().then(
+      getCollectionsQueue(workspace).then(
         (next) => {
           setRows(next);
           setError(null);
@@ -91,7 +95,7 @@ export function CollectionsPanel({
           setLoading(false);
         },
       ),
-    [],
+    [workspace],
   );
   useEffect(() => {
     void load();
@@ -130,7 +134,6 @@ export function CollectionsPanel({
     () =>
       rows
         .filter((r) => {
-          if (filter === "Active clients" && !["FUNDED", "ACTIVE", "REPAYING"].includes(r.status)) return false;
           if (filter === "Defaulted" && r.status !== "DEFAULTED") return false;
           if (filter === "Overdue" && r.overdue <= 0) return false;
           if (filter === "Mine" && r.ownerEmail !== me) return false;
@@ -163,11 +166,10 @@ export function CollectionsPanel({
             Support hub
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            Clients & collections
+            {workspace === "active" ? "Active clients" : "Collections"}
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Call customers, agree on a settlement, and track recovery in one
-            place.
+            {workspace === "active" ? "Call active clients, review payment progress, and manage customer support." : "Manage overdue accounts, follow up on missed payments, and arrange settlements."}
           </p>
         </div>
         <button className={buttonClass} onClick={refresh}>
@@ -177,19 +179,19 @@ export function CollectionsPanel({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           {
-            label: "Accounts to review",
+            label: workspace === "active" ? "Active clients" : "Accounts to review",
             value: rows.length,
             filter: "All accounts",
           },
           {
-            label: "Past due",
-            value: money(rows.reduce((s, r) => s + r.overdue, 0)),
-            filter: "Overdue",
+            label: workspace === "active" ? "Collected" : "Past due",
+            value: money(rows.reduce((s, r) => s + (workspace === "active" ? r.collected : r.overdue), 0)),
+            filter: workspace === "active" ? "All accounts" : "Overdue",
           },
           {
-            label: "Defaulted accounts",
-            value: rows.filter((r) => r.status === "DEFAULTED").length,
-            filter: "Defaulted",
+            label: workspace === "active" ? "Remaining balance" : "Defaulted accounts",
+            value: workspace === "active" ? money(rows.reduce((s, r) => s + r.remaining, 0)) : rows.filter((r) => r.status === "DEFAULTED").length,
+            filter: workspace === "active" ? "All accounts" : "Defaulted",
           },
           {
             label: "Follow-ups due",
@@ -246,13 +248,11 @@ export function CollectionsPanel({
               >
                 {[
                   "All accounts",
-                  "Active clients",
-                  "Overdue",
-                  "Defaulted",
+                  ...(workspace === "collections" ? ["Overdue", "Defaulted"] : []),
                   "Mine",
                   "Unassigned",
                   "Follow-up due",
-                  "Settlements",
+                  ...(workspace === "collections" ? ["Settlements"] : []),
                 ].map((f) => (
                   <option key={f}>{f}</option>
                 ))}
@@ -937,7 +937,6 @@ function SettlementComposer({
     useState<SettlementTerms["frequency"]>("WEEKLY");
   const [firstDate, setFirstDate] = useState("");
   const [expires, setExpires] = useState("");
-  const [agreement, setAgreement] = useState("");
   let plan: { date: string; amount: number }[] = [];
   let validation = "";
   try {
@@ -954,7 +953,7 @@ function SettlementComposer({
     <div className="rounded-xl border border-green-200 bg-white p-5">
       <h3 className="text-base font-semibold">Prepare a new settlement</h3>
       <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-        Uses the client’s signed advance contract, with a reviewed settlement amendment and replacement schedule. Enter the amendment wording below. Saving a draft does not send it or change payments.
+        Uses the client’s existing signed advance contract. The revised amount and payment schedule are filled in automatically. Saving a draft does not send it or change payments.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <label className="text-xs text-zinc-500">
@@ -1027,23 +1026,16 @@ function SettlementComposer({
           ))}
         </div>
       )}
-      <label className="mt-4 block text-xs text-zinc-500">
-        Reviewed settlement agreement text
-        <textarea
-          rows={7}
-          className={`${inputClass} mt-1`}
-          value={agreement}
-          onChange={(e) => setAgreement(e.target.value)}
-          placeholder="Paste the approved settlement terms, including what changes from the original agreement and what happens after payment…"
-        />
-      </label>
+      <details className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs">
+        <summary className="cursor-pointer font-semibold text-green-700">Preview automatically filled settlement terms</summary>
+        <p className="mt-3 whitespace-pre-wrap leading-relaxed">{plan.length ? settlementAmendmentText({total:Number(total),frequency,applicationCode:detail.code,schedule:plan}) : "Choose the amount, number of payments, frequency, and first payment date to preview. The original signed advance contract is included automatically."}</p>
+      </details>
       <button
         disabled={
           busy ||
           detail.processing ||
           !!validation ||
           !expires ||
-          agreement.trim().length < 40 ||
           Number(total) > detail.outstanding
         }
         className={`${buttonClass} mt-4 !bg-green-700 !text-white`}
@@ -1057,7 +1049,6 @@ function SettlementComposer({
                 frequency,
                 firstDate,
                 expiresAt: new Date(expires).toISOString(),
-                agreementText: agreement,
               }),
             "Draft saved. Review the agreement before sending it.",
           )

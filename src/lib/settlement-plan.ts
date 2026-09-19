@@ -143,3 +143,9 @@ export function buildSettlementPlan(terms: SettlementTerms, now = new Date()) {
 export function settlementAchText(total: number, count: number) {
   return `I authorize PennyLime (770 Technology LLC) to ACH debit my linked bank account for the ${count} settlement payment${count === 1 ? "" : "s"} listed above, totaling $${total.toFixed(2)}. This replaces the prior unpaid payment schedule for this advance when I sign. This authorization remains in effect until the settlement amount has been delivered or I revoke in writing by emailing info@pennylime.com at least 3 business days before the next debit.`;
 }
+
+/** Fixed payment amendment; staff choose financial terms, never write contract clauses. */
+export function settlementAmendmentText(input: { total: number; frequency: SettlementTerms["frequency"]; applicationCode: string; schedule: {date:string;amount:number}[] }) {
+  const cadence = {DAILY:"Daily (Monday–Friday)",WEEKLY:"Weekly",BIWEEKLY:"Every two weeks",MONTHLY:"Monthly"}[input.frequency];
+  return `SETTLEMENT PAYMENT AMENDMENT\n\nPennyLime account: ${input.applicationCode}\n\nThis settlement uses the attached original signed advance agreement. No new advance is funded. Upon the customer’s acceptance, the settlement total and replacement payment schedule below replace the prior unpaid payment schedule for this account. All other terms of the original agreement remain in effect.\n\nSettlement total: $${input.total.toFixed(2)}\nNumber of payments: ${input.schedule.length}\nFrequency: ${cadence}\n\nReplacement payment schedule\n${input.schedule.map((p,i)=>`${i+1}. ${p.date} — $${p.amount.toFixed(2)}`).join("\n")}\n\nThe original payment schedule remains in effect until this settlement is signed. The original agreement and prior payment history are retained.`;
+}
