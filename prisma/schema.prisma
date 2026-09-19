@@ -222,6 +222,56 @@ model AdminUser {
   role         String    @default("ADMIN")
   createdAt    DateTime  @default(now())
   contacts     Contact[]
+  mfaVersion Int @default(0)
+  mfaEnrollmentHash String?
+  mfaEnrollmentExpiresAt DateTime?
+  passkeys AdminPasskey[]
+  mfaChallenges AdminMfaChallenge[]
+}
+
+model AdminPasskey {
+  id String @id
+  adminId String
+  publicKey Bytes
+  counter BigInt @default(0)
+  transports String[]
+  createdAt DateTime @default(now())
+  lastUsedAt DateTime?
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  @@index([adminId])
+}
+
+model AdminMfaChallenge {
+  id String @id
+  adminId String
+  challenge String
+  purpose String
+  enrollmentHash String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  @@index([expiresAt])
+}
+
+model SecurityReview {
+  id String @id @default(uuid())
+  kind String
+  summary String
+  createdAt DateTime @default(now())
+  @@index([kind, createdAt])
+}
+
+model RetentionCase {
+  id String @id @default(uuid())
+  applicationId String @unique
+  relationshipEndedAt DateTime?
+  legalHold Boolean @default(false)
+  holdReason String?
+  reviewedBy String
+  reviewedAt DateTime @default(now())
+  plaidRevokedAt DateTime?
+  recordReviewDueAt DateTime?
+  @@index([relationshipEndedAt])
 }
 
 model Payment {

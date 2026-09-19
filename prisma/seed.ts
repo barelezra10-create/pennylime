@@ -166,16 +166,18 @@ async function main() {
     },
   });
 
-  const passwordHash = await bcrypt.hash("admin123", 12);
-  await prisma.adminUser.upsert({
-    where: { email: "admin@loanportal.com" },
-    update: {},
-    create: {
-      email: "admin@loanportal.com",
-      passwordHash,
-      name: "Admin User",
-    },
-  });
+  // Bootstrap accounts only when an operator deliberately supplies credentials.
+  // Never create a production administrator with a public default password.
+  const adminEmail = process.env.BOOTSTRAP_ADMIN_EMAIL;
+  const adminPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    if (adminPassword.length < 16) throw new Error("Bootstrap admin password must be at least 16 characters");
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+    await prisma.adminUser.upsert({
+      where: { email: adminEmail.trim().toLowerCase() }, update: {},
+      create: { email: adminEmail.trim().toLowerCase(), passwordHash, name: "Administrator", role: "ADMIN" },
+    });
+  }
 
   console.log("Seed complete");
 }

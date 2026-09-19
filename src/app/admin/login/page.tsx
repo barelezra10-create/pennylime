@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { toast } from "sonner";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [enrollmentCode, setEnrollmentCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,8 +18,19 @@ export default function AdminLoginPage() {
     setError("");
 
     try {
+      const optionsResponse = await fetch("/api/admin/mfa/options", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, enrollmentCode }),
+      });
+      const options = await optionsResponse.json();
+      if (!optionsResponse.ok) throw new Error(options.error);
+      const assertion = options.mode === "register"
+        ? await startRegistration({ optionsJSON: options.options })
+        : options.mode === "authenticate" ? await startAuthentication({ optionsJSON: options.options }) : null;
       const result = await signIn("credentials", {
         email,
+        challengeId: options.challengeId ?? "",
+        assertion: assertion ? JSON.stringify(assertion) : "",
         password,
         redirect: false,
       });
@@ -30,12 +43,15 @@ export default function AdminLoginPage() {
         // re-runs server-side and picks up the new session — otherwise the
         // dashboard renders without the header/nav chrome until a manual
         // refresh (the layout doesn't re-render on client-side nav).
+        // Full navigation refreshes the shared admin layout after sign-in.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/admin/dashboard";
         return;
       }
-    } catch {
-      setError("An unexpected error occurred");
-      toast.error("An unexpected error occurred");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Sign-in could not be completed.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -94,6 +110,14 @@ export default function AdminLoginPage() {
             />
           </div>
 
+          <details className="text-sm text-gray-600">
+            <summary className="cursor-pointer">First-time passkey setup</summary>
+            <p className="mt-2">Use the enrollment code your security administrator provided. Then follow your device&apos;s prompt to create a passkey.</p>
+            <label htmlFor="enrollmentCode" className="block mt-3">Enrollment code</label>
+            <input id="enrollmentCode" type="password" autoComplete="off" value={enrollmentCode}
+              onChange={e => setEnrollmentCode(e.target.value)} className="mt-1 w-full rounded-lg border p-2" />
+          </details>
+          <p className="text-xs text-gray-500">Enrolled accounts also verify a passkey or security key when signing in.</p>
           {/* Error */}
           {error && (
             <p className="text-[13px] text-[#dc2626]">{error}</p>

@@ -4,35 +4,7 @@ import { getToken } from "next-auth/jwt";
 const PENNYCLICK_COOKIE = "_pl_clickid";
 const PENNYCLICK_TTL_SECONDS = 60 * 60 * 24 * 365; // 1 year
 
-const ADMIN_PROTECTED = [
-  "/admin/home",
-  "/admin/dashboard",
-  "/admin/advances",
-  "/admin/applications",
-  "/admin/calls",
-  "/admin/dialer",
-  "/admin/settings",
-  "/admin/audit",
-  "/admin/payments",
-  "/admin/content",
-  "/admin/pipeline",
-  "/admin/pipeline-list",
-  "/admin/contacts",
-  "/admin/abandoned",
-  "/admin/email",
-  "/admin/sms",
-  "/admin/team",
-  "/admin/visitors",
-  "/admin/inbox",
-  "/admin/chats",
-  "/admin/compliance",
-  "/admin/goach-test",
-  "/admin/funnel-preview",
-  "/admin/agent",
-  "/admin/social",
-  "/admin/tickets",
-  "/admin/hr",
-];
+
 
 function generatePennyClickId(): string {
   // 16 random bytes -> 22-char base36-ish ID (URL safe, ~96 bits of entropy)
@@ -44,29 +16,31 @@ function generatePennyClickId(): string {
 }
 
 function isAdminProtected(pathname: string) {
-  return ADMIN_PROTECTED.some((prefix) => pathname.startsWith(prefix));
+  return (pathname === "/admin" || pathname.startsWith("/admin/")) && pathname !== "/admin/login";
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pennylime-pathname", pathname);
 
   // Auth gate for /support workspace (any authenticated user; role restriction is enforced in the layout)
   if (pathname.startsWith("/support")) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
+    if (!token || typeof token.passwordStamp !== "string" || typeof token.mfaVersion !== "number" || (process.env.ADMIN_MFA_REQUIRED === "true" && token.mfaVerified !== true)) {
       const url = request.nextUrl.clone();
       url.pathname = "/admin/login";
       url.search = "";
       url.searchParams.set("callbackUrl", "/support");
       return NextResponse.redirect(url);
     }
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Auth gate for admin pages
   if (isAdminProtected(pathname)) {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
+    if (!token || typeof token.passwordStamp !== "string" || typeof token.mfaVersion !== "number" || (process.env.ADMIN_MFA_REQUIRED === "true" && token.mfaVerified !== true)) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("callbackUrl", request.url);
       return NextResponse.redirect(loginUrl);
@@ -84,7 +58,7 @@ export async function middleware(request: NextRequest) {
   // Stops the URL from being shared publicly to bypass Twilio + Plaid.
   if (pathname === "/apply" && searchParams.get("preview") === "1") {
     const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token) {
+    if (!token || typeof token.passwordStamp !== "string" || typeof token.mfaVersion !== "number" || (process.env.ADMIN_MFA_REQUIRED === "true" && token.mfaVerified !== true)) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("callbackUrl", request.url);
       return NextResponse.redirect(loginUrl);
@@ -93,7 +67,7 @@ export async function middleware(request: NextRequest) {
 
   // First-party click ID for everyone (admin and public)
   const existing = request.cookies.get(PENNYCLICK_COOKIE)?.value;
-  const response = NextResponse.next();
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   if (!existing) {
     const id = generatePennyClickId();

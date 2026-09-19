@@ -13,7 +13,7 @@
 providers = ["node"]
 
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm-10"]
+nixPkgs = ["nodejs_22", "npm-10"]
 aptPkgs = [
   # NSS / crypto
   "libnss3",

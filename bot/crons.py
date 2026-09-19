@@ -23,6 +23,8 @@ CRON_SECRET = os.environ.get("CRON_SECRET")
 # None means "match any". endpoint may be a path (joined to PENNYLIME_URL) or a
 # full http(s) URL (used as-is — payment crons hit the direct origin).
 SCHEDULES = [
+    # Daily retention review and expired authentication challenge cleanup.
+    (15, 5, None, PAYMENT_URL + "/api/cron/security-retention", "security-retention"),
     # Every 15 min (any hour, any day): comment replies
     (0,  None, None, "/api/cron/social-comments", "comments"),
     (15, None, None, "/api/cron/social-comments", "comments"),

@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { AdminTopNav } from "@/components/admin/top-nav";
@@ -11,9 +13,12 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
+  if (!session?.user?.email) {
+    const pathname = (await headers()).get("x-pennylime-pathname");
+    if (pathname !== "/admin/login") redirect("/admin/login");
     return <>{children}</>;
   }
+  if ((session.user as { role?: string }).role === "SUPPORT") redirect("/support");
 
   return (
     <DialerProvider>
