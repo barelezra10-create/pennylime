@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash } from "node:crypto";
+import { storage } from "@/lib/storage";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
@@ -77,6 +78,12 @@ export async function createSettlementDraft(
       throw new Error(
         "The signing deadline must be in the future and before the first payment date.",
       );
+    const original = await prisma.document.findFirst({ where: { applicationId: input.applicationId, documentType: "SIGNED_AGREEMENT_PDF" }, orderBy: { createdAt: "desc" } });
+    if (!original) throw new Error("Generate the client’s signed advance contract before preparing a settlement. The settlement must use that same contract.");
+    const baseContractPdf = await storage.read(original.storagePath);
+    if (!baseContractPdf.subarray(0, 5).equals(Buffer.from("%PDF-"))) throw new Error("The original advance contract is not a valid PDF. Regenerate it before continuing.");
+    const baseContractHash = createHash("sha256").update(baseContractPdf).digest("hex");
+    const agreementText = `SETTLEMENT AMENDMENT TO EXISTING ADVANCE AGREEMENT\n\nThis settlement is an amendment to the attached signed advance agreement (${original.fileName}). No new advance is funded. Upon acceptance, the settlement total and replacement payment schedule shown here replace the prior unpaid payment schedule for this account. All other terms of the original agreement remain in effect except as expressly amended by the reviewed terms below.\n\nReviewed settlement terms\n${text}`;
     const id = await prisma.$transaction(
       async (tx) => {
         const app = await tx.application.findUnique({
@@ -98,7 +105,8 @@ export async function createSettlementDraft(
         const agreementHash = createHash("sha256")
           .update(
             JSON.stringify({
-              agreementText: text,
+              agreementText,
+              baseContractHash,
               authorizationText,
               scheduleJson,
               applicationId: app.id,
@@ -126,7 +134,10 @@ export async function createSettlementDraft(
             scheduleJson,
             previousScheduleJson: settlementSnapshot(payments),
             originalBalance: balance.outstanding,
-            agreementText: text,
+            agreementText,
+            baseContractPdf: new Uint8Array(baseContractPdf),
+            baseContractHash,
+            baseContractName: original.fileName,
             authorizationText,
             agreementHash,
             createdBy: auth.email,
@@ -321,6 +332,7 @@ export async function acceptSettlementAgreement(input: {
         });
         if (!s || s.applicationId !== applicationId)
           throw new Error("Settlement not found.");
+        if (s.baseContractPdf && createHash("sha256").update(s.baseContractPdf).digest("hex") !== s.baseContractHash) throw new Error("The original contract snapshot could not be verified.");
         if (s.status === "ACTIVE") return; // idempotent repeat of the same acceptance
         if (s.status !== "SENT" || s.expiresAt <= new Date())
           throw new Error("This settlement is not available for signing.");
@@ -436,7 +448,7 @@ export async function acceptSettlementAgreement(input: {
         });
         await tx.application.update({
           where: { id: applicationId },
-          data: { status: "REPAYING" },
+          data: { status: "REPAYING", paymentFrequency: s.frequency },
         });
         await tx.collectionEvent.create({
           data: {

@@ -1,0 +1,11 @@
+import {beforeEach,expect,it,vi} from "vitest";
+import {createHash} from "node:crypto";
+const m=vi.hoisted(()=>({session:vi.fn(),portal:vi.fn(),find:vi.fn()}));
+vi.mock("next-auth",()=>({getServerSession:m.session}));vi.mock("@/lib/auth",()=>({authOptions:{}}));vi.mock("@/lib/portal-auth",()=>({getPortalApplicationId:m.portal}));vi.mock("@/lib/db",()=>({prisma:{settlementAgreement:{findFirst:m.find}}}));
+import {GET} from "./route";
+const request=new Request("https://pennylime.com/api/settlement-contract/s");const params={params:Promise.resolve({id:"s"})};
+beforeEach(()=>{vi.resetAllMocks();m.portal.mockResolvedValue("own-app");const pdf=Buffer.from("%PDF-1.7 original contract");m.find.mockResolvedValue({baseContractPdf:pdf,baseContractHash:createHash("sha256").update(pdf).digest("hex")});});
+it("limits customer access to their own non-draft settlement",async()=>{const r=await GET(request,params);expect(r.status).toBe(200);expect(m.find.mock.calls[0][0].where).toEqual({id:"s",applicationId:"own-app",status:{not:"DRAFT"}});expect(r.headers.get("Cache-Control")).toBe("private, no-store");});
+it("blocks unauthenticated access",async()=>{m.portal.mockResolvedValue(null);expect((await GET(request,params)).status).toBe(401);expect(m.find).not.toHaveBeenCalled();});
+it("rejects a modified contract snapshot",async()=>{m.find.mockResolvedValue({baseContractPdf:Buffer.from("%PDF-bad"),baseContractHash:"different"});expect((await GET(request,params)).status).toBe(409);});
+it("allows authenticated staff to review drafts",async()=>{m.session.mockResolvedValue({user:{email:"manager@example.com"}});expect((await GET(request,params)).status).toBe(200);expect(m.find.mock.calls[0][0].where).toEqual({id:"s"});});

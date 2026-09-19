@@ -23,6 +23,7 @@ import {
   sendSettlementAgreement,
   cancelSettlementAgreement,
 } from "@/actions/settlements";
+import { sendSupportAccountEmail } from "@/actions/support-email";
 import { markAdvanceDefault } from "@/actions/advance-default";
 import { CallButton } from "@/components/admin/dialer/call-button";
 import { ContactCalls } from "@/components/admin/dialer/contact-calls";
@@ -116,7 +117,9 @@ export function CollectionsPanel({
   useEffect(() => {
     const generation = detailRequest;
     void loadDetail();
+    const timer = setInterval(() => void loadDetail(), 30000);
     return () => {
+      clearInterval(timer);
       generation.current++;
     };
   }, [loadDetail]);
@@ -127,6 +130,7 @@ export function CollectionsPanel({
     () =>
       rows
         .filter((r) => {
+          if (filter === "Active clients" && !["FUNDED", "ACTIVE", "REPAYING"].includes(r.status)) return false;
           if (filter === "Defaulted" && r.status !== "DEFAULTED") return false;
           if (filter === "Overdue" && r.overdue <= 0) return false;
           if (filter === "Mine" && r.ownerEmail !== me) return false;
@@ -156,10 +160,10 @@ export function CollectionsPanel({
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-green-700">
-            Collections desk
+            Support hub
           </p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight">
-            Collections & settlements
+            Clients & collections
           </h1>
           <p className="mt-1 text-sm text-zinc-500">
             Call customers, agree on a settlement, and track recovery in one
@@ -242,6 +246,7 @@ export function CollectionsPanel({
               >
                 {[
                   "All accounts",
+                  "Active clients",
                   "Overdue",
                   "Defaulted",
                   "Mine",
@@ -483,7 +488,7 @@ function AccountDetail({
         </p>
       )}
       <div className="mb-5 flex gap-1 overflow-x-auto border-b border-zinc-200">
-        {["Overview", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
+        {["Overview", "Email", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -509,6 +514,10 @@ function AccountDetail({
           {notice}
         </p>
       )}
+      <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4 text-xs">
+        <div className="flex flex-wrap gap-x-6 gap-y-2"><span>Collected <strong>{money(d.collected)}</strong></span><span>Remaining <strong>{money(d.remaining)}</strong></span><span>{d.paidCount} paid · {d.processingCount} processing · {d.failedCount} failed/returned</span></div>
+        <p className="mt-2 text-zinc-500">{d.overdue > 0 ? `${d.missedCount} overdue payments · ${money(d.overdue)} past due` : d.processing ? "Payment processing" : "No overdue payments"}{d.nextPaymentDate ? ` · Next unpaid: ${date(d.nextPaymentDate)} (${money(d.nextPaymentAmount || 0)})` : ""}</p>
+      </div>
       {tab === "Overview" && (
         <div className="space-y-5">
           <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -699,6 +708,7 @@ function AccountDetail({
                 </summary>
                 <div className="mt-3 max-h-96 overflow-auto rounded-lg bg-zinc-50 p-3">
                   <p className="whitespace-pre-wrap">{s.agreementText}</p>
+                  {s.hasBaseContract && <a href={`/api/settlement-contract/${s.id}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block font-semibold text-green-700">Open original advance contract (PDF)</a>}
                   <table className="my-4 w-full text-left">
                     <thead>
                       <tr>
@@ -767,6 +777,7 @@ function AccountDetail({
             ) && <SettlementComposer detail={d} busy={busy} run={run} />}
         </div>
       )}
+      {tab === "Email" && <AccountEmail detail={d} refresh={refresh} />}
       {tab === "Communications" && <Communications rows={d.communications} />}
       {tab === "Failed payments" && <FailedPayments payments={d.payments} />}
       {tab === "Payments" && (
@@ -943,8 +954,7 @@ function SettlementComposer({
     <div className="rounded-xl border border-green-200 bg-white p-5">
       <h3 className="text-base font-semibold">Prepare a new settlement</h3>
       <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-        Set the total and payment schedule, then add the reviewed agreement
-        wording. Saving a draft does not send it or change payments.
+        Uses the client’s signed advance contract, with a reviewed settlement amendment and replacement schedule. Enter the amendment wording below. Saving a draft does not send it or change payments.
       </p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         <label className="text-xs text-zinc-500">
@@ -979,6 +989,7 @@ function SettlementComposer({
               setFrequency(e.target.value as SettlementTerms["frequency"])
             }
           >
+            <option value="DAILY">Daily (Monday–Friday)</option>
             <option value="WEEKLY">Weekly</option>
             <option value="BIWEEKLY">Every two weeks</option>
             <option value="MONTHLY">Monthly</option>
@@ -1099,4 +1110,25 @@ function FailedPayments({ payments }: { payments: CollectionDetail["payments"] }
       <p className="mt-1 text-xs text-zinc-500">Current payment status: {f.current}{f.replaced ? " · Replaced by signed settlement" : ""}</p>
     </article>)}
   </div>;
+}
+
+function AccountEmail({detail:d,refresh}:{detail:CollectionDetail;refresh:()=>Promise<void>}) {
+ const [subject,setSubject]=useState(`Your PennyLime account ${d.code}`);
+ const [body,setBody]=useState(""); const [replyId,setReplyId]=useState<string|undefined>();
+ const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [notice,setNotice]=useState("");
+ const messages=d.communications.filter(r=>r.channel==="Email" && !r.id.startsWith("event:"));
+ async function send(){if(busy)return;setBusy(true);setError("");setNotice("");try{const r=await sendSupportAccountEmail({applicationId:d.id,subject,body,replyId});if(!r.ok){setError(r.error||"Email could not be sent.");return;}setBody("");setReplyId(undefined);setNotice("Email sent. Customer replies appear here and in the support inbox.");await refresh();}catch{setError("Could not confirm delivery. Refresh the history before trying again.");}finally{setBusy(false);}}
+ return <div className="space-y-4">
+  <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
+   <p className="text-sm font-semibold">{replyId?"Reply to client":"Email client"}</p><p className="text-xs text-zinc-500">To: {d.email} · Replies return to the support inbox.</p>
+   <label className="block text-xs">Subject<input aria-label="Email subject" maxLength={200} value={subject} disabled={busy||!!replyId} onChange={e=>setSubject(e.target.value)} className={`${inputClass} mt-1`} /></label>
+   <label className="block text-xs">Message<textarea aria-label="Email message" maxLength={replyId?10000:20000} rows={6} value={body} disabled={busy} onChange={e=>setBody(e.target.value)} className={`${inputClass} mt-1`} /></label>
+   {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}{notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+   <button onClick={send} disabled={busy||!body.trim()||!subject.trim()} className={buttonClass}>{busy?"Sending…":"Send email"}</button>
+   {replyId&&<button disabled={busy} onClick={()=>{setReplyId(undefined);setSubject(`Your PennyLime account ${d.code}`);}} className={`${buttonClass} ml-2`}>New message</button>}
+  </div>
+  <h3 className="text-sm font-semibold">Email conversation</h3>
+  {!messages.length&&<p className="text-sm text-zinc-500">No stored messages yet.</p>}
+  {messages.map(r=><article key={r.id} className="rounded-xl border border-zinc-200 bg-white p-4"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-semibold">{r.title}</p>{r.status&&<Badge text={r.status}/>}</div><p className="mt-2 whitespace-pre-wrap break-words text-sm">{r.body}</p><p className="mt-2 text-xs text-zinc-500">{new Date(r.date).toLocaleString()}{r.by?` · ${r.by}`:""}</p>{r.id.startsWith("email:")&&<button disabled={busy} className={`${buttonClass} mt-2`} onClick={()=>{setReplyId(r.id.slice(6));setSubject(`Re: ${r.title}`);setNotice("");}}>Reply</button>}</article>)}
+ </div>;
 }

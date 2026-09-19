@@ -1,0 +1,13 @@
+import {beforeEach,expect,it,vi} from "vitest";
+const m=vi.hoisted(()=>({session:vi.fn(),app:vi.fn(),inbound:vi.fn(),event:vi.fn(),update:vi.fn(),send:vi.fn(),reply:vi.fn()}));
+vi.mock("next-auth",()=>({getServerSession:m.session}));vi.mock("@/lib/auth",()=>({authOptions:{}}));
+vi.mock("@/lib/db",()=>({prisma:{application:{findUnique:m.app},inboundEmail:{findUnique:m.inbound},collectionEvent:{create:m.event,update:m.update}}}));
+vi.mock("@/lib/emails/send",()=>({sendEmail:m.send}));vi.mock("@/actions/inbox",()=>({replyToInboundEmail:m.reply}));
+import {sendSupportAccountEmail} from "./support-email";
+const input={applicationId:"app",subject:"Your account",body:"Hello <script>test</script>"};
+beforeEach(()=>{vi.resetAllMocks();m.session.mockResolvedValue({user:{email:"agent@example.com"}});m.app.mockResolvedValue({id:"app",email:"client@example.com",contact:{id:"contact"}});m.event.mockResolvedValue({id:"event"});m.update.mockResolvedValue({});m.send.mockResolvedValue({success:true});});
+it("uses the account recipient and escapes message HTML",async()=>{expect((await sendSupportAccountEmail(input)).ok).toBe(true);expect(m.send).toHaveBeenCalledWith(expect.objectContaining({to:"client@example.com",html:expect.stringContaining("&lt;script&gt;")}));expect(m.update).toHaveBeenCalledWith(expect.objectContaining({data:{eventType:"EMAIL_SENT"}}));});
+it("rejects a reply to another client's message",async()=>{m.inbound.mockResolvedValue({contactId:"someone-else",fromEmail:"client@example.com"});expect((await sendSupportAccountEmail({...input,replyId:"foreign"})).ok).toBe(false);expect(m.reply).not.toHaveBeenCalled();});
+it("threads a reply only after verifying ownership",async()=>{m.inbound.mockResolvedValue({contactId:"contact",fromEmail:"client@example.com"});m.reply.mockResolvedValue({ok:true});await sendSupportAccountEmail({...input,replyId:"inbound"});expect(m.reply).toHaveBeenCalledWith("inbound",input.body);expect(m.send).not.toHaveBeenCalled();});
+it("rejects unauthenticated email",async()=>{m.session.mockResolvedValue(null);expect((await sendSupportAccountEmail(input)).ok).toBe(false);expect(m.send).not.toHaveBeenCalled();});
+it("records provider failure without claiming success",async()=>{m.send.mockResolvedValue({success:false});expect((await sendSupportAccountEmail(input)).ok).toBe(false);expect(m.update).toHaveBeenCalledWith(expect.objectContaining({data:{eventType:"EMAIL_FAILED"}}));});

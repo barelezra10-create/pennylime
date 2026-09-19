@@ -11,7 +11,7 @@ import { TicketsPanel } from "@/app/support/tickets-panel";
 type Tab = "collections" | "chats" | "emails" | "tickets";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "collections", label: "Overdue & defaults" },
+  { key: "collections", label: "Clients & collections" },
   { key: "chats", label: "Chats" },
   { key: "emails", label: "Emails" },
   { key: "tickets", label: "Tickets" },

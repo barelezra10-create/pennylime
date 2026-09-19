@@ -102,3 +102,13 @@ describe("settlement schedule", () => {
     expect(() => buildSettlementPlan({ ...terms, ...change }, now)).toThrow();
   });
 });
+
+it("daily settlement dates are distinct weekdays across a weekend and conserve cents", () => {
+ const rows=buildSettlementPlan({...terms,frequency:"DAILY",firstDate:"2026-09-25",count:4},now);
+ expect(rows.map(r=>r.date)).toEqual(["2026-09-25","2026-09-28","2026-09-29","2026-09-30"]);
+ expect(rows.reduce((n,r)=>n+Math.round(r.amount*100),0)).toBe(10000);
+});
+it("daily settlement stays on calendar weekdays through daylight saving changes", () => {
+ const rows=buildSettlementPlan({...terms,frequency:"DAILY",firstDate:"2026-10-30",count:3},now);
+ expect(rows.map(r=>r.date)).toEqual(["2026-10-30","2026-11-02","2026-11-03"]);
+});

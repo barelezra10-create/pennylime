@@ -12,7 +12,11 @@ const m = vi.hoisted(() => ({
   audit: vi.fn(),
   send: vi.fn(),
   create: vi.fn(),
+  document: vi.fn(),
+  sourceApp: vi.fn(),
+  read: vi.fn(),
 }));
+vi.mock("@/lib/storage", () => ({storage:{read:m.read}}));
 vi.mock("@/lib/auth-helpers", () => ({ requireNonSupportRole: m.auth }));
 vi.mock("@/lib/portal-auth", () => ({ getPortalApplicationId: m.portal }));
 vi.mock("next/headers", () => ({
@@ -22,6 +26,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/emails/send", () => ({ sendEmail: m.send }));
 vi.mock("@/lib/db", () => ({
   prisma: {
+    document: {findFirst:m.document},
     $transaction: async (fn: (tx: unknown) => unknown) =>
       fn({
         settlementAgreement: {
@@ -30,7 +35,7 @@ vi.mock("@/lib/db", () => ({
           updateMany: vi.fn(),
           create: m.create,
         },
-        application: { update: m.app },
+        application: { update: m.app, findUnique:m.sourceApp },
         payment: { updateMany: m.replace, createMany: m.createPayments },
         achAuthorization: { create: m.consent },
         collectionEvent: { create: m.event },
@@ -121,7 +126,7 @@ describe("settlement signing", () => {
     });
     expect(m.app).toHaveBeenCalledWith({
       where: { id: "app" },
-      data: { status: "REPAYING" },
+      data: { status: "REPAYING", paymentFrequency: "WEEKLY" },
     });
     expect(m.send).not.toHaveBeenCalled();
   });
@@ -188,4 +193,32 @@ describe("settlement signing", () => {
     expect(m.create).not.toHaveBeenCalled();
     expect(m.send).not.toHaveBeenCalled();
   });
+});
+
+it("snapshots the original signed contract when preparing a daily amendment", async () => {
+ m.document.mockResolvedValue({storagePath:"original.pdf",fileName:"original-advance.pdf"});
+ m.read.mockResolvedValue(Buffer.from("%PDF-1.7 original"));
+ m.sourceApp.mockResolvedValue({id:"app",...fixture().application});
+ m.create.mockResolvedValue({id:"new-settlement"});
+ const result=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05",agreementText:"Reviewed settlement terms with no additional funds advanced."});
+ expect(result).toEqual({ok:true,id:"new-settlement"});
+ const data=m.create.mock.calls[0][0].data;
+ expect(data.baseContractPdf).toEqual(new Uint8Array(Buffer.from("%PDF-1.7 original")));
+ expect(data.baseContractHash).toHaveLength(64);
+ expect(data.agreementText).toContain("SETTLEMENT AMENDMENT");
+ expect(JSON.parse(data.scheduleJson).map((p:{date:string})=>p.date)).toEqual(["2030-01-07","2030-01-08"]);
+});
+it("does not create a standalone settlement without the original contract",async()=>{
+ m.document.mockResolvedValue(null);
+ const r=await createSettlementDraft({applicationId:"app",total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07",expiresAt:"2030-01-05",agreementText:"Reviewed settlement terms with no additional funds advanced."});
+ expect(r.ok).toBe(false);expect(m.create).not.toHaveBeenCalled();
+});
+
+it("activation preserves a signed daily schedule and updates the account cadence", async () => {
+ const s=fixture();s.frequency="DAILY";
+ s.scheduleJson=JSON.stringify(buildSettlementPlan({total:60,count:2,frequency:"DAILY",firstDate:"2030-01-07"},new Date("2026-09-17")));
+ m.agreement.mockResolvedValue(s);
+ expect(await acceptSettlementAgreement(consent)).toEqual({ok:true});
+ expect(m.createPayments.mock.calls[0][0].data.map((p:{dueDate:Date})=>p.dueDate.toISOString().slice(0,10))).toEqual(["2030-01-07","2030-01-08"]);
+ expect(m.app).toHaveBeenCalledWith({where:{id:"app"},data:{status:"REPAYING",paymentFrequency:"DAILY"}});
 });

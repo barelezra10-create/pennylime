@@ -1550,6 +1550,9 @@ model SettlementAgreement {
   previousScheduleJson String
   originalBalance Decimal
   agreementText String
+  baseContractPdf Bytes?
+  baseContractHash String?
+  baseContractName String?
   authorizationText String
   agreementHash String
   createdBy String

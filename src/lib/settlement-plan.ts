@@ -3,7 +3,7 @@ import { easternDateString, easternDayDiff } from "@/lib/eastern-time";
 export type SettlementTerms = {
   total: number;
   count: number;
-  frequency: "WEEKLY" | "BIWEEKLY" | "MONTHLY";
+  frequency: "DAILY" | "WEEKLY" | "BIWEEKLY" | "MONTHLY";
   firstDate: string;
 };
 export type SettlementPayment = {
@@ -99,7 +99,7 @@ export function buildSettlementPlan(terms: SettlementTerms, now = new Date()) {
     terms.count > cents(terms.total)
   )
     throw new Error("Choose 1–120 installments, each at least $0.01.");
-  if (!["WEEKLY", "BIWEEKLY", "MONTHLY"].includes(terms.frequency))
+  if (!["DAILY", "WEEKLY", "BIWEEKLY", "MONTHLY"].includes(terms.frequency))
     throw new Error("Choose a payment frequency.");
   const first = new Date(`${terms.firstDate}T12:00:00Z`);
   if (
@@ -114,7 +114,12 @@ export function buildSettlementPlan(terms: SettlementTerms, now = new Date()) {
   const base = Math.floor(cents(terms.total) / terms.count);
   return Array.from({ length: terms.count }, (_, i) => {
     const due = new Date(first);
-    if (terms.frequency === "MONTHLY") {
+    if (terms.frequency === "DAILY") {
+      for (let n = 0; n < i; n++) {
+        due.setUTCDate(due.getUTCDate() + 1);
+        while ([0, 6].includes(due.getUTCDay())) due.setUTCDate(due.getUTCDate() + 1);
+      }
+    } else if (terms.frequency === "MONTHLY") {
       due.setUTCDate(1);
       due.setUTCMonth(first.getUTCMonth() + i);
       const last = new Date(

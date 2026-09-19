@@ -35,6 +35,7 @@ export default async function SettlementPage({
   const { id } = await params;
   const s = await prisma.settlementAgreement.findFirst({
     where: { id, applicationId, status: { not: "DRAFT" } },
+    omit: { baseContractPdf: true },
     include: { application: { select: { applicationCode: true } } },
   });
   if (!s) notFound();
@@ -71,6 +72,7 @@ export default async function SettlementPage({
           signedName: s.signedName,
           signedAt: s.signedAt?.toISOString() ?? null,
           hash: s.agreementHash,
+          hasBaseContract: !!s.baseContractHash,
         }}
       />
     </main>

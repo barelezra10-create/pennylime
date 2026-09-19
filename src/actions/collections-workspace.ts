@@ -10,6 +10,7 @@ import {
 import { easternDateString } from "@/lib/eastern-time";
 import { buildCollectionsTimeline } from "@/lib/collections-ladder";
 import { collectionCommunications } from "@/lib/collection-history";
+import { paymentProgress } from "@/lib/payment-progress";
 import type { Prisma } from "@/generated/prisma/client";
 
 async function staff() {
@@ -35,23 +36,6 @@ export async function getCollectionsQueue() {
   const apps = await prisma.application.findMany({
     where: {
       status: { in: COLLECTION_ACCOUNT_STATUSES },
-      OR: [
-        { status: { in: ["LATE", "COLLECTIONS", "DEFAULTED"] } },
-        {
-          payments: {
-            some: {
-              status: { in: OPEN_PAYMENT_STATUSES },
-              supersededBySettlementId: null,
-              dueDate: { lt: new Date(`${easternDateString()}T04:00:00Z`) },
-            },
-          },
-        },
-        {
-          settlements: {
-            some: { status: { in: ["DRAFT", "SENT", "ACTIVE"] } },
-          },
-        },
-      ],
     },
     select: {
       id: true,
@@ -89,17 +73,12 @@ export async function getCollectionsQueue() {
         phone: app.phone,
         status: app.status,
         ...balance,
+        ...paymentProgress(app.payments),
         ownerEmail: app.collectionCase?.ownerEmail ?? null,
         followUpAt: app.collectionCase?.followUpAt?.toISOString() ?? null,
         settlementStatus: app.settlements[0]?.status ?? null,
       };
     })
-    .filter(
-      (a) =>
-        a.overdue > 0 ||
-        ["LATE", "COLLECTIONS", "DEFAULTED"].includes(a.status) ||
-        a.settlementStatus,
-    )
     .sort(
       (a, b) =>
         b.daysOverdue - a.daysOverdue ||
@@ -129,11 +108,12 @@ export async function getCollectionAccount(id: string) {
         orderBy: [{ dueDate: "asc" }, { paymentNumber: "asc" }],
       },
       collectionEvents: { orderBy: { createdAt: "desc" } },
-      settlements: { orderBy: { createdAt: "desc" } },
+      settlements: { orderBy: { createdAt: "desc" }, omit: { baseContractPdf: true } },
     },
   });
   if (!app) throw new Error("Account not found");
-  const communications = await collectionCommunications({ contactId: app.contact?.id ?? null, email: app.email, phone: app.phone });
+  const contact = app.contact ?? await prisma.contact.findFirst({ where: { email: { equals: app.email, mode: "insensitive" } }, select: { id: true } });
+  const communications = await collectionCommunications({ contactId: contact?.id ?? null, email: app.email, phone: app.phone });
   const payments = app.payments.map((p) => ({
     ...p,
     amount: Number(p.amount),
@@ -166,14 +146,19 @@ export async function getCollectionAccount(id: string) {
     email: app.email,
     phone: app.phone,
     status: app.status,
-    contactId: app.contact?.id ?? null,
+    contactId: contact?.id ?? null,
     ...balance,
+    ...paymentProgress(app.payments),
     pausedUntil,
     ownerEmail: app.collectionCase?.ownerEmail ?? null,
     followUpAt: app.collectionCase?.followUpAt?.toISOString() ?? null,
     bankBalance: app.bankBalance === null ? null : Number(app.bankBalance),
     bankBalanceUpdatedAt: app.lastPlaidRefresh?.toISOString() ?? null,
-    communications,
+    communications: [...communications, ...app.collectionEvents.filter(e => ["EMAIL_SENT", "EMAIL_FAILED", "EMAIL_PREPARED"].includes(e.eventType)).map(e => {
+      let message = {subject: "Account email", body: e.notes || ""};
+      try { message = JSON.parse(e.notes || "{}"); } catch { /* retain older plain-text notes */ }
+      return {id: `outbound:${e.id}`, channel: "Email", title: message.subject, body: message.body, date: e.createdAt.toISOString(), status: e.eventType === "EMAIL_SENT" ? "Sent" : e.eventType === "EMAIL_FAILED" ? "Failed" : "Delivery unconfirmed", by: e.performedBy};
+    })].sort((a,b) => b.date.localeCompare(a.date)),
     payments: payments.map((p) => ({ ...p, dueDate: p.dueDate.toISOString(), attempts: p.attempts.map(a => ({ ...a, amount: Number(a.amount), initiatedAt: a.initiatedAt.toISOString(), settledAt: a.settledAt?.toISOString() ?? null })) })),
     events: app.collectionEvents.map((e) => ({
       id: e.id,
@@ -200,6 +185,7 @@ export async function getCollectionAccount(id: string) {
       agreementText: s.agreementText,
       authorizationText: s.authorizationText,
       hash: s.agreementHash,
+      hasBaseContract: !!s.baseContractHash,
       createdBy: s.createdBy,
       createdAt: s.createdAt.toISOString(),
       expiresAt: s.expiresAt.toISOString(),
