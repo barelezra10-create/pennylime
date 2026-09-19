@@ -702,13 +702,13 @@ function AccountDetail({
                   Last sent {new Date(s.sentAt).toLocaleString()}
                 </p>
               )}
-              <details className="mt-3 text-xs">
+              <details open={s.status === "DRAFT"} className="mt-3 text-xs">
                 <summary className="cursor-pointer font-semibold text-green-700">
-                  Review exact agreement & schedule
+                  Contract preview · agreement & payment schedule
                 </summary>
-                <div className="mt-3 max-h-96 overflow-auto rounded-lg bg-zinc-50 p-3">
+                <div className="mt-3 rounded-lg bg-zinc-50 p-3">
                   <p className="whitespace-pre-wrap">{s.agreementText}</p>
-                  {s.hasBaseContract && <a href={`/api/settlement-contract/${s.id}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block font-semibold text-green-700">Open original advance contract (PDF)</a>}
+                  {s.hasBaseContract && <div className="mt-3"><a href={`/api/settlement-contract/${s.id}`} target="_blank" rel="noopener noreferrer" className="inline-block font-semibold text-green-700">Open original advance contract (PDF)</a><iframe title="Original signed advance contract" src={`/api/settlement-contract/${s.id}`} className="mt-3 h-[480px] w-full rounded-lg border border-zinc-200 bg-white" /></div>}
                   <table className="my-4 w-full text-left">
                     <thead>
                       <tr>
@@ -746,7 +746,7 @@ function AccountDetail({
                     }}
                   >
                     <FileSignature size={14} />{" "}
-                    {s.sentAt ? "Resend agreement" : "Send agreement"}
+                    {s.sentAt ? "Resend agreement" : "Send contract"}
                   </button>
                   <button
                     disabled={busy}
@@ -1021,6 +1021,16 @@ function SettlementComposer({
         <summary className="cursor-pointer font-semibold text-green-700">Preview automatically filled settlement terms</summary>
         <p className="mt-3 whitespace-pre-wrap leading-relaxed">{plan.length ? settlementAmendmentText({total:Number(total),frequency,applicationCode:detail.code,schedule:plan}) : "Choose the amount, number of payments, frequency, and first payment date to preview. The original signed advance contract is included automatically."}</p>
       </details>
+      <button
+        disabled={busy || detail.processing || !!validation || Number(total) > detail.outstanding}
+        className={`${buttonClass} mt-4 mr-2`}
+        onClick={() => run(
+          () => createSettlementDraft({applicationId: detail.id, total: Number(total), count: Number(count), frequency, firstDate}),
+          "Contract preview ready. Nothing has been sent. Review it, then click Send contract.",
+        )}
+      >
+        <FileSignature size={14} /> Preview contract
+      </button>
       <button
         disabled={
           busy ||
