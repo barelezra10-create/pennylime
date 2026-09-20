@@ -708,7 +708,7 @@ function AccountDetail({
                 </summary>
                 <div className="mt-3 rounded-lg bg-zinc-50 p-3">
                   <p className="whitespace-pre-wrap">{s.agreementText}</p>
-                  {s.hasBaseContract && <div className="mt-3"><a href={`/api/settlement-contract/${s.id}`} target="_blank" rel="noopener noreferrer" className="inline-block font-semibold text-green-700">Open original advance contract (PDF)</a><iframe title="Original signed advance contract" src={`/api/settlement-contract/${s.id}`} className="mt-3 h-[480px] w-full rounded-lg border border-zinc-200 bg-white" /></div>}
+                  {s.hasBaseContract && <div className="mt-3"><a href={`/api/settlement-contract/${s.id}?view=settlement`} target="_blank" rel="noopener noreferrer" className="inline-block font-semibold text-green-700">Open settlement contract preview</a><iframe title="Settlement contract being sent" src={`/api/settlement-contract/${s.id}?view=settlement`} className="mt-3 h-[480px] w-full rounded-lg border border-zinc-200 bg-white" /></div>}
                   <table className="my-4 w-full text-left">
                     <thead>
                       <tr>

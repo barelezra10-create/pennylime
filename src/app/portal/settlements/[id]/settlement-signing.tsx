@@ -65,7 +65,7 @@ export function SettlementSigning({
         <p className="mt-1 text-xs text-zinc-500">
           Signing deadline: {new Date(a.expiresAt).toLocaleString()}
         </p>
-        {a.hasBaseContract && <div className="mt-5 rounded-lg border border-zinc-200 p-4"><p className="text-sm">This settlement uses your original signed advance contract with the payment amendment below. Review both before signing.</p><a href={`/api/settlement-contract/${a.id}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-semibold text-green-700">Open original advance contract (PDF)</a></div>}
+        {a.hasBaseContract && <div className="mt-5 rounded-lg border border-zinc-200 p-4"><p className="text-sm">This settlement uses your original signed advance contract with the payment amendment below. Review both before signing.</p><a href={`/api/settlement-contract/${a.id}?view=settlement`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm font-semibold text-green-700">Open complete settlement contract</a></div>}
         <div className="mt-6 whitespace-pre-wrap text-sm leading-7">
           {a.text}
         </div>
