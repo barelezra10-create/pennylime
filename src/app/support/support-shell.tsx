@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getInboxBadges } from "@/actions/inbox-badges";
 import { countOpenTickets } from "@/actions/tickets";
 import { ChatsClient } from "@/app/admin/chats/chats-client";
@@ -9,17 +9,18 @@ import { useDialer } from "@/components/admin/dialer/dialer-provider";
 import { CollectionsPanel } from "./collections-panel";
 import { TicketsPanel } from "@/app/support/tickets-panel";
 
-type Tab = "active" | "collections" | "chats" | "emails" | "tickets";
+type Tab = "calls" | "active" | "collections" | "chats" | "emails" | "tickets";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "active", label: "Active clients" },
   { key: "collections", label: "Collections" },
+  { key: "calls", label: "Calls & voicemails" },
   { key: "chats", label: "Chats" },
   { key: "emails", label: "Emails" },
   { key: "tickets", label: "Tickets" },
 ];
 
-export function SupportShell({ me, canManage }: { me: string | null; canManage: boolean }) {
+export function SupportShell({ me, canManage, callHistory }: { me: string | null; canManage: boolean; callHistory: ReactNode }) {
   const { incomingEnabled, setIncomingEnabled, state: phoneState } = useDialer();
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [phoneError, setPhoneError] = useState("");
@@ -121,6 +122,7 @@ export function SupportShell({ me, canManage }: { me: string | null; canManage: 
 
       {/* Tab content */}
       {(activeTab === "active" || activeTab === "collections") && <CollectionsPanel key={activeTab} workspace={activeTab} me={me} canManage={canManage} />}
+      {activeTab === "calls" && callHistory}
       {activeTab === "chats" && <ChatsClient />}
       {activeTab === "emails" && <EmailsPanel />}
       {activeTab === "tickets" && <TicketsPanel me={me} />}

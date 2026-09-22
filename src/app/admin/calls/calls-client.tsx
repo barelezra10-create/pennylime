@@ -25,7 +25,7 @@ type Row = {
   createdAt: string;
 };
 
-export function CallsClient({ calls, inboundOnly = false }: { calls: Row[]; inboundOnly?: boolean }) {
+export function CallsClient({ calls, inboundOnly = false, contactLinks = true }: { calls: Row[]; inboundOnly?: boolean; contactLinks?: boolean }) {
   const router = useRouter();
   useEffect(() => {
     const timer = setInterval(() => router.refresh(), 30000);
@@ -87,12 +87,12 @@ export function CallsClient({ calls, inboundOnly = false }: { calls: Row[]; inbo
                   <span className="font-medium text-[#18181b]">
                     {c.direction === "outbound" ? "Outbound" : isMissedInbound(c) ? "Missed call" : "Inbound"}
                   </span>
-                  {c.contactId ? (
+                  {c.contactId && contactLinks ? (
                     <Link href={`/admin/contacts/${c.contactId}`} className="text-[#2563eb] hover:underline">
                       {c.contactName || "Contact"}
                     </Link>
                   ) : (
-                    <span className="text-[#71717a]">{c.direction === "outbound" ? c.toNumber : c.fromNumber}</span>
+                    <span className="text-[#71717a]">{c.contactName || (c.direction === "outbound" ? c.toNumber : c.fromNumber)}</span>
                   )}
                   {c.outcome && <span className="text-[#71717a]">({c.outcome})</span>}
                 </div>
