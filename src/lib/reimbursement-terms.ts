@@ -1,4 +1,4 @@
-export const REIMBURSABLE_STATUSES = ["Processed", "Funded", "Deposited", "Settled"];
+export const REIMBURSABLE_STATUSES = ["Processed", "Originated", "Funded", "Deposited", "Settled"];
 export const CREDIT_PAID_STATUSES = ["Funded", "Deposited", "Settled"];
 export const ORIGINAL_RETURNED_STATUSES = ["Returned", "NSF", "Cancelled", "Canceled", "Failed"];
 export function duplicateReimbursementCents(creditStatus:string,items:{amountCents:number;originalStatus:string}[]) {
