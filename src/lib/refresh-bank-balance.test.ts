@@ -1,0 +1,10 @@
+import {beforeEach,it,expect,vi} from "vitest";
+const m=vi.hoisted(()=>({app:vi.fn(),update:vi.fn(),balance:vi.fn()}));
+vi.mock("@/lib/db",()=>({prisma:{application:{findUnique:m.app,update:m.update}}}));
+vi.mock("@/lib/plaid",()=>({plaidClient:{accountsBalanceGet:m.balance}}));
+vi.mock("@/lib/encryption",()=>({decrypt:()=>"test-token"}));
+import {refreshBankBalance} from "./refresh-bank-balance";
+beforeEach(()=>{vi.clearAllMocks();m.app.mockResolvedValue({plaidAccessToken:"encrypted",plaidAccountId:"selected"});});
+it("saves current and available balances for the selected account",async()=>{m.balance.mockResolvedValue({data:{accounts:[{account_id:"other",balances:{current:999,available:999}},{account_id:"selected",balances:{current:40,available:25}}]}});expect(await refreshBankBalance("a1")).toEqual({ok:true,balance:40});expect(m.update).toHaveBeenCalledWith({where:{id:"a1"},data:{bankBalance:40,availableBalance:25,lastPlaidRefresh:expect.any(Date)}});});
+it("does not substitute another account if the linked account is missing",async()=>{m.balance.mockResolvedValue({data:{accounts:[{account_id:"other",balances:{current:999}}]}});expect(await refreshBankBalance("a1")).toMatchObject({ok:false});expect(m.update).not.toHaveBeenCalled();});
+it("reports missing Plaid connections without a balance request",async()=>{m.app.mockResolvedValue(null);expect(await refreshBankBalance("a1")).toMatchObject({ok:false});expect(m.balance).not.toHaveBeenCalled();});

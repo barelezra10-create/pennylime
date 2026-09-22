@@ -111,6 +111,7 @@ export async function getCollectionAccount(id: string) {
       phone: true,
       status: true,
       bankBalance: true,
+      availableBalance: true,
       lastPlaidRefresh: true,
       addressStreet: true, addressCity: true, addressState: true, addressZip: true,
       dateOfBirth: true, workerType: true, businessType: true, platform: true,
@@ -205,6 +206,7 @@ export async function getCollectionAccount(id: string) {
         ownerEmail: app.collectionCase?.ownerEmail ?? null,
     followUpAt: app.collectionCase?.followUpAt?.toISOString() ?? null,
     bankBalance: app.bankBalance === null ? null : Number(app.bankBalance),
+    availableBalance: app.availableBalance == null ? null : Number(app.availableBalance),
     bankBalanceUpdatedAt: app.lastPlaidRefresh?.toISOString() ?? null,
     communications: [...communications, ...app.collectionEvents.filter(e => ["EMAIL_SENT", "EMAIL_FAILED", "EMAIL_PREPARED"].includes(e.eventType)).map(e => {
       let message = {subject: "Account email", body: e.notes || ""};
@@ -343,9 +345,7 @@ export async function chargeCollectionPayment(
   paymentId: string,
   amount: number,
 ) {
-  const { requireNonSupportRole } = await import("@/lib/auth-helpers");
-  const auth = await requireNonSupportRole();
-  if (!auth.ok) return { success: false, error: auth.error };
+  await staff();
   const p = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (
     !p ||
@@ -405,4 +405,11 @@ export async function moveCollectionToActive(applicationId: string) {
     } });
   });
   return { ok: true as const };
+}
+
+
+export async function refreshCollectionBalance(applicationId: string) {
+  await staff();
+  const { refreshBankBalance } = await import("@/lib/refresh-bank-balance");
+  return refreshBankBalance(applicationId);
 }

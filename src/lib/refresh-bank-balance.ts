@@ -28,12 +28,13 @@ export async function refreshBankBalance(
   try {
     const resp = await plaidClient.accountsBalanceGet({ access_token: token });
     const acct = app.plaidAccountId
-      ? resp.data.accounts.find((a) => a.account_id === app.plaidAccountId) ?? resp.data.accounts[0]
+      ? resp.data.accounts.find((a) => a.account_id === app.plaidAccountId)
       : resp.data.accounts[0];
-    const balance = acct?.balances?.current ?? null;
+    if (!acct) return { ok: false, error: "The linked bank account was not returned by Plaid. Reconnect the account before checking its balance." };
+    const balance = acct.balances.current ?? null;
     await prisma.application.update({
       where: { id: applicationId },
-      data: { bankBalance: balance, lastPlaidRefresh: new Date() },
+      data: { bankBalance: balance, availableBalance: acct.balances.available ?? null, lastPlaidRefresh: new Date() },
     });
     return { ok: true, balance };
   } catch (err) {

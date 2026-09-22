@@ -208,8 +208,12 @@ export async function chargePaymentNow(paymentId: string) {
  * an R01 / R09 NSF code on the file.
  */
 export async function chargePartialPayment(paymentId: string, amount: number) {
-  const auth = await requireNonSupportRole();
-  if (!auth.ok) return { success: false, error: auth.error };
+  // Support staff are authorized for custom collection debits; other admin
+  // payment actions keep their existing role restrictions.
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { success: false, error: "Not authenticated" };
+  const auth = { email: session.user.email };
+  if (Math.abs(amount * 100 - Math.round(amount * 100)) > 0.00001) return { success: false, error: "Use at most two decimal places" };
   if (!Number.isFinite(amount) || amount <= 0) {
     return { success: false, error: "Amount must be positive" };
   }
@@ -225,6 +229,14 @@ export async function chargePartialPayment(paymentId: string, amount: number) {
 
   if (payment.supersededBySettlementId || !["PENDING", "FAILED", "LATE", "RETURNED", "COLLECTIONS"].includes(payment.status)) {
     return { success: false, error: "This payment is no longer collectible." };
+  }
+
+  if (payment.settlementId) {
+    const settlement = await prisma.settlementAgreement.findUnique({ where: { id: payment.settlementId }, select: { status: true } });
+    const { easternDateString } = await import("@/lib/eastern-time");
+    if (settlement?.status !== "ACTIVE" || easternDateString(payment.dueDate) > easternDateString()) {
+      return { success: false, error: "Settlement payments can only be charged on or after their signed due date." };
+    }
   }
 
   // Guard: don't double-charge while another debit is in flight on

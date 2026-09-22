@@ -14,6 +14,7 @@ import {
 import {
   getCollectionsQueue,
   moveCollectionToActive,
+  refreshCollectionBalance,
   getCollectionAccount,
   updateCollectionCase,
   createCollectionTicket,
@@ -406,6 +407,8 @@ function AccountDetail({
   refresh: () => Promise<void>;
 }) {
   const [tab, setTab] = useState("Overview");
+  const [showCharge, setShowCharge] = useState(false);
+  const [chargePaymentId, setChargePaymentId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -466,6 +469,8 @@ function AccountDetail({
               finally { setBusy(false); }
             }}
           >{busy ? "Updating…" : "Move to active"}</button>}
+          <button className={buttonClass} disabled={busy} onClick={() => run(() => refreshCollectionBalance(d.id), "Bank balance refreshed from Plaid.")}>Check bank balance</button>
+          {<button className={buttonClass} disabled={busy || d.processing} onClick={() => setShowCharge(!showCharge)}>{showCharge ? "Close charge" : "Charge amount"}</button>}
           </div>
           {numbers.length > 1 && (
             <select
@@ -484,6 +489,19 @@ function AccountDetail({
           )}
         </div>
       </div>
+      <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+        <div className="flex flex-wrap gap-x-6 gap-y-2"><span>Bank balance <strong>{d.bankBalance === null ? "Unavailable" : money(d.bankBalance)}</strong></span><span>Available balance <strong>{d.availableBalance === null ? "Unavailable" : money(d.availableBalance)}</strong></span></div>
+        <p className="mt-1 text-xs text-zinc-500">{d.bankBalanceUpdatedAt ? `Last bank refresh: ${new Date(d.bankBalanceUpdatedAt).toLocaleString()}` : "Balance has not been checked."}</p>
+      </div>
+      {showCharge && <div className="mt-4 rounded-xl border border-green-200 bg-green-50/40 p-4">
+        <h3 className="text-sm font-semibold">Charge a custom amount</h3>
+        <p className="mt-1 text-xs text-zinc-600">Choose a payment, then enter the amount the client authorized, up to its unpaid balance. A confirmation appears before the ACH debit is submitted.</p>
+        <select aria-label="Payment to charge" className={`${inputClass} my-3`} value={chargePaymentId} onChange={e => setChargePaymentId(e.target.value)}>
+          <option value="">Select a payment</option>
+          {d.payments.filter(p => !p.supersededBySettlementId && ["PENDING", "FAILED", "LATE", "RETURNED", "COLLECTIONS"].includes(p.status)).map(p => <option key={p.id} value={p.id}>Payment #{p.paymentNumber} · {date(p.dueDate)} · {money(paymentOutstanding({...p,dueDate:new Date(p.dueDate)}))} unpaid</option>)}
+        </select>
+        {d.payments.find(p => p.id === chargePaymentId) && <PaymentRow key={chargePaymentId} payment={d.payments.find(p => p.id === chargePaymentId)!} canManage={true} busy={busy || d.processing} run={run} />}
+      </div>}
       <div className="my-5 grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl border border-zinc-200 bg-white p-4">
         {[
           ["Unpaid balance", money(d.outstanding)],
@@ -814,8 +832,8 @@ function AccountDetail({
             <PaymentRow
               key={p.id}
               payment={p}
-              canManage={canManage}
-              busy={busy}
+              canManage={true}
+              busy={busy || d.processing}
               run={run}
             />
           ))}
