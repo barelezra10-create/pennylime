@@ -490,7 +490,7 @@ function AccountDetail({
         </p>
       )}
       <div className="mb-5 flex gap-1 overflow-x-auto border-b border-zinc-200">
-        {["Overview", "Client details", "Email", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
+        {["Overview", "Client details", "Documents", "Email", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -521,6 +521,7 @@ function AccountDetail({
         <p className="mt-2 text-zinc-500">{d.overdue > 0 ? `${d.missedCount} overdue payments · ${money(d.overdue)} past due` : d.processing ? "Payment processing" : "No overdue payments"}{d.nextPaymentDate ? ` · Next unpaid: ${date(d.nextPaymentDate)} (${money(d.nextPaymentAmount || 0)})` : ""}</p>
       </div>
       {tab === "Client details" && <ClientDetails detail={d} />}
+      {tab === "Documents" && <ClientDocuments documents={d.profile.documents} />}
       {tab === "Overview" && (
         <div className="space-y-5">
           <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -1178,11 +1179,33 @@ function ClientDetails({ detail: d }: { detail: CollectionDetail }) {
         </div>)}
       </dl>
     </section>)}
-    <section className="rounded-xl border border-zinc-200 bg-white p-4">
-      <h3 className="text-sm font-semibold">Documents on file</h3>
-      {p.documents.length ? <ul className="mt-3 divide-y divide-zinc-100">{p.documents.map((doc, index) => <li key={index} className="py-3">
-        <p className="break-words text-sm">{doc.name}</p><p className="mt-1 text-xs text-zinc-500">{doc.type} · {date(doc.uploadedAt)}</p>
-      </li>)}</ul> : <p className="mt-3 text-sm text-zinc-500">No documents on file.</p>}
-    </section>
+    <ClientDocuments documents={p.documents} />
   </div>;
+}
+
+
+function ClientDocuments({ documents }: { documents: CollectionDetail["profile"]["documents"] }) {
+  const sorted = [...documents].sort((a, b) => Number(b.type === "SIGNED_AGREEMENT_PDF") - Number(a.type === "SIGNED_AGREEMENT_PDF"));
+  const labels: Record<string, string> = {
+    SIGNED_AGREEMENT_PDF: "Signed agreement",
+    BANK_STATEMENT_90D: "Bank statement",
+    PLAID_ASSET_REPORT_JSON: "Bank data report",
+    PAY_STUB: "Pay stub",
+  };
+  return <section className="rounded-xl border border-zinc-200 bg-white p-4">
+    <h3 className="text-sm font-semibold">Client documents <span className="font-normal text-zinc-500">({documents.length})</span></h3>
+    <p className="mt-1 text-xs text-zinc-500">All files on this application, including the signed agreement when available.</p>
+    {!documents.some(d => d.type === "SIGNED_AGREEMENT_PDF") && <p className="mt-3 text-sm text-zinc-500">No signed agreement is on file for this application.</p>}
+    {sorted.length ? <ul className="mt-3 divide-y divide-zinc-100">{sorted.map(doc => <li key={doc.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-green-700">{labels[doc.type] || doc.type.replaceAll("_", " ").toLowerCase()}</p>
+        <p className="mt-1 break-words text-sm font-medium">{doc.name}</p>
+        <p className="mt-1 text-xs text-zinc-500">{date(doc.uploadedAt)} · {doc.size >= 1048576 ? `${(doc.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.ceil(doc.size / 1024))} KB`}</p>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <a href={doc.url} target="_blank" rel="noopener noreferrer" className={buttonClass} aria-label={`View ${doc.name}`}>View</a>
+        <a href={doc.url} download={doc.name} className={buttonClass} aria-label={`Download ${doc.name}`}>Download</a>
+      </div>
+    </li>)}</ul> : <p className="mt-3 text-sm text-zinc-500">No documents on file.</p>}
+  </section>;
 }

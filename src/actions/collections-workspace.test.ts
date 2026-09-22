@@ -17,7 +17,7 @@ beforeEach(() => {
   id:"a1",applicationCode:"PL-TEST",firstName:"Test",lastName:"Client",email:"client@example.com",phone:"2025550147",status:"ACTIVE",
   addressStreet:"123 Example St",addressCity:"Richmond",addressState:"VA",addressZip:"23220",contact:null,
   monthlyIncome:0,refinedMonthlyIncome:null,avgWeeklyIncome:null,loanAmount:500,loanTermMonths:1,paymentFrequency:"WEEKLY",fundedAmount:null,
-  createdAt:new Date("2026-09-02"),bankBalance:null,documents:[],payments:[],collectionEvents:[],settlements:[],plaidAccountMask:"12345678",
+  createdAt:new Date("2026-09-02"),bankBalance:null,documents:[{id:"doc1",fileName:"signed.pdf",documentType:"SIGNED_AGREEMENT_PDF",createdAt:new Date("2026-09-02"),storagePath:"/app/uploads/signed.pdf",fileSize:1024,mimeType:"application/pdf"}],payments:[],collectionEvents:[],settlements:[],plaidAccountMask:"12345678",
  });
 });
 it("returns the support profile and falls back to the matching CRM contact",async()=>{
@@ -27,7 +27,8 @@ it("returns the support profile and falls back to the matching CRM contact",asyn
  expect(d.profile.monthlyIncome).toBe(0);
  expect(d.profile.refinedMonthlyIncome).toBeNull();
  expect(d.profile.bankAccountLastFour).toBe("5678");
- expect(d.profile.documents).toEqual([]);
+ expect(d.profile.documents[0]).toMatchObject({ id: "doc1", name: "signed.pdf", type: "SIGNED_AGREEMENT_PDF", url: "/api/files/%2Fapp%2Fuploads%2Fsigned.pdf" });
+ expect(d.profile.documents[0]).not.toHaveProperty("storagePath");
  const select=m.app.mock.calls[0][0].select;
  for(const field of ["ssnEncrypted","ssnHash","plaidAccessToken","bankAccountNumberManual","bankRoutingNumberManual","offerToken"]) expect(select).not.toHaveProperty(field);
 });

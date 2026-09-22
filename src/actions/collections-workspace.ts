@@ -2,6 +2,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { storage } from "@/lib/storage";
 import {
   collectionBalance,
   COLLECTION_ACCOUNT_STATUSES,
@@ -120,7 +121,7 @@ export async function getCollectionAccount(id: string) {
       bankName: true, plaidInstitutionName: true, plaidAccountName: true,
       plaidAccountMask: true, plaidAccountSubtype: true, bankInfoMismatch: true,
       plaidIdentityName: true, plaidIdentityAddress: true, plaidIdentityEmail: true, plaidIdentityPhone: true,
-      documents: { select: { fileName: true, documentType: true, createdAt: true }, orderBy: { createdAt: "desc" } },
+      documents: { select: { id: true, fileName: true, documentType: true, createdAt: true, storagePath: true, fileSize: true, mimeType: true }, orderBy: { createdAt: "desc" } },
       collectionCase: true,
       contact: { select: supportContactSelect },
       payments: {
@@ -194,7 +195,7 @@ export async function getCollectionAccount(id: string) {
       bankName: app.bankName, institutionName: app.plaidInstitutionName,
       bankAccountName: app.plaidAccountName, bankAccountLastFour: app.plaidAccountMask?.slice(-4) ?? null,
       bankAccountType: app.plaidAccountSubtype, bankInfoMismatch: app.bankInfoMismatch,
-      documents: app.documents.map(d => ({ name: d.fileName, type: d.documentType, uploadedAt: d.createdAt.toISOString() })),
+      documents: app.documents.map(d => ({ id: d.id, name: d.fileName, type: d.documentType, uploadedAt: d.createdAt.toISOString(), size: d.fileSize, mimeType: d.mimeType, url: storage.getUrl(d.storagePath) })),
     },
     ...balance,
     ...paymentProgress(app.payments),
