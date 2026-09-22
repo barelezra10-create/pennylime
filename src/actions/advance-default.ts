@@ -15,6 +15,7 @@ export async function markAdvanceDefault(applicationId: string) {
       data: { status: "DEFAULTED" },
     });
     if (!result.count) return false;
+    await tx.collectionCase.updateMany({ where: { applicationId }, data: { workspaceOverride: null } });
     await tx.collectionEvent.create({ data: {
       applicationId, eventType: "DEFAULTED", performedBy: auth.email,
       notes: "Manually moved from Active to Default",

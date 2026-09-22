@@ -1,13 +1,13 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ session: vi.fn(), app: vi.fn(), contact: vi.fn(), rule: vi.fn() }));
+const m = vi.hoisted(() => ({ session: vi.fn(), app: vi.fn(), contact: vi.fn(), rule: vi.fn(), transaction: vi.fn() }));
 vi.mock("next-auth", () => ({ getServerSession: m.session }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
-vi.mock("@/lib/db", () => ({ prisma: {
+vi.mock("@/lib/db", () => ({ prisma: { $transaction: m.transaction,
  application: { findUnique: m.app }, contact: { findFirst: m.contact }, loanRule: { findFirst: m.rule },
 } }));
 vi.mock("@/lib/collection-history", () => ({ collectionCommunications: vi.fn().mockResolvedValue([]) }));
 vi.mock("@/lib/collections-ladder", () => ({ buildCollectionsTimeline: () => ({ upcoming: [] }) }));
-import { getCollectionAccount } from "./collections-workspace";
+import { getCollectionAccount, moveCollectionToActive } from "./collections-workspace";
 beforeEach(() => {
  vi.clearAllMocks();
  m.session.mockResolvedValue({user:{email:"support@example.com",role:"SUPPORT"}});
@@ -38,4 +38,19 @@ it("handles absent address and CRM details",async()=>{
 });
 it("does not expose profiles to unauthenticated requests",async()=>{
  m.session.mockResolvedValue(null);await expect(getCollectionAccount("a1")).rejects.toThrow("Not authenticated");expect(m.app).not.toHaveBeenCalled();
+});
+
+it("moves an authenticated support account without changing payments or financial status",async()=>{
+ const tx={application:{findUnique:vi.fn().mockResolvedValue({status:"DEFAULTED"})},collectionCase:{upsert:vi.fn()},collectionEvent:{create:vi.fn()},auditLog:{create:vi.fn()}};
+ m.transaction.mockImplementation(fn=>fn(tx));
+ expect(await moveCollectionToActive("a1")).toEqual({ok:true});
+ expect(tx.collectionCase.upsert).toHaveBeenCalledWith({where:{applicationId:"a1"},create:{applicationId:"a1",workspaceOverride:"active"},update:{workspaceOverride:"active"}});
+ expect(tx.collectionEvent.create).toHaveBeenCalled();expect(tx.auditLog.create).toHaveBeenCalled();
+});
+it("rejects moving a closed account",async()=>{
+ const upsert=vi.fn();m.transaction.mockImplementation(fn=>fn({application:{findUnique:vi.fn().mockResolvedValue({status:"PAID_OFF"})},collectionCase:{upsert}}));
+ await expect(moveCollectionToActive("a1")).rejects.toThrow("no longer available");expect(upsert).not.toHaveBeenCalled();
+});
+it("requires authentication before moving an account",async()=>{
+ m.session.mockResolvedValue(null);await expect(moveCollectionToActive("a1")).rejects.toThrow("Not authenticated");expect(m.transaction).not.toHaveBeenCalled();
 });

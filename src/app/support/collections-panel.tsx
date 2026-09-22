@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   getCollectionsQueue,
+  moveCollectionToActive,
   getCollectionAccount,
   updateCollectionCase,
   createCollectionTicket,
@@ -374,6 +375,8 @@ export function CollectionsPanel({
                 <AccountDetail
                   key={detail.id}
                   detail={detail}
+                  workspace={workspace}
+                  onMoved={async () => { setSelected(null); setDetail(null); await load(); }}
                   me={me}
                   canManage={canManage}
                   refresh={refresh}
@@ -389,11 +392,15 @@ export function CollectionsPanel({
 
 function AccountDetail({
   detail: d,
+  workspace,
+  onMoved,
   me,
   canManage,
   refresh,
 }: {
   detail: CollectionDetail;
+  workspace: SupportWorkspace;
+  onMoved: () => Promise<void>;
   me: string | null;
   canManage: boolean;
   refresh: () => Promise<void>;
@@ -442,11 +449,24 @@ function AccountDetail({
           <button className="mt-2 text-xs font-semibold text-green-700 underline" onClick={() => setTab("Client details")}>View all client details</button>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <CallButton
+          <div className="flex flex-wrap items-center justify-end gap-2">
+                    <CallButton
             phone={d.phone}
             name={d.name}
             contactId={d.contactId ?? undefined}
           />
+          {workspace === "collections" && <button
+            className={buttonClass}
+            disabled={busy}
+            onClick={async () => {
+              if (busy) return;
+              setBusy(true); setError(null);
+              try { await moveCollectionToActive(d.id); await onMoved(); }
+              catch (err) { setError(err instanceof Error ? err.message : "Could not move this client. Please try again."); }
+              finally { setBusy(false); }
+            }}
+          >{busy ? "Updating…" : "Move to active"}</button>}
+          </div>
           {numbers.length > 1 && (
             <select
               aria-label="Outbound caller ID"

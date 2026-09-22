@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ auth: vi.fn(), update: vi.fn(), event: vi.fn(), audit: vi.fn(), app: vi.fn(), risk: vi.fn(), refresh: vi.fn() }));
+const m = vi.hoisted(() => ({ clearOverride: vi.fn(), auth: vi.fn(), update: vi.fn(), event: vi.fn(), audit: vi.fn(), app: vi.fn(), risk: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/auth-helpers", () => ({ requireNonSupportRole: m.auth }));
 vi.mock("next/cache", () => ({ revalidatePath: m.refresh }));
 vi.mock("@/lib/db", () => ({ prisma: { $transaction: async (fn: (tx: unknown) => unknown) => fn({
   application: { updateMany: m.update, findUniqueOrThrow: m.app },
+  collectionCase: { updateMany: m.clearOverride },
   collectionEvent: { create: m.event }, auditLog: { create: m.audit }, riskProfile: { create: m.risk },
 }) } }));
 import { markAdvanceDefault } from "./advance-default";
@@ -24,6 +25,7 @@ describe("manual Default", () => {
     m.update.mockResolvedValue({ count: 1 }); m.app.mockResolvedValue({ ssnHash: null });
     expect((await markAdvanceDefault("a")).success).toBe(true);
     expect(m.event).toHaveBeenCalledWith({ data: expect.objectContaining({ applicationId: "a", eventType: "DEFAULTED", performedBy: "staff@example.com" }) });
+    expect(m.clearOverride).toHaveBeenCalledWith({ where: { applicationId: "a" }, data: { workspaceOverride: null } });
     expect(m.audit).toHaveBeenCalled(); expect(m.refresh).toHaveBeenCalled();
   });
 });

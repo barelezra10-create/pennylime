@@ -1529,6 +1529,7 @@ model JobApplicant {
 
 
 model CollectionCase {
+  workspaceOverride String?
   applicationId String @id
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   ownerEmail String?

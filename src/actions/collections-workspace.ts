@@ -83,6 +83,7 @@ export async function getCollectionsQueue(workspace: SupportWorkspace = "collect
         status: app.status,
         ...balance,
         ...paymentProgress(app.payments),
+        workspaceOverride: app.collectionCase?.workspaceOverride ?? null,
         ownerEmail: app.collectionCase?.ownerEmail ?? null,
         followUpAt: app.collectionCase?.followUpAt?.toISOString() ?? null,
         settlementStatus: app.settlements[0]?.status ?? null,
@@ -200,7 +201,8 @@ export async function getCollectionAccount(id: string) {
     ...balance,
     ...paymentProgress(app.payments),
     pausedUntil,
-    ownerEmail: app.collectionCase?.ownerEmail ?? null,
+    workspaceOverride: app.collectionCase?.workspaceOverride ?? null,
+        ownerEmail: app.collectionCase?.ownerEmail ?? null,
     followUpAt: app.collectionCase?.followUpAt?.toISOString() ?? null,
     bankBalance: app.bankBalance === null ? null : Number(app.bankBalance),
     bankBalanceUpdatedAt: app.lastPlaidRefresh?.toISOString() ?? null,
@@ -380,4 +382,27 @@ export async function chargeCollectionPayment(
     };
   const { chargePartialPayment } = await import("@/actions/payments");
   return chargePartialPayment(paymentId, amount);
+}
+
+
+export async function moveCollectionToActive(applicationId: string) {
+  const email = await staff();
+  await prisma.$transaction(async tx => {
+    const app = await tx.application.findUnique({ where: { id: applicationId }, select: { status: true } });
+    if (!app || !COLLECTION_ACCOUNT_STATUSES.includes(app.status)) throw new Error("This account is no longer available in the support workspace. Refresh and try again.");
+    await tx.collectionCase.upsert({
+      where: { applicationId },
+      create: { applicationId, workspaceOverride: "active" },
+      update: { workspaceOverride: "active" },
+    });
+    await tx.collectionEvent.create({ data: {
+      applicationId, eventType: "CASE_NOTE", performedBy: email,
+      notes: "Moved to Active clients for repayment follow-up. Balances, payment schedule, and financial status are unchanged.",
+    } });
+    await tx.auditLog.create({ data: {
+      action: "SUPPORT_MOVE_TO_ACTIVE", entityType: "APPLICATION", entityId: applicationId,
+      performedBy: email, details: JSON.stringify({ workspace: "active", status: app.status }),
+    } });
+  });
+  return { ok: true as const };
 }
