@@ -8,10 +8,11 @@ type Props = {
   contactId?: string;
   onVerified: () => void;
   onCancel?: () => void;
+  onSkip?: () => void;
   previewMode?: boolean;
 };
 
-export function PhoneVerification({ phone, contactId, onVerified, onCancel, previewMode }: Props) {
+export function PhoneVerification({ phone, contactId, onVerified, onCancel, onSkip, previewMode }: Props) {
   useEffect(() => {
     if (previewMode) {
       // Admin preview: skip Twilio entirely so the funnel can be navigated
@@ -123,18 +124,37 @@ export function PhoneVerification({ phone, contactId, onVerified, onCancel, prev
           ✓
         </div>
         <div>
-          <h3 className="text-[16px] font-bold text-black">Verify your phone number</h3>
+          <h3 className="text-[16px] font-bold text-black">Verify your phone number{onSkip ? " (optional)" : ""}</h3>
           <p className="text-[12px] text-[#71717a] mt-0.5">
-            We&apos;ll text a 6-digit code to <strong className="text-black">{phone}</strong>
+            If you choose &quot;Send code&quot;, we&apos;ll text a 6-digit code to <strong className="text-black">{phone}</strong>
           </p>
         </div>
       </div>
 
+      {onSkip && (
+        <div className="mb-4">
+          <p className="text-[13px] text-[#52525b]">
+            SMS verification is optional. You can apply and receive service without receiving texts.
+          </p>
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={sending || checking}
+            className="mt-3 w-full rounded-xl border border-[#15803d] px-4 py-3 text-[14px] font-semibold text-[#15803d] hover:bg-[#f0fdf4] disabled:opacity-60"
+          >
+            Continue without SMS verification
+          </button>
+        </div>
+      )}
+
       {step === "send" && (
         <div className="space-y-4">
           <p className="text-[13px] text-[#71717a]">
-            By tapping &quot;Send code&quot; you agree to receive an automated SMS from PennyLime.
-            Standard message and data rates may apply. Reply STOP to opt out.
+            By tapping &quot;Send code&quot; you request a one-time verification text from PennyLime (770 Technology LLC).
+            This does not subscribe you to ongoing account or payment texts.
+            Message and data rates may apply. Reply STOP to opt out, HELP for help.
+            See our <a href="/sms-terms" target="_blank" rel="noopener noreferrer" className="underline">SMS Terms</a> and{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
           </p>
           <div className="flex items-center gap-2">
             <button

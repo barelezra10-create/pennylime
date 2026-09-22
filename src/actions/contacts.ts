@@ -267,6 +267,7 @@ export async function upsertContact(data: {
     },
     create: {
       ...data,
+      smsOptIn: false,
       stage: "LEAD",
     },
   });

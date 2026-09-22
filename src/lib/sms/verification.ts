@@ -224,7 +224,8 @@ export async function checkVerificationCode(opts: {
     if (opts.contactId) {
       await prisma.contact.update({
         where: { id: opts.contactId },
-        data: { phoneVerifiedAt: new Date(), smsOptIn: true },
+        // A requested verification code is not consent to ongoing SMS.
+        data: { phoneVerifiedAt: new Date() },
       }).catch(() => {});
     } else {
       await prisma.contact.updateMany({
@@ -258,7 +259,8 @@ export async function checkVerificationCode(opts: {
   if (opts.contactId) {
     await prisma.contact.update({
       where: { id: opts.contactId },
-      data: { phoneVerifiedAt: new Date(), smsOptIn: true },
+      // A requested verification code is not consent to ongoing SMS.
+      data: { phoneVerifiedAt: new Date() },
     }).catch(() => {});
   } else {
     // Try to find contact by phone and mark verified

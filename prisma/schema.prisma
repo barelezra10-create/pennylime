@@ -608,7 +608,7 @@ model Contact {
   assignedRep     AdminUser? @relation(fields: [assignedRepId], references: [id])
   source          String?
   pennyClickId    String?
-  smsOptIn        Boolean   @default(true)
+  smsOptIn        Boolean   @default(false)
   smsOptOutAt     DateTime?
   phoneVerifiedAt DateTime?
   utmSource       String?

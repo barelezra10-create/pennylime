@@ -708,7 +708,7 @@ function StepInfo({
           />
           {errors.phone && <p className="mt-1 text-[12px] text-red-500">{errors.phone}</p>}
 
-          {/* SMS opt-in — required for Twilio A2P/toll-free verification. Explicit,
+          {/* Optional SMS opt-in. Explicit,
               unchecked by default. Consent is stored on the contact and gates all
               outbound texts. */}
           <label className="mt-2.5 flex items-start gap-2.5 cursor-pointer">
@@ -719,9 +719,9 @@ function StepInfo({
               className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#c4c4c8] text-[#15803d] focus:ring-[#15803d]/30"
             />
             <span className="text-[12px] leading-snug text-[#52525b]">
-              I agree to receive automated account and payment text messages from PennyLime (770 Technology LLC) at this number, including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices.
+              <strong>Optional SMS updates.</strong>{" "}I agree to receive automated account and payment text messages from PennyLime (770 Technology LLC) at this number, including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices.
               Msg &amp; data rates may apply, msg frequency varies. Reply STOP to opt out, HELP for help.
-              Consent is optional and is not a condition of receiving an advance.
+              You can leave this unchecked, complete your application, and receive service without texts. Consent is not a condition of receiving an advance.
               See our <a href="/sms-terms" target="_blank" className="underline text-[#15803d]">SMS Terms</a> and{" "}
               <a href="/privacy" target="_blank" className="underline text-[#15803d]">Privacy Policy</a>.
             </span>
@@ -998,7 +998,7 @@ function StepPhoneOnly({
         What&apos;s your phone number?
       </h2>
       <p className="mt-2 text-[15px] text-[#52525b]">
-        We&apos;ll send a verification code to this number.
+        You can choose to verify this number by text on the next screen, or continue without SMS verification.
       </p>
 
       <div className="mt-8">
@@ -3813,6 +3813,11 @@ function ApplyPageInner() {
                   phone={form.phone}
                   contactId={pendingPhoneVerification.contactId}
                   previewMode={previewMode}
+                  onSkip={() => {
+                    const next = pendingPhoneVerification.nextStep;
+                    setPendingPhoneVerification(null);
+                    setStep(next);
+                  }}
                   onVerified={() => {
                     const next = pendingPhoneVerification.nextStep;
                     setPendingPhoneVerification(null);
