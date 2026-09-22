@@ -10,9 +10,10 @@ export async function withdrawApplication(id: string): Promise<{ ok: boolean; er
     const auth = await requireNonSupportRole();
     if (!auth.ok) return { ok: false, error: auth.error };
 
-    await prisma.application.update({
-      where: { id },
-      data: { status: "REJECTED" },
+    await prisma.$transaction(async tx => {
+      await tx.application.update({where:{id},data:{status:"REJECTED"}});
+      // Preserve in-flight transfers for processor reconciliation, stop unsent installments.
+      await tx.payment.updateMany({where:{applicationId:id,status:{in:["PENDING","FAILED","LATE","OVERDUE"]},goachTransactionUuid:null,increaseTransferId:null,achTransferId:null},data:{status:"CANCELED"}});
     });
 
     await prisma.contact.updateMany({
@@ -40,9 +41,10 @@ export async function cancelApplication(id: string): Promise<{ ok: boolean; erro
     const auth = await requireNonSupportRole();
     if (!auth.ok) return { ok: false, error: auth.error };
 
-    await prisma.application.update({
-      where: { id },
-      data: { status: "REJECTED" },
+    await prisma.$transaction(async tx => {
+      await tx.application.update({where:{id},data:{status:"REJECTED"}});
+      // Preserve in-flight transfers for processor reconciliation, stop unsent installments.
+      await tx.payment.updateMany({where:{applicationId:id,status:{in:["PENDING","FAILED","LATE","OVERDUE"]},goachTransactionUuid:null,increaseTransferId:null,achTransferId:null},data:{status:"CANCELED"}});
     });
 
     await prisma.contact.updateMany({

@@ -1,3 +1,4 @@
+import { AUTOMATED_DEBIT_STATUSES } from "@/lib/debit-eligibility";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyCronSecret } from "@/lib/cron-auth";
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest) {
   const failedPayments = await prisma.payment.findMany({
     where: {
       status: "FAILED",
+      application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } },
       dueDate: { gte: cutoffDate },
     },
     include: { application: true },
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const claimed = await prisma.payment.updateMany({
-      where: { id: payment.id, status: payment.status, supersededBySettlementId: null },
+      where: { id: payment.id, status: payment.status, supersededBySettlementId: null, application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } } },
       data: { status: "PROCESSING" },
     });
     if (!claimed.count) continue;

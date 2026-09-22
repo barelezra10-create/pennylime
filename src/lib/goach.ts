@@ -1,5 +1,6 @@
 // src/lib/goach.ts
 import "server-only";
+import {debitEligibilityError} from "@/lib/debit-eligibility";
 import { readFile } from "node:fs/promises";
 import { goachEnv } from "@/lib/payment-processor";
 
@@ -112,6 +113,10 @@ type TransactionInput = { bankAccountUuid: string; amountCents: number; descript
 
 export async function createTransaction(input: TransactionInput): Promise<{ ok: true; uuid: string; transactionId: string; status: string; depositDate: string | null; effectiveDate: string | null } | { ok: false; error: string; skipped?: boolean }> {
   if (input.type === "Debit") {
+    const { prisma } = await import("@/lib/db");
+    const app = await prisma.application.findUnique({where:{id:input.applicationId},select:{status:true,fundedAt:true}});
+    const eligibilityError = debitEligibilityError(app);
+    if (eligibilityError) return {ok:false,skipped:true,error:eligibilityError};
     if (input.paymentId) {
       const { prisma } = await import("@/lib/db");
       const payment = await prisma.payment.findUnique({ where: { id: input.paymentId }, select: { applicationId: true, supersededBySettlementId: true, settlementId: true, dueDate: true, status: true, amount: true, lateFee: true, collectedAmount: true } });

@@ -31,5 +31,5 @@ it.each([{ run: process, status: "PENDING" }, { run: retry, status: "FAILED" }])
   mocks.claim.mockResolvedValue({ count: 0 });
   await run(new NextRequest("https://example.com/cron", { method: "POST" }));
   expect(mocks.debit).not.toHaveBeenCalled();
-  expect(mocks.claim).toHaveBeenCalledWith({ where: { id: "old", status, supersededBySettlementId: null }, data: { status: "PROCESSING" } });
+  expect(mocks.claim).toHaveBeenCalledWith({ where: { id: "old", status, supersededBySettlementId: null, application: {status:{in:["FUNDED","ACTIVE","REPAYING","LATE"]},fundedAt:{not:null}} }, data: { status: "PROCESSING" } });
 });

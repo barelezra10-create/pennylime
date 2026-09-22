@@ -1,3 +1,4 @@
+import { AUTOMATED_DEBIT_STATUSES } from "@/lib/debit-eligibility";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyCronSecret } from "@/lib/cron-auth";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     where: {
       status: "PENDING",
       dueDate: { lte: today },
-      application: { status: { notIn: ["COLLECTIONS", "DEFAULTED"] } },
+      application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } },
     },
     include: { application: true },
   });
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
   for (const payment of duePayments) {
     // Set to PROCESSING first to prevent double-debit
     const claimed = await prisma.payment.updateMany({
-      where: { id: payment.id, status: payment.status, supersededBySettlementId: null },
+      where: { id: payment.id, status: payment.status, supersededBySettlementId: null, application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } } },
       data: { status: "PROCESSING" },
     });
     if (!claimed.count) continue;

@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-const mocks = vi.hoisted(() => ({ check: vi.fn(), fetch: vi.fn(), payment: vi.fn(), agreement: vi.fn(), active: vi.fn() }));
-vi.mock("@/lib/db", () => ({ prisma: { payment: { findUnique: mocks.payment }, settlementAgreement: { findUnique: mocks.agreement, findFirst: mocks.active } } }));
+const mocks = vi.hoisted(() => ({ app: vi.fn(), check: vi.fn(), fetch: vi.fn(), payment: vi.fn(), agreement: vi.fn(), active: vi.fn() }));
+vi.mock("@/lib/db", () => ({ prisma: { application:{findUnique:mocks.app}, payment: { findUnique: mocks.payment }, settlementAgreement: { findUnique: mocks.agreement, findFirst: mocks.active } } }));
 vi.mock("@/lib/goach-balance-check", () => ({ checkGoachDebitBalance: mocks.check }));
 vi.mock("@/lib/payment-processor", () => ({ goachEnv: () => ({ originatorUuid: "origin", apiKey: "test", baseUrl: "https://processor.invalid" }) }));
 import { createTransaction } from "./goach";
-beforeEach(() => { vi.resetAllMocks(); vi.stubGlobal("fetch", mocks.fetch); mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { uuid: "tx" } }) }); });
+beforeEach(() => { vi.resetAllMocks(); mocks.app.mockResolvedValue({status:"REPAYING",fundedAt:new Date()}); vi.stubGlobal("fetch", mocks.fetch); mocks.fetch.mockResolvedValue({ ok: true, json: async () => ({ data: { uuid: "tx" } }) }); });
 afterEach(() => vi.unstubAllGlobals());
 it("never contacts GoACH when the live check blocks a debit", async () => {
   mocks.check.mockResolvedValue({ ok: false, skipped: true, error: "Not enough available balance" });
@@ -54,4 +54,14 @@ it("rejects even a one-cent overcharge on a signed settlement installment", asyn
   mocks.agreement.mockResolvedValue({ status: "ACTIVE" });
   expect((await createTransaction({ type: "Debit", applicationId: "app", paymentId: "p", bankAccountUuid: "bank", amountCents: 7001 })).ok).toBe(false);
   expect(mocks.fetch).not.toHaveBeenCalled();
+});
+
+it.each(["REJECTED","PENDING","APPROVED","PAID","CANCELED"])("blocks %s applications before any balance or processor request",async status=>{
+ mocks.app.mockResolvedValue({status,fundedAt:new Date()});
+ expect(await createTransaction({type:"Debit",applicationId:"app",bankAccountUuid:"bank",amountCents:8509})).toMatchObject({ok:false,skipped:true});
+ expect(mocks.fetch).not.toHaveBeenCalled();expect(mocks.check).not.toHaveBeenCalled();
+});
+it("blocks unfunded advances even with an active status",async()=>{
+ mocks.app.mockResolvedValue({status:"REPAYING",fundedAt:null});
+ expect(await createTransaction({type:"Debit",applicationId:"app",bankAccountUuid:"bank",amountCents:5977})).toMatchObject({ok:false,skipped:true});expect(mocks.fetch).not.toHaveBeenCalled();
 });
