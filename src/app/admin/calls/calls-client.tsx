@@ -1,7 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { CallButton } from "@/components/admin/dialer/call-button";
+import { isMissedInbound } from "@/lib/voice/call-history";
 
 type Row = {
   id: string;
@@ -22,11 +25,18 @@ type Row = {
   createdAt: string;
 };
 
-export function CallsClient({ calls }: { calls: Row[] }) {
-  const [filter, setFilter] = useState<"all" | "outbound" | "voicemail" | "unheard">("all");
+export function CallsClient({ calls, inboundOnly = false }: { calls: Row[]; inboundOnly?: boolean }) {
+  const router = useRouter();
+  useEffect(() => {
+    const timer = setInterval(() => router.refresh(), 30000);
+    return () => clearInterval(timer);
+  }, [router]);
+  const [filter, setFilter] = useState<"all" | "inbound" | "missed" | "outbound" | "voicemail" | "unheard">(inboundOnly ? "inbound" : "all");
   const [heardIds, setHeardIds] = useState<Set<string>>(new Set());
 
   const rows = calls.filter((c) => {
+    if (filter === "inbound") return c.direction === "inbound";
+    if (filter === "missed") return isMissedInbound(c);
     if (filter === "outbound") return c.direction === "outbound";
     if (filter === "voicemail") return c.kind === "voicemail";
     if (filter === "unheard") return c.kind === "voicemail" && !c.heard && !heardIds.has(c.id);
@@ -44,24 +54,26 @@ export function CallsClient({ calls }: { calls: Row[] }) {
 
   return (
     <div>
-      <div className="flex gap-2 mb-4">
-        {(["all", "outbound", "voicemail", "unheard"] as const).map((f) => (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(inboundOnly ? (["inbound", "missed", "voicemail"] as const) : (["all", "inbound", "missed", "outbound", "voicemail", "unheard"] as const)).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
+            aria-pressed={filter === f}
             className={`rounded-full px-3 py-1 text-[12px] font-medium border ${
               filter === f
                 ? "bg-[#18181b] text-white border-[#18181b]"
                 : "bg-white text-[#3f3f46] border-[#e4e4e7]"
             }`}
           >
-            {f === "all" ? "All" : f === "outbound" ? "Outbound" : f === "voicemail" ? "Voicemails" : "Unheard"}
+            {f === "inbound" ? `Inbound calls (${calls.filter(c => c.direction === "inbound").length})` : f === "missed" ? `Missed calls (${calls.filter(isMissedInbound).length})` : f === "all" ? "All" : f === "outbound" ? "Outbound" : f === "voicemail" ? "Voicemails" : "Unheard"}
           </button>
         ))}
+        <button onClick={() => router.refresh()} className="ml-auto text-[12px] text-[#2563eb] hover:underline">Refresh calls</button>
       </div>
 
-      <div className="space-y-2">
-        {rows.length === 0 && <p className="text-[13px] text-[#71717a]">No calls.</p>}
+      <div className="space-y-2 max-h-[420px] overflow-y-auto">
+        {rows.length === 0 && <p className="text-[13px] text-[#71717a]">{filter === "missed" ? "No missed calls." : "No calls."}</p>}
         {rows.map((c) => {
           const unheard = c.kind === "voicemail" && !c.heard && !heardIds.has(c.id);
           return (
@@ -73,7 +85,7 @@ export function CallsClient({ calls }: { calls: Row[] }) {
                 <div className="flex items-center gap-2">
                   {unheard && <span className="h-2 w-2 rounded-full bg-[#2563eb]" />}
                   <span className="font-medium text-[#18181b]">
-                    {c.direction === "outbound" ? "Outbound" : c.kind === "voicemail" ? "Voicemail" : "Inbound"}
+                    {c.direction === "outbound" ? "Outbound" : isMissedInbound(c) ? "Missed call" : "Inbound"}
                   </span>
                   {c.contactId ? (
                     <Link href={`/admin/contacts/${c.contactId}`} className="text-[#2563eb] hover:underline">
@@ -88,6 +100,12 @@ export function CallsClient({ calls }: { calls: Row[] }) {
                   {new Date(c.createdAt).toLocaleString()}
                   {c.durationSec ? ` (${c.durationSec}s)` : ""}
                 </span>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[12px] text-[#71717a]">
+                  {c.direction === "inbound" ? c.fromNumber : c.toNumber} · {c.kind === "voicemail" ? (c.hasRecording ? "Voicemail available" : "Sent to voicemail") : c.status.replace(/-/g, " ")}
+                </p>
+                {c.direction === "inbound" && /^\+?\d{7,15}$/.test(c.fromNumber) && <CallButton phone={c.fromNumber} name={c.contactName || c.fromNumber} contactId={c.contactId || undefined} />}
               </div>
               {c.transcription && (
                 <p className="mt-1.5 text-[12px] text-[#3f3f46] italic">&ldquo;{c.transcription}&rdquo;</p>

@@ -19,7 +19,7 @@ export default async function CallsPage() {
 
   return (
     <div>
-      <PageHeader title="Calls" description="Outbound calls and inbound voicemails" />
+      <PageHeader title="Calls" description="Inbound, missed, outbound calls and voicemails" />
       <CallsClient
         calls={calls.map((c) => ({
           id: c.id,
