@@ -960,12 +960,16 @@ function StepEmail({
 function StepPhoneOnly({
   phone,
   setPhone,
+  smsConsent,
+  setSmsConsent,
   errors,
   onNext,
   onBack,
 }: {
   phone: string;
   setPhone: (v: string) => void;
+  smsConsent: boolean;
+  setSmsConsent: (v: boolean) => void;
   errors: Record<string, string>;
   onNext: () => void;
   onBack: () => void;
@@ -1013,6 +1017,21 @@ function StepPhoneOnly({
           className={inputClass("phone")}
         />
         {errors.phone && <p className="mt-1 text-[12px] text-red-500">{errors.phone}</p>}
+          <label className="mt-2.5 flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={smsConsent}
+              onChange={(e) => setSmsConsent(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#c4c4c8] text-[#15803d] focus:ring-[#15803d]/30"
+            />
+            <span className="text-[12px] leading-snug text-[#52525b]">
+              <strong>Optional SMS updates.</strong>{" "}I agree to receive automated account and payment text messages from PennyLime (770 Technology LLC) at this number, including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices.
+              Msg &amp; data rates may apply, msg frequency varies. Reply STOP to opt out, HELP for help.
+              You can leave this unchecked, complete your application, and receive service without texts. Consent is not a condition of receiving an advance.
+              See our <a href="/sms-terms" target="_blank" className="underline text-[#15803d]">SMS Terms</a> and{" "}
+              <a href="/privacy" target="_blank" className="underline text-[#15803d]">Privacy Policy</a>.
+            </span>
+          </label>
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-3">
@@ -3892,6 +3911,8 @@ function ApplyPageInner() {
                         key="phone"
                         phone={form.phone}
                         setPhone={(v) => setForm({ ...form, phone: v })}
+                        smsConsent={form.smsConsent}
+                        setSmsConsent={(v) => setForm({ ...form, smsConsent: v })}
                         errors={errors}
                         onNext={async () => {
                           try {
@@ -4113,6 +4134,8 @@ function ApplyPageInner() {
                   key="phone"
                   phone={form.phone}
                   setPhone={(v) => setForm({ ...form, phone: v })}
+                        smsConsent={form.smsConsent}
+                        setSmsConsent={(v) => setForm({ ...form, smsConsent: v })}
                   errors={errors}
                   onNext={async () => {
                     try {
