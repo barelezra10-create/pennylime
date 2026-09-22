@@ -19,6 +19,13 @@ async function staff() {
   if (!session?.user?.email) throw new Error("Not authenticated");
   return session.user.email;
 }
+const supportContactSelect = {
+  id: true, email: true, phone: true, stage: true, source: true,
+  smsOptIn: true, smsOptOutAt: true, phoneVerifiedAt: true,
+  createdAt: true, tags: { select: { tag: true } },
+  assignedRep: { select: { name: true, email: true } },
+} satisfies Prisma.ContactSelect;
+
 const paymentSelect = {
   id: true,
   paymentNumber: true,
@@ -103,8 +110,19 @@ export async function getCollectionAccount(id: string) {
       status: true,
       bankBalance: true,
       lastPlaidRefresh: true,
+      addressStreet: true, addressCity: true, addressState: true, addressZip: true,
+      dateOfBirth: true, workerType: true, businessType: true, platform: true,
+      workStartMonth: true, workStartYear: true, workVerificationStatus: true,
+      advancePurpose: true, advancePurposeDetail: true,
+      monthlyIncome: true, refinedMonthlyIncome: true, avgWeeklyIncome: true,
+      loanAmount: true, loanTermMonths: true, paymentFrequency: true,
+      fundedAmount: true, createdAt: true, approvedAt: true, fundedAt: true, acceptedAt: true,
+      bankName: true, plaidInstitutionName: true, plaidAccountName: true,
+      plaidAccountMask: true, plaidAccountSubtype: true, bankInfoMismatch: true,
+      plaidIdentityName: true, plaidIdentityAddress: true, plaidIdentityEmail: true, plaidIdentityPhone: true,
+      documents: { select: { fileName: true, documentType: true, createdAt: true }, orderBy: { createdAt: "desc" } },
       collectionCase: true,
-      contact: { select: { id: true } },
+      contact: { select: supportContactSelect },
       payments: {
         select: { ...paymentSelect, increaseLastError: true, retryCount: true, attempts: { orderBy: { attemptNumber: "desc" }, select: { id: true, attemptNumber: true, initiatedAt: true, initiatedBy: true, amount: true, increaseTransferStatus: true, finalStatus: true, settledAt: true, returnReason: true } } },
         orderBy: [{ dueDate: "asc" }, { paymentNumber: "asc" }],
@@ -114,7 +132,7 @@ export async function getCollectionAccount(id: string) {
     },
   });
   if (!app) throw new Error("Account not found");
-  const contact = app.contact ?? await prisma.contact.findFirst({ where: { email: { equals: app.email, mode: "insensitive" } }, select: { id: true } });
+  const contact = app.contact ?? await prisma.contact.findFirst({ where: { email: { equals: app.email, mode: "insensitive" } }, select: supportContactSelect });
   const communications = await collectionCommunications({ contactId: contact?.id ?? null, email: app.email, phone: app.phone });
   const payments = app.payments.map((p) => ({
     ...p,
@@ -149,6 +167,35 @@ export async function getCollectionAccount(id: string) {
     phone: app.phone,
     status: app.status,
     contactId: contact?.id ?? null,
+    profile: {
+      address: [app.addressStreet, [app.addressCity, app.addressState, app.addressZip].filter(Boolean).join(", ")].filter(Boolean).join("\n") || null,
+      dateOfBirth: app.dateOfBirth,
+      contactEmail: contact?.email ?? null, contactPhone: contact?.phone ?? null,
+      stage: contact?.stage ?? null, source: contact?.source ?? null,
+      assignedRep: contact?.assignedRep?.name || contact?.assignedRep?.email || null,
+      tags: contact?.tags.map(t => t.tag) ?? [],
+      smsOptIn: contact?.smsOptIn ?? null,
+      smsOptOutAt: contact?.smsOptOutAt?.toISOString() ?? null,
+      phoneVerifiedAt: contact?.phoneVerifiedAt?.toISOString() ?? null,
+      contactCreatedAt: contact?.createdAt?.toISOString() ?? null,
+      bankIdentityName: app.plaidIdentityName, bankIdentityAddress: app.plaidIdentityAddress,
+      bankIdentityEmail: app.plaidIdentityEmail, bankIdentityPhone: app.plaidIdentityPhone,
+      workerType: app.workerType, businessType: app.businessType, platform: app.platform,
+      workStarted: app.workStartYear ? [app.workStartMonth, app.workStartYear].filter(Boolean).join("/") : null,
+      workVerificationStatus: app.workVerificationStatus,
+      advancePurpose: [app.advancePurpose, app.advancePurposeDetail].filter(Boolean).join(" - ") || null,
+      monthlyIncome: app.monthlyIncome === null ? null : Number(app.monthlyIncome),
+      refinedMonthlyIncome: app.refinedMonthlyIncome === null ? null : Number(app.refinedMonthlyIncome),
+      avgWeeklyIncome: app.avgWeeklyIncome === null ? null : Number(app.avgWeeklyIncome),
+      requestedAmount: Number(app.loanAmount), termMonths: app.loanTermMonths, paymentFrequency: app.paymentFrequency,
+      fundedAmount: app.fundedAmount === null ? null : Number(app.fundedAmount),
+      appliedAt: app.createdAt.toISOString(), approvedAt: app.approvedAt?.toISOString() ?? null,
+      fundedAt: app.fundedAt?.toISOString() ?? null, acceptedAt: app.acceptedAt?.toISOString() ?? null,
+      bankName: app.bankName, institutionName: app.plaidInstitutionName,
+      bankAccountName: app.plaidAccountName, bankAccountLastFour: app.plaidAccountMask?.slice(-4) ?? null,
+      bankAccountType: app.plaidAccountSubtype, bankInfoMismatch: app.bankInfoMismatch,
+      documents: app.documents.map(d => ({ name: d.fileName, type: d.documentType, uploadedAt: d.createdAt.toISOString() })),
+    },
     ...balance,
     ...paymentProgress(app.payments),
     pausedUntil,

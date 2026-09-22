@@ -438,6 +438,8 @@ function AccountDetail({
           <p className="mt-1 break-all text-xs text-zinc-500">
             {d.email} · {d.phone || "No phone number"}
           </p>
+          <p className="mt-2 whitespace-pre-line text-sm text-zinc-600">{d.profile.address || "Address not provided"}</p>
+          <button className="mt-2 text-xs font-semibold text-green-700 underline" onClick={() => setTab("Client details")}>View all client details</button>
         </div>
         <div className="flex flex-col items-end gap-2">
           <CallButton
@@ -488,7 +490,7 @@ function AccountDetail({
         </p>
       )}
       <div className="mb-5 flex gap-1 overflow-x-auto border-b border-zinc-200">
-        {["Overview", "Email", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
+        {["Overview", "Client details", "Email", "Communications", "Failed payments", "Settlement", "Payments", "History"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -518,6 +520,7 @@ function AccountDetail({
         <div className="flex flex-wrap gap-x-6 gap-y-2"><span>Collected <strong>{money(d.collected)}</strong></span><span>Remaining <strong>{money(d.remaining)}</strong></span><span>{d.paidCount} paid · {d.processingCount} processing · {d.failedCount} failed/returned</span></div>
         <p className="mt-2 text-zinc-500">{d.overdue > 0 ? `${d.missedCount} overdue payments · ${money(d.overdue)} past due` : d.processing ? "Payment processing" : "No overdue payments"}{d.nextPaymentDate ? ` · Next unpaid: ${date(d.nextPaymentDate)} (${money(d.nextPaymentAmount || 0)})` : ""}</p>
       </div>
+      {tab === "Client details" && <ClientDetails detail={d} />}
       {tab === "Overview" && (
         <div className="space-y-5">
           <div className="rounded-xl border border-zinc-200 bg-white p-4">
@@ -1124,4 +1127,62 @@ function AccountEmail({detail:d,refresh}:{detail:CollectionDetail;refresh:()=>Pr
   {!messages.length&&<p className="text-sm text-zinc-500">No stored messages yet.</p>}
   {messages.map(r=><article key={r.id} className="rounded-xl border border-zinc-200 bg-white p-4"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-semibold">{r.title}</p>{r.status&&<Badge text={r.status}/>}</div><p className="mt-2 whitespace-pre-wrap break-words text-sm">{r.body}</p><p className="mt-2 text-xs text-zinc-500">{new Date(r.date).toLocaleString()}{r.by?` · ${r.by}`:""}</p>{r.id.startsWith("email:")&&<button disabled={busy} className={`${buttonClass} mt-2`} onClick={()=>{setReplyId(r.id.slice(6));setSubject(`Re: ${r.title}`);setNotice("");}}>Reply</button>}</article>)}
  </div>;
+}
+
+
+function ClientDetails({ detail: d }: { detail: CollectionDetail }) {
+  const p = d.profile;
+  const amount = (value: number | null) => value === null ? null : money(value);
+  const when = (value: string | null) => value ? date(value) : null;
+  const sections: { title: string; rows: [string, string | null][] }[] = [
+    { title: "Contact and personal details", rows: [
+      ["Full name", d.name], ["Email", d.email], ["Phone", d.phone],
+      ["Home address", p.address], ["Date of birth", p.dateOfBirth],
+      ["CRM email", p.contactEmail], ["CRM phone", p.contactPhone],
+      ["SMS consent", p.smsOptIn === null ? "Not recorded" : p.smsOptIn ? "Opted in" : "Not opted in"],
+      ["SMS opt-out date", when(p.smsOptOutAt)], ["Phone verified", when(p.phoneVerifiedAt)],
+    ] },
+    { title: "Contact details from bank records", rows: [
+      ["Account holder name", p.bankIdentityName], ["Address", p.bankIdentityAddress],
+      ["Email", p.bankIdentityEmail], ["Phone", p.bankIdentityPhone],
+    ] },
+    { title: "Work and income", rows: [
+      ["Work type", p.workerType], ["Business type", p.businessType], ["Platform", p.platform],
+      ["Work started", p.workStarted], ["Work verification", p.workVerificationStatus],
+      ["Monthly income", amount(p.monthlyIncome)], ["Refined monthly income", amount(p.refinedMonthlyIncome)],
+      ["Average weekly income", amount(p.avgWeeklyIncome)], ["Advance purpose", p.advancePurpose],
+    ] },
+    { title: "Application and relationship", rows: [
+      ["Account number", d.code], ["Status", d.status], ["CRM stage", p.stage],
+      ["Source", p.source], ["Assigned representative", p.assignedRep], ["Tags", p.tags.join(", ") || null],
+      ["Contact created", when(p.contactCreatedAt)], ["Application date", when(p.appliedAt)],
+      ["Requested amount", money(p.requestedAmount)], ["Requested term", `${p.termMonths} months`],
+      ["Payment frequency", p.paymentFrequency], ["Approved", when(p.approvedAt)],
+      ["Agreement accepted", when(p.acceptedAt)], ["Funded", when(p.fundedAt)], ["Funded amount", amount(p.fundedAmount)],
+    ] },
+    { title: "Bank account summary", rows: [
+      ["Bank provided by client", p.bankName], ["Linked institution", p.institutionName],
+      ["Account name", p.bankAccountName], ["Account type", p.bankAccountType],
+      ["Account ending", p.bankAccountLastFour ? `•••• ${p.bankAccountLastFour}` : null],
+      ["Bank information mismatch flagged", p.bankInfoMismatch ? "Yes" : "No"],
+      ["Last bank refresh", when(d.bankBalanceUpdatedAt)],
+    ] },
+  ];
+  return <div className="space-y-4">
+    {sections.map(section => <section key={section.title} className="rounded-xl border border-zinc-200 bg-white p-4">
+      <h3 className="text-sm font-semibold">{section.title}</h3>
+      <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+        {section.rows.map(([label, value]) => <div key={label} className="min-w-0">
+          <dt className="text-xs text-zinc-500">{label}</dt>
+          <dd className="mt-1 whitespace-pre-line break-words text-sm text-zinc-900">{value || "Not provided"}</dd>
+        </div>)}
+      </dl>
+    </section>)}
+    <section className="rounded-xl border border-zinc-200 bg-white p-4">
+      <h3 className="text-sm font-semibold">Documents on file</h3>
+      {p.documents.length ? <ul className="mt-3 divide-y divide-zinc-100">{p.documents.map((doc, index) => <li key={index} className="py-3">
+        <p className="break-words text-sm">{doc.name}</p><p className="mt-1 text-xs text-zinc-500">{doc.type} · {date(doc.uploadedAt)}</p>
+      </li>)}</ul> : <p className="mt-3 text-sm text-zinc-500">No documents on file.</p>}
+    </section>
+  </div>;
 }
