@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   outboundDialTwiml,
+  inboundSupportTwiml,
   whisperTwiml,
   inboundVoicemailTwiml,
   voicemailDoneTwiml,
@@ -64,5 +65,23 @@ describe("rejectTwiml", () => {
     const xml = rejectTwiml("Unable to place this call.");
     expect(xml).toContain("Unable to place this call.");
     expect(xml).toContain("<Hangup/>");
+  });
+});
+
+describe("inbound browser support", () => {
+  it("rings up to ten distinct agents and returns unanswered calls to the fallback", () => {
+    const xml = inboundSupportTwiml({ baseUrl: BASE, callSid: "CA-test", identities: Array.from({length:12},(_,i)=>`agent${i}`) });
+    expect(xml.match(/<Client>/g)).toHaveLength(10);
+    expect(xml).toContain('timeout="25"');
+    expect(xml).toContain('/api/voice/inbound-complete');
+    expect(xml).toContain('name="parentCallSid" value="CA-test"');
+    expect(xml).not.toContain('<Record');
+  });
+  it("takes voicemail immediately with no available agents", () => {
+    expect(inboundSupportTwiml({baseUrl:BASE,callSid:"CA-test",identities:[]})).toBe(inboundVoicemailTwiml({baseUrl:BASE}));
+  });
+  it("deduplicates and escapes client identities", () => {
+    const xml=inboundSupportTwiml({baseUrl:BASE,callSid:'CA<test',identities:['a&b','a&b']});
+    expect(xml.match(/<Client>/g)).toHaveLength(1);expect(xml).toContain('a&amp;b');expect(xml).toContain('CA&lt;test');
   });
 });

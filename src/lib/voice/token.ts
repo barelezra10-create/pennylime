@@ -12,6 +12,6 @@ export function mintVoiceToken(opts: {
     identity: opts.identity,
     ttl: 3600,
   });
-  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: opts.twimlAppSid }));
+  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: opts.twimlAppSid, incomingAllow: true }));
   return token.toJwt();
 }

@@ -28,7 +28,7 @@ function Timer({ since }: { since: number }) {
 }
 
 export function DialerPanel() {
-  const { state, activeCallerId, muted, hangUp, toggleMute, dismiss, saveWrapUp } = useDialer();
+  const { state, answerIncoming, rejectIncoming, activeCallerId, muted, hangUp, toggleMute, dismiss, saveWrapUp } = useDialer();
   const [outcome, setOutcome] = useState("answered");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -58,6 +58,13 @@ export function DialerPanel() {
       </div>
 
       <div className="mt-3">
+        {state.phase === "incoming" && <div>
+          <p className="text-sm font-semibold text-green-700">Incoming call</p>
+          <div className="mt-3 flex gap-2">
+            <button onClick={answerIncoming} className="flex-1 rounded-lg bg-green-700 py-2 text-sm font-semibold text-white">Answer</button>
+            <button onClick={rejectIncoming} className="flex-1 rounded-lg border border-zinc-300 py-2 text-sm font-semibold">Decline</button>
+          </div>
+        </div>}
         {state.phase === "connecting" && <p className="text-[13px] text-[#71717a]">Connecting...</p>}
         {state.phase === "ringing" && <p className="text-[13px] text-[#2563eb]">Ringing...</p>}
         {state.phase === "in-call" && (

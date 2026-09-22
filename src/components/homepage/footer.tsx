@@ -12,6 +12,7 @@ export function Footer() {
               Penny<span className="text-[#4ade80]">Lime<span className="text-[#4ade80]">.</span></span>
             </span>
             <p className="text-[13px] text-[#a1a1aa] mt-3 max-w-[260px]">Funding for drivers, sellers, and operators. Built for the way platforms pay.</p>
+            <a href="tel:+18886912706" className="mt-4 block text-[13px] text-white hover:underline">Call support: +1 (888) 691-2706</a>
           </div>
           <div>
             <h4 className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] mb-3">Company</h4>

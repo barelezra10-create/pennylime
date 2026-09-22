@@ -1,0 +1,11 @@
+import {beforeEach,it,expect,vi} from "vitest";
+const m=vi.hoisted(()=>({session:vi.fn(),update:vi.fn()}));
+vi.mock("next-auth",()=>({getServerSession:m.session}));
+vi.mock("@/lib/auth",()=>({authOptions:{}}));
+vi.mock("@/lib/db",()=>({prisma:{adminUser:{updateMany:m.update}}}));
+import {POST} from "./route";
+const request=(available:boolean,sessionId="browser-1")=>new Request("https://pennylime.com/api/voice/availability",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({available,sessionId})});
+beforeEach(()=>{vi.clearAllMocks();m.session.mockResolvedValue({user:{email:"agent@example.com"}});m.update.mockResolvedValue({count:1});});
+it("requires staff login",async()=>{m.session.mockResolvedValue(null);expect((await POST(request(true))).status).toBe(401);expect(m.update).not.toHaveBeenCalled();});
+it("expires availability after a short heartbeat window",async()=>{const now=Date.now();expect((await POST(request(true))).status).toBe(200);const call=m.update.mock.calls[0][0];expect(call.where).toEqual({email:"agent@example.com"});expect(call.data.voiceSessionId).toBe("browser-1");expect(call.data.voiceAvailableUntil.getTime()).toBeGreaterThanOrEqual(now+65000);});
+it("only clears availability owned by the current browser",async()=>{expect((await POST(request(false))).status).toBe(200);expect(m.update).toHaveBeenCalledWith({where:{email:"agent@example.com",voiceSessionId:"browser-1"},data:{voiceAvailableUntil:null}});});

@@ -2,11 +2,11 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { readVerifiedTwilioForm } from "@/lib/voice/signature";
 import { phoneCandidates } from "@/lib/voice/phone";
-import { inboundVoicemailTwiml, twimlResponse } from "@/lib/voice/twiml";
+import { inboundSupportTwiml, twimlResponse } from "@/lib/voice/twiml";
 
 export const dynamic = "force-dynamic";
 
-/** Toll-free inbound voice: greet and take a voicemail. */
+/** Ring available browser agents; fall back to voicemail. */
 export async function POST(req: NextRequest) {
   const verified = await readVerifiedTwilioForm(req, "/api/voice/inbound");
   if (!verified.ok) return verified.response;
@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
     select: { id: true },
   });
 
+  const agents = await prisma.adminUser.findMany({ where: { voiceAvailableUntil: { gt: new Date() } }, select: { email: true }, orderBy: { voiceAvailableUntil: "desc" }, take: 10 });
+
   if (p.CallSid) {
     await prisma.callLog.upsert({
       where: { twilioCallSid: p.CallSid },
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
         twilioCallSid: p.CallSid,
         contactId: contact?.id || null,
         direction: "inbound",
-        kind: "voicemail",
+        kind: agents.length ? "support" : "voicemail",
         fromNumber: p.From || "",
         toNumber: p.To || "",
         status: "in-progress",
@@ -35,5 +37,5 @@ export async function POST(req: NextRequest) {
   }
 
   const base = (process.env.APP_URL || process.env.NEXTAUTH_URL || "").replace(/\/$/, "");
-  return twimlResponse(inboundVoicemailTwiml({ baseUrl: base }));
+  return twimlResponse(inboundSupportTwiml({ baseUrl: base, identities: agents.map(a => a.email), callSid: p.CallSid || "" }));
 }

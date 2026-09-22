@@ -1,0 +1,11 @@
+import {beforeEach,it,expect,vi} from "vitest";
+import {NextRequest} from "next/server";
+const m=vi.hoisted(()=>({verify:vi.fn(),update:vi.fn()}));
+vi.mock("@/lib/voice/signature",()=>({readVerifiedTwilioForm:m.verify}));
+vi.mock("@/lib/db",()=>({prisma:{callLog:{updateMany:m.update}}}));
+import {POST} from "./route";
+const req=()=>new NextRequest("https://pennylime.com/api/voice/inbound-complete",{method:"POST"});
+beforeEach(()=>{vi.clearAllMocks();process.env.APP_URL="https://pennylime.com";});
+it.each(["no-answer","busy","failed","canceled"])("offers voicemail for %s",async status=>{m.verify.mockResolvedValue({ok:true,params:{CallSid:"CA-test",DialCallStatus:status}});const res=await POST(req());expect(await res.text()).toContain("<Record");expect(m.update.mock.calls[0][0].data.kind).toBe("voicemail");});
+it("ends answered calls without requesting a voicemail",async()=>{m.verify.mockResolvedValue({ok:true,params:{CallSid:"CA-test",DialCallStatus:"completed",DialCallDuration:"30"}});const text=await (await POST(req())).text();expect(text).toContain("<Hangup");expect(text).not.toContain("<Record");expect(m.update.mock.calls[0][0].data.durationSec).toBe(30);});
+it("rejects invalid Twilio signatures",async()=>{m.verify.mockResolvedValue({ok:false,response:new Response("Forbidden",{status:403})});expect((await POST(req())).status).toBe(403);expect(m.update).not.toHaveBeenCalled();});

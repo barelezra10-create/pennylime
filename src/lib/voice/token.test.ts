@@ -17,7 +17,7 @@ describe("mintVoiceToken", () => {
     const payload = decodePayload(jwt);
     expect(payload.grants.identity).toBe("bar@albert-capital.com");
     expect(payload.grants.voice.outgoing.application_sid).toBe("APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    expect(payload.grants.voice.incoming).toBeUndefined();
+    expect(payload.grants.voice.incoming.allow).toBe(true);
     expect(payload.exp - payload.iat).toBeLessThanOrEqual(3600);
   });
 });

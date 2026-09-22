@@ -5,6 +5,7 @@ import { getInboxBadges } from "@/actions/inbox-badges";
 import { countOpenTickets } from "@/actions/tickets";
 import { ChatsClient } from "@/app/admin/chats/chats-client";
 import { EmailsPanel } from "@/app/support/emails-panel";
+import { useDialer } from "@/components/admin/dialer/dialer-provider";
 import { CollectionsPanel } from "./collections-panel";
 import { TicketsPanel } from "@/app/support/tickets-panel";
 
@@ -19,6 +20,9 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 export function SupportShell({ me, canManage }: { me: string | null; canManage: boolean }) {
+  const { incomingEnabled, setIncomingEnabled, state: phoneState } = useDialer();
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("active");
   const [pendingChats, setPendingChats] = useState(0);
   const [unrepliedEmails, setUnrepliedEmails] = useState(0);
@@ -52,6 +56,17 @@ export function SupportShell({ me, canManage }: { me: string | null; canManage: 
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white p-4">
+        <div><p className="text-sm font-semibold">Support line: <a href="tel:+18886912706">+1 (888) 691-2706</a></p>
+          <p className="mt-1 text-xs text-zinc-500">{incomingEnabled ? (phoneState.phase === "idle" ? "Ready for incoming calls. Keep this tab open with sound on." : "Incoming calls enabled. Finish the current call and notes to receive the next call.") : "Enable incoming calls to answer clients in this browser. Unanswered calls go to voicemail."}</p>
+          {phoneError && <p role="alert" className="mt-1 text-xs text-red-700">{phoneError}</p>}
+        </div>
+        <button disabled={phoneBusy} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={async () => {
+          setPhoneBusy(true); setPhoneError("");
+          try { await setIncomingEnabled(!incomingEnabled); } catch (err) { setPhoneError(err instanceof Error ? err.message : "Could not connect the phone."); }
+          finally { setPhoneBusy(false); }
+        }}>{phoneBusy ? "Connecting…" : incomingEnabled ? "Go offline" : "Enable incoming calls"}</button>
+      </div>
       {/* Counter chips */}
       <div className="flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#e4e4e7] text-[12px] font-semibold text-[#0a0a0a]">

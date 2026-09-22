@@ -174,6 +174,9 @@ export default async function PortalDashboard() {
             </svg>
           </a>
         ) : null}
+        <a href="tel:+18886912706" className="flex items-center justify-between rounded-xl border border-[#e4e4e7] bg-white p-4 hover:bg-[#fafafa] transition-colors">
+          <div><div className="text-[13px] font-semibold text-[#0a0a0a]">Call support</div><div className="mt-0.5 text-[11px] text-[#71717a]">+1 (888) 691-2706</div></div>
+        </a>
         <a
           href="mailto:info@pennylime.com"
           className="flex items-center justify-between rounded-xl border border-[#e4e4e7] bg-white p-4 hover:bg-[#fafafa] transition-colors"

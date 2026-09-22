@@ -54,3 +54,14 @@ export function rejectTwiml(message: string): string {
 export function twimlResponse(xml: string): Response {
   return new Response(xml, { status: 200, headers: { "content-type": "text/xml" } });
 }
+
+
+export function inboundSupportTwiml(opts: { baseUrl: string; identities: string[]; callSid: string }): string {
+  const identities = [...new Set(opts.identities)].slice(0, 10);
+  if (!identities.length) return inboundVoicemailTwiml(opts);
+  const b = esc(opts.baseUrl.replace(/\/$/, ""));
+  return XML + `<Response><Say voice="Polly.Joanna">Thank you for calling PennyLime support. Please hold while we connect you.</Say>` +
+    `<Dial timeout="25" action="${b}/api/voice/inbound-complete" method="POST">` +
+    identities.map(identity => `<Client><Identity>${esc(identity)}</Identity><Parameter name="parentCallSid" value="${esc(opts.callSid)}"/></Client>`).join("") +
+    `</Dial></Response>`;
+}
