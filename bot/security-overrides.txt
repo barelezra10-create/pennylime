@@ -1,0 +1,3 @@
+# linkedin-api still constrains lxml to the vulnerable 5.x line.
+# Use the patched parser; validate client imports and HTML parsing before rollout.
+lxml>=6.1.0
