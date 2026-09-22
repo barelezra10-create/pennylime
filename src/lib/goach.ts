@@ -197,3 +197,12 @@ export async function dailyUpdate(pointer?: string | null): Promise<{ ok: true; 
     return { ok: false, error: e instanceof Error ? e.message : "GoACH network error" };
   }
 }
+
+/** Minimal processor evidence for reimbursements; never expose bank identifiers to browsers. */
+export async function getReimbursementTransaction(uuid: string) {
+ const r = await req("GET", `/ach_transactions/${encodeURIComponent(uuid)}`);
+ if (!r.ok) throw new Error("Could not verify the original transaction with GoACH.");
+ const amountCents = Math.round(Number(r.data.amount) * 100);
+ if (!Number.isSafeInteger(amountCents) || amountCents <= 0 || typeof r.data.bank_account_uuid !== "string") throw new Error("GoACH transaction evidence is incomplete.");
+ return {uuid:String(r.data.uuid),amountCents,bankAccountUuid:r.data.bank_account_uuid,type:String(r.data.transaction_type),status:String(r.data.current_status),descriptor:String(r.data.descriptor ?? "")};
+}

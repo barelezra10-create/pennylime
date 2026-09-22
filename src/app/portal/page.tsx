@@ -50,6 +50,8 @@ export default async function PortalDashboard() {
     redirect("/portal/login");
   }
 
+  const reimbursements = await prisma.reimbursement.findMany({where:{applicationId,status:{not:"DRAFT"}},select:{id:true,amountCents:true,status:true}});
+
   const fundedAmount = app.fundedAmount ? Number(app.fundedAmount) : Number(app.loanAmount);
   // Exclude WAIVED/CANCELED/RETURNED rows from totals + counts. They
   // represent payments collapsed into a payoff (or refunded) and would
@@ -113,6 +115,7 @@ export default async function PortalDashboard() {
           <StatusBadge status={app.status} offerStatus={app.offerStatus} />
         </div>
 
+        {reimbursements.length > 0 && <section className="mb-5 rounded-xl border bg-white p-5"><h2 className="font-semibold">Reimbursement agreements</h2>{reimbursements.map(r=><Link key={r.id} href={`/portal/reimbursements/${r.id}`} className="mt-3 block text-sm text-green-700">Review reimbursement {fmtMoney(r.amountCents/100)} · {r.status}</Link>)}</section>}
         {obligatedPayments.length > 0 && (
           <div className="mt-6">
             <div className="flex items-center justify-between text-[12px] mb-1.5">

@@ -1571,3 +1571,41 @@ model SettlementAgreement {
   @@index([applicationId, createdAt])
   @@index([status])
 }
+
+// Separate credit ledger: never reopens an advance or reuses its debit authorization.
+model Reimbursement {
+  id String @id @default(uuid())
+  applicationId String
+  customerName String
+  applicationCode String
+  amountCents Int
+  bankAccountUuid String
+  agreementText String
+  agreementHash String
+  status String @default("DRAFT")
+  createdBy String
+  createdAt DateTime @default(now())
+  sentAt DateTime?
+  sendStartedAt DateTime?
+  signedAt DateTime?
+  signedName String?
+  submittedAt DateTime?
+  creditUuid String? @unique
+  creditStatus String?
+  duplicateCents Int @default(0)
+  lastCheckedAt DateTime?
+  lastError String?
+  items ReimbursementItem[]
+  @@index([applicationId])
+}
+model ReimbursementItem {
+  id String @id @default(uuid())
+  reimbursementId String
+  reimbursement Reimbursement @relation(fields:[reimbursementId],references:[id])
+  paymentId String
+  transferUuid String @unique
+  amountCents Int
+  dueDate DateTime
+  originalStatus String
+  @@index([reimbursementId])
+}

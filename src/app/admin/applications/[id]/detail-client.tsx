@@ -767,6 +767,7 @@ export function DetailClient({
                 <p className="mt-1 text-sm font-mono font-semibold text-[#15803d] bg-[#f0f5f0] rounded-lg px-2.5 py-1 inline-block">
                   {application.applicationCode}
                 </p>
+                <Link href={`/admin/reimbursements?applicationId=${application.id}`} className="mt-2 block text-xs font-semibold text-green-700">Reimburse payments and review agreements</Link>
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.05em] text-[#a1a1aa] font-semibold">
