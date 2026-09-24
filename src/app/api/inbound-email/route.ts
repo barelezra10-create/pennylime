@@ -124,8 +124,8 @@ export async function POST(req: NextRequest) {
   const initialStatus = isAutoNoise ? "ARCHIVED" : "UNREAD";
 
   // Match contact by from email (case-insensitive).
-  const contact = await prisma.contact.findUnique({
-    where: { email: fromEmail },
+  const contact = await prisma.contact.findFirst({
+    where: { email: { equals: fromEmail, mode: "insensitive" } },
     select: { id: true, firstName: true, lastName: true, email: true, applicationId: true },
   });
 
@@ -166,6 +166,21 @@ export async function POST(req: NextRequest) {
     console.error("[inbound-email] InboundEmail insert failed:", err);
     return null;
   });
+
+  // Acknowledge only messages saved to the inbox. The forwarder retries
+  // non-2xx responses; returning success here would permanently lose replies.
+  if (!inboundEmailRow) {
+    if (payload.messageId) {
+      const existing = await prisma.inboundEmail.findUnique({
+        where: { messageId: payload.messageId },
+        select: { id: true },
+      });
+      if (existing) {
+        return Response.json({ ok: true, deduped: true, inboundEmailId: existing.id });
+      }
+    }
+    return Response.json({ error: "Could not save email. Please retry." }, { status: 503 });
+  }
 
   // AI-draft a suggested reply for common timing questions ("how long does it
   // take", "when will I hear back"). A human reviews + sends it from the inbox.

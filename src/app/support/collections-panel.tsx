@@ -1155,14 +1155,14 @@ function AccountEmail({detail:d,refresh}:{detail:CollectionDetail;refresh:()=>Pr
  async function send(){if(busy)return;setBusy(true);setError("");setNotice("");try{const r=await sendSupportAccountEmail({applicationId:d.id,subject,body,replyId});if(!r.ok){setError(r.error||"Email could not be sent.");return;}setBody("");setReplyId(undefined);setNotice("Email sent. Customer replies appear here and in the support inbox.");await refresh();}catch{setError("Could not confirm delivery. Refresh the history before trying again.");}finally{setBusy(false);}}
  return <div className="space-y-4">
   <div className="rounded-xl border border-zinc-200 bg-white p-4 space-y-3">
-   <p className="text-sm font-semibold">{replyId?"Reply to client":"Email client"}</p><p className="text-xs text-zinc-500">To: {d.email} · Replies return to the support inbox.</p>
+   <p className="text-sm font-semibold">{replyId?"Reply to client":"Email client"}</p><p className="text-xs text-zinc-500">To: {d.email} · Customer replies appear in the conversation below and in the support inbox.</p>
    <label className="block text-xs">Subject<input aria-label="Email subject" maxLength={200} value={subject} disabled={busy||!!replyId} onChange={e=>setSubject(e.target.value)} className={`${inputClass} mt-1`} /></label>
    <label className="block text-xs">Message<textarea aria-label="Email message" maxLength={replyId?10000:20000} rows={6} value={body} disabled={busy} onChange={e=>setBody(e.target.value)} className={`${inputClass} mt-1`} /></label>
    {error&&<p role="alert" className="text-sm text-red-700">{error}</p>}{notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
    <button onClick={send} disabled={busy||!body.trim()||!subject.trim()} className={buttonClass}>{busy?"Sending…":"Send email"}</button>
    {replyId&&<button disabled={busy} onClick={()=>{setReplyId(undefined);setSubject(`Your PennyLime account ${d.code}`);}} className={`${buttonClass} ml-2`}>New message</button>}
   </div>
-  <h3 className="text-sm font-semibold">Email conversation</h3>
+  <div><h3 className="text-sm font-semibold">Email conversation</h3><p className="mt-1 text-xs text-zinc-500">Replies sync from the support inbox every few minutes. This conversation refreshes automatically.</p></div>
   {!messages.length&&<p className="text-sm text-zinc-500">No stored messages yet.</p>}
   {messages.map(r=><article key={r.id} className="rounded-xl border border-zinc-200 bg-white p-4"><div className="flex flex-wrap justify-between gap-2"><p className="text-sm font-semibold">{r.title}</p>{r.status&&<Badge text={r.status}/>}</div><p className="mt-2 whitespace-pre-wrap break-words text-sm">{r.body}</p><p className="mt-2 text-xs text-zinc-500">{new Date(r.date).toLocaleString()}{r.by?` · ${r.by}`:""}</p>{r.id.startsWith("email:")&&<button disabled={busy} className={`${buttonClass} mt-2`} onClick={()=>{setReplyId(r.id.slice(6));setSubject(`Re: ${r.title}`);setNotice("");}}>Reply</button>}</article>)}
  </div>;
