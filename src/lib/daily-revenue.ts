@@ -29,20 +29,44 @@ export function isNsfReason(reason: string | null) {
   return !!reason && /(insufficient funds|\bR0?1\b|nsf)/i.test(reason);
 }
 
-export async function getClearedPeriods(date: string) {
+export async function getRevenuePeriods(date: string) {
   const [year, month, day] = date.split("-").map(Number);
   const yearStart = easternMidnight(`${year}-01-01`);
   const monthStart = easternMidnight(`${year}-${String(month).padStart(2, "0")}-01`);
   const cutoff = easternMidnight(new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10));
-  const rows = await prisma.paymentAttempt.findMany({
-    where: { finalStatus: "PAID", settledAt: { gte: yearStart, lt: cutoff } },
-    select: { amount: true, settledAt: true },
-  });
-  const sum = (items: typeof rows) => items.reduce((total, row) => total + Number(row.amount), 0);
-  const mtd = rows.filter((row) => row.settledAt && row.settledAt >= monthStart);
+  const [clearedRows, nsfRows, sentRows] = await Promise.all([
+    prisma.paymentAttempt.findMany({
+      where: { finalStatus: "PAID", settledAt: { gte: yearStart, lt: cutoff } },
+      select: { amount: true, settledAt: true },
+    }),
+    prisma.paymentAttempt.findMany({
+      where: { finalStatus: "RETURNED", initiatedAt: { gte: yearStart, lt: cutoff } },
+      select: { amount: true, initiatedAt: true, returnReason: true },
+    }),
+    prisma.application.findMany({
+      where: { fundedAt: { gte: yearStart, lt: cutoff } },
+      select: { fundedAt: true, fundedAmount: true, loanAmount: true },
+    }),
+  ]);
+  const sum = (items: ReadonlyArray<{ amount: unknown }>) => items.reduce((total, row) => total + Number(row.amount), 0);
+  const mtdCleared = clearedRows.filter((row) => row.settledAt && row.settledAt >= monthStart);
+  // Return events have no timestamp in our processor history, so attribute NSF
+  // counts to the date the debit was initiated, matching the daily report.
+  const ytdNsf = nsfRows.filter((row) => isNsfReason(row.returnReason));
+  const mtdNsf = ytdNsf.filter((row) => row.initiatedAt >= monthStart);
+  const mtdSent = sentRows.filter((row) => row.fundedAt && row.fundedAt >= monthStart);
+  const sentAmount = (items: typeof sentRows) => items.reduce((total, row) => total + Number(row.fundedAmount ?? row.loanAmount), 0);
   return {
-    mtd: { count: mtd.length, amount: sum(mtd) },
-    ytd: { count: rows.length, amount: sum(rows) },
+    mtd: {
+      clearedCount: mtdCleared.length, clearedAmount: sum(mtdCleared),
+      nsfCount: mtdNsf.length, nsfAmount: sum(mtdNsf),
+      sentCount: mtdSent.length, sentAmount: sentAmount(mtdSent),
+    },
+    ytd: {
+      clearedCount: clearedRows.length, clearedAmount: sum(clearedRows),
+      nsfCount: ytdNsf.length, nsfAmount: sum(ytdNsf),
+      sentCount: sentRows.length, sentAmount: sentAmount(sentRows),
+    },
   };
 }
 
@@ -67,7 +91,7 @@ export async function getDailyRevenueSnapshot(date: string) {
       orderBy: { initiatedAt: "asc" },
       include: { payment: { include: { application: { select: { applicationCode: true, firstName: true, lastName: true } } } } },
     }),
-    getClearedPeriods(date),
+    getRevenuePeriods(date),
   ]);
 
   const initiated = dayAttempts.filter((a) => a.initiatedAt >= start && a.initiatedAt < end);
@@ -77,7 +101,7 @@ export async function getDailyRevenueSnapshot(date: string) {
   const otherReturns = returned.filter((a) => !isNsfReason(a.returnReason));
   const amount = (rows: typeof dayAttempts) => rows.reduce((total, row) => total + Number(row.amount), 0);
   return {
-    date, start, end, clearedPeriods,
+    date, start, end, periods: clearedPeriods,
     initiated, cleared, nsf, otherReturns, inFlight,
     counts: { processed: initiated.length, cleared: cleared.length, nsf: nsf.length, otherReturns: otherReturns.length, processing: inFlight.length },
     amounts: { processed: amount(initiated), cleared: amount(cleared), nsf: amount(nsf), otherReturns: amount(otherReturns), processing: amount(inFlight) },
@@ -106,8 +130,12 @@ export function dailyRevenueEmail(date: string, report: Awaited<ReturnType<typeo
   };
   const summary = [
     ["ACH cleared", report.counts.cleared, report.amounts.cleared],
-    ["Cleared month to date", report.clearedPeriods.mtd.count, report.clearedPeriods.mtd.amount],
-    ["Cleared year to date", report.clearedPeriods.ytd.count, report.clearedPeriods.ytd.amount],
+    ["Cleared MTD", report.periods.mtd.clearedCount, report.periods.mtd.clearedAmount],
+    ["Cleared YTD", report.periods.ytd.clearedCount, report.periods.ytd.clearedAmount],
+    ["Sent to borrowers MTD", report.periods.mtd.sentCount, report.periods.mtd.sentAmount],
+    ["Sent to borrowers YTD", report.periods.ytd.sentCount, report.periods.ytd.sentAmount],
+    ["NSF returns MTD", report.periods.mtd.nsfCount, report.periods.mtd.nsfAmount],
+    ["NSF returns YTD", report.periods.ytd.nsfCount, report.periods.ytd.nsfAmount],
     ["NSF returns", report.counts.nsf, report.amounts.nsf],
     ["Other returns", report.counts.otherReturns, report.amounts.otherReturns],
     ["Currently processing", report.counts.processing, report.amounts.processing],

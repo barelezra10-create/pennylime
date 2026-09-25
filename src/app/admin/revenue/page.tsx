@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { easternDateString } from "@/lib/eastern-time";
-import { getClearedPeriods, isNsfReason } from "@/lib/daily-revenue";
+import { getRevenuePeriods, isNsfReason } from "@/lib/daily-revenue";
 import { RevenueReportRecipients } from "./revenue-report-recipients";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +63,7 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
   const nextDate = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
   const end = easternMidnight(nextDate);
 
-  const [dayAttempts, inFlight, clearedPeriods] = await Promise.all([
+  const [dayAttempts, inFlight, periods] = await Promise.all([
     prisma.paymentAttempt.findMany({
       where: {
         OR: [
@@ -86,7 +86,7 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
         payment: { include: { application: { select: { applicationCode: true, firstName: true, lastName: true } } } },
       },
     }),
-    getClearedPeriods(date),
+    getRevenuePeriods(date),
   ]);
 
   const initiatedToday = dayAttempts.filter((a) => a.initiatedAt >= start && a.initiatedAt < end);
@@ -108,12 +108,12 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
         <div>
           <Link href="/admin/payments" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">← Payments</Link>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#171714]">Daily revenue center</h1>
-          <p className="mt-1 text-sm text-[#77776f]">ACH collections and activity for {fmtDate} (Eastern Time).</p>
+          <p className="mt-1 text-sm text-[#77776f]">ACH collections and activity for {fmtDate} (Eastern Time). MTD and YTD totals run through this report date.</p>
         </div>
         <form className="flex items-center gap-2 rounded-xl border border-[#e7e7e2] bg-white p-2 shadow-sm">
-          <label htmlFor="revenue-date" className="pl-2 text-sm font-medium text-[#55554e]">Day</label>
+          <label htmlFor="revenue-date" className="pl-2 text-sm font-medium text-[#55554e]">Report date</label>
           <input id="revenue-date" type="date" name="date" defaultValue={date} max={today} className="rounded-lg border border-[#e7e7e2] px-3 py-2 text-sm text-[#252520]" />
-          <button className="rounded-lg bg-[#15803d] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166534]">View</button>
+          <button className="rounded-lg bg-[#15803d] px-4 py-2 text-sm font-semibold text-white hover:bg-[#166534]">Update report</button>
         </form>
       </div>
 
@@ -127,9 +127,16 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
         <Metric title="Processed today" count={initiatedToday.length} amount={sum(initiatedToday)} detail="ACH attempts started" />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Metric title="Cleared MTD" count={clearedPeriods.mtd.count} amount={clearedPeriods.mtd.amount} detail="Month to date" />
-        <Metric title="Cleared YTD" count={clearedPeriods.ytd.count} amount={clearedPeriods.ytd.amount} detail="Year to date" />
+      <div>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[#77776f]">Totals through {fmtDate}</h2>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Metric title="Cleared MTD" count={periods.mtd.clearedCount} amount={periods.mtd.clearedAmount} detail="Month to date" />
+          <Metric title="Sent MTD" count={periods.mtd.sentCount} amount={periods.mtd.sentAmount} detail="To borrowers" tone="blue" />
+          <Metric title="NSF MTD" count={periods.mtd.nsfCount} amount={periods.mtd.nsfAmount} detail="Returned debits" tone="red" />
+          <Metric title="Cleared YTD" count={periods.ytd.clearedCount} amount={periods.ytd.clearedAmount} detail="Year to date" />
+          <Metric title="Sent YTD" count={periods.ytd.sentCount} amount={periods.ytd.sentAmount} detail="To borrowers" tone="blue" />
+          <Metric title="NSF YTD" count={periods.ytd.nsfCount} amount={periods.ytd.nsfAmount} detail="Returned debits" tone="red" />
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-[#e7e7e2] bg-white shadow-sm">
