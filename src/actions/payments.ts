@@ -425,14 +425,6 @@ export async function skipPaymentToEnd(paymentId: string) {
     return { success: false, error: `Can't skip a ${payment.status} payment.` };
   }
 
-  const inflight = await prisma.payment.findFirst({
-    where: { applicationId: payment.applicationId, status: "PROCESSING" },
-    select: { id: true },
-  });
-  if (inflight) {
-    return { success: false, error: "Another payment is processing. Try again in a few minutes." };
-  }
-
   const all = await prisma.payment.findMany({
     where: { applicationId: payment.applicationId },
     select: { dueDate: true },
@@ -441,10 +433,18 @@ export async function skipPaymentToEnd(paymentId: string) {
   const newDueDate = new Date(maxDue + cadenceDays(all) * 24 * 60 * 60 * 1000);
 
   const oldDueDate = payment.dueDate;
-  await prisma.payment.update({
-    where: { id: paymentId },
+  const moved = await prisma.payment.updateMany({
+    where: {
+      id: paymentId,
+      status: "PENDING",
+      settlementId: null,
+      supersededBySettlementId: null,
+    },
     data: { dueDate: newDueDate },
   });
+  if (!moved.count) {
+    return { success: false, error: "Payment changed or is already processing. Refresh and try again." };
+  }
 
   await logAudit({
     action: "SKIP_PAYMENT",

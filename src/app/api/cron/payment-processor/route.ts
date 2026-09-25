@@ -41,7 +41,14 @@ export async function POST(request: NextRequest) {
   for (const payment of duePayments) {
     // Set to PROCESSING first to prevent double-debit
     const claimed = await prisma.payment.updateMany({
-      where: { id: payment.id, status: payment.status, supersededBySettlementId: null, application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } } },
+      where: {
+        id: payment.id,
+        status: payment.status,
+        dueDate: { lte: today },
+        settlementId: null,
+        supersededBySettlementId: null,
+        application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } },
+      },
       data: { status: "PROCESSING" },
     });
     if (!claimed.count) continue;
