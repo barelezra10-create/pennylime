@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { easternDateString } from "@/lib/eastern-time";
-import { isNsfReason } from "@/lib/daily-revenue";
+import { getClearedPeriods, isNsfReason } from "@/lib/daily-revenue";
 import { RevenueReportRecipients } from "./revenue-report-recipients";
 
 export const dynamic = "force-dynamic";
@@ -63,7 +63,7 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
   const nextDate = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
   const end = easternMidnight(nextDate);
 
-  const [dayAttempts, inFlight] = await Promise.all([
+  const [dayAttempts, inFlight, clearedPeriods] = await Promise.all([
     prisma.paymentAttempt.findMany({
       where: {
         OR: [
@@ -86,6 +86,7 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
         payment: { include: { application: { select: { applicationCode: true, firstName: true, lastName: true } } } },
       },
     }),
+    getClearedPeriods(date),
   ]);
 
   const initiatedToday = dayAttempts.filter((a) => a.initiatedAt >= start && a.initiatedAt < end);
@@ -124,6 +125,11 @@ export default async function DailyRevenuePage({ searchParams }: { searchParams:
         <Metric title="Other returns" count={otherReturnsToday.length} amount={sum(otherReturnsToday)} detail="Returned ACH" tone="amber" />
         <Metric title="Currently processing" count={inFlight.length} amount={sum(inFlight)} detail="Still in flight" tone="blue" />
         <Metric title="Processed today" count={initiatedToday.length} amount={sum(initiatedToday)} detail="ACH attempts started" />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Metric title="Cleared MTD" count={clearedPeriods.mtd.count} amount={clearedPeriods.mtd.amount} detail="Month to date" />
+        <Metric title="Cleared YTD" count={clearedPeriods.ytd.count} amount={clearedPeriods.ytd.amount} detail="Year to date" />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-[#e7e7e2] bg-white shadow-sm">
