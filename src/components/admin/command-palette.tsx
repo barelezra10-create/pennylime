@@ -19,6 +19,7 @@ const NAV_ITEMS: CommandItem[] = [
   { id: "email", label: "Email Marketing", href: "/admin/email", group: "Navigate" },
   { id: "applications", label: "Applications", href: "/admin/applications", group: "Navigate" },
   { id: "payments", label: "Payments", href: "/admin/payments", group: "Navigate" },
+  { id: "daily-revenue", label: "Daily revenue", href: "/admin/revenue", group: "Navigate" },
   { id: "content", label: "Content", href: "/admin/content", group: "Navigate" },
   { id: "landing-pages", label: "Landing Pages", href: "/admin/content/landing-pages", group: "Navigate" },
   { id: "articles", label: "Articles", href: "/admin/content/articles", group: "Navigate" },

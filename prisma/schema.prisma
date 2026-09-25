@@ -801,6 +801,9 @@ model NotificationConfig {
   // (Payment goes PENDING -> PROCESSING). Useful for treasury but can
   // be noisy on funded-loan-heavy days.
   paymentInitiatedEmails      String   @default("")
+  // Recipients and idempotency marker for the daily ACH revenue report.
+  dailyRevenueEmails          String   @default("")
+  dailyRevenueLastSentDate    String?
   updatedAt                   DateTime @updatedAt
 }
 

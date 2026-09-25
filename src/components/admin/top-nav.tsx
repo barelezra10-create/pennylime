@@ -35,11 +35,12 @@ const TABS: TopTab[] = [
     id: "loans",
     label: "Pipeline",
     icon: "$",
-    prefixes: ["/admin/dashboard", "/admin/payments", "/admin/reimbursements", "/admin/audit", "/admin/settings", "/admin/goach-test", "/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
+    prefixes: ["/admin/dashboard", "/admin/payments", "/admin/revenue", "/admin/reimbursements", "/admin/audit", "/admin/settings", "/admin/goach-test", "/admin/contacts", "/admin/pipeline", "/admin/abandoned", "/admin/team", "/admin/visitors", "/admin/inbox", "/admin/compliance"],
     href: "/admin/dashboard",
     subnav: [
       { href: "/admin/dashboard", label: "Overview" },
       { href: "/admin/payments", label: "Payments" },
+      { href: "/admin/revenue", label: "Daily revenue" },
       { href: "/admin/reimbursements", label: "Reimbursements" },
       { href: "/admin/contacts", label: "Contacts" },
       { href: "/admin/inbox", label: "Inbox" },

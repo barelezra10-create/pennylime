@@ -10,6 +10,7 @@ import { paymentFailedEmail } from "@/lib/emails/payment-failed";
 import { sendSms } from "@/lib/sms/twilio";
 import { paymentFailedSms } from "@/lib/sms/transactional";
 import { calculateRemainingBalance } from "@/lib/amortization";
+import { previousEasternDateString, sendDailyRevenueReportForDate } from "@/lib/daily-revenue";
 
 export async function POST(request: NextRequest) {
   const authError = verifyCronSecret(request);
@@ -481,6 +482,15 @@ export async function POST(request: NextRequest) {
   // separate cron pass.
   for (const appId of dirtyApplicationIds) {
     await refreshApplicationStatusFromPayments(appId);
+  }
+
+  // Send the previous completed Eastern day once; the report helper is idempotent.
+  try {
+    const reportEmail = await sendDailyRevenueReportForDate(previousEasternDateString());
+    if (reportEmail.sent) console.info(`[daily-revenue] sent report to ${reportEmail.sent} recipients`);
+    if (reportEmail.failed) console.error(`[daily-revenue] failed for ${reportEmail.failed} recipients`);
+  } catch (error) {
+    console.error("[daily-revenue] report send failed:", error);
   }
 
   return NextResponse.json({

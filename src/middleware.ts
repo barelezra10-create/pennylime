@@ -14,6 +14,7 @@ const ADMIN_PROTECTED = [
   "/admin/settings",
   "/admin/audit",
   "/admin/payments",
+  "/admin/revenue",
   "/admin/content",
   "/admin/pipeline",
   "/admin/pipeline-list",

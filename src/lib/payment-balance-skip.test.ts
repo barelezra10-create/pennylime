@@ -31,5 +31,17 @@ it.each([{ run: process, status: "PENDING" }, { run: retry, status: "FAILED" }])
   mocks.claim.mockResolvedValue({ count: 0 });
   await run(new NextRequest("https://example.com/cron", { method: "POST" }));
   expect(mocks.debit).not.toHaveBeenCalled();
-  expect(mocks.claim).toHaveBeenCalledWith({ where: { id: "old", status, supersededBySettlementId: null, application: {status:{in:["FUNDED","ACTIVE","REPAYING","LATE"]},fundedAt:{not:null}} }, data: { status: "PROCESSING" } });
+  const [claim] = mocks.claim.mock.calls[0];
+  expect(claim).toMatchObject({
+    where: {
+      id: "old",
+      status,
+      supersededBySettlementId: null,
+      application: { status: { in: ["FUNDED", "ACTIVE", "REPAYING", "LATE"] }, fundedAt: { not: null } },
+    },
+    data: { status: "PROCESSING" },
+  });
+  if (run === process) {
+    expect(claim.where).toMatchObject({ settlementId: null, dueDate: { lte: expect.any(Date) } });
+  }
 });
