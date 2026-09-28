@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       }
       // Fallback when the webhook doesn't include the token: pick the
       // most recent app that's still missing income.
-      if (!app) {
+      if (!app && !reportToken) {
         app = await prisma.application.findFirst({
           where: { plaidAssetReportToken: { not: null }, monthlyIncome: null },
           orderBy: { createdAt: "desc" },

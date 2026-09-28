@@ -404,7 +404,9 @@ export async function triggerPlaidAssetReport(applicationId: string) {
   const auth = await requireNonSupportRole();
   if (!auth.ok) return { success: false as const, error: auth.error };
   // Step 1: ensure a report exists.
-  const created = await createAssetReport(applicationId);
+  // Re-pull means refresh the existing immutable report into a new report.
+  // For first-time pulls, createAssetReport falls back to /asset_report/create.
+  const created = await refreshAssetReport(applicationId);
   if (!created.success) {
     return { success: false as const, error: created.error };
   }
@@ -414,13 +416,11 @@ export async function triggerPlaidAssetReport(applicationId: string) {
   const POLL_MS = 4_000;
   let lastErr: string | null = null;
   while (Date.now() - start < TIMEOUT_MS) {
-    const fetched = await fetchAssetReportAndStoreIncome(applicationId);
+    const fetched = await fetchAssetReportAndStoreIncomeInternal(applicationId, true);
     if (fetched.success) {
       return {
         success: true as const,
-        message: created.alreadyCreated
-          ? "Pulled existing Plaid asset report."
-          : "Plaid asset report generated and pulled.",
+        message: "Fresh Plaid asset report generated and pulled.",
       };
     }
     lastErr = fetched.error ?? null;
@@ -540,6 +540,14 @@ export async function parsePlaidAssetReportWithAI(applicationId: string) {
 }
 
 export async function createAssetReport(applicationId: string) {
+  return requestAssetReport(applicationId, false);
+}
+
+async function refreshAssetReport(applicationId: string) {
+  return requestAssetReport(applicationId, true);
+}
+
+async function requestAssetReport(applicationId: string, refreshExisting: boolean) {
   try {
     return await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`plaid-report:${applicationId}`}, 0))::text`;
@@ -548,16 +556,22 @@ export async function createAssetReport(applicationId: string) {
         select: { plaidAccessToken: true, plaidAssetReportToken: true },
       });
       if (!application?.plaidAccessToken) return { success: false as const, error: "No Plaid connection" };
-      if (application.plaidAssetReportToken) {
+      if (application.plaidAssetReportToken && !refreshExisting) {
         return { success: true as const, alreadyCreated: true, token: application.plaidAssetReportToken };
       }
-      const response = await plaidClient.assetReportCreate({
-        access_tokens: [decrypt(application.plaidAccessToken)], days_requested: 90,
-        options: { client_report_id: applicationId, webhook: process.env.PLAID_WEBHOOK_URL },
-      }, { timeout: 30_000 });
+      const response = application.plaidAssetReportToken
+        ? await plaidClient.assetReportRefresh({
+            asset_report_token: application.plaidAssetReportToken,
+            days_requested: 90,
+            options: { client_report_id: applicationId, webhook: process.env.PLAID_WEBHOOK_URL },
+          }, { timeout: 30_000 })
+        : await plaidClient.assetReportCreate({
+            access_tokens: [decrypt(application.plaidAccessToken)], days_requested: 90,
+            options: { client_report_id: applicationId, webhook: process.env.PLAID_WEBHOOK_URL },
+          }, { timeout: 30_000 });
       const token = response.data.asset_report_token;
       await tx.application.update({ where: { id: applicationId }, data: { plaidAssetReportToken: token } });
-      return { success: true as const, token, alreadyCreated: false };
+      return { success: true as const, token, alreadyCreated: false, refreshed: !!application.plaidAssetReportToken };
     }, { maxWait: 5_000, timeout: 60_000 });
   } catch (err) {
     return { success: false as const, error: err instanceof Error ? err.message : "Asset report create failed" };
@@ -570,6 +584,10 @@ export async function createAssetReport(applicationId: string) {
  * times (webhook + manual admin retry).
  */
 export async function fetchAssetReportAndStoreIncome(applicationId: string) {
+  return fetchAssetReportAndStoreIncomeInternal(applicationId, false);
+}
+
+async function fetchAssetReportAndStoreIncomeInternal(applicationId: string, overwriteExisting: boolean) {
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
     select: { id: true, plaidAssetReportToken: true, plaidAccountId: true },
@@ -619,7 +637,7 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
     // Seed the report balance independently of income analysis. An immutable
     // report must never overwrite an existing (possibly live) balance.
     await prisma.application.updateMany({
-      where: { id: applicationId, bankBalance: null, availableBalance: null },
+      where: overwriteExisting ? { id: applicationId } : { id: applicationId, bankBalance: null, availableBalance: null },
       data: {
         bankBalance: balances?.current ?? null,
         availableBalance: balances?.available ?? null,
@@ -629,7 +647,7 @@ export async function fetchAssetReportAndStoreIncome(applicationId: string) {
 
     // Preserve later AI/manual income analysis when reading the report again.
     await prisma.application.updateMany({
-      where: { id: applicationId, monthlyIncome: null },
+      where: overwriteExisting ? { id: applicationId } : { id: applicationId, monthlyIncome: null },
       data: {
         monthlyIncome,
         totalIncome: monthlyIncome * 3,

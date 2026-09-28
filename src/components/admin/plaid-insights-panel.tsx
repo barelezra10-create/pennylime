@@ -92,7 +92,7 @@ export function PlaidInsightsPanel({ application }: { application: PlaidInsights
   async function handlePullAssets() {
     setPullingAssets(true);
     toast.message("Pulling Plaid Asset Report…", {
-      description: "Plaid typically returns in 30-60s. Please wait.",
+      description: "Generating a fresh 90-day report. Plaid typically returns in 30-60s.",
     });
     try {
       const result = await triggerPlaidAssetReport(application.id);
