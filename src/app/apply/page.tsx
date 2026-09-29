@@ -711,19 +711,19 @@ function StepInfo({
           {/* Optional SMS opt-in. Explicit,
               unchecked by default. Consent is stored on the contact and gates all
               outbound texts. */}
-          <label className="mt-2.5 flex items-start gap-2.5 cursor-pointer">
+          <label className="mt-3 flex items-start gap-3 rounded-lg border border-[#d4d4d8] bg-[#fafaf9] p-3.5 cursor-pointer">
             <input
               type="checkbox"
               checked={form.smsConsent}
               onChange={(e) => setForm({ ...form, smsConsent: e.target.checked })}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#c4c4c8] text-[#15803d] focus:ring-[#15803d]/30"
+              className="mt-1 h-5 w-5 shrink-0 rounded border-[#a1a1aa] text-[#15803d] focus:ring-[#15803d]/30"
             />
-            <span className="text-[12px] leading-snug text-[#52525b]">
-              <strong>Optional SMS updates.</strong>{" "}I agree to receive automated account and payment text messages from PennyLime (770 Technology LLC) at this number, including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices.
-              Msg &amp; data rates may apply, msg frequency varies. Reply STOP to opt out, HELP for help.
-              You can leave this unchecked, complete your application, and receive service without texts. Consent is not a condition of receiving an advance.
-              See our <a href="/sms-terms" target="_blank" className="underline text-[#15803d]">SMS Terms</a> and{" "}
-              <a href="/privacy" target="_blank" className="underline text-[#15803d]">Privacy Policy</a>.
+            <span className="block text-[14px] leading-relaxed text-[#27272a]">
+              <strong className="block text-[14px] font-bold text-black">Optional text messages from PennyLime</strong>
+              By checking this box, I agree to receive recurring automated account and payment text messages from PennyLime (770 Technology LLC) at the mobile number provided, including application status updates, funding confirmations, payment reminders and confirmations, and failed-payment or late-fee notices.
+              <span className="mt-1 block font-medium">Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span>
+              <span className="mt-1 block">This consent is optional. You can submit your application and receive service without agreeing to texts; consent is not a condition of applying for or receiving an advance.</span>
+              <span className="mt-1 block">Read our <a href="/sms-terms" target="_blank" className="font-semibold text-[#15803d] underline underline-offset-2">SMS Terms</a> and <a href="/privacy" target="_blank" className="font-semibold text-[#15803d] underline underline-offset-2">Privacy Policy</a>.</span>
             </span>
           </label>
         </div>
@@ -1017,19 +1017,19 @@ function StepPhoneOnly({
           className={inputClass("phone")}
         />
         {errors.phone && <p className="mt-1 text-[12px] text-red-500">{errors.phone}</p>}
-          <label className="mt-2.5 flex items-start gap-2.5 cursor-pointer">
+          <label className="mt-3 flex items-start gap-3 rounded-lg border border-[#d4d4d8] bg-[#fafaf9] p-3.5 cursor-pointer">
             <input
               type="checkbox"
               checked={smsConsent}
               onChange={(e) => setSmsConsent(e.target.checked)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-[#c4c4c8] text-[#15803d] focus:ring-[#15803d]/30"
+              className="mt-1 h-5 w-5 shrink-0 rounded border-[#a1a1aa] text-[#15803d] focus:ring-[#15803d]/30"
             />
-            <span className="text-[12px] leading-snug text-[#52525b]">
-              <strong>Optional SMS updates.</strong>{" "}I agree to receive automated account and payment text messages from PennyLime (770 Technology LLC) at this number, including application status updates, funding confirmations, payment reminders, payment confirmations, and failed-payment or late-fee notices.
-              Msg &amp; data rates may apply, msg frequency varies. Reply STOP to opt out, HELP for help.
-              You can leave this unchecked, complete your application, and receive service without texts. Consent is not a condition of receiving an advance.
-              See our <a href="/sms-terms" target="_blank" className="underline text-[#15803d]">SMS Terms</a> and{" "}
-              <a href="/privacy" target="_blank" className="underline text-[#15803d]">Privacy Policy</a>.
+            <span className="block text-[14px] leading-relaxed text-[#27272a]">
+              <strong className="block text-[14px] font-bold text-black">Optional text messages from PennyLime</strong>
+              By checking this box, I agree to receive recurring automated account and payment text messages from PennyLime (770 Technology LLC) at the mobile number provided, including application status updates, funding confirmations, payment reminders and confirmations, and failed-payment or late-fee notices.
+              <span className="mt-1 block font-medium">Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help.</span>
+              <span className="mt-1 block">This consent is optional. You can submit your application and receive service without agreeing to texts; consent is not a condition of applying for or receiving an advance.</span>
+              <span className="mt-1 block">Read our <a href="/sms-terms" target="_blank" className="font-semibold text-[#15803d] underline underline-offset-2">SMS Terms</a> and <a href="/privacy" target="_blank" className="font-semibold text-[#15803d] underline underline-offset-2">Privacy Policy</a>.</span>
             </span>
           </label>
       </div>

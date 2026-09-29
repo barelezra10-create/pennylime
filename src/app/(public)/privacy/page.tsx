@@ -45,6 +45,9 @@ export default function PrivacyPage() {
         <p className="text-[15px] text-[#71717a] leading-relaxed">
           We use Plaid for bank account verification, identity matching, and earnings analysis. Plaid&apos;s privacy practices are governed by Plaid&apos;s own privacy policy. We use Twilio for SMS verification and customer communication, and standard cloud-infrastructure providers for hosting (Railway, Cloudflare).
         </p>
+        <p className="text-[15px] text-[#71717a] leading-relaxed">
+          Text messaging originator opt-in data and consent are not shared with third parties, including for their marketing or promotional purposes. All the above categories exclude text messaging originator opt-in data and consent; this information won&apos;t be shared with any third parties.
+        </p>
 
         <h2 className="text-[22px] font-extrabold tracking-[-0.03em] text-[#1a1a1a] mt-10">
           5. Data Retention
