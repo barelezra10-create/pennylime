@@ -42,6 +42,45 @@ it.each([{ run: process, status: "PENDING" }, { run: retry, status: "FAILED" }])
     data: { status: "PROCESSING" },
   });
   if (run === process) {
-    expect(claim.where).toMatchObject({ settlementId: null, dueDate: { lte: expect.any(Date) } });
+    expect(claim.where).toMatchObject({ dueDate: { lte: expect.any(Date) } });
+    expect(claim.where).not.toHaveProperty("settlementId");
   }
+});
+
+it("sends a due settlement installment through the signed-authorization debit gate", async () => {
+  const payment = {
+    id: "settlement-payment",
+    applicationId: "app",
+    status: "PENDING",
+    settlementId: "active-settlement",
+    dueDate: new Date("2026-01-01T12:00:00Z"),
+    paymentNumber: 2,
+    amount: 25,
+    lateFee: 0,
+    application: {
+      id: "app",
+      status: "REPAYING",
+      fundedAt: new Date("2025-01-01T12:00:00Z"),
+      applicationCode: "PL-TEST",
+      firstName: "Test",
+      lastName: "Borrower",
+      email: "test@example.com",
+      phone: "+15555550100",
+    },
+  };
+  mocks.findMany.mockResolvedValue([payment]);
+
+  const response = await process(new NextRequest("https://example.com/cron", { method: "POST" }));
+
+  expect(response.status).toBe(200);
+  expect(mocks.claim).toHaveBeenCalledWith(expect.objectContaining({
+    where: expect.objectContaining({
+      id: payment.id,
+      dueDate: { lte: expect.any(Date) },
+      supersededBySettlementId: null,
+    }),
+  }));
+  expect(mocks.claim.mock.calls[0][0].where).not.toHaveProperty("settlementId");
+  expect(mocks.debit).toHaveBeenCalledWith(payment.id);
+  expect(mocks.update).toHaveBeenLastCalledWith({ where: { id: payment.id }, data: { status: "PENDING" } });
 });

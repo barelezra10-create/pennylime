@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
         id: payment.id,
         status: payment.status,
         dueDate: { lte: today },
-        settlementId: null,
         supersededBySettlementId: null,
         application: { status: { in: AUTOMATED_DEBIT_STATUSES }, fundedAt: { not: null } },
       },
