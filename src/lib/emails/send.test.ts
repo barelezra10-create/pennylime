@@ -19,4 +19,9 @@ describe("contract email delivery reporting", () => {
     m.send.mockResolvedValue({ data: { id: "message-id" }, error: null });
     expect(await sendEmail({ to: "test@example.com", subject: "Contract", html: "test" })).toEqual({ success: true, id: "message-id" });
   });
+  it("preserves a plain-text fallback so email clients can expose links without HTML", async () => {
+    m.send.mockResolvedValue({ data: { id: "message-id" }, error: null });
+    await sendEmail({ to: "test@example.com", subject: "Settlement", html: "<a href=\"https://pennylime.com/portal/settlements/s\">Review</a>", text: "Review: https://pennylime.com/portal/settlements/s" });
+    expect(m.send).toHaveBeenCalledWith(expect.objectContaining({ text: "Review: https://pennylime.com/portal/settlements/s" }));
+  });
 });

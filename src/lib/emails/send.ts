@@ -11,6 +11,7 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  text?: string;
   preheader?: string;
   // Optional CRM linkage — when provided we record an EmailEvent +
   // Activity so the email shows up on the contact's timeline.
@@ -40,6 +41,7 @@ export async function sendEmail(params: {
       replyTo: REPLY_TO,
       subject: params.subject,
       html: wrapTransactionalEmail(params.html, params.preheader),
+      ...(params.text ? { text: params.text } : {}),
       attachments: params.attachments?.map((a) => ({
         filename: a.filename,
         content: a.content,
